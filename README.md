@@ -17,7 +17,24 @@ For instance, the logistic fixed effect model employs a serial blockwise inversi
 You can install `pprof_py` from GitHub:
 
 ```bash
-git clone https://github.com/yourusername/pprof_py.git
+git clone https://github.com/UM-KevinHe/pprof_py.git
 cd pprof_py
 pip install .
 ```
+
+## Getting Help
+
+If you encounter any problems or bugs, please contact us at: xhliuu@umich.edu{.email}, lfluo@umich.edu{.email}, kevinhe@umich.edu{.email}.
+
+References
+[1] Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting linear mixed-effects models using lme4. Journal of Statistical Software, 67(1), 1-48. https://doi.org/10.18637/jss.v067.i01
+
+[2] He, K., Kalbfleisch, J. D., Li, Y., & Li, Y. (2013). Evaluating hospital readmission rates in dialysis facilities; adjusting for hospital effects. Lifetime Data Analysis, 19, 490-512. https://link.springer.com/article/10.1007/s10985-013-9264-6
+
+[3] He, K. (2019). Indirect and direct standardization for evaluating transplant centers. Journal of Hospital Administration, 8(1), 9-14. https://www.sciedupress.com/journal/index.php/jha/article/view/14304
+
+[4] Hsiao, C. (2022). Analysis of panel data (No. 64). Cambridge University Press.
+
+[5] Wu, W., Kuriakose, J. P., Weng, W., Burney, R. E., & He, K. (2023). Test-specific funnel plots for healthcare provider profiling leveraging individual- and summary-level information. Health Services and Outcomes Research Methodology, 23(1), 45-58. https://pubmed.ncbi.nlm.nih.gov/37621728/
+
+[6] Wu, W., Yang, Y., Kang, J., & He, K. (2022). Improving large‐scale estimation and inference for profiling health care providers. Statistics in Medicine, 41(15), 2840-2853. https://onlinelibrary.wiley.com/doi/full/10.1002/sim.938

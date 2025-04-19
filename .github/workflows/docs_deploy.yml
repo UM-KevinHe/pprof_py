@@ -1,0 +1,49 @@
+# .github/workflows/docs_deploy.yml
+name: Deploy Documentation to GitHub Pages
+
+# Trigger the workflow on pushes to the main branch
+on:
+  push:
+    branches:
+      - main # Or 'master', depending on your default branch name
+
+# Allow GITHUB_TOKEN permissions to write to the gh-pages branch
+permissions:
+  contents: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # Checks out your repository code
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9" # Choose a Python version compatible with your package and Sphinx
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx sphinx_rtd_theme # Install Sphinx and the theme
+          # Install your package and its dependencies (needed for autodoc)
+          # This installs the package from the current directory (.)
+          pip install .
+
+      - name: Build Sphinx documentation
+        run: |
+          cd docs # Navigate to the docs directory
+          # Use sphinx-build directly, specifying the source (.) and output (_build/html) dirs
+          sphinx-build -b html source _build/html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4 # Use the popular gh-pages deployment action
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # Automatically uses the token granted permissions above
+          publish_dir: ./docs/_build/html # The directory containing the built HTML files
+          # Optional: Keep history of the gh-pages branch
+          # keep_files: false
+          # Optional: Custom domain if you have one configured
+          # cname: your.custom.domain.com
