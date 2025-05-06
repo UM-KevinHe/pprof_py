@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from scipy.stats import t, norm
 from statsmodels.regression.mixed_linear_model import MixedLMResults

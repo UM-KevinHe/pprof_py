@@ -3,7 +3,6 @@ from scipy.stats import norm, t, probplot
 from scipy.linalg import block_diag
 import numpy as np
 import pandas as pd
-from sklearn.utils import check_array
 import matplotlib.pyplot as plt
 
 from .base_model import BaseModel
