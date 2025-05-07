@@ -216,6 +216,30 @@ class PlotMixin(ABC):
             This method does not return a value; it should display or save the plot.
         """
         pass
+    
+    @abstractmethod
+    def plot_standardized_measures(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Plot standardized measures with confidence intervals.
+
+        This plot visualizes the standardized measures (e.g., Indirect Standardized Ratio (ISR),
+        Direct Standardized Ratio (DSR), or differences) along with their corresponding confidence
+        intervals. It helps in comparing provider performance relative to a benchmark and identifying
+        outlying providers.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments required for plot generation.
+        **kwargs : Any
+            Keyword arguments for customizing the plot (e.g., confidence level, standardization method).
+
+        Returns
+        -------
+        None
+            This method does not return a value; it should display or save the plot.
+        """
+        pass
 
     @abstractmethod
     def plot_coefficient_forest(self, *args: Any, **kwargs: Any) -> None:
