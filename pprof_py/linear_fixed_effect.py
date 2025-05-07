@@ -1,12 +1,15 @@
-from typing import Optional, Union
-from scipy.stats import norm, t, probplot
-from scipy.linalg import block_diag
+from typing import Optional, Union, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+import warnings
+from scipy.stats import norm, t, probplot
+from scipy.linalg import block_diag
 
 from .base_model import BaseModel
 from .mixins import SummaryMixin, PlotMixin, TestMixin
+from .plotting import plot_caterpillar
 
 
 class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
@@ -820,406 +823,822 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         
         return result
     
+
     def plot_funnel(
         self,
-        stdz: Union[str, List[str]] = "indirect",
+        stdz: str = "indirect",
         null: Union[str, float] = "median",
-        target: float = 0,
+        target: float = 0.0,
         alpha: Union[float, List[float]] = 0.05,
-        labels: List[str] = ["lower", "expected", "higher"],
-        # Options for indirect:
-        point_colors: List[str] = ["#D73027", "#4575B4", "#1A9850"],
-        point_shapes: List[str] = ['o', 's', 'D'],
-        # Options for direct:
-        direct_marker: str = 'X',
-        direct_color: str = "purple",
-        # Common plotting parameters:
-        point_size: float = 2,
-        point_alpha: float = 0.85,
-        line_size: float = 2,
-        target_linestyle: str = 'dashdot',
+        labels: List[str] = ["Lower", "Expected", "Higher"],
+        point_colors: List[str] = ["#E69F00", "#56B4E9", "#009E73"],
+        point_shapes: List[str] = ['v', 'o', '^'],
+        point_size: float = 2.0,
+        point_alpha: float = 0.8,
+        line_size: float = 0.8,
+        target_linestyle: str = '--',
         font_size: float = 12,
-        tick_label_size: float = 10  # Tick labels
+        tick_label_size: float = 10,
+        cl_line_colors: Optional[Union[str, List[str]]] = "grey",
+        cl_line_styles: Optional[Union[str, List[str]]] = None,
+        fill_color: str = "#A6CEE3",
+        fill_alpha: float = 0.25,
+        edge_color: Optional[str] = "grey",
+        edge_linewidth: float = 0.5,
+        add_grid: bool = True,
+        grid_style: str = ':',
+        grid_alpha: float = 0.6,
+        remove_top_right_spines: bool = True,
+        figure_size: Tuple[float, float] = (8, 6),
+        plot_title: str = "Funnel Plot of Standardized Differences",
+        xlab: str = "Precision (Group Size)",
+        ylab: str = "Standardized Difference",
+        legend_location: str = 'best'
     ) -> None:
         """
-        Create a funnel plot comparing provider performance.
-        
-        This method plots either the indirect standardized differences, the direct standardized differences,
-        or both—in separate subplots if requested via the `stdz` parameter.
-        
+        Create a funnel plot for standardized differences.
+
+        For LinearFixedEffectModel, this plots the indirect standardized difference
+        (gamma_i - gamma_null) against group size (as a proxy for precision).
+        Control limits are based on the overall model's residual standard deviation (sigma).
+
         Parameters:
-            stdz: Either a string ("indirect" or "direct") or a list of such strings.
-                - "indirect": Plots the indirect standardized differences (with control limits).
-                - "direct": Plots the direct standardized differences (provider effect minus baseline).
-            null: Baseline for provider effects (e.g. "median" or a numeric value).
-            target: The reference performance value (drawn as a horizontal line).
-            alpha: Significance level(s) for control limits (can be a float or list of floats).
-            labels: Labels for provider performance categories (used for indirect).
-            point_colors: Colors for provider points (for indirect).
-            point_shapes: Marker shapes for provider points (for indirect).
-            direct_marker: Marker shape for direct standardized differences.
-            direct_color: Color for direct standardized differences.
-            point_size: Scaling factor for marker size.
-            point_alpha: Marker transparency.
-            line_size: Thickness for lines.
-            target_linestyle: Line style for the target reference line.
+        -----------
+        stdz : str, default="indirect"
+            Standardization method. Currently, only "indirect" is meaningfully
+            supported as both indirect and direct differences simplify to gamma_i - gamma_null.
+        null : str or float, default="median"
+            Baseline for provider effects (gamma) used in calculating the difference
+            and for flagging. Can be "median", "mean", or a specific float value.
+        target : float, default=0.0
+            Reference value for the difference (target line on the plot).
+        alpha : float or List[float], default=0.05
+            Significance level(s) for control limits.
+        labels : List[str], default=["Lower", "Expected", "Higher"]
+            Labels for provider performance categories based on flags (-1, 0, 1).
+        point_colors : List[str]
+            Colors for provider points based on performance flag.
+        point_shapes : List[str]
+            Marker shapes for provider points based on performance flag.
+        point_size : float, default=2.0
+            Scaling factor for marker size.
+        point_alpha : float, default=0.8
+            Marker transparency.
+        line_size : float, default=0.8
+            Thickness for target and control limit lines.
+        target_linestyle : str, default='--'
+            Line style for the target reference line.
+        font_size : float, default=12
+            Base font size for labels and title.
+        tick_label_size : float, default=10
+            Font size for axis tick labels.
+        cl_line_colors : str or List[str], optional
+            Color(s) for the control limit lines. Defaults to "grey".
+        cl_line_styles : str or List[str], optional
+            Line style(s) for control limits. Defaults based on number of alphas.
+        fill_color : str, default="#A6CEE3"
+            Fill color for the area between the outermost control limits.
+        fill_alpha : float, default=0.25
+            Transparency of the control limit fill area.
+        edge_color : str or None, default="grey"
+            Edge color for scatter points.
+        edge_linewidth : float, default=0.5
+            Line width for scatter point edges.
+        add_grid : bool, default=True
+            Whether to add a background grid.
+        grid_style : str, default=':'
+            Line style for the grid.
+        grid_alpha : float, default=0.6
+            Transparency for the grid lines.
+        remove_top_right_spines : bool, default=True
+            Whether to remove the top and right axis lines.
+        figure_size : Tuple[float, float], default=(8, 6)
+            Figure size in inches.
+        plot_title : str, default="Funnel Plot of Standardized Differences"
+            Title for the plot.
+        xlab : str, default="Precision (Group Size)"
+            Label for the x-axis.
+        ylab : str, default="Standardized Difference"
+            Label for the y-axis.
+        legend_location : str, default='best'
+            Location string for the legend.
         """
-        # Ensure stdz is a list.
-        if isinstance(stdz, str):
-            stdz = [stdz]
-        # Determine how many plots to produce.
-        n_plots = len(stdz)
+        if self.coefficients_ is None or self.sigma_ is None or self.groups_ is None or self.group_sizes_ is None:
+            raise ValueError("Model must be fitted and sigma estimated before plotting funnel plot.")
+        if stdz != "indirect":
+            warnings.warn("Funnel plot for LinearFixedEffectModel is primarily designed for 'indirect' standardized differences.")
+
+        a_list = sorted([alpha] if isinstance(alpha, (float, int)) else alpha)
+        alpha_test = min(a_list)
+
+        sm_info = self.calculate_standardized_measures(stdz=stdz, null=null)
+        if stdz not in sm_info or sm_info[stdz].empty:
+            print(f"Warning: No standardized measure data found for '{stdz}'. Cannot plot.")
+            return
+        df = sm_info[stdz].copy()
+        if 'group_id' in df.columns: df.set_index('group_id', inplace=True)
         
-        # Create a figure with one axis if only one measure is requested,
-        # or a subplot with one row and n_plots columns if more than one.
-        if n_plots == 1:
-            fig, axes = plt.subplots(figsize=(10, 6))
-            axes = [axes]
-        else:
-            fig, axes = plt.subplots(1, n_plots, figsize=(10 * n_plots, 6))
+        precision_map = pd.Series(self.group_sizes_, index=self.groups_)
+        df["precision"] = df.index.map(precision_map)
+        df.dropna(subset=['precision'], inplace=True)
+
+        test_df = self.test(null=null, level=1.0 - alpha_test, alternative="two_sided")
+        df = df.merge(test_df[['flag']], left_index=True, right_index=True, how='left')
+        df["flag"] = df["flag"].fillna(0).astype(int)
+
+        limits_list = []
+        for a_val in a_list:
+            z_val = norm.ppf(1 - a_val / 2)
+            se_for_limits = self.sigma_ / np.sqrt(df["precision"])
+            se_for_limits.replace([np.inf, -np.inf], np.nan, inplace=True)
+            se_for_limits.fillna(0, inplace=True)
+            control_lower = target - z_val * se_for_limits
+            control_upper = target + z_val * se_for_limits
+            limits_df_a = pd.DataFrame({
+                "precision": df["precision"], 
+                "control_lower": control_lower,
+                "control_upper": control_upper, 
+                "alpha": a_val
+            }, index=df.index)
+            limits_list.append(limits_df_a)
+        limits_all_alphas = pd.concat(limits_list)
+
+        fig, ax = plt.subplots(figsize=figure_size)
+        limits_all_alphas = limits_all_alphas.sort_values("precision")
+        outer_alpha = min(a_list)
+
+        if cl_line_styles is None: 
+            default_styles = ['-', '--', ':', '-.']
+            cl_line_styles = [default_styles[i % len(default_styles)] for i in range(len(a_list))]
+        elif isinstance(cl_line_styles, str): 
+            cl_line_styles = [cl_line_styles] * len(a_list)
+
+        if cl_line_colors is None or isinstance(cl_line_colors, str): 
+            cl_line_colors = [cl_line_colors or 'grey'] * len(a_list)
         
-        # Loop over each requested standardization method.
-        for i, method in enumerate(stdz):
-            ax = axes[i]
-            if method == "indirect":
-                # --- Indirect Standardization Plot ---
-                # Calculate indirect standardized measures.
-                sm_results = self.calculate_standardized_measures(stdz="indirect", null=null)
-                indirect_df: pd.DataFrame = sm_results["indirect"].copy()
-                indirect_df.index = self.groups_
-                indirect_df["precision"] = self.group_sizes_
+        sorted_alphas = sorted(a_list)
+        style_map = dict(zip(sorted_alphas, cl_line_styles)); color_map = dict(zip(sorted_alphas, cl_line_colors))
+        legend_handles, legend_labels_list = [], []
 
-                # Merge provider flags from test() (assumed to be indexed by group)
-                test_df = self.test(null=null, level=0.95)
-                indirect_df["flag"] = test_df["flag"]
+        outer_limits = limits_all_alphas[limits_all_alphas["alpha"] == outer_alpha]
+        label_outer_ci = f'{int((1-outer_alpha)*100)}% CI'
+        fill_handle = ax.fill_between(outer_limits["precision"], outer_limits["control_lower"], outer_limits["control_upper"], color=fill_color, alpha=fill_alpha, label=label_outer_ci)
+        legend_handles.append(fill_handle); legend_labels_list.append(label_outer_ci)
 
-                # Ensure alpha is a list.
-                a_list = [alpha] if isinstance(alpha, (float, int)) else sorted(alpha)
-                # Compute control limits based on sigma and precision.
-                limits_list = []
-                for a in a_list:
-                    z_val = norm.ppf(1 - a / 2)
-                    control_lower = target - z_val * self.sigma_ / np.sqrt(indirect_df["precision"])
-                    control_upper = target + z_val * self.sigma_ / np.sqrt(indirect_df["precision"])
-                    limits_df = pd.DataFrame({
-                        "precision": indirect_df["precision"],
-                        "control_lower": control_lower,
-                        "control_upper": control_upper,
-                        "alpha": a
-                    }, index=self.groups_)
-                    limits_list.append(limits_df)
-                limits_df = pd.concat(limits_list)
-
-                # Plot control limit areas.
-                for a in a_list:
-                    subset = limits_df[limits_df["alpha"] == a]
-                    ax.fill_between(subset["precision"], subset["control_lower"], subset["control_upper"],
-                                    color="#A6CEE3", alpha=0.25,
-                                    label=f"Indirect limits (α={a})" if a == min(a_list) else "")
-
-                # Map flags to colors and shapes.
-                unique_flags = np.sort(indirect_df["flag"].unique())
-                colors_map = {flag: point_colors[i % len(point_colors)] for i, flag in enumerate(unique_flags)}
-                shapes_map = {flag: point_shapes[i % len(point_shapes)] for i, flag in enumerate(unique_flags)}
-
-                # Plot provider points.
-                for flag in unique_flags:
-                    subset = indirect_df[indirect_df["flag"] == flag]
-                    label_idx = int(flag + 1)  # if flags are -1, 0, 1
-                    ax.scatter(subset["precision"], subset["indirect_difference"],
-                            color=colors_map[flag],
-                            marker=shapes_map[flag],
-                            s=point_size * 50,
-                            alpha=point_alpha,
-                            edgecolor="k",
-                            label=f"{labels[label_idx]} (Indirect, n={len(subset)})")
-                ax.set_ylabel("Indirect Standardized Difference", fontsize=font_size)
-                ax.set_title("Funnel Plot (Indirect Standardization)", fontsize=font_size + 2)
-            
-            elif method == "direct":
-                # --- Direct Standardization Plot ---
-                # Compute direct standardized measures.
-                sm_results = self.calculate_standardized_measures(stdz="direct", null=null)
-                direct_df: pd.DataFrame = sm_results["direct"].copy()
-                direct_df.index = self.groups_
-                # For direct standardization in the fixed-effects context,
-                # the standardized difference is computed as: gamma - gamma_null.
-                # Here we simply plot these values against precision (group sizes).
-                ax.scatter(self.group_sizes_,  # using group size as a proxy for precision
-                        direct_df["direct_difference"],
-                        color=direct_color,
-                        marker=direct_marker,
-                        s=point_size * 50,
-                        alpha=point_alpha,
-                        edgecolor="k",
-                        label="Direct Standardization")
-                ax.set_ylabel("Direct Standardized Difference", fontsize=font_size)
-                ax.set_title("Funnel Plot (Direct Standardization)", fontsize=font_size + 2)
-            
-            else:
-                raise ValueError("stdz must be 'indirect' and/or 'direct'.")
-            
-            # Common plotting settings.
-            ax.axhline(y=target, color="black", linestyle=target_linestyle, linewidth=line_size)
-            ax.set_xlabel("Precision (Group Size)", fontsize=font_size)
-            ax.tick_params(axis="both", labelsize=tick_label_size)  # Adjust tick labels
-            ax.legend(fontsize=font_size - 2)
+        for a_val in sorted_alphas:
+            subset_lim = limits_all_alphas[limits_all_alphas["alpha"] == a_val]
+            line_label = f'{int((1-a_val)*100)}% CI' if a_val != outer_alpha else None
+            line_lower, = ax.plot(subset_lim["precision"], subset_lim["control_lower"], linestyle=style_map[a_val], color=color_map[a_val], linewidth=line_size, label=line_label)
+            ax.plot(subset_lim["precision"], subset_lim["control_upper"], linestyle=style_map[a_val], color=color_map[a_val], linewidth=line_size)
+            if line_label: legend_handles.append(line_lower); legend_labels_list.append(line_label)
         
+        ax.axhline(y=target, color="black", linestyle=target_linestyle, linewidth=line_size)
+
+        present_flags = sorted(df["flag"].unique())
+        flag_map = {-1: 0, 0: 1, 1: 2}
+        for flag_val in present_flags:
+            subset_pts = df[df["flag"] == flag_val]
+            label_idx = flag_map.get(flag_val,1)
+            count = len(subset_pts)
+            point_label = f"{labels[label_idx]} ({count})"
+            scatter_handle = ax.scatter(subset_pts["precision"], 
+                                        subset_pts[f"{stdz}_difference"],
+                                        marker=point_shapes[label_idx % len(point_shapes)], 
+                                        color=point_colors[label_idx % len(point_colors)],
+                                        s=point_size*30, 
+                                        alpha=point_alpha, 
+                                        edgecolor=edge_color, 
+                                        linewidth=edge_linewidth if edge_color else 0, 
+                                        label=point_label)
+            legend_handles.append(scatter_handle); 
+            legend_labels_list.append(point_label)
+
+        ax.set_xlabel(xlab, fontsize=font_size)
+        ax.set_ylabel(ylab, fontsize=font_size)
+        ax.set_title(plot_title, fontsize=font_size + 2, pad=15)
+        ax.tick_params(axis="both", labelsize=tick_label_size)
+        
+        all_y_values = pd.concat([df[f"{stdz}_difference"], limits_all_alphas["control_lower"], limits_all_alphas["control_upper"]]).dropna()
+        if not all_y_values.empty:
+            min_y_val = min(all_y_values.min(), target)
+            max_y_val = max(all_y_values.max(), target)
+            padding = (max_y_val - min_y_val) * 0.1 if (max_y_val - min_y_val) > 1e-6 else 0.1 # Ensure padding is positive
+            ax.set_ylim(min_y_val - padding, max_y_val + padding)
+        
+        max_x = df["precision"].max(skipna=True)
+        ax.set_xlim(left=0, right=(max_x * 1.05 if pd.notna(max_x) and max_x > 0 else 1))
+
+        if add_grid: 
+            ax.grid(True, linestyle=grid_style, alpha=grid_alpha, axis='both', color='lightgrey')
+        if remove_top_right_spines: 
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_linewidth(0.8)
+            ax.spines['bottom'].set_linewidth(0.8)
+        
+        unique_handles_labels = {}; 
+        for handle, label in zip(legend_handles, legend_labels_list):
+            if label not in unique_handles_labels: 
+                unique_handles_labels[label] = handle
+        ax.legend(handles=unique_handles_labels.values(), 
+                  labels=unique_handles_labels.keys(), 
+                  fontsize=font_size - 2, 
+                  loc=legend_location, 
+                  title="Flag")
         plt.tight_layout()
         plt.show()
 
-    def plot_residuals(
+    def plot_provider_effects(
+        self, 
+        group_ids=None, 
+        level: float = 0.95,
+        use_flags: bool = True, 
+        null: Union[str, float] = 'median',
+        test_method: Optional[str] = None, # Added for consistency with LogisticFE
+        **plot_kwargs
+    ) -> None:
+        """
+        Plots provider fixed effects (gamma) using the plot_caterpillar helper function.
+
+        Parameters
+        ----------
+        group_ids : list or np.ndarray, optional
+            Subset of provider IDs to plot. If None, all providers are included.
+        level : float, default=0.95
+            Confidence level for intervals.
+        use_flags : bool, default=True
+            Whether to color-code providers based on flags from the test method.
+        null : str or float, default='median'
+            Null hypothesis for gamma used for flagging. Can be 'median', 'mean', or a float.
+        test_method : str, optional
+             Test method used specifically for generating flags ('wald' is the only one for LinearFE's .test()).
+             If None, defaults to 'wald'.
+        **plot_kwargs
+            Additional arguments passed to plot_caterpillar (e.g., plot_title, orientation).
+        """
+        if self.coefficients_ is None or self.variances_ is None:
+            raise ValueError("Model must be fitted first.")
+
+        # Get gamma CIs (always two-sided for plotting)
+        # For LinearFixedEffectModel, test_method in calculate_CIs is implicitly Wald-like (t-dist)
+        ci_results = self.calculate_confidence_intervals(
+            group_ids=group_ids, 
+            level=level, 
+            option='gamma', 
+            alternative='two_sided'
+        )
+        if 'gamma_ci' not in ci_results or ci_results['gamma_ci'].empty:
+            print("Warning: No gamma CI data. Cannot plot.")
+            return
+        
+        df_plot = ci_results['gamma_ci'] # Has 'group_id', 'gamma', 'lower', 'upper'
+
+        flag_col_name = None
+        if use_flags:
+            flag_col_name = 'flag'
+            # LinearFEModel's test method is t-test based (Wald-like)
+            current_test_method = test_method if test_method else 'wald' # Default for LinearFE
+            if current_test_method != 'wald':
+                warnings.warn(f"LinearFixedEffectModel.test uses a t-test (Wald-like). test_method '{current_test_method}' for flagging will use this underlying test.")
+
+            try:
+                test_df = self.test(
+                    providers=df_plot['group_id'].unique().tolist(),
+                    level=level, 
+                    null=null, 
+                    alternative='two_sided'
+                )
+                # Merge flags using left_on='group_id' and right_index=True since test_df is indexed by provider IDs
+                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
+            except Exception as e:
+                warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
+                flag_col_name = None
+        
+        gamma_vals = self.coefficients_["gamma"].flatten()
+        if null == "median": gamma_null_val = np.median(gamma_vals)
+        elif null == "mean": gamma_null_val = np.average(gamma_vals, weights=self.group_sizes_ if self.group_sizes_ is not None else None)
+        else: gamma_null_val = float(null)
+
+        # Default orientation is vertical (groups on Y, estimates on X)
+        orientation = plot_kwargs.pop('orientation', 'vertical')
+        if orientation == 'vertical':
+            plot_kwargs.setdefault('xlab', 'Gamma Estimate (Fixed Effect)')
+            plot_kwargs.setdefault('ylab', 'Provider')
+        else: # horizontal
+            plot_kwargs.setdefault('xlab', 'Provider')
+            plot_kwargs.setdefault('ylab', 'Gamma Estimate (Fixed Effect)')
+
+        # Use 'plot_title' instead of 'title' to match plot_caterpillar's parameter
+        plot_kwargs.setdefault('plot_title', 'Provider Effects (Gamma)')
+        plot_kwargs.setdefault('refline_value', gamma_null_val)
+        plot_kwargs.setdefault('orientation', orientation)
+
+        plot_caterpillar(
+            df=df_plot, 
+            estimate_col='gamma', 
+            ci_lower_col='lower', 
+            ci_upper_col='upper',
+            group_col='group_id', 
+            flag_col=flag_col_name, 
+            **plot_kwargs
+        )
+
+    def plot_standardized_measures(
         self,
-        ax: Optional[plt.Axes] = None,
-        figsize: tuple = (8, 5),
-        point_color: str = "#1F78B4",
-        point_alpha: float = 0.75,
-        edge_color: str = "k",
-        point_size: float = 50,  # new parameter to control point size
+        group_ids=None, 
+        level: float = 0.95, 
+        stdz: str = 'indirect',
+        measure: str = 'difference',
+        use_flags: bool = True, null: Union[str, float] = 'median',
+        test_method: Optional[str] = None,
+        **plot_kwargs
+    ) -> None:
+        """
+        Plots standardized differences using plot_caterpillar.
+        For LinearFixedEffectModel, standardized measures are differences (gamma_i - gamma_null).
+
+        Parameters
+        ----------
+        group_ids : list or np.ndarray, optional
+            Subset of provider IDs to plot.
+        level : float, default=0.95
+            Confidence level for intervals.
+        stdz : str, default='indirect'
+            Standardization method ('indirect' or 'direct'). Both result in gamma_i - gamma_null.
+        measure : str, default='difference'
+            The measure to plot. For linear models, this is always 'difference'.
+        use_flags : bool, default=True
+            Whether to color-code providers based on flags from the gamma test method.
+        null : str or float, default='median'
+            Null hypothesis for gamma used for flagging and calculating the difference.
+        test_method : str, optional
+             Test method used specifically for generating flags. Defaults to 'wald' (t-test).
+        **plot_kwargs
+            Additional arguments passed to plot_caterpillar.
+        """
+        if self.coefficients_ is None: raise ValueError("Model must be fitted.")
+        if measure != 'difference':
+            warnings.warn("For LinearFixedEffectModel, standardized 'measure' is 'difference'.")
+        
+        # Get SM CIs (which are for the difference: gamma_i - gamma_null)
+        ci_results = self.calculate_confidence_intervals(
+            group_ids=group_ids, 
+            level=level, 
+            option='SM', 
+            stdz=stdz, 
+            null=null, 
+            alternative='two_sided'
+        )
+        ci_key = f"{stdz}_ci"
+        if ci_key not in ci_results or ci_results[ci_key].empty:
+            print(f"Warning: No SM CI data for '{ci_key}'. Cannot plot.")
+            return
+        
+        df_plot = ci_results[ci_key] # This df should have 'group_id', '{stdz}_difference', 'lower', 'upper'
+        estimate_col_name = f"{stdz}_difference"
+                
+        if estimate_col_name not in df_plot.columns or 'lower' not in df_plot.columns or 'upper' not in df_plot.columns:
+             raise ValueError(f"Required columns ('{estimate_col_name}', 'lower', 'upper') not found in SM CI results. Available: {df_plot.columns}")
+
+        flag_col_name = None
+        if use_flags:
+            flag_col_name = 'flag'
+            current_test_method = test_method if test_method else 'wald'
+            if current_test_method != 'wald':
+                 warnings.warn(f"LinearFixedEffectModel.test uses a t-test (Wald-like). test_method '{current_test_method}' for flagging will use this.")
+            try:
+                test_df = self.test(providers=df_plot['group_id'].unique().tolist(), 
+                                    level=level, 
+                                    null=null, 
+                                    alternative='two_sided')
+                # Merge using left_on='group_id' and right_index=True
+                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
+            except Exception as e:
+                warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
+                flag_col_name = None
+
+        orientation = plot_kwargs.pop('orientation', 'vertical')
+        default_title = f"{stdz.capitalize()} Standardized Difference"
+        if orientation == 'vertical':
+            default_xlab = f"{stdz.capitalize()} Difference Estimate"
+            default_ylab = "Provider"
+        else:
+            default_xlab = "Provider"
+            default_ylab = f"{stdz.capitalize()} Difference Estimate"
+        default_refline = 0.0
+
+        plot_kwargs.setdefault('plot_title', default_title)
+        plot_kwargs.setdefault('xlab', default_xlab)
+        plot_kwargs.setdefault('ylab', default_ylab)
+        plot_kwargs.setdefault('refline_value', default_refline)
+        plot_kwargs.setdefault('orientation', orientation)
+
+        plot_caterpillar(
+            df=df_plot, 
+            estimate_col=estimate_col_name,
+            ci_lower_col='lower', 
+            ci_upper_col='upper',
+            group_col='group_id', 
+            flag_col=flag_col_name, 
+            **plot_kwargs
+        )
+
+    def plot_coefficient_forest(
+        self,
+        orientation: Literal["vertical", "horizontal"] = "vertical",
+        refline_value: Optional[float] = 0.0,
+        point_color: str = "#34495E",
+        point_alpha: float = 0.8,
+        edge_color: Optional[str] = None,
+        edge_linewidth: float = 0,
+        point_size: float = 0.05,
+        error_color: str = "#95A5A6",
+        capsize: float = 5,
+        errorbar_size: float = 0.5,
+        errorbar_alpha: float = 0.5,
         line_color: str = "red",
         line_style: str = "--",
-        line_width: float = 2,
+        line_size: float = 0.8,
+        font_size: float = 12,
+        tick_label_size: float = 10,
+        add_grid: bool = True,
+        grid_style: str = ":",
+        grid_alpha: float = 0.6,
+        remove_top_right_spines: bool = True,
+        figure_size: Tuple[float, float] = (8, 6),
+        plot_title: str = "Forest Plot of Covariate Coefficients",
+        xlab: str = "Coefficient Estimate",
+        ylab: str = "Covariate",
+        save_path: Optional[str] = None,
+        dpi: int = 300
+    ) -> None:
+        """
+        Create a forest plot of covariate coefficients with 95% confidence intervals.
+
+        Plots each covariate's coefficient estimate and its confidence interval
+        in a vertical or horizontal layout, with a reference line at a specified value.
+
+        Parameters
+        ----------
+        orientation : {'vertical','horizontal'}, default 'vertical'
+            'vertical': covariate names on the y-axis, estimates on the x-axis.
+            'horizontal': covariate names on the x-axis, estimates on the y-axis.
+        refline_value : float or None, default 0.0
+            Draws a reference line at this value (vertical or horizontal). None disables it.
+        point_color : str, default "#34495E"
+            Color of the coefficient marker.
+        point_alpha : float, default 0.8
+            Opacity of the coefficient marker.
+        edge_color : str or None, default None
+            Edge color of the marker. None for no edge.
+        edge_linewidth : float, default 0
+            Width of the marker edge.
+        point_size : float, default 0.5
+            Scale factor for marker size.
+        error_color : str, default "#95A5A6"
+            Color of the error bars.
+        capsize : float, default 5
+            Cap size for error bars.
+        errorbar_size : float, default 0.5
+            Thickness of the error bar lines.
+        errorbar_alpha : float, default 0.5
+            Opacity of the error bars.
+        line_color : str, default "red"
+            Color of the reference line.
+        line_style : str, default "--"
+            Line style of the reference line.
+        line_size : float, default 0.8
+            Thickness of the reference line.
+        font_size : float, default 12
+            Font size for labels and title.
+        tick_label_size : float, default 10
+            Font size for tick labels.
+        add_grid : bool, default True
+            Whether to draw a light grid.
+        grid_style : str, default ":"
+            Line style for the grid.
+        grid_alpha : float, default 0.6
+            Opacity of the grid.
+        remove_top_right_spines : bool, default True
+            Hide the top and right spines.
+        figure_size : tuple, default (10, 6)
+            Size of the figure in inches.
+        plot_title : str, default "Forest Plot of Covariate Coefficients"
+            Title of the plot.
+        xlab : str, default "Coefficient Estimate"
+            Label for the x-axis (or y-axis if horizontal).
+        ylab : str, default "Covariate"
+            Label for the y-axis (or x-axis if horizontal).
+        save_path : str or None, default None
+            File path to save the figure. If None, the plot is shown.
+        dpi : int, default 300
+            Resolution (dots per inch) for saving.
+
+        Raises
+        ------
+        ValueError
+            If the model is not fitted or if an invalid orientation is provided.
+        """
+        # Preconditions
+        if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
+            raise ValueError("Model must be fitted before plotting coefficients.")
+        if orientation not in ("vertical", "horizontal"):
+            raise ValueError("orientation must be 'vertical' or 'horizontal'")
+
+        # Compute estimates and 95% CIs
+        beta = self.coefficients_["beta"].flatten()
+        se_beta = np.sqrt(np.diag(self.variances_["beta"]))
+        df_denom = self.fitted_.size - len(beta) - len(self.coefficients_["gamma"])
+        crit = t.ppf(1 - 0.05 / 2, df_denom)
+        lower = beta - crit * se_beta
+        upper = beta + crit * se_beta
+
+        coef_df = (
+            pd.DataFrame({
+                "covariate": self.covariate_names_,
+                "estimate": beta,
+                "ci_lower": lower,
+                "ci_upper": upper
+            })
+            .sort_values("estimate")
+            .reset_index(drop=True)
+        )
+
+        # Positions
+        n = len(coef_df)
+        positions = np.arange(n)
+
+        # Prepare coordinates and errors
+        if orientation == "vertical":
+            x_vals, y_vals = coef_df["estimate"], positions
+            xerr = [
+                coef_df["estimate"] - coef_df["ci_lower"],
+                coef_df["ci_upper"] - coef_df["estimate"]
+            ]
+        else:
+            x_vals, y_vals = positions, coef_df["estimate"]
+            yerr = [
+                coef_df["estimate"] - coef_df["ci_lower"],
+                coef_df["ci_upper"] - coef_df["estimate"]
+            ]
+
+        # Plot setup
+        fig, ax = plt.subplots(figsize=figure_size)
+
+        # Draw errorbars and points
+        if orientation == "vertical":
+            ax.errorbar(
+                x_vals, y_vals,
+                xerr=xerr,
+                fmt="o",
+                color=point_color,
+                ecolor=error_color,
+                capsize=capsize,
+                markersize=point_size * 30,
+                alpha=point_alpha,
+                linewidth=edge_linewidth if edge_color else 0,
+                markeredgecolor=edge_color
+            )
+        else:
+            ax.errorbar(
+                x_vals, y_vals,
+                yerr=yerr,
+                fmt="o",
+                color=point_color,
+                ecolor=error_color,
+                capsize=capsize,
+                markersize=point_size * 30,
+                alpha=point_alpha,
+                linewidth=edge_linewidth if edge_color else 0,
+                markeredgecolor=edge_color
+            )
+
+        # Reference line
+        if refline_value is not None:
+            if orientation == "vertical":
+                ax.axvline(refline_value, color=line_color, linestyle=line_style, linewidth=line_size)
+            else:
+                ax.axhline(refline_value, color=line_color, linestyle=line_style, linewidth=line_size)
+
+        # Labels, ticks, grid
+        if orientation == "vertical":
+            ax.set_xlabel(xlab, fontsize=font_size)
+            ax.set_ylabel(ylab, fontsize=font_size)
+            ax.set_yticks(positions)
+            ax.set_yticklabels(coef_df["covariate"], fontsize=tick_label_size)
+            ax.tick_params(axis="x", labelsize=tick_label_size)
+            if add_grid:
+                ax.grid(True, axis="x", linestyle=grid_style, alpha=grid_alpha, color="lightgrey")
+        else:
+            ax.set_xlabel(ylab, fontsize=font_size)
+            ax.set_ylabel(xlab, fontsize=font_size)
+            ax.set_xticks(positions)
+            ax.set_xticklabels(coef_df["covariate"], rotation=45, ha="right", fontsize=tick_label_size)
+            ax.tick_params(axis="y", labelsize=tick_label_size)
+            if add_grid:
+                ax.grid(True, axis="y", linestyle=grid_style, alpha=grid_alpha, color="lightgrey")
+
+        # Spines
+        if remove_top_right_spines:
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+        if orientation == "vertical":
+            ax.spines["left"].set_linewidth(0.8)
+            ax.spines["bottom"].set_linewidth(0.8)
+        else:
+            ax.spines["bottom"].set_linewidth(0.8)
+            ax.spines["left"].set_linewidth(0.8)
+
+        # Title & layout
+        ax.set_title(plot_title, fontsize=font_size + 2, pad=15)
+        plt.tight_layout()
+
+        # Save or show
+        if save_path:
+            plt.savefig(save_path, dpi=dpi, bbox_inches="tight")
+            plt.close(fig)
+        else:
+            plt.show()
+
+    def plot_residuals(
+        self,
+        figsize: tuple = (8, 5),
+        point_color: str = "#1F78B4",
+        point_alpha: float = 0.6,
+        edge_color: Optional[str] = "grey",
+        edge_linewidth: float = 0.5,
+        point_size: float = 30,
+        line_color: str = "red",
+        line_style: str = "--",
+        line_width: float = 1.5,
         xlabel: str = "Fitted Values",
         ylabel: str = "Residuals",
         title: str = "Residuals vs. Fitted Values",
         font_size: float = 12,
-        tick_label_size: float = 10  # Tick labels
+        tick_label_size: float = 10,
+        add_grid: bool = True,
+        grid_style: str = ':',
+        grid_alpha: float = 0.6,
+        remove_top_right_spines: bool = True
     ) -> None:
         """
-        Plot residuals versus fitted values to assess model fit.
+        Plots residuals versus fitted values.
 
-        Parameters:
-            ax: Optional matplotlib Axes to plot on.
-            figsize: Size of the figure if a new figure is created.
-            point_color: Color for residual points.
-            point_alpha: Transparency for residual points.
-            edge_color: Edge color for residual points.
-            point_size: Marker size for the points.
-            line_color: Color for the horizontal reference line.
-            line_style: Style for the reference line.
-            line_width: Line width for the reference line.
-            xlabel: Label for the x-axis.
-            ylabel: Label for the y-axis.
-            title: Plot title.
+        This diagnostic plot helps assess model assumptions such as linearity
+        and homoscedasticity (constant variance of errors). Ideally, the points
+        should show no discernible pattern and be randomly scattered around the
+        horizontal line at zero.
 
-        Returns:
-            None. Displays a scatter plot of residuals.
+        Parameters
+        ----------
+        figsize : tuple, default=(8, 5)
+            Size of the figure to create.
+        point_color : str, default="#1F78B4"
+            Color for the residual points.
+        point_alpha : float, default=0.6
+            Transparency level for the points.
+        edge_color : str or None, default="grey"
+            Edge color for the points. None means no edge.
+        edge_linewidth : float, default=0.5
+            Width of the point edges if `edge_color` is specified.
+        point_size : float, default=30
+            Size of the scatter plot markers.
+        line_color : str, default="red"
+            Color of the horizontal reference line at zero.
+        line_style : str, default="--"
+            Line style for the reference line.
+        line_width : float, default=1.5
+            Width of the reference line.
+        xlabel : str, default="Fitted Values"
+            Label for the x-axis.
+        ylabel : str, default="Residuals"
+            Label for the y-axis.
+        title : str, default="Residuals vs. Fitted Values"
+            Title of the plot.
+        font_size : float, default=12
+            Base font size for labels and title.
+        tick_label_size : float, default=10
+            Font size for axis tick labels.
+        add_grid : bool, default=True
+            Whether to add a background grid.
+        grid_style : str, default=':'
+            Line style for the grid.
+        grid_alpha : float, default=0.6
+            Transparency for the grid lines.
+        remove_top_right_spines : bool, default=True
+            Whether to remove the top and right plot spines.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted.
         """
         if self.fitted_ is None or self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting residuals.")
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
+
+        # Create a new figure and axes for the plot
+        fig, ax = plt.subplots(figsize=figsize)
+
         ax.scatter(
-            self.fitted_.flatten(),
-            self.residuals_.flatten(),
-            color=point_color,
-            alpha=point_alpha,
-            edgecolor=edge_color,
+            self.fitted_.flatten(), self.residuals_.flatten(),
+            color=point_color, alpha=point_alpha,
+            edgecolor=edge_color, linewidth=edge_linewidth if edge_color else 0,
             s=point_size
         )
         ax.axhline(0, color=line_color, linestyle=line_style, linewidth=line_width)
         ax.set_xlabel(xlabel, fontsize=font_size)
         ax.set_ylabel(ylabel, fontsize=font_size)
-        ax.set_title(title, fontsize=font_size + 2)
-        ax.tick_params(axis="both", labelsize=tick_label_size)  # Adjust tick labels
+        ax.set_title(title, fontsize=font_size + 2, pad=15)
+        ax.tick_params(axis="both", labelsize=tick_label_size)
+        if add_grid: ax.grid(True, linestyle=grid_style, alpha=grid_alpha, color='lightgrey')
+        if remove_top_right_spines:
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_linewidth(0.8); ax.spines['bottom'].set_linewidth(0.8)
+
         plt.tight_layout()
         plt.show()
-
+        # No return value
 
     def plot_qq(
         self,
-        ax: Optional[plt.Axes] = None,
-        figsize: tuple = (8, 6),
-        title: str = "Q-Q Plot of Residuals",
-        xlabel: str = "Theoretical Quantiles",
+        figsize: tuple = (7, 6),
+        title: str = "Normal Q-Q Plot of Residuals",
+        xlabel: str = "Theoretical Normal Quantiles",
         ylabel: str = "Ordered Residuals",
         font_size: float = 12,
-        tick_label_size: float = 10  # Tick labels
+        tick_label_size: float = 10,
+        point_color: str = "#1F78B4",
+        line_color: str = "red",
+        add_grid: bool = False,
+        remove_top_right_spines: bool = True
     ) -> None:
         """
-        Create a Q-Q plot of the residuals to assess normality.
+        Creates a Q-Q plot of residuals against a Normal distribution.
 
-        Parameters:
-            ax: Optional matplotlib Axes to plot on.
-            figsize: Size of the figure if a new figure is created.
-            title: Plot title.
-            xlabel: Label for the x-axis.
-            ylabel: Label for the y-axis.
+        This plot helps assess the assumption of normally distributed errors,
+        which is important for the validity of t-tests and confidence intervals
+        in linear models. Points falling approximately along the diagonal line
+        suggest normality.
 
-        Returns:
-            None. Displays a Q-Q plot.
+        Parameters
+        ----------
+        figsize : tuple, default=(7, 6)
+            Size of the figure to create.
+        title : str, default="Normal Q-Q Plot of Residuals"
+            Title of the plot.
+        xlabel : str, default="Theoretical Normal Quantiles"
+            Label for the x-axis.
+        ylabel : str, default="Ordered Residuals"
+            Label for the y-axis.
+        font_size : float, default=12
+            Base font size for labels and title.
+        tick_label_size : float, default=10
+            Font size for axis tick labels.
+        point_color : str, default="#1F78B4"
+            Color for the points representing residuals.
+        line_color : str, default="red"
+            Color for the diagonal reference line.
+        add_grid : bool, default=False
+            Whether to add a background grid.
+        remove_top_right_spines : bool, default=True
+            Whether to remove the top and right plot spines.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted.
         """
         if self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting QQ plot.")
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
 
-        probplot(self.residuals_.flatten(), dist="norm", plot=ax)
-        ax.set_title(title)
+        # Create a new figure and axes for the plot
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Ensure residuals are 1D array
+        residuals_flat = self.residuals_.flatten()
+
+        # Create the Q-Q plot using scipy.stats.probplot
+        try:
+            (osm, osr), (slope, intercept, r_sq) = probplot(residuals_flat, dist="norm", fit=True, plot=None)
+            # Plot the ordered residuals against theoretical quantiles
+            ax.plot(osm, osr, 'o', color=point_color, markersize=5, alpha=0.7)
+            # Plot the fitted line
+            ax.plot(osm, slope * osm + intercept, color=line_color, linestyle='-', linewidth=1.5)
+        except Exception as e:
+            warnings.warn(f"Could not generate Q-Q plot data, possibly due to issues with residuals: {e}")
+            # Plot empty axes as placeholder if data generation fails
+            pass
+
+        ax.set_title(title, fontsize=font_size + 2, pad=15)
         ax.set_xlabel(xlabel, fontsize=font_size)
         ax.set_ylabel(ylabel, fontsize=font_size)
-        ax.tick_params(axis="both", labelsize=tick_label_size)  # Adjust tick labels
-        plt.tight_layout()
-        plt.show()
+        ax.tick_params(axis="both", labelsize=tick_label_size)
+        if add_grid: ax.grid(True, linestyle=':', alpha=0.6, color='lightgrey')
+        if remove_top_right_spines:
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_linewidth(0.8); ax.spines['bottom'].set_linewidth(0.8)
 
-    def plot_provider_effects(
-        self,
-        ax: Optional[plt.Axes] = None,
-        figsize: tuple = (8, 6),
-        point_color: str = "#475569",      
-        error_color: str = "#94a3b8",       
-        marker_size: float = 6,            
-        capsize: float = 0,     
-        font_size: float = 12,
-        tick_label_size: float = 10,  # Tick labels          
-        hline_color: str = "#64748b",
-        hline_style: str = "dashed", 
-        hline_width: float = 1,            # Reference line width
-        xlabel: str = "Provider Effect Estimate",
-        ylabel: str = "Provider",
-        title: str = "Caterpillar Plot of Provider Effects"
-    ) -> None:
-        """
-        Create a caterpillar (dot-and-error bar) plot for provider effects.
-        
-        Providers are sorted by their estimated effect (γ) and displayed with 95%
-        confidence intervals. The default style (colors, line types, and sizes) are chosen
-        to mimic the R version of the caterpillar plot.
-
-        Parameters:
-            ax: Optional matplotlib Axes object to plot on.
-            figsize: Size of the figure if a new figure is created.
-            point_color: Color for provider points (default "#475569").
-            error_color: Color for error bars (default "#94a3b8").
-            marker_size: Size of the marker points (default 6).
-            capsize: Size of error bar caps (default 0 to mimic R's errorbar_width = 0).
-            hline_color: Color for the vertical reference line (default "#64748b").
-            hline_style: Style for the reference line (default "dashed").
-            hline_width: Line width for the reference line (default 1).
-            xlabel: Label for the x-axis.
-            ylabel: Label for the y-axis.
-            title: Plot title.
-            
-        Returns:
-            None. Displays the caterpillar plot.
-        """
-        if self.coefficients_ is None or self.variances_ is None or self.groups_ is None:
-            raise ValueError("Model must be fitted before plotting provider effects.")
-
-        # Extract provider effects and compute their standard errors and 95% CIs.
-        gamma = self.coefficients_["gamma"].flatten()
-        se_gamma = np.sqrt(self.variances_["gamma"].flatten())
-        groups = self.groups_
-        df_model = self.fitted_.size - len(self.coefficients_["beta"]) - len(gamma)
-        crit = t.ppf(0.975, df_model)
-        ci_lower = gamma - crit * se_gamma
-        ci_upper = gamma + crit * se_gamma
-
-        # Create a DataFrame with provider information.
-        df_gamma = pd.DataFrame({
-            "group": groups,
-            "gamma": gamma,
-            "ci_lower": ci_lower,
-            "ci_upper": ci_upper
-        })
-        # Sort providers by their effect estimate.
-        df_gamma_sorted = df_gamma.sort_values("gamma").reset_index(drop=True)
-        # Use the sorted index as y-axis positions.
-        y_positions = np.arange(len(df_gamma_sorted))
-
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-
-        # Plot error bars for each provider.
-        ax.errorbar(
-            df_gamma_sorted["gamma"],
-            y_positions,
-            xerr=[df_gamma_sorted["gamma"] - df_gamma_sorted["ci_lower"],
-                df_gamma_sorted["ci_upper"] - df_gamma_sorted["gamma"]],
-            fmt="o",
-            color=point_color,
-            ecolor=error_color,
-            capsize=capsize,
-            markersize=marker_size
-        )
-        # Draw a vertical reference line at 0.
-        ax.axvline(0, color=hline_color, linestyle=hline_style, linewidth=hline_width)
-        ax.set_xlabel(xlabel, fontsize=font_size)
-        ax.set_ylabel(ylabel, fontsize=font_size)
-        # Set y-ticks to display the provider names in sorted order.
-        # Remove Y-axis labels (both ticks and labels)
-        ax.set_yticks([])
-        ax.set_yticklabels([])
-        ax.tick_params(axis="both", labelsize=tick_label_size)  # Adjust tick labels
-        ax.set_title(title, fontsize=font_size+ 2)
-        plt.tight_layout()
-        plt.show()
-
-    def plot_coefficient_forest(
-        self,
-        ax: Optional[plt.Axes] = None,
-        figsize: tuple = (10, 6),
-        point_color: str = "#34495E",
-        error_color: str = "#95A5A6",
-        point_size: float = 8,  # controls marker size
-        capsize: float = 5,
-        hline_color: str = "red",
-        hline_style: str = "--",
-        hline_width: float = 2,
-        xlabel: str = "Coefficient Estimate",
-        ylabel: str = "Covariate",
-        title: str = "Forest Plot of Covariate Coefficients"
-    ) -> None:
-        """
-        Create a forest plot of covariate coefficients with 95% confidence intervals.
-
-        Parameters:
-            ax: Optional matplotlib Axes to plot on.
-            figsize: Size of the figure if a new figure is created.
-            point_color: Color for the coefficient points.
-            error_color: Color for the error bars.
-            point_size: Marker size for the points.
-            capsize: Size of the error bar caps.
-            hline_color: Color for the vertical reference line.
-            hline_style: Style for the reference line.
-            hline_width: Line width for the reference line.
-            xlabel, ylabel, title: Axis labels and plot title.
-
-        Returns:
-            None. Displays the forest plot.
-        """
-        if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
-            raise ValueError("Model must be fitted before plotting coefficients.")
-        beta = self.coefficients_["beta"].flatten()
-        se_beta = np.sqrt(np.diag(self.variances_["beta"]))
-        df = self.fitted_.size - len(beta) - len(self.coefficients_["gamma"])
-        crit = t.ppf(0.975, df)
-        ci_lower = beta - crit * se_beta
-        ci_upper = beta + crit * se_beta
-
-        coef_df = pd.DataFrame({
-            "covariate": self.covariate_names_,
-            "estimate": beta,
-            "ci_lower": ci_lower,
-            "ci_upper": ci_upper
-        })
-        coef_df.sort_values("estimate", inplace=True)
-
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        ax.errorbar(
-            coef_df["estimate"],
-            coef_df["covariate"],
-            xerr=[coef_df["estimate"] - coef_df["ci_lower"], coef_df["ci_upper"] - coef_df["estimate"]],
-            fmt="o",
-            color=point_color,
-            ecolor=error_color,
-            capsize=capsize,
-            markersize=point_size
-        )
-        ax.axvline(0, color=hline_color, linestyle=hline_style, linewidth=hline_width)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
         plt.tight_layout()
         plt.show()

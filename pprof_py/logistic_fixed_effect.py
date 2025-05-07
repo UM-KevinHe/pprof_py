@@ -6,8 +6,6 @@ from sklearn.metrics import roc_auc_score
 from typing import Optional, Union, List
 from fast_poibin import PoiBin
 
-
-
 from .base_model import BaseModel
 from .algorithm import SerbinAlgorithm, BanAlgorithm
 from .utils import sigmoid
