@@ -3,13 +3,13 @@
 API Reference
 =============
 
-This section provides the API reference for the ``pprof_test`` package.
+This section provides the API reference for the ``pprof_py`` package.
 
 .. toctree::
    :maxdepth: 2
    :caption: Modules:
 
-.. automodule:: pprof_test
+.. automodule:: pprof_py
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,11 +20,11 @@ Models
    :toctree: _autosummary_generated
    :nosignatures:
 
-   pprof_test.base_model.BaseModel
-   pprof_test.linear_fixed_effect.LinearFixedEffectModel
-   pprof_test.linear_random_effect.LinearRandomEffectModel
-   pprof_test.logistic_fixed_effect.LogisticFixedEffectModel
-   pprof_test.logistic_random_effect.LogisticRandomEffectModel
+   pprof_py.base_model.BaseModel
+   pprof_py.linear_fixed_effect.LinearFixedEffectModel
+   pprof_py.linear_random_effect.LinearRandomEffectModel
+   pprof_py.logistic_fixed_effect.LogisticFixedEffectModel
+   pprof_py.logistic_random_effect.LogisticRandomEffectModel
 
 Utilities
 ---------
@@ -32,9 +32,9 @@ Utilities
    :toctree: _autosummary_generated
    :nosignatures:
 
-   pprof_test.utils.setup_logger
-   pprof_test.utils.proc_freq
-   pprof_test.utils.sigmoid
+   pprof_py.utils.setup_logger
+   pprof_py.utils.proc_freq
+   pprof_py.utils.sigmoid
 
 Plotting
 --------
@@ -42,7 +42,7 @@ Plotting
    :toctree: _autosummary_generated
    :nosignatures:
 
-   pprof_test.plotting.plot_caterpillar
+   pprof_py.plotting.plot_caterpillar
 
 Full Modules
 ------------
@@ -52,11 +52,11 @@ If you prefer to document entire modules rather than specific classes/functions:
    :toctree: _autosummary_generated
    :recursive:
 
-   pprof_test.base_model
-   pprof_test.linear_fixed_effect
-   pprof_test.linear_random_effect
-   pprof_test.logistic_fixed_effect
-   pprof_test.logistic_random_effect
-   pprof_test.plotting
-   pprof_test.utils
+   pprof_py.base_model
+   pprof_py.linear_fixed_effect
+   pprof_py.linear_random_effect
+   pprof_py.logistic_fixed_effect
+   pprof_py.logistic_random_effect
+   pprof_py.plotting
+   pprof_py.utils
 

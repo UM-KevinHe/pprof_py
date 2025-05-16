@@ -4,7 +4,6 @@ from enum import Enum
 from scipy.special import expit as sigmoid
 
 
-
 class Algorithm(Enum):
     """Enumeration for optimization algorithms."""
     SERBIN = "Serbin"
@@ -202,6 +201,7 @@ class SerbinAlgorithm(BaseAlgorithm):
         They are computed using the scores and the inverse of the information matrix.
 
         Parameters:
+        ----------
         score_gamma (array): The score for gamma.
         score_beta (array): The score for beta.
         info_gamma_inv (array): The inverse of the information matrix for gamma.
@@ -210,6 +210,7 @@ class SerbinAlgorithm(BaseAlgorithm):
         schur_inv (array): The inverse of the Schur complement.
 
         Returns:
+        -------
         tuple: The deltas for gamma and beta.
         """
 
@@ -285,8 +286,7 @@ class BanAlgorithm(BaseAlgorithm):
     """Ban's alternating updates for logistic fixed-effect estimation.
     """
     def _update_gamma(self) -> tuple:
-        """
-        Update provider effects given fixed beta.
+        """Update provider effects given fixed beta.
 
         Returns
         -------

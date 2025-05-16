@@ -13,17 +13,18 @@ class DataPrep:
     and logs event statistics. It ensures data suitability for modeling.
 
     Attributes:
-        data (pd.DataFrame): The input data, sorted by provider.
-        Y_char (str): The name of the response variable.
-        X_char (List[str]): The names of the covariate variables.
-        prov_char (str): The name of the provider variable.
-        cutoff (int): Minimum number of records per provider.
-        check (bool): Whether to perform data checks.
-        screen_providers (bool): Whether to screen and filter small providers.
-        log_event_providers (bool): Whether to log event statistics.
-        threshold_cor (float): Threshold for pairwise correlation.
-        threshold_vif (int): Threshold for Variance Inflation Factor.
-        binary_response (bool): Whether to enforce a binary response (for logistic models).
+    -----------
+    data (pd.DataFrame): The input data, sorted by provider.
+    Y_char (str): The name of the response variable.
+    X_char (List[str]): The names of the covariate variables.
+    prov_char (str): The name of the provider variable.
+    cutoff (int): Minimum number of records per provider.
+    check (bool): Whether to perform data checks.
+    screen_providers (bool): Whether to screen and filter small providers.
+    log_event_providers (bool): Whether to log event statistics.
+    threshold_cor (float): Threshold for pairwise correlation.
+    threshold_vif (int): Threshold for Variance Inflation Factor.
+    binary_response (bool): Whether to enforce a binary response (for logistic models).
     """
 
     def __init__(
