@@ -7,7 +7,6 @@ import warnings
 from typing import Optional, List, Dict, Tuple, Literal
 
 
-
 def plot_caterpillar(
     df: pd.DataFrame,
     estimate_col: str = 'estimate',
@@ -45,8 +44,7 @@ def plot_caterpillar(
     save_path: Optional[str] = None,
     dpi: int = 300
 ) -> None:
-    """
-    Create a highly customizable caterpillar plot from a DataFrame.
+    """Create a highly customizable caterpillar plot from a DataFrame.
 
     Plots estimates on the x-axis against sorted groups on the y-axis,
     with optional confidence intervals and color-coding based on flags.

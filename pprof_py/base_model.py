@@ -7,8 +7,7 @@ from sklearn.utils import check_array
 from .data_prep import DataPrep  
 
 class BaseModel(ABC):
-    """
-    Abstract Base Class for statistical models.
+    """Abstract Base Class for statistical models.
 
     This class defines a common interface and provides shared state management 
     for derived model classes. It handles storage and management of model parameters 
@@ -84,8 +83,7 @@ class BaseModel(ABC):
         log_event_providers: bool = False, cutoff: int = 10, 
         threshold_cor: float = 0.9, threshold_vif: int = 10, **kwargs
     ) -> tuple:
-        """
-        Validate and convert input data to NumPy arrays for modeling.
+        """Validate and convert input data to NumPy arrays for modeling.
 
         This method supports both pandas DataFrames and array-like inputs, validates them,
         and optionally applies data preparation using the DataPrep class. It ensures the 
@@ -195,8 +193,7 @@ class BaseModel(ABC):
 
     @abstractmethod
     def fit(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Fit the model to the provided data.
+        """Fit the model to the provided data.
 
         Subclasses must implement this method to define how the model is fitted to the input data.
         Typically, this involves estimating model parameters (e.g., coefficients), computing the 
@@ -218,8 +215,7 @@ class BaseModel(ABC):
 
     @abstractmethod
     def predict(self, *args: Any, **kwargs: Any) -> np.ndarray:
-        """
-        Generate predictions using the fitted model.
+        """Generate predictions using the fitted model.
 
         Subclasses must implement this method to define how predictions are computed. The method
         should leverage the fitted parameters to produce predicted values based on the input 
@@ -241,8 +237,7 @@ class BaseModel(ABC):
 
     @abstractmethod
     def calculate_standardized_measures(self, *args, **kwargs) -> dict:
-        """
-        Calculate standardized measures for model diagnostics.
+        """Calculate standardized measures for model diagnostics.
 
         Subclasses should implement this method to compute standardized differences or other 
         diagnostic measures. These measures can be used to assess model fit, detect outliers,

@@ -3,8 +3,7 @@ from typing import Any
 
 
 class SummaryMixin(ABC):
-    """
-    Mixin for generating summary statistics for a fitted model.
+    """Mixin for generating summary statistics for a fitted model.
 
     This mixin provides an abstract interface for producing detailed model summaries,
     including coefficients, standard errors, and confidence intervals. It can be integrated
@@ -22,8 +21,7 @@ class SummaryMixin(ABC):
     """
     @abstractmethod
     def summary(self, level: float = 0.95, null: float = 0, alternative: str = "two_sided") -> Any:
-        """
-        Generate summary statistics of the model fit.
+        """Generate summary statistics of the model fit.
 
         This method should compute and return a comprehensive summary of the model,
         including parameter estimates, standard errors, confidence intervals, and, if applicable,
@@ -48,8 +46,7 @@ class SummaryMixin(ABC):
 
 
 class TestMixin(ABC):
-    """
-    Mixin for performing hypothesis testing on model parameters.
+    """Mixin for performing hypothesis testing on model parameters.
 
     This mixin provides an abstract interface for conducting statistical hypothesis tests on
     parameter estimates. It enables models to report on the statistical significance of their
@@ -67,8 +64,7 @@ class TestMixin(ABC):
     """
     @abstractmethod
     def test(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Conduct hypothesis tests on model parameters.
+        """Conduct hypothesis tests on model parameters.
 
         Implement this method to perform the appropriate hypothesis tests on the model's
         parameter estimates. This may involve performing t-tests, z-tests, or other relevant
@@ -91,8 +87,7 @@ class TestMixin(ABC):
 
 
 class PlotMixin(ABC):
-    """
-    Mixin for generating diagnostic and summary plots for statistical models.
+    """Mixin for generating diagnostic and summary plots for statistical models.
 
     This mixin provides an abstract interface for producing various plots that help in
     diagnosing model fit and summarizing results. Implementing classes should provide
@@ -127,8 +122,7 @@ class PlotMixin(ABC):
     
     @abstractmethod
     def plot_funnel(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Generate a funnel plot comparing provider performance.
+        """Generate a funnel plot comparing provider performance.
 
         This plot is typically used to display indirect standardized differences along with
         control limits and a target reference line. It helps identify providers that deviate
@@ -150,8 +144,7 @@ class PlotMixin(ABC):
 
     @abstractmethod
     def plot_residuals(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Plot residuals versus fitted values.
+        """Plot residuals versus fitted values.
 
         This diagnostic plot helps assess the adequacy of the model fit by revealing potential
         non-linearity, heteroscedasticity, or the influence of outliers. The plot displays the
@@ -173,8 +166,7 @@ class PlotMixin(ABC):
 
     @abstractmethod
     def plot_qq(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Generate a Q-Q plot for model residuals.
+        """Generate a Q-Q plot for model residuals.
 
         A Q-Q plot compares the quantiles of the model's residuals with those of a standard
         normal distribution. It is useful for assessing whether the residuals follow a normal
@@ -196,8 +188,7 @@ class PlotMixin(ABC):
 
     @abstractmethod
     def plot_provider_effects(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Plot provider effects with confidence intervals.
+        """Plot provider effects with confidence intervals.
 
         This plot visualizes the estimated fixed effects (often provider effects) along with
         their corresponding confidence intervals. It helps identify outlying providers and 
@@ -219,8 +210,7 @@ class PlotMixin(ABC):
     
     @abstractmethod
     def plot_standardized_measures(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Plot standardized measures with confidence intervals.
+        """Plot standardized measures with confidence intervals.
 
         This plot visualizes the standardized measures (e.g., Indirect Standardized Ratio (ISR),
         Direct Standardized Ratio (DSR), or differences) along with their corresponding confidence
@@ -243,8 +233,7 @@ class PlotMixin(ABC):
 
     @abstractmethod
     def plot_coefficient_forest(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Create a forest plot of the covariate coefficients.
+        """Create a forest plot of the covariate coefficients.
 
         A forest plot displays the point estimates for covariate coefficients along with their
         confidence intervals (typically 95%). It provides a visual summary that facilitates

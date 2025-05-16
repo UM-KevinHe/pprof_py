@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from typing import List
+from typing import List, Tuple
 from sklearn.feature_selection import VarianceThreshold
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 

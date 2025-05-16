@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.stats import norm, chi2
 from scipy.optimize import root_scalar
 from sklearn.metrics import roc_auc_score
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict, Tuple, Literal, Any
 from fast_poibin import PoiBin
 
 from .base_model import BaseModel
@@ -14,8 +15,7 @@ from .plotting import plot_caterpillar
 
 
 class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
-    """
-    Logistic Regression Model with Fixed Effects.
+    """Logistic Regression Model with Fixed Effects.
 
     This class implements a logistic regression model with fixed effects for groups (e.g., providers),
     using custom optimization algorithms ('Serbin' or 'Ban'). It supports advanced data preparation
@@ -67,8 +67,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         threshold_vif: int = 10,
         algorithm: str = 'Serbin'
     ):
-        """
-        Initialize the LogisticFixedEffectModel with data preparation options.
+        """Initialize the LogisticFixedEffectModel with data preparation options.
 
         Parameters
         ----------
@@ -106,8 +105,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         self.covariate_names_ = None  # Store covariate names if provided
 
     def _estimate_variances(self) -> dict:
-        """
-        Estimate variances of beta and gamma coefficients for inferential statistics.
+        """Estimate variances of beta and gamma coefficients for inferential statistics.
 
         Returns
         -------
@@ -175,8 +173,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         bound: float = 10.0,
         backtrack: bool = True
     ) -> "LogisticFixedEffectModel":
-        """
-        Fit the logistic fixed effect model with enhanced data preparation and variance estimation.
+        """Fit the logistic fixed effect model with enhanced data preparation and variance estimation.
 
         Parameters
         ----------
@@ -292,8 +289,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return self
 
     def predict(self, X, groups=None, x_vars=None, group_var=None) -> np.ndarray:
-        """
-        Predict using the LogisticFixedEffect model.
+        """Predict using the LogisticFixedEffect model.
 
         Parameters
         ----------
@@ -324,8 +320,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return predictions
 
     def score(self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None):
-        """
-        Compute the accuracy score for the model.
+        """Compute the accuracy score for the model.
 
         Parameters
         ----------
@@ -363,8 +358,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return np.mean(y_pred_class == y)
 
     def get_params(self) -> dict:
-        """
-        Return model parameters.
+        """Return model parameters.
 
         Returns
         -------
@@ -380,8 +374,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         }
 
     def _compute_wald_beta(self, index: int, null: float = 0, alternative: str = "two_sided", alpha: float = 0.05):
-        """
-        Perform a Wald test for a specific covariate coefficient.
+        """Perform a Wald test for a specific covariate coefficient.
 
         Parameters
         ----------
@@ -433,8 +426,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         }
 
     def _compute_lr_beta(self, index: int):
-        """
-        Perform a Likelihood Ratio test for a specific covariate.
+        """Perform a Likelihood Ratio test for a specific covariate.
 
         Parameters
         ----------
@@ -479,8 +471,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         }
 
     def _compute_score_beta(self, index: int):
-        """
-        Perform a Score test for a specific covariate.
+        """Perform a Score test for a specific covariate.
 
         Parameters
         ----------
@@ -536,8 +527,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         }
 
     def summary(self, covariates: list = None, level: float = 0.95, null: float = 0, alternative: str = "two_sided", test_method: str = "wald") -> pd.DataFrame:
-        """
-        Provides summary statistics for the covariate estimates in a fitted fixed effects model.
+        """Provides summary statistics for the covariate estimates in a fitted fixed effects model.
 
         Parameters
         ----------
@@ -696,8 +686,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
     # STANDARDIZED MEASURES
     # -------------------------------------------------------------------------
     def calculate_standardized_measures(self, group_ids=None, stdz="indirect", null="median") -> dict:
-        """
-        Calculate direct/indirect standardized ratios and rates for a fixed-effects logistic model.
+        """Calculate direct/indirect standardized ratios and rates for a fixed-effects logistic model.
 
         Parameters
         ----------
@@ -812,8 +801,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
     # BASIC (T-BASED) CI BOUNDS FOR GAMMA
     # -------------------------------------------------------------------------
     def _compute_ci_bounds(self, gamma: np.ndarray, se: np.ndarray, df: int, level: float, alternative: str) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Compute two-sided or one-sided confidence interval bounds for gamma using a t-distribution.
+        """Compute two-sided or one-sided confidence interval bounds for gamma using a t-distribution.
 
         Parameters
         ----------
@@ -856,8 +844,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return lower, upper
 
     def _search_root(self, func, bracket: Tuple[float, float], max_attempts: int = 3) -> Optional[float]:
-        """
-        Attempt to find a root of 'func' within an initial bracket, expanding if necessary.
+        """Attempt to find a root of 'func' within an initial bracket, expanding if necessary.
 
         Parameters
         ----------
@@ -888,8 +875,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return None
 
     def _get_no_all_events(self, group_idx: int) -> Tuple[bool, bool]:
-        """
-        Check if a provider has no events or all events.
+        """Check if a provider has no events or all events.
 
         Parameters
         ----------
@@ -906,8 +892,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return sum_y == 0, sum_y == gsize
 
     def _score_ci_for_one_group(self, group_idx: int, alpha: float, alternative: str, gamma_guess: float) -> Tuple[float, float]:
-        """
-        Compute score-based confidence interval for a single provider's gamma.
+        """Compute score-based confidence interval for a single provider's gamma.
 
         Parameters
         ----------
@@ -965,8 +950,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return (lower_bound, upper_bound)
 
     def _exact_ci_for_one_group(self, group_idx: int, alpha: float, alternative: str, gamma_guess: float) -> (float, float):
-        """
-        Compute 'exact' CI for a single provider's gamma using the fast_poibin package.
+        """Compute 'exact' CI for a single provider's gamma using the fast_poibin package.
 
         Parameters
         ----------
@@ -1080,8 +1064,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         return (lower_bound, upper_bound)
     
     def _validate_ci_arguments(self, option: str, stdz: Union[str, list], alternative: str) -> None:
-        """
-        Validate arguments for confidence interval calculations.
+        """Validate arguments for confidence interval calculations.
 
         Parameters
         ----------
@@ -1116,8 +1099,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         alternative: str,
         test_method: str
     ) -> pd.DataFrame:
-        """
-        Compute intervals for all providers' gamma (option='gamma'), 
+        """Compute intervals for all providers' gamma (option='gamma'), 
         delegating 'wald' to _compute_ci_bounds, 
         and 'score'/'exact' to specialized logic.
 
@@ -1185,8 +1167,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         test_method: str,
         null: Union[str,float]
     ) -> dict:
-        """
-        Factor out the logic for "option='SM'" to a dedicated helper,
+        """Factor out the logic for "option='SM'" to a dedicated helper,
         returning intervals for indirect/direct ratio/rate. 
         Based on your prior code or the approach from your R function.
         """
@@ -1345,8 +1326,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         alternative: str = "two_sided",
         test_method: str = "exact"
     ) -> dict:
-        """
-        Compute confidence intervals for either provider effects (option="gamma") or
+        """Compute confidence intervals for either provider effects (option="gamma") or
         standardized measures (option="SM") in a logistic fixed-effects model.
 
         When option="gamma", the method calculates two-sided confidence intervals
@@ -1472,8 +1452,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         n_bootstrap: int = 10000,
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Conduct hypothesis tests on provider effects.
+        """Conduct hypothesis tests on provider effects.
 
         Supported test methods:
         - "poibin_exact"  (exact test using Poisson-binomial DP approach)
@@ -1571,8 +1550,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         se_gamma: np.ndarray, 
         df: int
     ) -> Tuple[List[int], List[float], List[float], List[float]]:
-        """
-        Compute Wald test for gamma coefficients.
+        """Compute Wald test for gamma coefficients.
 
         Parameters
         ----------
@@ -1629,8 +1607,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         alternative: str, 
         score_modified: bool
     ) -> Tuple[List[int], List[float], List[float], List[float]]:
-        """
-        Compute Score test for gamma coefficients.
+        """Compute Score test for gamma coefficients.
 
         Parameters
         ----------
@@ -1689,8 +1666,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         alpha: float, 
         alternative: str
     ) -> Tuple[List[int], List[float], List[float], List[float]]:
-        """
-        Compute Poisson-Binomial exact test for gamma coefficients.
+        """Compute Poisson-Binomial exact test for gamma coefficients.
 
         Parameters
         ----------
@@ -1752,8 +1728,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         alternative: str, 
         n_bootstrap: int
     ) -> Tuple[List[int], List[float], List[float], List[float]]:
-        """
-        Compute Bootstrap exact test for gamma coefficients.
+        """Compute Bootstrap exact test for gamma coefficients.
 
         Parameters
         ----------
@@ -1843,8 +1818,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         ylab: str = "Indirectly Standardized Ratio (O/E)",
         legend_location: str = 'best' # Location for legend
      ) -> None:
-        """
-        Create a funnel plot comparing provider performance (Indirect Ratio O/E).
+        """Create a funnel plot comparing provider performance (Indirect Ratio O/E).
 
         Control limits and point flagging are based on the specified test method
         ('score' or 'poibin_exact'). Precision is calculated as Expected^2 / Variance.
@@ -2149,8 +2123,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         null: Union[str, float] = 'median',
         **plot_kwargs
     ) -> None:
-        """
-        Plot provider-specific effects (gamma) with confidence intervals in a caterpillar plot.
+        """Plot provider-specific effects (gamma) with confidence intervals in a caterpillar plot.
 
         Parameters
         ----------
@@ -2250,8 +2223,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         null: Union[str, float] = 'median',
         **plot_kwargs
     ) -> None:
-        """
-        Plot standardized measures (e.g., indirect ratio or rate) with confidence intervals in a caterpillar plot.
+        """Plot standardized measures (e.g., indirect ratio or rate) with confidence intervals in a caterpillar plot.
 
         Parameters
         ----------
@@ -2378,8 +2350,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         save_path: Optional[str] = None,
         dpi: int = 300
     ) -> None:
-        """
-        Create a forest plot of covariate coefficients with 95% confidence intervals.
+        """Create a forest plot of covariate coefficients with 95% confidence intervals.
 
         Plots each covariate's coefficient estimate and its confidence interval
         in a vertical or horizontal layout, with a reference line at a specified value.
@@ -2568,8 +2539,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
 
        
     def plot_residuals(self, *args, **kwargs) -> None:
-        """
-        Plot residuals versus fitted probabilities for logistic regression.
+        """Plot residuals versus fitted probabilities for logistic regression.
 
         Raises:
         -------
@@ -2583,8 +2553,7 @@ class LogisticFixedEffectModel(BaseModel, SummaryMixin, TestMixin, PlotMixin):
         )
 
     def plot_qq(self, *args, **kwargs) -> None:
-        """
-        Create a Q-Q plot of the deviance residuals for logistic regression.
+        """Create a Q-Q plot of the deviance residuals for logistic regression.
 
         Raises:
         -------

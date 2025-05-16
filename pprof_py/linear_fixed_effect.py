@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict, Tuple, Literal, Any
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,17 +13,19 @@ from .plotting import plot_caterpillar
 
 
 class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
-    """
-    Linear Fixed Effect model.
+    """Linear Fixed Effect model.
 
     The Linear Fixed Effect model is a linear regression model that includes fixed effects.
     The model is fitted using the weighted least squares method.
 
     Parameters:
+    -----------
     - gamma_var_option: str, default="complete"
         Option for variance calculation. Must be "complete" or "simplified".
 
     Examples:
+    ---------
+    >>> from pprof_test.linear_fixed_effect import LinearFixedEffectModel
     >>> import pandas as pd
     >>> data = pd.DataFrame({
     ...     'y': [1, 2, 3, 4, 5, 6],
@@ -46,10 +48,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def _preprocess_groups(
         self, X: np.ndarray, y: np.ndarray, group_indices: np.ndarray, n_groups: int
     ) -> tuple:
-        """
-        Preprocess groups to construct the block diagonal matrix and compute group means.
+        """Preprocess groups to construct the block diagonal matrix and compute group means.
 
         Parameters:
+        ----------
         - X: np.ndarray, shape (n_samples, n_features)
             Design matrix.
         - y: np.ndarray, shape (n_samples,)
@@ -60,6 +62,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Number of groups.
 
         Returns:
+        -------
         - Q: np.ndarray
             Block diagonal matrix for demeaning group effects.
         - y_means: np.ndarray, shape (n_groups,)
@@ -77,8 +80,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def _calculate_residuals(
         self, xbeta: np.ndarray, gamma: np.ndarray, y: np.ndarray, group_indices: np.ndarray
     ) -> tuple:
-        """
-        Calculate predictions and residuals.
+        """Calculate predictions and residuals.
 
         This function computes the predicted values by adding the group-level fixed effects to
         the linear predictor (xbeta) and computes the residuals by subtracting the predictions
@@ -111,10 +113,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def _compute_model_statistics(
         self, residuals: np.ndarray, n_samples: int, n_groups: int, n_features: int
     ) -> tuple:
-        """
-        Compute model statistics including AIC and BIC.
+        """Compute model statistics including AIC and BIC.
 
         Parameters:
+        ----------
         - residuals: np.ndarray, shape (n_samples,)
             Residuals from the model.
         - n_samples: int
@@ -125,6 +127,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Number of predictors.
 
         Returns:
+        -------
         - aic: float
             Akaike Information Criterion.
         - bic: float
@@ -141,14 +144,15 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return aic, bic
 
     def _construct_block_diag_matrix(self, group_sizes: np.ndarray) -> np.ndarray:
-        """
-        Construct a block diagonal matrix for demeaning group effects.
+        """Construct a block diagonal matrix for demeaning group effects.
 
         Parameters:
+        ----------
         - group_sizes: np.ndarray, shape (n_groups,)
             Number of samples in each group.
 
         Returns:
+        -------
         - Q: np.ndarray
             Block diagonal matrix for demeaning group effects.
         """
@@ -156,10 +160,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return block_diag(*Q_blocks)
 
     def _perform_weighted_least_squares(self, Q: np.ndarray, X: np.ndarray, y: np.ndarray) -> np.ndarray:
-        """
-        Perform weighted least squares to estimate coefficients.
+        """Perform weighted least squares to estimate coefficients.
 
         Parameters:
+        ----------
         - Q: np.ndarray, shape (n_samples, n_samples)
             Block diagonal matrix for demeaning group effects.
         - X: np.ndarray, shape (n_samples, n_features)
@@ -168,6 +172,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Response variable.
 
         Returns:
+        -------
         - beta: np.ndarray, shape (n_features, 1)
             Estimated regression coefficients.
         """
@@ -179,10 +184,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def _estimate_sigma(
         self, residuals: np.ndarray, n_samples: int, n_groups: int, n_features: int
     ) -> float:
-        """
-        Estimate the standard deviation of residuals (sigma).
+        """Estimate the standard deviation of residuals (sigma).
 
         Parameters:
+        ----------
         - residuals: np.ndarray, shape (n_samples,)
             Residuals from the model.
         - n_samples: int
@@ -193,6 +198,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Number of predictors.
 
         Returns:
+        -------
         - sigma: float
             Estimated standard deviation of residuals.
         """
@@ -203,8 +209,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def _estimate_variances(
         self, Q: np.ndarray, X: np.ndarray, X_means: np.ndarray, beta: np.ndarray, group_sizes: np.ndarray
     ) -> dict:
-        """
-        Estimate variances of beta and gamma coefficients for inferential statistics.
+        """Estimate variances of beta and gamma coefficients for inferential statistics.
 
         Parameters
         ----------
@@ -241,10 +246,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return {"beta": var_beta, "gamma": var_gamma}
         
     def fit(self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None) -> "LinearFixedEffectModel":
-        """
-        Fit the LinearFixedEffect model.
+        """Fit the LinearFixedEffect model.
 
         Parameters:
+        ----------
         - X: array-like, shape (n_samples, n_features) or pd.DataFrame
             Design matrix (covariates) or complete dataset.
         - y: array-like, shape (n_samples,) or None
@@ -259,6 +264,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Column name in X to be used as group identifiers.
 
         Returns:
+        -------
         - self: LinearFixedEffectModel
             The fitted model instance.
         """
@@ -296,8 +302,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return self
 
     def predict(self, X, groups=None, x_vars=None, group_var=None) -> np.ndarray:
-        """
-        Predict using the LinearFixedEffect model.
+        """Predict using the LinearFixedEffect model.
 
         Parameters
         ----------
@@ -336,10 +341,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return predictions
 
     def score(self, X, y, groups) -> float:
-        """
-        Compute the R^2 score for the model.
+        """Compute the R^2 score for the model.
 
         Parameters:
+        ----------
         - X: array-like, shape (n_samples, n_features)
             Design matrix (covariates).
         - y: array-like, shape (n_samples,)
@@ -348,6 +353,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             Group identifiers for the fixed effects.
 
         Returns:
+        -------
         - r2: float
             R^2 score of the model.
         """
@@ -357,10 +363,10 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return 1 - (ss_residual / ss_total)
 
     def get_params(self) -> dict:
-        """
-        Return model parameters.
+        """Return model parameters.
 
         Returns:
+        -------
         - params: dict, Model parameters including coefficients, variances, sigma, AIC, and BIC.
         """
         return {
@@ -378,8 +384,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: float = 0,
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Provides summary statistics for the covariate estimates in a fitted fixed effects model.
+        """Provides summary statistics for the covariate estimates in a fitted fixed effects model.
 
         Parameters
         ----------
@@ -466,8 +471,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     def calculate_standardized_measures(
         self, group_ids=None, stdz="indirect", null="median"
     ) -> dict:
-        """
-        Calculate direct/indirect standardized differences for a fixed effects linear model.
+        """Calculate direct/indirect standardized differences for a fixed effects linear model.
 
         Parameters
         ----------
@@ -573,8 +577,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     
     # --- Confidence Intervals ---
     def _compute_ci_bounds(self, gamma: np.ndarray, se: np.ndarray, df: int, level: float, alternative: str) -> tuple:
-        """
-        Compute lower and upper bounds for confidence intervals given estimates,
+        """Compute lower and upper bounds for confidence intervals given estimates,
         their standard errors, degrees of freedom, and the desired alternative.
 
         Parameters
@@ -621,8 +624,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: Union[str, float] = "median",
         alternative: str = "two_sided"
     ) -> dict:
-        """
-        Calculate confidence intervals for provider effects (gamma) or standardized measures (SM).
+        """Calculate confidence intervals for provider effects (gamma) or standardized measures (SM).
 
         Parameters
         ----------
@@ -739,8 +741,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: Union[str, float] = "median",
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Conduct hypothesis tests on provider effects and identify outlying providers.
+        """Conduct hypothesis tests on provider effects and identify outlying providers.
 
         Parameters
         ----------
@@ -855,8 +856,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         ylab: str = "Standardized Difference",
         legend_location: str = 'best'
     ) -> None:
-        """
-        Create a funnel plot for standardized differences.
+        """Create a funnel plot for standardized differences.
 
         For LinearFixedEffectModel, this plots the indirect standardized difference
         (gamma_i - gamma_null) against group size (as a proxy for precision).
@@ -1057,8 +1057,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         test_method: Optional[str] = None, # Added for consistency with LogisticFE
         **plot_kwargs
     ) -> None:
-        """
-        Plots provider fixed effects (gamma) using the plot_caterpillar helper function.
+        """Plots provider fixed effects (gamma) using the plot_caterpillar helper function.
 
         Parameters
         ----------
@@ -1154,8 +1153,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
-        """
-        Plots standardized differences using plot_caterpillar.
+        """Plots standardized differences using plot_caterpillar.
         For LinearFixedEffectModel, standardized measures are differences (gamma_i - gamma_null).
 
         Parameters
@@ -1274,8 +1272,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         save_path: Optional[str] = None,
         dpi: int = 300
     ) -> None:
-        """
-        Create a forest plot of covariate coefficients with 95% confidence intervals.
+        """Create a forest plot of covariate coefficients with 95% confidence intervals.
 
         Plots each covariate's coefficient estimate and its confidence interval
         in a vertical or horizontal layout, with a reference line at a specified value.
@@ -1483,8 +1480,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         grid_alpha: float = 0.6,
         remove_top_right_spines: bool = True
     ) -> None:
-        """
-        Plots residuals versus fitted values.
+        """Plots residuals versus fitted values.
 
         This diagnostic plot helps assess model assumptions such as linearity
         and homoscedasticity (constant variance of errors). Ideally, the points
@@ -1574,8 +1570,7 @@ class LinearFixedEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         add_grid: bool = False,
         remove_top_right_spines: bool = True
     ) -> None:
-        """
-        Creates a Q-Q plot of residuals against a Normal distribution.
+        """Creates a Q-Q plot of residuals against a Normal distribution.
 
         This plot helps assess the assumption of normally distributed errors,
         which is important for the validity of t-tests and confidence intervals

@@ -13,8 +13,7 @@ def setup_logger(
     log_dir: str = None, 
     time_zone: str = "US/Eastern"
 ) -> logging.Logger:
-    """
-    Setup a logger with the given name and level.
+    """Setup a logger with the given name and level.
 
     Parameters:
     - name (str): The name of the logger.
@@ -74,8 +73,7 @@ def setup_logger(
     return logger
 
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """
-    Compute the logistic sigmoid function element-wise.
+    """Compute the logistic sigmoid function element-wise.
 
     Parameters
     ----------
@@ -91,8 +89,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
 
 def proc_freq(df: pd.DataFrame, columns: list):
-    """
-    Prints the frequency, percentage, and cumulative percentage of each specified column or tuple of columns in the DataFrame.
+    """Prints the frequency, percentage, and cumulative percentage of each specified column or tuple of columns in the DataFrame.
 
     Parameters:
     df (pd.DataFrame): The input DataFrame.
@@ -108,8 +105,7 @@ def proc_freq(df: pd.DataFrame, columns: list):
     total_count = len(df)
 
     def process_column(col):
-        """
-        Process a single column or a tuple of columns to compute frequencies, percentages, and cumulative statistics.
+        """Process a single column or a tuple of columns to compute frequencies, percentages, and cumulative statistics.
 
         Parameters:
         col (str or tuple): The column(s) to process.

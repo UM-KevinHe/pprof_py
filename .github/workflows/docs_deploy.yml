@@ -5,7 +5,7 @@ name: Deploy Documentation to GitHub Pages
 on:
   push:
     branches:
-      - main # Or 'master', depending on your default branch name
+      - main
 
 # Allow GITHUB_TOKEN permissions to write to the gh-pages branch
 permissions:
@@ -13,21 +13,30 @@ permissions:
 
 jobs:
   deploy-docs:
-    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4 # Checks out your repository code
-
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9" # Choose a Python version compatible with your package and Sphinx
+          python-version: "3.9"
 
-      - name: Install dependencies
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.2"
+
+      - name: Install R dependencies for pymer4
+        run: |
+          R -e "install.packages(c('lme4', 'lmerTest', 'Matrix'), repos='https://cloud.r-project.org/')"
+        shell: bash
+
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install sphinx sphinx_rtd_theme # Install Sphinx and the theme
+          pip install sphinx sphinx_rtd_theme sphinxcontrib-bibtex # Install Sphinx and the theme
           # Install your package and its dependencies (needed for autodoc)
           # This installs the package from the current directory (.)
           pip install .
@@ -36,13 +45,13 @@ jobs:
         run: |
           cd docs # Navigate to the docs directory
           # Use sphinx-build directly, specifying the source (.) and output (_build/html) dirs
-          sphinx-build -b html source _build/html
+          sphinx-build -E -b html source _build/html
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4 # Use the popular gh-pages deployment action
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # Automatically uses the token granted permissions above
-          publish_dir: ./docs/_build/html # The directory containing the built HTML files
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_build/html
           # Optional: Keep history of the gh-pages branch
           # keep_files: false
           # Optional: Custom domain if you have one configured

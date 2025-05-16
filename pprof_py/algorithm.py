@@ -1,7 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional, Union
 from scipy.special import expit as sigmoid
 
 
@@ -13,8 +12,7 @@ class Algorithm(Enum):
 
 
 class BaseAlgorithm(ABC):
-    """
-    Base class for optimization algorithms in logistic fixed effect models.
+    """Base class for optimization algorithms in logistic fixed effect models.
 
     This abstract base class defines the common interface and shared functionality
     for optimization algorithms used in logistic regression with fixed effects.
@@ -61,8 +59,7 @@ class BaseAlgorithm(ABC):
         bound: float,
         tol: float,
     ):
-        """
-        Initialize the BaseAlgorithm with data and parameters.
+        """Initialize the BaseAlgorithm with data and parameters.
 
         Parameters
         ----------
@@ -110,8 +107,7 @@ class BaseAlgorithm(ABC):
         self.y = y_col.astype(int)
 
     def _loglikelihood(self, gamma_obs: np.ndarray, beta: np.ndarray) -> float:
-        """
-        Compute the log-likelihood under logistic model with fixed effects.
+        """Compute the log-likelihood under logistic model with fixed effects.
 
         Parameters
         ----------
@@ -131,21 +127,18 @@ class BaseAlgorithm(ABC):
 
     @abstractmethod
     def _backtrack(self) -> None:
-        """
-        Gradient ascent with backtracking line search.
+        """Gradient ascent with backtracking line search.
         """
         pass
 
     @abstractmethod
     def _no_backtrack(self) -> None:
-        """
-        Gradient ascent without line search.
+        """Gradient ascent without line search.
         """
         pass
 
     def fit(self) -> dict:
-        """
-        Fit the model until convergence or maximum iterations.
+        """Fit the model until convergence or maximum iterations.
 
         Returns
         -------
@@ -164,8 +157,7 @@ class BaseAlgorithm(ABC):
 
 
 class SerbinAlgorithm(BaseAlgorithm):
-    """
-    Serbin's algorithm for logistic fixed-effect estimation.
+    """Serbin's algorithm for logistic fixed-effect estimation.
 
     Extends BaseAlgorithm with block-update Newton steps and optional backtracking.
     """
@@ -174,8 +166,7 @@ class SerbinAlgorithm(BaseAlgorithm):
         p: np.ndarray,
         q: np.ndarray
     ) -> tuple:
-        """
-        Compute score vectors and information matrix components.
+        """Compute score vectors and information matrix components.
 
         Parameters
         ----------
@@ -205,8 +196,7 @@ class SerbinAlgorithm(BaseAlgorithm):
 
     def _compute_deltas(self, score_gamma: np.ndarray, score_beta: np.ndarray, info_gamma_inv: np.ndarray, 
                         mat_tmp1: np.ndarray, mat_tmp2: np.ndarray, schur_inv: np.ndarray) -> tuple:
-        """
-        Compute the deltas for gamma and beta.
+        """Compute the deltas for gamma and beta.
 
         The deltas are the changes in the parameters that will increase the log-likelihood.
         They are computed using the scores and the inverse of the information matrix.
@@ -228,8 +218,7 @@ class SerbinAlgorithm(BaseAlgorithm):
         return d_gamma_prov, d_beta
 
     def _backtrack(self) -> None:
-        """
-        Backtracking line search
+        """Backtracking line search
         This is a method for choosing the step size in the gradient ascent algorithm.
         It starts with a full step and reduces the step size until the increase in the log-likelihood is sufficient.
         """
@@ -271,8 +260,7 @@ class SerbinAlgorithm(BaseAlgorithm):
             print(f"Inf norm of running diff in est reg parm is {self.beta_crit:.3e};")
 
     def _no_backtrack(self) -> None:
-        """
-        Single Newton step without line search.
+        """Single Newton step without line search.
         """
         while self.iter < self.max_iter and self.beta_crit > self.tol:
             self.iter += 1
@@ -294,8 +282,7 @@ class SerbinAlgorithm(BaseAlgorithm):
 
 
 class BanAlgorithm(BaseAlgorithm):
-    """
-    Ban's alternating updates for logistic fixed-effect estimation.
+    """Ban's alternating updates for logistic fixed-effect estimation.
     """
     def _update_gamma(self) -> tuple:
         """
@@ -316,8 +303,7 @@ class BanAlgorithm(BaseAlgorithm):
         return gamma_obs, p, q, score_gamma, delta_gamma
 
     def _update_beta(self, p: np.ndarray, q: np.ndarray) -> tuple:
-        """
-        Update regression coefficients given fixed gamma.
+        """Update regression coefficients given fixed gamma.
 
         Returns
         -------
@@ -330,8 +316,7 @@ class BanAlgorithm(BaseAlgorithm):
         return score_beta, delta_beta
 
     def _backtrack(self) -> None:
-        """
-        Alternating backtracking updates for gamma and beta.
+        """Alternating backtracking updates for gamma and beta.
         """
         s, t = 0.01, 0.8
         while self.iter < self.max_iter and self.beta_crit > self.tol:
@@ -367,8 +352,7 @@ class BanAlgorithm(BaseAlgorithm):
             self.beta = beta_cand
 
     def _no_backtrack(self) -> None:
-        """
-        Alternating simple updates without line search.
+        """Alternating simple updates without line search.
         """
         while self.iter < self.max_iter and self.beta_crit > self.tol:
             self.iter += 1

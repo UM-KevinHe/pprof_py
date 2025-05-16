@@ -2,19 +2,19 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+import warnings
 from scipy.stats import t, norm, probplot
-from typing import Optional, Union, List, Tuple
+from sklearn.utils import check_array
+from typing import Optional, Union, List, Dict, Tuple, Literal, Any
 
 from .base_model import BaseModel
 from .mixins import SummaryMixin, PlotMixin, TestMixin
-from .utils import check_array
 from .plotting import plot_caterpillar
 
 
 
 class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
-    """
-    Linear Random Effect Model.
+    """Linear Random Effect Model.
 
     The Linear Random Effect Model is a linear regression model that incorporates
     random effects using a mixed-effects framework (via statsmodels' MixedLM).
@@ -94,8 +94,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
     >>> print(predictions)
     """
     def __init__(self) -> None:
-        """
-        Initialize the LinearRandomEffectModel.
+        """Initialize the LinearRandomEffectModel.
         Prepares placeholders for the model and its results.
         """
         super().__init__()
@@ -106,8 +105,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             groups: Optional[pd.Series] = None, x_vars: Optional[list] = None, 
             y_var: Optional[str] = None, group_var: Optional[str] = None, 
             use_reml: bool = True, **kwargs) -> "LinearRandomEffectModel":
-        """
-        Fit the random effect linear model.
+        """Fit the random effect linear model.
 
         Parameters
         ----------
@@ -172,10 +170,10 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return self
 
     def _store_results(self, y: pd.Series, groups: pd.Series) -> None:
-        """
-        Store the results from the fitted model in class attributes.
+        """Store the results from the fitted model in class attributes.
 
         Parameters:
+        ----------
         - y: pd.Series
             The response variable used in fitting the model.
         - groups: pd.Series
@@ -209,14 +207,15 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         self, X: Optional[pd.DataFrame] = None, 
         x_vars: Optional[list] = None
     ) -> np.ndarray:
-        """
-        Predict outcomes for new data using the fitted model.
+        """Predict outcomes for new data using the fitted model.
 
         Parameters:
+        ----------
         - X: pd.DataFrame
             DataFrame containing new data for prediction. Variables must match those in the model.
 
         Returns:
+        -------
         - predictions: np.ndarray
             Array of predicted values based on the fitted model.
         - x_vars : Optional[list]
@@ -244,10 +243,10 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: float = 0, 
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Provide summary statistics for the fixed effects in the model.
+        """Provide summary statistics for the fixed effects in the model.
 
         Parameters:
+        ----------
         - covariates: Optional[Union[list, np.ndarray]]
             Subset of covariates for which summary statistics are provided. Defaults to all.
         - level: float, default=0.95
@@ -258,6 +257,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
             The alternative hypothesis ("two_sided", "greater", or "less").
 
         Returns:
+        -------
         - summary_df: pd.DataFrame
             A DataFrame with columns:
               - estimate
@@ -319,8 +319,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         stdz: Union[str, list] = "indirect", 
         null: str = "median"
     ) -> dict:
-        """
-        Calculate direct/indirect standardized differences for the random effect model.
+        """Calculate direct/indirect standardized differences for the random effect model.
 
         Parameters
         ----------
@@ -431,8 +430,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         level: float, 
         alternative: str
     ) -> tuple:
-        """
-        Compute lower and upper bounds for confidence intervals given estimates,
+        """Compute lower and upper bounds for confidence intervals given estimates,
         their standard errors, and the desired alternative using the normal approximation.
         
         Parameters
@@ -477,8 +475,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: Union[str, float] = "median",
         alternative: str = "two_sided"
     ) -> dict:
-        """
-        Calculate confidence intervals for provider (random) effects or standardized measures.
+        """Calculate confidence intervals for provider (random) effects or standardized measures.
 
         Parameters
         ----------
@@ -614,8 +611,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: float = 0,
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Conduct hypothesis tests on provider (random) effects to identify outliers.
+        """Conduct hypothesis tests on provider (random) effects to identify outliers.
 
         Parameters
         ----------
@@ -716,8 +712,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         ylab: str = "Standardized Difference",
         legend_location: str = 'best'
     ) -> None:
-        """
-        Create a funnel plot for standardized differences in random effect models.
+        """Create a funnel plot for standardized differences in random effect models.
 
         This plot visualizes the standardized differences (e.g., alpha_i - alpha_null) against
         group size (as a proxy for precision). Control limits are based on the overall model's
@@ -930,8 +925,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
-        """
-        Plots provider random effects (alpha) using the plot_caterpillar helper function.
+        """Plots provider random effects (alpha) using the plot_caterpillar helper function.
 
         Parameters
         ----------
@@ -1038,8 +1032,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
-        """
-        Plots standardized differences using plot_caterpillar.
+        """Plots standardized differences using plot_caterpillar.
         For LinearRandomEffectModel, standardized measures are differences (alpha_i - alpha_null).
 
         Parameters
@@ -1175,8 +1168,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         save_path: Optional[str] = None,
         dpi: int = 300
     ) -> None:
-        """
-        Create a forest plot of covariate coefficients with 95% confidence intervals.
+        """Create a forest plot of covariate coefficients with 95% confidence intervals.
 
         Plots each covariate's coefficient estimate and its confidence interval
         in a vertical or horizontal layout, with a reference line at a specified value.
@@ -1383,8 +1375,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         grid_alpha: float = 0.6,
         remove_top_right_spines: bool = True
     ) -> None:
-        """
-        Plots residuals versus fitted values.
+        """Plots residuals versus fitted values.
 
         This diagnostic plot helps assess model assumptions such as linearity
         and homoscedasticity (constant variance of errors). Ideally, the points
@@ -1476,8 +1467,7 @@ class LinearRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         add_grid: bool = False,
         remove_top_right_spines: bool = True
     ) -> None:
-        """
-        Creates a Q-Q plot of residuals against a Normal distribution.
+        """Creates a Q-Q plot of residuals against a Normal distribution.
 
         This plot helps assess the assumption of normally distributed errors,
         which is important for the validity of t-tests and confidence intervals

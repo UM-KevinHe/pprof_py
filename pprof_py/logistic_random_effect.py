@@ -20,8 +20,7 @@ from .mixins import SummaryMixin, PlotMixin, TestMixin
 
 
 class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
-    """
-    Logistic Random Effect Model using pymer4.models.Lmer.
+    """Logistic Random Effect Model using pymer4.models.Lmer.
 
     Estimates a generalized linear mixed model (GLMM) for binary outcomes using
     R's lme4 package via pymer4. It incorporates provider-specific random
@@ -121,8 +120,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         group_var: Optional[str] = None,
         **kwargs
     ) -> "LogisticRandomEffectModel":
-        """
-        Fit the logistic random effect model using pymer4 Lmer with family='binomial'.
+        """Fit the logistic random effect model using pymer4 Lmer with family='binomial'.
 
         Requires either a DataFrame `X` with `y_var`, `x_vars`, `group_var` specified,
         or separate arrays/Series for `X`, `y`, and `groups`.
@@ -267,8 +265,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         y_var: str, 
         group_var: str
     ) -> None:
-        """
-        Store fitted pymer4 Lmer model results in class attributes.
+        """Store fitted pymer4 Lmer model results in class attributes.
         
         Orchestrates the extraction of model components and stores them in
         standardized class attributes.
@@ -498,8 +495,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         self.variances_["re_var"] = float(re_var_est)
     
     def _calculate_fitted_values(self) -> None:
-        """
-        Calculate fitted values (probabilities) including random effects.
+        """Calculate fitted values (probabilities) including random effects.
         Prioritizes direct model outputs, uses predict as fallback.
         """
         fitted_vals = None
@@ -659,8 +655,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         self.group_sizes_ = np.bincount(self.group_indices_, minlength=len(self.groups_))
 
     def predict(self, X: pd.DataFrame, x_vars: Optional[List[str]] = None) -> np.ndarray:
-        """
-        Predict probabilities for new data using only the fixed effects part of the model.
+        """Predict probabilities for new data using only the fixed effects part of the model.
 
         Parameters
         ----------
@@ -735,8 +730,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: float = 0, 
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Provide summary statistics for the fixed effects coefficients (beta).
+        """Provide summary statistics for the fixed effects coefficients (beta).
 
         Extracts results from the fitted pymer4 model summary. Uses Z-tests.
 
@@ -814,8 +808,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: Union[str, float] = "median",
         measure: Union[str, List[str]] = ["rate", "ratio"]
     ) -> Dict[str, pd.DataFrame]:
-        """
-        Calculate standardized ratios and rates based on predicted random effects (BLUPs).
+        """Calculate standardized ratios and rates based on predicted random effects (BLUPs).
         This implementation follows the R function SM_output.logis_re logic.
 
         Parameters
@@ -995,8 +988,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         return results
     
     def _get_blup_post_se(self) -> pd.Series:
-        """
-        Extract posterior standard errors for BLUPs from the underlying lme4 model.
+        """Extract posterior standard errors for BLUPs from the underlying lme4 model.
         
         Returns
         -------
@@ -1037,8 +1029,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         measure: Union[str, List[str]] = ["ratio", "rate"],
         alternative: str = "two_sided"
     ) -> Dict[str, pd.DataFrame]:
-        """
-        Calculate CIs for random effects (BLUPs) or standardized measures.
+        """Calculate CIs for random effects (BLUPs) or standardized measures.
 
         For `option='alpha'`, it provides approximate CIs for the random effect BLUPs
         on the log-odds scale.
@@ -1127,8 +1118,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         level: float = 0.95, null: Union[str, float] = 0.0, # Changed default null to 0 for RE
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
-        """
-        Test random effects (BLUPs) for significance against a null value using Z-tests.
+        """Test random effects (BLUPs) for significance against a null value using Z-tests.
 
         Parameters
         ----------
@@ -1211,8 +1201,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
 
     # --- Plotting Methods ---
     def plot_funnel(self, **kwargs) -> None:
-        """
-        Funnel plot for Logistic Random Effect Model.
+        """Funnel plot for Logistic Random Effect Model.
 
         Standard funnel plots with control limits based on expected variance
         are complex to define rigorously for random effect models, especially
@@ -1238,8 +1227,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         null: Union[str, float] = 0.0,
         **plot_kwargs
     ) -> None:
-        """
-        Plots predicted random effects (BLUPs) with approximate confidence intervals.
+        """Plots predicted random effects (BLUPs) with approximate confidence intervals.
 
         Uses the `plot_caterpillar` helper function for visualization.
         Confidence intervals for BLUPs are approximate and based on asymptotic normality.
@@ -1313,8 +1301,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         )
 
     def plot_standardized_measures(self, **kwargs) -> None:
-        """
-        Plot standardized measures for Logistic Random Effect Model.
+        """Plot standardized measures for Logistic Random Effect Model.
 
         This plot would typically display standardized ratios or rates with their
         confidence intervals. However, as robust confidence intervals for these
@@ -1370,8 +1357,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         save_path: Optional[str] = None,
         dpi: int = 300
     ) -> None:
-        """
-        Create a forest plot of fixed effect coefficients with confidence intervals.
+        """Create a forest plot of fixed effect coefficients with confidence intervals.
 
         Plots each covariate's coefficient estimate and its confidence interval
         in a vertical or horizontal layout, with a reference line at a specified value.
@@ -1572,8 +1558,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         grid_alpha: float = 0.6,
         remove_top_right_spines: bool = True
     ) -> None:
-        """
-        Plots residuals versus fitted probabilities for the logistic GLMM.
+        """Plots residuals versus fitted probabilities for the logistic GLMM.
 
         Parameters are as described previously. This method creates its own plot.
         """
@@ -1628,8 +1613,7 @@ class LogisticRandomEffectModel(BaseModel, SummaryMixin, PlotMixin, TestMixin):
         # No return value
 
     def plot_qq(self, *args, **kwargs) -> None:
-        """
-        Create a Q-Q plot of the deviance residuals for logistic regression.
+        """Create a Q-Q plot of the deviance residuals for logistic regression.
 
         Raises:
         -------
