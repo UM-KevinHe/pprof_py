@@ -1,0 +1,12 @@
+﻿pprof\_py.linear\_fixed\_effect
+===============================
+
+.. automodule:: pprof_py.linear_fixed_effect
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      LinearFixedEffectModel
+   

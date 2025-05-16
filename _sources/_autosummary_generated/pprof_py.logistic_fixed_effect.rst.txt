@@ -1,0 +1,12 @@
+﻿pprof\_py.logistic\_fixed\_effect
+=================================
+
+.. automodule:: pprof_py.logistic_fixed_effect
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      LogisticFixedEffectModel
+   

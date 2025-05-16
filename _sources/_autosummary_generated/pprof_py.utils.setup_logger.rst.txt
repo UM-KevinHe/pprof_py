@@ -1,0 +1,6 @@
+﻿pprof\_py.utils.setup\_logger
+=============================
+
+.. currentmodule:: pprof_py.utils
+
+.. autofunction:: setup_logger

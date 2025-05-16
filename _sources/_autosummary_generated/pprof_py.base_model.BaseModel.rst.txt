@@ -1,0 +1,25 @@
+﻿pprof\_py.base\_model.BaseModel
+===============================
+
+.. currentmodule:: pprof_py.base_model
+
+.. autoclass:: BaseModel
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BaseModel.__init__
+      ~BaseModel.calculate_standardized_measures
+      ~BaseModel.fit
+      ~BaseModel.predict
+   
+   
+
+   
+   
+   

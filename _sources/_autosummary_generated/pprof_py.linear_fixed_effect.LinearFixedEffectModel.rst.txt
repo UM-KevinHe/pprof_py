@@ -1,0 +1,36 @@
+﻿pprof\_py.linear\_fixed\_effect.LinearFixedEffectModel
+======================================================
+
+.. currentmodule:: pprof_py.linear_fixed_effect
+
+.. autoclass:: LinearFixedEffectModel
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LinearFixedEffectModel.__init__
+      ~LinearFixedEffectModel.calculate_confidence_intervals
+      ~LinearFixedEffectModel.calculate_standardized_measures
+      ~LinearFixedEffectModel.fit
+      ~LinearFixedEffectModel.get_params
+      ~LinearFixedEffectModel.plot_coefficient_forest
+      ~LinearFixedEffectModel.plot_funnel
+      ~LinearFixedEffectModel.plot_provider_effects
+      ~LinearFixedEffectModel.plot_qq
+      ~LinearFixedEffectModel.plot_residuals
+      ~LinearFixedEffectModel.plot_standardized_measures
+      ~LinearFixedEffectModel.predict
+      ~LinearFixedEffectModel.score
+      ~LinearFixedEffectModel.summary
+      ~LinearFixedEffectModel.test
+   
+   
+
+   
+   
+   

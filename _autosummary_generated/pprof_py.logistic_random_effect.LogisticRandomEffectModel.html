@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pprof_py.logistic_random_effect.LogisticRandomEffectModel &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e46d07af" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pprof_py.utils.setup_logger" href="pprof_py.utils.setup_logger.html" />
+    <link rel="prev" title="pprof_py.logistic_fixed_effect.LogisticFixedEffectModel" href="pprof_py.logistic_fixed_effect.LogisticFixedEffectModel.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.plot_caterpillar"><code class="docutils literal notranslate"><span class="pre">plot_caterpillar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.proc_freq"><code class="docutils literal notranslate"><span class="pre">proc_freq()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.setup_logger"><code class="docutils literal notranslate"><span class="pre">setup_logger()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#pprof_py.sigmoid"><code class="docutils literal notranslate"><span class="pre">sigmoid()</span></code></a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../api.html#models">Models</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="pprof_py.base_model.BaseModel.html">pprof_py.base_model.BaseModel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pprof_py.linear_fixed_effect.LinearFixedEffectModel.html">pprof_py.linear_fixed_effect.LinearFixedEffectModel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pprof_py.linear_random_effect.LinearRandomEffectModel.html">pprof_py.linear_random_effect.LinearRandomEffectModel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pprof_py.logistic_fixed_effect.LogisticFixedEffectModel.html">pprof_py.logistic_fixed_effect.LogisticFixedEffectModel</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">pprof_py.logistic_random_effect.LogisticRandomEffectModel</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#utilities">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#plotting">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#full-modules">Full Modules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API Reference</a></li>
+      <li class="breadcrumb-item active">pprof_py.logistic_random_effect.LogisticRandomEffectModel</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary_generated/pprof_py.logistic_random_effect.LogisticRandomEffectModel.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="pprof-py-logistic-random-effect-logisticrandomeffectmodel">
+<h1>pprof_py.logistic_random_effect.LogisticRandomEffectModel<a class="headerlink" href="#pprof-py-logistic-random-effect-logisticrandomeffectmodel" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pprof_py.logistic_random_effect.</span></span><span class="sig-name descname"><span class="pre">LogisticRandomEffectModel</span></span><a class="reference internal" href="../_modules/pprof_py/logistic_random_effect.html#LogisticRandomEffectModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel" title="Link to this definition"></a></dt>
+<dd><p>Logistic Random Effect Model using pymer4.models.Lmer.</p>
+<p>Estimates a generalized linear mixed model (GLMM) for binary outcomes using
+R’s lme4 package via pymer4. It incorporates provider-specific random
+intercepts to account for clustering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>BaseModel</strong><strong>)</strong> (<em>(</em><em>No initialization parameters specific to this model beyond</em>)</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.model" title="Link to this definition"></a></dt>
+<dd><p>The fitted pymer4 Lmer model object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pymer4.models.Lmer or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.coefficients_">
+<span class="sig-name descname"><span class="pre">coefficients_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.coefficients_" title="Link to this definition"></a></dt>
+<dd><p>Contains ‘fixed_effect’ (fixed effects estimates as pd.Series) and
+‘random_effect’ (predicted random effects/BLUPs as pd.Series/DataFrame).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.variances_">
+<span class="sig-name descname"><span class="pre">variances_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.variances_" title="Link to this definition"></a></dt>
+<dd><p>Contains ‘fe_var_cov’ (fixed effects variance-covariance matrix as pd.DataFrame)
+and ‘re_var’ (estimated variance(s) of the random effects from model.ranef_var).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.fitted_">
+<span class="sig-name descname"><span class="pre">fitted_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.fitted_" title="Link to this definition"></a></dt>
+<dd><p>Fitted probabilities (response scale) for the training data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.residuals_">
+<span class="sig-name descname"><span class="pre">residuals_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.residuals_" title="Link to this definition"></a></dt>
+<dd><p>Response residuals (y - fitted_prob) for the training data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.pearson_residuals_">
+<span class="sig-name descname"><span class="pre">pearson_residuals_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.pearson_residuals_" title="Link to this definition"></a></dt>
+<dd><p>Pearson residuals (from pymer4 model if available).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.Series or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">#</span> <span class="pre">sigma_</span> <span class="pre">attribute</span> <span class="pre">from</span> <span class="pre">BaseModel</span> <span class="pre">is</span> <span class="pre">generally</span> <span class="pre">not</span> <span class="pre">applicable/meaningful</span> <span class="pre">for</span> <span class="pre">logistic</span> <span class="pre">models.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.aic_">
+<span class="sig-name descname"><span class="pre">aic_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.aic_" title="Link to this definition"></a></dt>
+<dd><p>Akaike Information Criterion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.bic_">
+<span class="sig-name descname"><span class="pre">bic_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.bic_" title="Link to this definition"></a></dt>
+<dd><p>Bayesian Information Criterion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.loglike_">
+<span class="sig-name descname"><span class="pre">loglike_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.loglike_" title="Link to this definition"></a></dt>
+<dd><p>Log-likelihood of the fitted model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.groups_">
+<span class="sig-name descname"><span class="pre">groups_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.groups_" title="Link to this definition"></a></dt>
+<dd><p>Unique group identifiers present in the fitted data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.group_sizes_">
+<span class="sig-name descname"><span class="pre">group_sizes_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.group_sizes_" title="Link to this definition"></a></dt>
+<dd><p>Number of observations per group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.xbeta_">
+<span class="sig-name descname"><span class="pre">xbeta_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.xbeta_" title="Link to this definition"></a></dt>
+<dd><p>Linear predictor component from fixed effects only ($Xhat{eta}$) for the fitted data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.covariate_names_">
+<span class="sig-name descname"><span class="pre">covariate_names_</span></span><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.covariate_names_" title="Link to this definition"></a></dt>
+<dd><p>Names of the fixed effect covariates (excluding intercept).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">#</span> <span class="pre">Attributes</span> <span class="pre">related</span> <span class="pre">to</span> <span class="pre">statsmodels</span> <span class="pre">results</span> <span class="pre">are</span> <span class="pre">removed</span> <span class="pre">or</span> <span class="pre">replaced</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">#</span> <span class="pre">by</span> <span class="pre">pymer4</span> <span class="pre">equivalents</span> <span class="pre">where</span> <span class="pre">applicable.</span></span></dt>
+<dd></dd></dl>
+
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Generate synthetic data (replace with actual data)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n_groups</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span> <span class="n">n_obs_per_group</span> <span class="o">=</span> <span class="mi">50</span><span class="p">;</span> <span class="n">N</span> <span class="o">=</span> <span class="n">n_groups</span> <span class="o">*</span> <span class="n">n_obs_per_group</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">groups</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;G</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_groups</span><span class="p">)],</span> <span class="n">n_obs_per_group</span><span class="p">)</span> <span class="c1"># Use string IDs</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">N</span><span class="p">);</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">true_beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">]);</span> <span class="n">true_intercept</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">;</span> <span class="n">true_re_sd</span> <span class="o">=</span> <span class="mf">0.8</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">true_re_dict</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s1">&#39;G</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">true_re_sd</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_groups</span><span class="p">)}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">true_re_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">true_re_dict</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lin_pred</span> <span class="o">=</span> <span class="n">true_intercept</span> <span class="o">+</span> <span class="n">x1</span> <span class="o">*</span> <span class="n">true_beta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">true_beta</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">true_re_obs</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prob</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">lin_pred</span><span class="p">));</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">prob</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;Y&#39;</span><span class="p">:</span> <span class="n">y</span><span class="p">,</span> <span class="s1">&#39;X1&#39;</span><span class="p">:</span> <span class="n">x1</span><span class="p">,</span> <span class="s1">&#39;X2&#39;</span><span class="p">:</span> <span class="n">x2</span><span class="p">,</span> <span class="s1">&#39;GroupID&#39;</span><span class="p">:</span> <span class="n">groups</span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Fit the model using pymer4</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logit_re_model</span> <span class="o">=</span> <span class="n">LogisticRandomEffectModel</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">logit_re_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">y_var</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;X1&#39;</span><span class="p">,</span> <span class="s1">&#39;X2&#39;</span><span class="p">],</span> <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;GroupID&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get summary (fixed effects)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">logit_re_model</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get standardized differences (based on BLUPs)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># sm = logit_re_model.calculate_standardized_measures(null=&#39;median&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># print(sm[&#39;indirect&#39;].head())</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Plot provider effects (BLUPs)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># logit_re_model.plot_provider_effects() # Requires matplotlib</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="pprof_py.logistic_random_effect.LogisticRandomEffectModel.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/pprof_py/logistic_random_effect.html#LogisticRandomEffectModel.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the LogisticRandomEffectModel with placeholders.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pprof_py.logistic_random_effect.LogisticRandomEffectModel.__init__" title="pprof_py.logistic_random_effect.LogisticRandomEffectModel.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
+<td><p>Initialize the LogisticRandomEffectModel with placeholders.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>([group_ids, ...])</p></td>
+<td><p>Calculate CIs for random effects (BLUPs) or standardized measures.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">calculate_standardized_measures</span></code>([group_ids, ...])</p></td>
+<td><p>Calculate standardized ratios and rates based on predicted random effects (BLUPs).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code>([X, y, groups, x_vars, y_var, group_var])</p></td>
+<td><p>Fit the logistic random effect model using pymer4 Lmer with family='binomial'.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_coefficient_forest</span></code>([orientation, ...])</p></td>
+<td><p>Create a forest plot of fixed effect coefficients with confidence intervals.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_funnel</span></code>(**kwargs)</p></td>
+<td><p>Funnel plot for Logistic Random Effect Model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_provider_effects</span></code>([group_ids, level, ...])</p></td>
+<td><p>Plots predicted random effects (BLUPs) with approximate confidence intervals.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_qq</span></code>(*args, **kwargs)</p></td>
+<td><p>Create a Q-Q plot of the deviance residuals for logistic regression.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_residuals</span></code>([residual_type, figsize, ...])</p></td>
+<td><p>Plots residuals versus fitted probabilities for the logistic GLMM.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_standardized_measures</span></code>(**kwargs)</p></td>
+<td><p>Plot standardized measures for Logistic Random Effect Model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code>(X[, x_vars])</p></td>
+<td><p>Predict probabilities for new data using only the fixed effects part of the model.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code>([covariates, level, null, alternative])</p></td>
+<td><p>Provide summary statistics for the fixed effects coefficients (beta).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">test</span></code>([group_ids, level, null, alternative])</p></td>
+<td><p>Test random effects (BLUPs) for significance against a null value using Z-tests.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="pprof_py.logistic_fixed_effect.LogisticFixedEffectModel.html" class="btn btn-neutral float-left" title="pprof_py.logistic_fixed_effect.LogisticFixedEffectModel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pprof_py.utils.setup_logger.html" class="btn btn-neutral float-right" title="pprof_py.utils.setup_logger" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,510 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logistic Random Effect Modeling &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Direct vs. Indirect Standardization Methods" href="direct_vs_indirect_standardization.html" />
+    <link rel="prev" title="Logistic Fixed Effect Modeling" href="logistic_fixed_effect_model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Logistic Random Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-logistic-random-intercept-model">2.1. The Logistic Random Intercept Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameter-estimation-and-prediction">2.2. Parameter Estimation and Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-for-provider-random-effects">2.4. Hypothesis Testing for Provider Random Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prediction-fixed-effects-only">3.3. Prediction (Fixed Effects Only)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-for-provider-random-effects-test">3.5. Hypothesis Testing for Provider Random Effects (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Logistic Random Effect Modeling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/logistic_random_effect_model.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="logistic-random-effect-modeling">
+<span id="logistic-random-effect-model-stats"></span><h1>Logistic Random Effect Modeling<a class="headerlink" href="#logistic-random-effect-modeling" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id25">1. Introduction</a></p></li>
+<li><p><a class="reference internal" href="#methods" id="id26">2. Methods</a></p>
+<ul>
+<li><p><a class="reference internal" href="#the-logistic-random-intercept-model" id="id27">2.1. The Logistic Random Intercept Model</a></p></li>
+<li><p><a class="reference internal" href="#parameter-estimation-and-prediction" id="id28">2.2. Parameter Estimation and Prediction</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-for-performance-comparison" id="id29">2.3. Standardized Measures for Performance Comparison</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-for-provider-random-effects" id="id30">2.4. Hypothesis Testing for Provider Random Effects</a></p></li>
+<li><p><a class="reference internal" href="#confidence-intervals" id="id31">2.5. Confidence Intervals</a></p></li>
+<li><p><a class="reference internal" href="#visualization" id="id32">2.6. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#implementation-and-usage" id="id33">3. Implementation and Usage</a></p>
+<ul>
+<li><p><a class="reference internal" href="#initialization-and-fitting" id="id34">3.1. Initialization and Fitting</a></p></li>
+<li><p><a class="reference internal" href="#accessing-results" id="id35">3.2. Accessing Results</a></p></li>
+<li><p><a class="reference internal" href="#prediction-fixed-effects-only" id="id36">3.3. Prediction (Fixed Effects Only)</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-calculation" id="id37">3.4. Standardized Measures Calculation</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-for-provider-random-effects-test" id="id38">3.5. Hypothesis Testing for Provider Random Effects (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></p></li>
+<li><p><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals" id="id39">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></p></li>
+<li><p><a class="reference internal" href="#id3" id="id40">3.7. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#discussion" id="id41">4. Discussion</a></p></li>
+<li><p><a class="reference internal" href="#conclusion" id="id42">5. Conclusion</a></p></li>
+<li><p><a class="reference internal" href="#references" id="id43">References</a></p></li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id25" role="doc-backlink">1. Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>When analyzing binary patient outcomes (e.g., mortality, readmission) clustered within healthcare providers, logistic random effect models, also known as Generalized Linear Mixed Models (GLMMs) with a logit link, are a common approach <span id="id1">[<a class="reference internal" href="#id21" title="Douglas Bates, Martin Mächler, Ben Bolker, and Steve Walker. Fitting linear mixed-effects models using lme4. Journal of Statistical Software, 67(1):1–48, 2015. doi:10.18637/jss.v067.i01.">Bates <em>et al.</em>, 2015</a>, <a class="reference internal" href="#id23" title="Charles E. McCulloch and Shayle R. Searle. Generalized, Linear, and Mixed Models. Wiley, 2001.">McCulloch and Searle, 2001</a>, <a class="reference internal" href="#id24" title="Walter W. Stroup. Generalized Linear Mixed Models: Modern Concepts, Methods and Applications. CRC Press, 2013.">Stroup, 2013</a>]</span>. These models account for the correlation of outcomes within providers by incorporating provider-specific random effects, typically random intercepts. This allows for provider comparisons while adjusting for patient-level covariates.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">pprof_test.logistic_random_effect.LogisticRandomEffectModel</span></code> class implements such a model by leveraging the <code class="docutils literal notranslate"><span class="pre">pymer4</span></code> library <span id="id2">[<a class="reference internal" href="#id22" title="The pymer4 Developers. Pymer4 documentation. https://eshinjolly.com/pymer4/, 2024. Consult the official pymer4 resources for usage and installation.">The pymer4 Developers, 2024</a>]</span>, which serves as a Python interface to R’s powerful <code class="docutils literal notranslate"><span class="pre">lme4</span></code> package. This approach combines the statistical robustness of <code class="docutils literal notranslate"><span class="pre">lme4</span></code> with the convenience of a Python environment.</p>
+<p>This document outlines the statistical methodology underpinning the <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code>, covering:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The logistic random intercept model formulation.</p></li>
+<li><p>Parameter estimation via <code class="docutils literal notranslate"><span class="pre">pymer4</span></code> (interfacing <code class="docutils literal notranslate"><span class="pre">lme4</span></code>), including fixed effects and variance components, and prediction of random effects (BLUPs).</p></li>
+<li><p>Calculation of standardized measures (e.g., Standardized Mortality/Morbidity Ratios - SMRs, Standardized Rates) for performance comparison.</p></li>
+<li><p>Hypothesis testing procedures for provider random effects.</p></li>
+<li><p>Construction of confidence intervals for fixed effects and random effects.</p></li>
+<li><p>Visualization tools for interpreting model results.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="methods">
+<h2><a class="toc-backref" href="#id26" role="doc-backlink">2. Methods</a><a class="headerlink" href="#methods" title="Link to this heading"></a></h2>
+<section id="the-logistic-random-intercept-model">
+<h3><a class="toc-backref" href="#id27" role="doc-backlink">2.1. The Logistic Random Intercept Model</a><a class="headerlink" href="#the-logistic-random-intercept-model" title="Link to this heading"></a></h3>
+<p>Let <span class="math notranslate nohighlight">\(Y_{ij}\)</span> be a binary outcome (0 or 1) for subject <span class="math notranslate nohighlight">\(j\)</span> (<span class="math notranslate nohighlight">\(j = 1, \ldots, n_i\)</span>) within provider (group) <span class="math notranslate nohighlight">\(i\)</span> (<span class="math notranslate nohighlight">\(i = 1, \ldots, m\)</span>). Let <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span> be a <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of subject-level covariates. The probability of success <span class="math notranslate nohighlight">\(P(Y_{ij}=1) = p_{ij}\)</span> is modeled using a logit link function:</p>
+<div class="math notranslate nohighlight">
+\[\text{logit}(p_{ij}) = \ln\left(\frac{p_{ij}}{1-p_{ij}}\right) = \eta_{ij} = \mathbf{X}_{ij}^\top\boldsymbol\beta + u_i\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span> is the <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of fixed regression coefficients associated with the covariates. These represent the change in log-odds of the outcome for a one-unit change in the corresponding covariate, holding the provider constant.</p></li>
+<li><p><span class="math notranslate nohighlight">\(u_i\)</span> is the random intercept for provider <span class="math notranslate nohighlight">\(i\)</span>. It represents the deviation of provider <span class="math notranslate nohighlight">\(i\)</span>’s baseline log-odds from the overall intercept (which is part of <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}^\top\boldsymbol\beta\)</span> if an intercept term is included in <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span>).</p></li>
+<li><p>It is assumed that <span class="math notranslate nohighlight">\(u_i \sim N(0, \sigma^2_u)\)</span>, where <span class="math notranslate nohighlight">\(\sigma^2_u\)</span> is the variance of the provider random effects.</p></li>
+<li><p>The random effects <span class="math notranslate nohighlight">\(u_i\)</span> are assumed to be independent of the covariates <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span>.</p></li>
+</ul>
+<p>The model aims to estimate the fixed effects <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span>, the random effects variance <span class="math notranslate nohighlight">\(\sigma^2_u\)</span>, and to predict the individual random effects <span class="math notranslate nohighlight">\(u_i\)</span>.</p>
+</section>
+<section id="parameter-estimation-and-prediction">
+<h3><a class="toc-backref" href="#id28" role="doc-backlink">2.2. Parameter Estimation and Prediction</a><a class="headerlink" href="#parameter-estimation-and-prediction" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code> utilizes <code class="docutils literal notranslate"><span class="pre">pymer4.models.Lmer</span></code> (with <code class="docutils literal notranslate"><span class="pre">family='binomial'</span></code>) to fit the GLMM. <code class="docutils literal notranslate"><span class="pre">lme4</span></code> typically uses (Restricted) Maximum Likelihood estimation, often employing methods like Laplace approximation or Penalized Quasi-Likelihood (PQL) for GLMMs.</p>
+<ul class="simple">
+<li><p><strong>Fixed Effects</strong> (<span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}\)</span>): Estimates of the population-average covariate effects. Stored in <code class="docutils literal notranslate"><span class="pre">coefficients_['fixed_effect']</span></code>.</p></li>
+<li><p><strong>Random Effects</strong> Variance (<span class="math notranslate nohighlight">\(\hat{\sigma}^2_u\)</span>): Estimate of the variability between providers. Stored in <code class="docutils literal notranslate"><span class="pre">variances_['re_var']</span></code>.</p></li>
+<li><p><strong>Random Effects</strong> (BLUPs, <span class="math notranslate nohighlight">\(\hat{u}_i\)</span>): Predictions of the provider-specific deviations from the overall intercept. These are Best Linear Unbiased Predictors (BLUPs) on the log-odds scale and exhibit shrinkage towards the mean (zero). Stored in <code class="docutils literal notranslate"><span class="pre">coefficients_['random_effect']</span></code>.</p></li>
+<li><p><strong>Variance-Covariance of Fixed Effects:</strong> Stored in <code class="docutils literal notranslate"><span class="pre">variances_['fe_var_cov']</span></code>.</p></li>
+</ul>
+<p>The fitted probabilities <span class="math notranslate nohighlight">\(\hat{p}_{ij}\)</span> (including random effects) are stored in <code class="docutils literal notranslate"><span class="pre">fitted_</span></code>. The linear predictor from fixed effects only, <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta}\)</span>, is stored in <code class="docutils literal notranslate"><span class="pre">xbeta_</span></code>.</p>
+</section>
+<section id="standardized-measures-for-performance-comparison">
+<h3><a class="toc-backref" href="#id29" role="doc-backlink">2.3. Standardized Measures for Performance Comparison</a><a class="headerlink" href="#standardized-measures-for-performance-comparison" title="Link to this heading"></a></h3>
+<p>For logistic random effects models, standardized measures allow for fair comparison of provider performance by adjusting for patient case mix and provider-specific random effects. The <code class="docutils literal notranslate"><span class="pre">calculate_standardized_measures</span></code> method computes both indirect and direct standardized ratios and rates, based on the predicted random effects (BLUPs).</p>
+<p>Let <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span> denote the estimated fixed effects, and <span class="math notranslate nohighlight">\(\hat{\alpha}_i\)</span> the estimated random effect (BLUP) for provider <span class="math notranslate nohighlight">\(i\)</span>. Define a reference or baseline random effect <span class="math notranslate nohighlight">\(\alpha_0\)</span> (e.g., the median or mean of <span class="math notranslate nohighlight">\(\hat{\alpha}_i\)</span>, as specified by the <code class="docutils literal notranslate"><span class="pre">null</span></code> parameter).</p>
+<p><strong>2.3.1. Indirect Standardization</strong></p>
+<p>Indirect standardization compares the observed outcome for a provider (as predicted by the full model, including random effects) to the expected outcome for that provider if its random effect were set to the baseline value <span class="math notranslate nohighlight">\(\alpha_0\)</span>, given its specific patient mix.</p>
+<ul>
+<li><p><strong>Observed Outcome for Provider i</strong>:
+The sum of fitted probabilities (including both fixed and random effects) for all <span class="math notranslate nohighlight">\(n_i\)</span> subjects in provider <span class="math notranslate nohighlight">\(i\)</span>. This is the <code class="docutils literal notranslate"><span class="pre">observed</span></code> column in the output DataFrame.</p>
+<div class="math notranslate nohighlight">
+\[O_i = \sum_{j=1}^{n_i} \hat{p}_{ij}^{\text{full}} = \sum_{j=1}^{n_i} \text{logit}^{-1}(\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\alpha}_i)\]</div>
+</li>
+<li><p><strong>Expected Outcome for Provider i under Baseline</strong>:
+The sum of expected probabilities for provider <span class="math notranslate nohighlight">\(i\)</span>’s <span class="math notranslate nohighlight">\(n_i\)</span> subjects, if the provider effect was the baseline <span class="math notranslate nohighlight">\(\alpha_0\)</span>, adjusted for their covariates. This is the <code class="docutils literal notranslate"><span class="pre">expected</span></code> column.</p>
+<div class="math notranslate nohighlight">
+\[E_i(\alpha_0) = \sum_{j=1}^{n_i} \text{logit}^{-1}(\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \alpha_0)\]</div>
+</li>
+<li><p><strong>Indirect Standardized Ratio</strong>:
+The ratio of observed to expected outcomes for provider <span class="math notranslate nohighlight">\(i\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{ISR}_i = \frac{O_i}{E_i(\alpha_0)}\]</div>
+</li>
+<li><p><strong>Indirect Standardized Rate</strong>:
+The standardized rate for provider <span class="math notranslate nohighlight">\(i\)</span>, calculated as the indirect ratio multiplied by the overall population rate (expressed as a percentage):</p>
+<div class="math notranslate nohighlight">
+\[\text{ISRate}_i = \text{ISR}_i \times \text{Population Rate}\]</div>
+</li>
+<li><p><strong>Indirect Standardized Difference</strong>:
+The difference between the provider’s random effect and the baseline:</p>
+<div class="math notranslate nohighlight">
+\[\text{ISDiff}_i = \hat{\alpha}_i - \alpha_0\]</div>
+</li>
+</ul>
+<p><strong>2.3.2. Direct Standardization</strong></p>
+<p>Direct standardization compares the expected outcome for the entire population if all subjects experienced provider <span class="math notranslate nohighlight">\(k\)</span>’s random effect (<span class="math notranslate nohighlight">\(\hat{\alpha}_k\)</span>) to the expected outcome if all subjects experienced the baseline effect (<span class="math notranslate nohighlight">\(\alpha_0\)</span>).</p>
+<ul>
+<li><p><strong>Expected Outcome under Provider k’s Effect</strong>:
+The sum of expected probabilities for all subjects, using provider <span class="math notranslate nohighlight">\(k\)</span>’s random effect:</p>
+<div class="math notranslate nohighlight">
+\[E^{(k)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \text{logit}^{-1}(\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\alpha}_k)\]</div>
+</li>
+<li><p><strong>Expected Outcome under Baseline Effect</strong>:
+The sum of expected probabilities for all subjects, using the baseline effect:</p>
+<div class="math notranslate nohighlight">
+\[E^{(0)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \text{logit}^{-1}(\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \alpha_0)\]</div>
+</li>
+<li><p><strong>Direct Standardized Ratio</strong>:
+The ratio of expected outcomes under provider <span class="math notranslate nohighlight">\(k\)</span>’s effect to the observed total outcome:</p>
+<div class="math notranslate nohighlight">
+\[\text{DSR}_k = \frac{E^{(k)}}{O_{\text{total}}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(O_{\text{total}}\)</span> is the sum of observed outcomes across all subjects.</p>
+</li>
+<li><p><strong>Direct Standardized Rate</strong>:
+The standardized rate for provider <span class="math notranslate nohighlight">\(k\)</span>, calculated as the direct ratio multiplied by the overall population rate:</p>
+<div class="math notranslate nohighlight">
+\[\text{DSRate}_k = \text{DSR}_k \times \text{Population Rate}\]</div>
+</li>
+<li><p><strong>Direct Standardized Difference</strong>:
+The difference between provider <span class="math notranslate nohighlight">\(k\)</span>’s random effect and the baseline:</p>
+<div class="math notranslate nohighlight">
+\[\text{DSDiff}_k = \hat{\alpha}_k - \alpha_0\]</div>
+</li>
+</ul>
+<p>The implementation (<code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.calculate_standardized_measures</span></code>) returns a dictionary with DataFrames for each standardization method. Each DataFrame contains the group ID, standardized difference, ratio, rate, and the observed and expected outcomes as described above. These measures allow for meaningful provider comparisons while accounting for both patient case mix and provider-specific random effects.</p>
+</section>
+<section id="hypothesis-testing-for-provider-random-effects">
+<h3><a class="toc-backref" href="#id30" role="doc-backlink">2.4. Hypothesis Testing for Provider Random Effects</a><a class="headerlink" href="#hypothesis-testing-for-provider-random-effects" title="Link to this heading"></a></h3>
+<p>To assess if a provider’s random effect <span class="math notranslate nohighlight">\(u_i\)</span> is significantly different from a null value <span class="math notranslate nohighlight">\(u_0\)</span>, a Z-test is performed:</p>
+<div class="math notranslate nohighlight">
+\[Z_i = \frac{\hat{u}_i - u_0}{\widehat{\text{se}}(\hat{u}_i)}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{u}_i\)</span> is the BLUP for provider <span class="math notranslate nohighlight">\(i\)</span>, and <span class="math notranslate nohighlight">\(\widehat{\text{se}}(\hat{u}_i)\)</span> is its posterior standard error. These standard errors are obtained from the <code class="docutils literal notranslate"><span class="pre">lme4</span></code> model via <code class="docutils literal notranslate"><span class="pre">pymer4</span></code> (see <code class="docutils literal notranslate"><span class="pre">_get_blup_post_se</span></code> method).</p>
+<p>Under the null hypothesis <span class="math notranslate nohighlight">\(H_0: u_i = u_0\)</span>, the statistic <span class="math notranslate nohighlight">\(Z_i\)</span> is assumed to follow a standard normal distribution. P-values are calculated based on this distribution according to the specified <code class="docutils literal notranslate"><span class="pre">alternative</span></code> (‘two_sided’, ‘less’, ‘greater’) in the <code class="docutils literal notranslate"><span class="pre">test</span></code> method.</p>
+</section>
+<section id="confidence-intervals">
+<h3><a class="toc-backref" href="#id31" role="doc-backlink">2.5. Confidence Intervals</a><a class="headerlink" href="#confidence-intervals" title="Link to this heading"></a></h3>
+<ul>
+<li><p><strong>For Fixed Effects</strong> <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span>:
+The <code class="docutils literal notranslate"><span class="pre">summary</span></code> method provides confidence intervals for fixed effects, typically based on Z-scores and standard errors from the <code class="docutils literal notranslate"><span class="pre">lme4</span></code> output.</p>
+<div class="math notranslate nohighlight">
+\[\hat{\beta}_k \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\beta}_k)\]</div>
+</li>
+<li><p><strong>For Random Effects</strong> <span class="math notranslate nohighlight">\(u_i\)</span> (BLUPs):
+The <code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code> method with <code class="docutils literal notranslate"><span class="pre">option='alpha'</span></code> provides approximate confidence intervals for the BLUPs <span class="math notranslate nohighlight">\(\hat{u}_i\)</span> on the log-odds scale. These are based on the posterior standard errors of the BLUPs and a normal approximation:</p>
+<div class="math notranslate nohighlight">
+\[\hat{u}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{u}_i)\]</div>
+</li>
+<li><p><strong>For Standardized Measures</strong> (Ratios/Rates):
+Calculating robust confidence intervals for standardized ratios or rates derived from logistic random effect models is statistically complex. It often requires methods like the Delta method on the log/logit scale or extensive bootstrapping. The <code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code> method with <code class="docutils literal notranslate"><span class="pre">option='SM'</span></code> raises a <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>, advising users to consider these advanced methods or consult a statistician.</p></li>
+</ul>
+</section>
+<section id="visualization">
+<h3><a class="toc-backref" href="#id32" role="doc-backlink">2.6. Visualization</a><a class="headerlink" href="#visualization" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code> class offers several plotting methods:</p>
+<ul class="simple">
+<li><p><strong>Caterpillar Plot for Provider Effects</strong> (<code class="docutils literal notranslate"><span class="pre">plot_provider_effects</span></code>): Displays BLUPs <span class="math notranslate nohighlight">\(\hat{u}_i\)</span> (on the log-odds scale) with their approximate confidence intervals.</p></li>
+<li><p><strong>Coefficient Forest Plot</strong> (<code class="docutils literal notranslate"><span class="pre">plot_coefficient_forest</span></code>): Displays estimates and confidence intervals for fixed effect coefficients <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span>.</p></li>
+<li><p><strong>Residual Plots</strong> (<code class="docutils literal notranslate"><span class="pre">plot_residuals</span></code>): Plots response or Pearson residuals against fitted probabilities. Note that residuals from logistic models have specific patterns and are not expected to be homoscedastic or normally distributed like in linear models.</p></li>
+</ul>
+<p>The following plots are <strong>not implemented</strong> due to theoretical complexities or limited utility in the logistic random effect context:</p>
+<ul class="simple">
+<li><p><strong>Funnel Plot</strong> (<code class="docutils literal notranslate"><span class="pre">plot_funnel</span></code>): Standard funnel plots with control limits are difficult to define rigorously for random effect models, especially logistic ones.</p></li>
+<li><p><strong>Q-Q Plot of Residuals</strong> (<code class="docutils literal notranslate"><span class="pre">plot_qq</span></code>): Residuals from logistic regression are not expected to be normally distributed, making standard Q-Q plots less meaningful for overall model assessment.</p></li>
+<li><p><strong>Caterpillar Plot for Standardized Measures</strong> (<code class="docutils literal notranslate"><span class="pre">plot_standardized_measures</span></code>): This is not implemented because robust CIs for these measures are not provided by the corresponding CI calculation method.</p></li>
+</ul>
+</section>
+</section>
+<section id="implementation-and-usage">
+<h2><a class="toc-backref" href="#id33" role="doc-backlink">3. Implementation and Usage</a><a class="headerlink" href="#implementation-and-usage" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code> class in <code class="docutils literal notranslate"><span class="pre">pprof_test.logistic_random_effect</span></code> implements these methods.</p>
+<section id="initialization-and-fitting">
+<h3><a class="toc-backref" href="#id34" role="doc-backlink">3.1. Initialization and Fitting</a><a class="headerlink" href="#initialization-and-fitting" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pprof_test.logistic_random_effect</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogisticRandomEffectModel</span>
+
+<span class="c1"># Generate synthetic data (from class docstring)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
+<span class="n">n_groups</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span> <span class="n">n_obs_per_group</span> <span class="o">=</span> <span class="mi">50</span><span class="p">;</span> <span class="n">N</span> <span class="o">=</span> <span class="n">n_groups</span> <span class="o">*</span> <span class="n">n_obs_per_group</span>
+<span class="n">groups</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;G</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_groups</span><span class="p">)],</span> <span class="n">n_obs_per_group</span><span class="p">)</span>
+<span class="n">x1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">N</span><span class="p">);</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+<span class="n">true_beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">]);</span> <span class="n">true_intercept</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">;</span> <span class="n">true_re_sd</span> <span class="o">=</span> <span class="mf">0.8</span>
+<span class="n">true_re_dict</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s1">&#39;G</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">true_re_sd</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_groups</span><span class="p">)}</span>
+<span class="n">true_re_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">true_re_dict</span><span class="p">[</span><span class="n">g</span><span class="p">]</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">])</span>
+<span class="n">lin_pred</span> <span class="o">=</span> <span class="n">true_intercept</span> <span class="o">+</span> <span class="n">x1</span> <span class="o">*</span> <span class="n">true_beta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">true_beta</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">true_re_obs</span>
+<span class="n">prob</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">lin_pred</span><span class="p">));</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">prob</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;Y&#39;</span><span class="p">:</span> <span class="n">y</span><span class="p">,</span> <span class="s1">&#39;X1&#39;</span><span class="p">:</span> <span class="n">x1</span><span class="p">,</span> <span class="s1">&#39;X2&#39;</span><span class="p">:</span> <span class="n">x2</span><span class="p">,</span> <span class="s1">&#39;GroupID&#39;</span><span class="p">:</span> <span class="n">groups</span><span class="p">})</span>
+
+<span class="c1"># Initialize and fit the model</span>
+<span class="n">logit_re_model</span> <span class="o">=</span> <span class="n">LogisticRandomEffectModel</span><span class="p">()</span>
+<span class="n">logit_re_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">y_var</span><span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;X1&#39;</span><span class="p">,</span> <span class="s1">&#39;X2&#39;</span><span class="p">],</span> <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;GroupID&#39;</span><span class="p">)</span>
+<span class="c1"># Output: Fitting Lmer model with formula: Y ~ X1 + X2 + (1 | GroupID)</span>
+<span class="c1"># Output: Model fitting complete.</span>
+</pre></div>
+</div>
+</section>
+<section id="accessing-results">
+<h3><a class="toc-backref" href="#id35" role="doc-backlink">3.2. Accessing Results</a><a class="headerlink" href="#accessing-results" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Fixed Effects Coefficients (log-odds scale)</span>
+<span class="n">fixed_effects</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;fixed_effect&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Estimated Fixed Effects (Betas):&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">fixed_effects</span><span class="p">)</span>
+
+<span class="c1"># Predicted Random Effects (BLUPs, log-odds scale)</span>
+<span class="n">random_effects_blups</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;random_effect&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Predicted Random Effects (BLUPs, first 5):&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">random_effects_blups</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Variance Components</span>
+<span class="n">fe_var_cov</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;fe_var_cov&#39;</span><span class="p">]</span>
+<span class="n">re_var</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;re_var&#39;</span><span class="p">]</span> <span class="c1"># Variance of random effects (sigma_u^2)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Estimated Variance of Random Effects (sigma_u^2): </span><span class="si">{</span><span class="n">re_var</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Fit statistics</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">AIC: </span><span class="si">{</span><span class="n">logit_re_model</span><span class="o">.</span><span class="n">aic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BIC: </span><span class="si">{</span><span class="n">logit_re_model</span><span class="o">.</span><span class="n">bic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Log-likelihood: </span><span class="si">{</span><span class="n">logit_re_model</span><span class="o">.</span><span class="n">loglike_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Summary for fixed effects</span>
+<span class="c1"># fe_summary = logit_re_model.summary()</span>
+<span class="c1"># print(&quot;\n--- Fixed Effects Summary ---&quot;)</span>
+<span class="c1"># print(fe_summary)</span>
+</pre></div>
+</div>
+</section>
+<section id="prediction-fixed-effects-only">
+<h3><a class="toc-backref" href="#id36" role="doc-backlink">3.3. Prediction (Fixed Effects Only)</a><a class="headerlink" href="#prediction-fixed-effects-only" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Predict probabilities for new data using only fixed effects</span>
+<span class="n">new_data_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+    <span class="s1">&#39;X1&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">5</span><span class="p">),</span>
+    <span class="s1">&#39;X2&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="n">predictions_fe_only</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">new_data_df</span><span class="p">,</span>
+    <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;X1&#39;</span><span class="p">,</span> <span class="s1">&#39;X2&#39;</span><span class="p">]</span> <span class="c1"># or let it use fitted covariates</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Predicted probabilities (fixed effects only): </span><span class="si">{</span><span class="n">predictions_fe_only</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="standardized-measures-calculation">
+<h3><a class="toc-backref" href="#id37" role="doc-backlink">3.4. Standardized Measures Calculation</a><a class="headerlink" href="#standardized-measures-calculation" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate Indirect Standardized Ratios and Rates vs median random effect</span>
+<span class="n">sm_results_logit_re</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">calculate_standardized_measures</span><span class="p">(</span>
+    <span class="n">stdz</span><span class="o">=</span><span class="s1">&#39;indirect&#39;</span><span class="p">,</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span>
+    <span class="n">measure</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;ratio&#39;</span><span class="p">,</span> <span class="s1">&#39;rate&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Logistic RE Indirect Measures (vs Median Random Effect) ---&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="s1">&#39;indirect&#39;</span> <span class="ow">in</span> <span class="n">sm_results_logit_re</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">sm_results_logit_re</span><span class="p">[</span><span class="s1">&#39;indirect&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="hypothesis-testing-for-provider-random-effects-test">
+<h3><a class="toc-backref" href="#id38" role="doc-backlink">3.5. Hypothesis Testing for Provider Random Effects (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a><a class="headerlink" href="#hypothesis-testing-for-provider-random-effects-test" title="Link to this heading"></a></h3>
+<p>Test provider random effects (<span class="math notranslate nohighlight">\(u_i\)</span>, on log-odds scale) against a null value.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test providers vs a null random effect of 0.0</span>
+<span class="n">test_results_logit_re</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">test</span><span class="p">(</span>
+    <span class="n">null</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="c1"># Null hypothesis for u_i (log-odds)</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Logistic RE Provider Test (vs Null RE of 0.0) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">test_results_logit_re</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="confidence-interval-calculation-calculate-confidence-intervals">
+<h3><a class="toc-backref" href="#id39" role="doc-backlink">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a><a class="headerlink" href="#confidence-interval-calculation-calculate-confidence-intervals" title="Link to this heading"></a></h3>
+<p>Compute CIs for provider random effects (<span class="math notranslate nohighlight">\(u_i\)</span>, on log-odds scale).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get 95% CIs for random effects (BLUPs)</span>
+<span class="n">alpha_cis_logit_re_results</span> <span class="o">=</span> <span class="n">logit_re_model</span><span class="o">.</span><span class="n">calculate_confidence_intervals</span><span class="p">(</span>
+    <span class="n">option</span><span class="o">=</span><span class="s1">&#39;alpha&#39;</span><span class="p">,</span> <span class="c1"># For random effects u_i</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span>
+    <span class="c1"># alternative is &#39;two_sided&#39; by default for &#39;alpha&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Logistic RE Random Effect (u_i) CIs (Log-Odds Scale) ---&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="s1">&#39;alpha_ci&#39;</span> <span class="ow">in</span> <span class="n">alpha_cis_logit_re_results</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">alpha_cis_logit_re_results</span><span class="p">[</span><span class="s1">&#39;alpha_ci&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Note: CIs for standardized measures (option=&#39;SM&#39;) are not implemented.</span>
+<span class="c1"># try:</span>
+<span class="c1">#     sm_cis_results = logit_re_model.calculate_confidence_intervals(option=&#39;SM&#39;)</span>
+<span class="c1"># except NotImplementedError as e:</span>
+<span class="c1">#     print(f&quot;\nError for SM CIs: {e}&quot;)</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3><a class="toc-backref" href="#id40" role="doc-backlink">3.7. Visualization</a><a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>Use plotting methods from the <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code> instance.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Plot provider random effects (BLUPs on log-odds scale)</span>
+<span class="c1"># logit_re_model.plot_provider_effects(null=0.0, level=0.95)</span>
+
+<span class="c1"># Example: Forest plot for fixed covariate effects (beta on log-odds scale)</span>
+<span class="c1"># logit_re_model.plot_coefficient_forest()</span>
+
+<span class="c1"># Example: Residual plot (Pearson residuals vs. fitted probabilities)</span>
+<span class="c1"># logit_re_model.plot_residuals(residual_type=&quot;pearson&quot;)</span>
+
+<span class="c1"># The following plots will raise NotImplementedError:</span>
+<span class="c1"># logit_re_model.plot_funnel()</span>
+<span class="c1"># logit_re_model.plot_qq()</span>
+<span class="c1"># logit_re_model.plot_standardized_measures()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="discussion">
+<h2><a class="toc-backref" href="#id41" role="doc-backlink">4. Discussion</a><a class="headerlink" href="#discussion" title="Link to this heading"></a></h2>
+<p>Logistic random effect models, as implemented via <code class="docutils literal notranslate"><span class="pre">pymer4</span></code> and <code class="docutils literal notranslate"><span class="pre">lme4</span></code>, provide a robust framework for analyzing binary outcomes clustered within providers. They account for provider-level heterogeneity through random intercepts, allowing for more nuanced comparisons than models ignoring such clustering.</p>
+<p><strong>Advantages:</strong></p>
+<ul class="simple">
+<li><p>Appropriately models binary outcomes and accounts for data clustering.</p></li>
+<li><p>Leverages the well-established <code class="docutils literal notranslate"><span class="pre">lme4</span></code> package in R for estimation.</p></li>
+<li><p>Provides estimates of fixed effects (population average) and predictions of random effects (provider-specific deviations, BLUPs).</p></li>
+<li><p>BLUPs incorporate shrinkage, which can be beneficial for ranking or comparing providers, especially those with small sample sizes or extreme raw rates.</p></li>
+</ul>
+<p><strong>Limitations and Assumptions:</strong></p>
+<ul class="simple">
+<li><p><strong>Software Dependency:</strong> Requires <code class="docutils literal notranslate"><span class="pre">pymer4</span></code>, R, and the <code class="docutils literal notranslate"><span class="pre">lme4</span></code> R package to be correctly installed and configured.</p></li>
+<li><p><strong>GLMM Assumptions:</strong> Relies on standard GLMM assumptions, including linearity on the logit scale, correct specification of the random effects distribution (typically normal), and independence of random effects from covariates.</p></li>
+<li><p><strong>Computational Complexity:</strong> Fitting GLMMs can be computationally intensive, especially with large datasets or complex random effects structures.</p></li>
+<li><p><strong>Interpretation of Standardized Measures:</strong> Standardized ratios/rates derived from logistic models can be complex to interpret, and their confidence intervals are challenging to compute accurately without advanced statistical methods (e.g., bootstrapping). The current implementation provides point estimates for these measures.</p></li>
+</ul>
+</section>
+<section id="conclusion">
+<h2><a class="toc-backref" href="#id42" role="doc-backlink">5. Conclusion</a><a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code> offers a valuable tool for provider profiling with binary outcomes. By incorporating random effects, it provides a statistically sound approach to adjust for case mix and account for provider-level variability. While the interpretation and inference for standardized measures derived from these models require care, the model’s ability to estimate provider-specific effects (BLUPs) on the log-odds scale, along with their approximate confidence intervals, is a key strength for performance evaluation.</p>
+</section>
+<section id="references">
+<h2><a class="toc-backref" href="#id43" role="doc-backlink">References</a><a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id4">
+<div role="list" class="citation-list">
+<div class="citation" id="id21" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Douglas Bates, Martin Mächler, Ben Bolker, and Steve Walker. Fitting linear mixed-effects models using lme4. <em>Journal of Statistical Software</em>, 67(1):1–48, 2015. <a class="reference external" href="https://doi.org/10.18637/jss.v067.i01">doi:10.18637/jss.v067.i01</a>.</p>
+</div>
+<div class="citation" id="id23" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">2</a><span class="fn-bracket">]</span></span>
+<p>Charles E. McCulloch and Shayle R. Searle. <em>Generalized, Linear, and Mixed Models</em>. Wiley, 2001.</p>
+</div>
+<div class="citation" id="id24" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">3</a><span class="fn-bracket">]</span></span>
+<p>Walter W. Stroup. <em>Generalized Linear Mixed Models: Modern Concepts, Methods and Applications</em>. CRC Press, 2013.</p>
+</div>
+<div class="citation" id="id22" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">4</a><span class="fn-bracket">]</span></span>
+<p>The pymer4 Developers. Pymer4 documentation. <a class="reference external" href="https://eshinjolly.com/pymer4/">https://eshinjolly.com/pymer4/</a>, 2024. Consult the official pymer4 resources for usage and installation.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="logistic_fixed_effect_model.html" class="btn btn-neutral float-left" title="Logistic Fixed Effect Modeling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="direct_vs_indirect_standardization.html" class="btn btn-neutral float-right" title="Direct vs. Indirect Standardization Methods" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+﻿pprof\_py.utils
+===============
+
+.. automodule:: pprof_py.utils
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      proc_freq
+      setup_logger
+      sigmoid
+   

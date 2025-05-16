@@ -1,0 +1,6 @@
+﻿pprof\_py.plotting.plot\_caterpillar
+====================================
+
+.. currentmodule:: pprof_py.plotting
+
+.. autofunction:: plot_caterpillar

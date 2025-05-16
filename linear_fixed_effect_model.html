@@ -1,0 +1,535 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linear Fixed Effect Modeling &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Linear Random Effect Modeling" href="linear_random_effect_model.html" />
+    <link rel="prev" title="Base Model" href="base_model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Linear Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-linear-fixed-effects-model">2.1. The Linear Fixed Effects Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameter-estimation">2.2. Parameter Estimation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-for-provider-effects">2.4. Hypothesis Testing for Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prediction">3.3. Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-test">3.5. Hypothesis Testing (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Linear Fixed Effect Modeling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/linear_fixed_effect_model.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="linear-fixed-effect-modeling">
+<span id="linear-fixed-effect-model-stats"></span><h1>Linear Fixed Effect Modeling<a class="headerlink" href="#linear-fixed-effect-modeling" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id27">1. Introduction</a></p></li>
+<li><p><a class="reference internal" href="#methods" id="id28">2. Methods</a></p>
+<ul>
+<li><p><a class="reference internal" href="#the-linear-fixed-effects-model" id="id29">2.1. The Linear Fixed Effects Model</a></p></li>
+<li><p><a class="reference internal" href="#parameter-estimation" id="id30">2.2. Parameter Estimation</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-for-performance-comparison" id="id31">2.3. Standardized Measures for Performance Comparison</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-for-provider-effects" id="id32">2.4. Hypothesis Testing for Provider Effects</a></p></li>
+<li><p><a class="reference internal" href="#confidence-intervals" id="id33">2.5. Confidence Intervals</a></p></li>
+<li><p><a class="reference internal" href="#visualization" id="id34">2.6. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#implementation-and-usage" id="id35">3. Implementation and Usage</a></p>
+<ul>
+<li><p><a class="reference internal" href="#initialization-and-fitting" id="id36">3.1. Initialization and Fitting</a></p></li>
+<li><p><a class="reference internal" href="#accessing-results" id="id37">3.2. Accessing Results</a></p></li>
+<li><p><a class="reference internal" href="#prediction" id="id38">3.3. Prediction</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-calculation" id="id39">3.4. Standardized Measures Calculation</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-test" id="id40">3.5. Hypothesis Testing (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></p></li>
+<li><p><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals" id="id41">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></p></li>
+<li><p><a class="reference internal" href="#id5" id="id42">3.7. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#discussion" id="id43">4. Discussion</a></p></li>
+<li><p><a class="reference internal" href="#conclusion" id="id44">5. Conclusion</a></p></li>
+<li><p><a class="reference internal" href="#references" id="id45">References</a></p></li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">1. Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Evaluating and comparing the performance of healthcare providers is essential for quality improvement initiatives, cost management, and informed patient decision-making <span id="id1">[<a class="reference internal" href="logistic_fixed_effect_model.html#id13" title="David M. Shahian, Fred H. Edwards, Jeffrey P. Jacobs, Richard L. Prager, Sharon-Lise T. Normand, Cynthia M. Shewan, Sean M. O'Brien, Eric D. Peterson, and Frederick L. Grover. Public reporting of cardiac surgery performance: part 1–history, rationale, and challenges. The Annals of Thoracic Surgery, 92(4):S2–S11, 2011.">Shahian <em>et al.</em>, 2011</a>, <a class="reference internal" href="logistic_fixed_effect_model.html#id14" title="Harlan M. Krumholz, Yongfei Wang, Zhenqiu Lin, Kumar Dharmarajan, Leora I. Horwitz, Joseph S. Ross, Andrew H. Patterson, and Elizabeth E. Drye. An administrative claims measure suitable for profiling hospital performance based on 30-day all-cause readmission rates among patients with heart failure. Circulation: Cardiovascular Quality and Outcomes, 6(2):259–268, 2013.">Krumholz <em>et al.</em>, 2013</a>]</span>. Provider performance is often assessed using quantitative patient outcomes, such as length of stay, cost of care, or clinical measurements like blood pressure or estimated glomerular filtration rate (eGFR). However, direct comparison of raw outcomes can be misleading due to differences in patient populations served by different providers. Robust risk adjustment methods are therefore necessary to account for patient case mix before drawing conclusions about provider performance <span id="id2">[<a class="reference internal" href="logistic_fixed_effect_model.html#id15" title="Lisa I. Iezzoni, editor. Risk adjustment for measuring healthcare outcomes. Health Administration Press, 2001.">Iezzoni, 2001</a>]</span>.</p>
+<p>Linear regression models are frequently used for risk adjustment when the outcome of interest is quantitative. When data are clustered within providers, incorporating provider-specific effects is crucial. Similar to binary outcomes, two main approaches exist: random effects (RE) and fixed effects (FE) models. RE models assume provider effects follow a distribution and can be efficient but rest on the strong assumption that provider effects are uncorrelated with patient characteristics <span id="id3">[<a class="reference internal" href="logistic_fixed_effect_model.html#id16" title="John M. Neuhaus, John D. Kalbfleisch, and Walter W. Hauck. A comparison of cluster-specific and population-averaged approaches for analyzing correlated binary data. International Statistical Review, 59(1):25–35, 1991.">Neuhaus <em>et al.</em>, 1991</a>]</span>. Fixed effects models treat each provider effect as a distinct parameter, offering robustness against potential confounding between provider effects and patient covariates <span id="id4">[<a class="reference internal" href="logistic_fixed_effect_model.html#id17" title="John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. Statistics in Biosciences, 5(2):208–232, 2013.">Kalbfleisch and Wolfe, 2013</a>]</span>. This robustness makes the FE approach particularly suitable for provider profiling where unbiased estimation of individual provider performance relative to peers is paramount.</p>
+<p>Fitting FE models, especially linear ones, can be computationally streamlined compared to their logistic counterparts, but still requires careful implementation. This paper details the statistical methodology implemented in our software for fitting linear fixed effect models. We focus on:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The linear fixed effects model formulation.</p></li>
+<li><p>Estimation via Ordinary Least Squares (OLS) using within-group transformations.</p></li>
+<li><p>Calculation of standardized measures (Indirect and Direct Standardized Differences) for performance comparison.</p></li>
+<li><p>Hypothesis testing procedures (t-tests) for identifying providers with performance significantly different from a benchmark.</p></li>
+<li><p>Construction of corresponding confidence intervals for provider effects and standardized measures.</p></li>
+<li><p>Visualization tools for interpreting results.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="methods">
+<h2><a class="toc-backref" href="#id28" role="doc-backlink">2. Methods</a><a class="headerlink" href="#methods" title="Link to this heading"></a></h2>
+<section id="the-linear-fixed-effects-model">
+<h3><a class="toc-backref" href="#id29" role="doc-backlink">2.1. The Linear Fixed Effects Model</a><a class="headerlink" href="#the-linear-fixed-effects-model" title="Link to this heading"></a></h3>
+<p>Let <span class="math notranslate nohighlight">\(Y_{ij}\)</span> denote a quantitative outcome (e.g., cost, length of stay, blood pressure) for subject <span class="math notranslate nohighlight">\(j\)</span> (<span class="math notranslate nohighlight">\(j = 1, \ldots, n_i\)</span>) within provider <span class="math notranslate nohighlight">\(i\)</span> (<span class="math notranslate nohighlight">\(i = 1, \ldots, m\)</span>). Let <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span> be a <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of subject-level covariates. The linear fixed effects model is specified as:</p>
+<div class="math notranslate nohighlight">
+\[Y_{ij} = \gamma_i + \mathbf{X}_{ij}^\top\boldsymbol\beta + \epsilon_{ij}\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\gamma_i\)</span> is the fixed effect (intercept) for provider <span class="math notranslate nohighlight">\(i\)</span>. It represents the expected outcome for provider <span class="math notranslate nohighlight">\(i\)</span> when <span class="math notranslate nohighlight">\(\mathbf{X}_{ij} = \mathbf{0}\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span> is the <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of regression coefficients for the covariates. <span class="math notranslate nohighlight">\(\beta_k\)</span> represents the change in the expected outcome for a one-unit increase in the <span class="math notranslate nohighlight">\(k\)</span>-th covariate, holding the provider fixed.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\epsilon_{ij}\)</span> is the random error term for subject <span class="math notranslate nohighlight">\(j\)</span> in provider <span class="math notranslate nohighlight">\(i\)</span>, typically assumed to be independent and identically distributed with <span class="math notranslate nohighlight">\(E[\epsilon_{ij}] = 0\)</span> and <span class="math notranslate nohighlight">\(\text{Var}(\epsilon_{ij}) = \sigma^2\)</span>.</p></li>
+</ul>
+<p>The model aims to estimate <span class="math notranslate nohighlight">\(\boldsymbol{\gamma} = (\gamma_1, \dots, \gamma_m)^\top\)</span>, <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span>, and <span class="math notranslate nohighlight">\(\sigma^2\)</span>.</p>
+</section>
+<section id="parameter-estimation">
+<h3><a class="toc-backref" href="#id30" role="doc-backlink">2.2. Parameter Estimation</a><a class="headerlink" href="#parameter-estimation" title="Link to this heading"></a></h3>
+<p>The parameters are estimated using Ordinary Least Squares (OLS) by minimizing the sum of squared residuals:</p>
+<div class="math notranslate nohighlight">
+\[S(\boldsymbol{\gamma}, \boldsymbol{\beta}) = \sum_{i=1}^m \sum_{j=1}^{n_i} (Y_{ij} - \gamma_i - \mathbf{X}_{ij}^\top\boldsymbol\beta)^2\]</div>
+<p>This minimization can be performed efficiently using the within-group transformation (also known as demeaning or fixed effects transformation). Let <span class="math notranslate nohighlight">\(\bar{Y}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} Y_{ij}\)</span> and <span class="math notranslate nohighlight">\(\bar{\mathbf{X}}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} \mathbf{X}_{ij}\)</span> be the provider-specific means. Averaging the model equation within each provider <span class="math notranslate nohighlight">\(i\)</span> gives:</p>
+<div class="math notranslate nohighlight">
+\[\bar{Y}_i = \gamma_i + \bar{\mathbf{X}}_i^\top\boldsymbol\beta + \bar{\epsilon}_i\]</div>
+<p>Subtracting the mean equation from the original equation yields the within-group transformed model:</p>
+<div class="math notranslate nohighlight">
+\[(Y_{ij} - \bar{Y}_i) = (\mathbf{X}_{ij} - \bar{\mathbf{X}}_i)^\top\boldsymbol\beta + (\epsilon_{ij} - \bar{\epsilon}_i)\]</div>
+<div class="math notranslate nohighlight">
+\[\tilde{Y}_{ij} = \tilde{\mathbf{X}}_{ij}^\top\boldsymbol\beta + \tilde{\epsilon}_{ij}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\tilde{Y}_{ij}\)</span>, <span class="math notranslate nohighlight">\(\tilde{\mathbf{X}}_{ij}\)</span>, and <span class="math notranslate nohighlight">\(\tilde{\epsilon}_{ij}\)</span> represent the demeaned variables. Crucially, the provider fixed effect <span class="math notranslate nohighlight">\(\gamma_i\)</span> is eliminated by this transformation.</p>
+<p>The OLS estimator for <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span> is obtained by regressing <span class="math notranslate nohighlight">\(\tilde{Y}_{ij}\)</span> on <span class="math notranslate nohighlight">\(\tilde{\mathbf{X}}_{ij}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\boldsymbol\beta}_{FE} = \left( \sum_{i=1}^m \sum_{j=1}^{n_i} \tilde{\mathbf{X}}_{ij} \tilde{\mathbf{X}}_{ij}^\top \right)^{-1} \left( \sum_{i=1}^m \sum_{j=1}^{n_i} \tilde{\mathbf{X}}_{ij} \tilde{Y}_{ij} \right)\]</div>
+<p>This can be expressed using the projection matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_i = \mathbf{I}_{n_i} - \frac{1}{n_i}\mathbf{1}_{n_i}\mathbf{1}_{n_i}^\top\)</span>, which demeans data within group <span class="math notranslate nohighlight">\(i\)</span>. Let <span class="math notranslate nohighlight">\(\mathbf{Y}_i\)</span> and <span class="math notranslate nohighlight">\(\mathbf{X}_i\)</span> be the stacked outcome vector and covariate matrix for group <span class="math notranslate nohighlight">\(i\)</span>. Then <span class="math notranslate nohighlight">\(\tilde{\mathbf{Y}}_i = \mathbf{Q}_i \mathbf{Y}_i\)</span> and <span class="math notranslate nohighlight">\(\tilde{\mathbf{X}}_i = \mathbf{Q}_i \mathbf{X}_i\)</span>. The estimator becomes:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\boldsymbol\beta}_{FE} = \left( \sum_{i=1}^m \mathbf{X}_i^\top \mathbf{Q}_i \mathbf{X}_i \right)^{-1} \left( \sum_{i=1}^m \mathbf{X}_i^\top \mathbf{Q}_i \mathbf{Y}_i \right)\]</div>
+<p>Once <span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}_{FE}\)</span> is obtained, the fixed effects <span class="math notranslate nohighlight">\(\gamma_i\)</span> are estimated using the relationship derived from the mean equation:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\gamma}_i = \bar{Y}_i - \bar{\mathbf{X}}_i^\top\hat{\boldsymbol\beta}_{FE}\]</div>
+<p>The variance of the error term, <span class="math notranslate nohighlight">\(\sigma^2\)</span>, is estimated using the residuals from the full model, <span class="math notranslate nohighlight">\(e_{ij} = Y_{ij} - \hat{\gamma}_i - \mathbf{X}_{ij}^\top\hat{\boldsymbol\beta}_{FE}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\sigma}^2 = \frac{\sum_{i=1}^m \sum_{j=1}^{n_i} e_{ij}^2}{N - m - p}\]</div>
+<p>where <span class="math notranslate nohighlight">\(N = \sum n_i\)</span> is the total sample size. The denominator reflects the degrees of freedom used for estimating <span class="math notranslate nohighlight">\(m\)</span> fixed effects and <span class="math notranslate nohighlight">\(p\)</span> covariate coefficients.</p>
+<p>The variance-covariance matrix for <span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}_{FE}\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[\text{Var}(\hat{\boldsymbol\beta}_{FE}) = \hat{\sigma}^2 \left( \sum_{i=1}^m \mathbf{X}_i^\top \mathbf{Q}_i \mathbf{X}_i \right)^{-1}\]</div>
+<p>The variance for <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> is given by:</p>
+<div class="math notranslate nohighlight">
+\[\text{Var}(\hat{\gamma}_i) = \text{Var}(\bar{Y}_i - \bar{\mathbf{X}}_i^\top\hat{\boldsymbol\beta}_{FE}) = \text{Var}(\bar{\epsilon}_i - \bar{\mathbf{X}}_i^\top(\hat{\boldsymbol\beta}_{FE} - \boldsymbol\beta))\]</div>
+<div class="math notranslate nohighlight">
+\[\text{Var}(\hat{\gamma}_i) = \frac{\sigma^2}{n_i} + \bar{\mathbf{X}}_i^\top \text{Var}(\hat{\boldsymbol\beta}_{FE}) \bar{\mathbf{X}}_i\]</div>
+<p>The implementation (<code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.__init__</span></code>) provides two options via the <code class="docutils literal notranslate"><span class="pre">gamma_var_option</span></code> parameter for estimating the diagonal elements of <span class="math notranslate nohighlight">\(\text{Var}(\hat{\boldsymbol\gamma})\)</span>:</p>
+<ol class="arabic simple">
+<li><p><strong>``complete``:</strong> Uses the full formula above, <span class="math notranslate nohighlight">\(\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i} + \bar{\mathbf{X}}_i^\top \widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE}) \bar{\mathbf{X}}_i\)</span>, including the term involving <span class="math notranslate nohighlight">\(\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})\)</span>.</p></li>
+<li><p><strong>``simplified``:</strong> Uses only the first term, <span class="math notranslate nohighlight">\(\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i}\)</span>, ignoring the uncertainty in <span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}_{FE}\)</span>. This may be appropriate if <span class="math notranslate nohighlight">\(p\)</span> is small relative to <span class="math notranslate nohighlight">\(N\)</span> or if primary interest is in ranking rather than precise inference.</p></li>
+</ol>
+</section>
+<section id="standardized-measures-for-performance-comparison">
+<h3><a class="toc-backref" href="#id31" role="doc-backlink">2.3. Standardized Measures for Performance Comparison</a><a class="headerlink" href="#standardized-measures-for-performance-comparison" title="Link to this heading"></a></h3>
+<p>For linear models, standardized measures typically represent differences rather than ratios. They quantify how much a provider’s total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix.</p>
+<p>Let <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span> and <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\gamma}}\)</span> be the OLS estimates. Define a reference or baseline provider effect <span class="math notranslate nohighlight">\(\gamma_0\)</span> (e.g., median or mean of <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>, as specified by the <code class="docutils literal notranslate"><span class="pre">null</span></code> parameter in <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures</span></code>).</p>
+<p><strong>2.3.1. Indirect Standardization</strong></p>
+<p>Indirect standardization compares the observed total outcome for a provider to the expected total outcome if that provider performed at the baseline level <span class="math notranslate nohighlight">\(\gamma_0\)</span>, given its specific patient mix.</p>
+<ul>
+<li><p><strong>Observed Total Outcome for Provider i</strong> (<span class="math notranslate nohighlight">\(O_i\)</span>):
+The sum of actual outcomes for all <span class="math notranslate nohighlight">\(n_i\)</span> subjects in provider <span class="math notranslate nohighlight">\(i\)</span>. This corresponds to the <code class="docutils literal notranslate"><span class="pre">observed</span></code> column in the output DataFrame for indirect standardization.</p>
+<div class="math notranslate nohighlight">
+\[O_i = \sum_{j=1}^{n_i} Y_{ij}\]</div>
+</li>
+<li><p><strong>Expected Total Outcome for Provider i under Baseline</strong> (<span class="math notranslate nohighlight">\(E_i(\gamma_0)\)</span>):
+The sum of expected outcomes for provider <span class="math notranslate nohighlight">\(i\)</span>’s <span class="math notranslate nohighlight">\(n_i\)</span> subjects, if the provider effect was the baseline <span class="math notranslate nohighlight">\(\gamma_0\)</span>, adjusted for their specific covariates <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span>. This corresponds to the <code class="docutils literal notranslate"><span class="pre">expected</span></code> column in the output DataFrame for indirect standardization.</p>
+<div class="math notranslate nohighlight">
+\[E_i(\gamma_0) = \sum_{j=1}^{n_i} (\gamma_0 + \mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}})\]</div>
+</li>
+<li><p><strong>Indirect Standardized Difference for Provider i</strong> (<span class="math notranslate nohighlight">\(\text{ISDiff}_i\)</span>):
+The average difference between observed and expected outcomes for provider <span class="math notranslate nohighlight">\(i\)</span>. This is calculated as the total observed outcome minus the total expected outcome, divided by the number of subjects in the provider (<span class="math notranslate nohighlight">\(n_i\)</span>). This corresponds to the <code class="docutils literal notranslate"><span class="pre">indirect_difference</span></code> column in the output DataFrame.</p>
+<div class="math notranslate nohighlight">
+\[\text{ISDiff}_i = \frac{O_i - E_i(\gamma_0)}{n_i}\]</div>
+<p>This difference can also be expressed as the difference between the observed mean (<span class="math notranslate nohighlight">\(\bar{Y}_i = O_i / n_i\)</span>) and the expected mean for provider <span class="math notranslate nohighlight">\(i\)</span> under baseline effect <span class="math notranslate nohighlight">\(\gamma_0\)</span> (<span class="math notranslate nohighlight">\(\bar{E}_i(\gamma_0) = E_i(\gamma_0) / n_i\)</span>):</p>
+<div class="math notranslate nohighlight">
+\[\text{ISDiff}_i = \bar{Y}_i - (\gamma_0 + \bar{\mathbf{X}}_i^\top\hat{\boldsymbol{\beta}})\]</div>
+<p>where <span class="math notranslate nohighlight">\(\bar{\mathbf{X}}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} \mathbf{X}_{ij}\)</span> is the mean covariate vector for provider <span class="math notranslate nohighlight">\(i\)</span>.</p>
+</li>
+</ul>
+<p><strong>2.3.2. Direct Standardization</strong></p>
+<p>Direct standardization compares the expected total outcome if the <em>entire population</em> experienced provider <span class="math notranslate nohighlight">\(k\)</span>’s effect (<span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>) to the expected total outcome if the entire population experienced the baseline effect (<span class="math notranslate nohighlight">\(\gamma_0\)</span>).</p>
+<ul>
+<li><p><strong>Expected Total Outcome under Provider k’s Effect</strong> (<span class="math notranslate nohighlight">\(E^{(k)}\)</span>):
+The total expected outcome for the entire population if all subjects experienced provider <span class="math notranslate nohighlight">\(k\)</span>’s effect (<span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>), adjusted for their specific covariates.</p>
+<div class="math notranslate nohighlight">
+\[E^{(k)} = \sum_{i=1}^m \sum_{j=1}^{n_i} (\hat{\gamma}_k + \mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}})\]</div>
+</li>
+<li><p><strong>Expected Total Outcome under Baseline Effect</strong> (<span class="math notranslate nohighlight">\(E^{(0)}\)</span>):
+The total expected outcome for the entire population if all subjects experienced the baseline effect (<span class="math notranslate nohighlight">\(\gamma_0\)</span>), adjusted for their specific covariates.</p>
+<div class="math notranslate nohighlight">
+\[E^{(0)} = \sum_{i=1}^m \sum_{j=1}^{n_i} (\gamma_0 + \mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}})\]</div>
+</li>
+<li><p><strong>Direct Standardized Difference for Provider k</strong> (<span class="math notranslate nohighlight">\(\text{DSDiff}_k\)</span>):
+The average difference between the total expected outcomes under provider <span class="math notranslate nohighlight">\(k\)</span>’s effect and the baseline effect, divided by the total sample size (<span class="math notranslate nohighlight">\(N = \sum_{i=1}^m n_i\)</span>). This corresponds to the <code class="docutils literal notranslate"><span class="pre">direct_difference</span></code> column in the output DataFrame.</p>
+<div class="math notranslate nohighlight">
+\[\text{DSDiff}_k = \frac{E^{(k)} - E^{(0)}}{N}\]</div>
+<p>This difference can also be expressed as the difference between the expected mean outcome under provider <span class="math notranslate nohighlight">\(k\)</span>’s effect (<span class="math notranslate nohighlight">\(\bar{E}^{(k)} = E^{(k)} / N\)</span>) and the expected mean outcome under the baseline effect (<span class="math notranslate nohighlight">\(\bar{E}^{(0)} = E^{(0)} / N\)</span>):</p>
+<div class="math notranslate nohighlight">
+\[\text{DSDiff}_k = \hat{\gamma}_k - \gamma_0\]</div>
+</li>
+</ul>
+<p>Therefore, for linear fixed effect models, both indirect and direct standardized differences ultimately simplify to <span class="math notranslate nohighlight">\(\hat{\gamma}_i - \gamma_0\)</span> when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (<code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures</span></code>) calculates and returns these differences along with the observed and expected totals for each method.</p>
+</section>
+<section id="hypothesis-testing-for-provider-effects">
+<h3><a class="toc-backref" href="#id32" role="doc-backlink">2.4. Hypothesis Testing for Provider Effects</a><a class="headerlink" href="#hypothesis-testing-for-provider-effects" title="Link to this heading"></a></h3>
+<p>We test the null hypothesis <span class="math notranslate nohighlight">\(H_0: \gamma_i = \gamma_0\)</span> against an alternative <span class="math notranslate nohighlight">\(H_1\)</span>. Given the linear model assumptions and the estimation of <span class="math notranslate nohighlight">\(\sigma^2\)</span>, the natural test is a <strong>t-test</strong>, as implemented in <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.test</span></code>:</p>
+<div class="math notranslate nohighlight">
+\[T_i = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}_i)}\]</div>
+<p>Under <span class="math notranslate nohighlight">\(H_0\)</span>, the test statistic <span class="math notranslate nohighlight">\(T_i\)</span> follows a t-distribution with <span class="math notranslate nohighlight">\(N - m - p\)</span> degrees of freedom. P-values are calculated based on this distribution according to the specified <code class="docutils literal notranslate"><span class="pre">alternative</span></code> (‘two_sided’, ‘less’, or ‘greater’).</p>
+</section>
+<section id="confidence-intervals">
+<h3><a class="toc-backref" href="#id33" role="doc-backlink">2.5. Confidence Intervals</a><a class="headerlink" href="#confidence-intervals" title="Link to this heading"></a></h3>
+<p>Confidence intervals for <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span> and <span class="math notranslate nohighlight">\(\gamma_i\)</span> are constructed based on the t-distribution with <span class="math notranslate nohighlight">\(N-m-p\)</span> degrees of freedom.</p>
+<ul>
+<li><p><strong>For</strong> <span class="math notranslate nohighlight">\(\beta_k\)</span> (see <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.summary</span></code>):</p>
+<div class="math notranslate nohighlight">
+\[\hat{\beta}_k \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\beta}_k)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\widehat{\text{se}}(\hat{\beta}_k)\)</span> is the square root of the <span class="math notranslate nohighlight">\(k\)</span>-th diagonal element of <span class="math notranslate nohighlight">\(\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})\)</span>.</p>
+</li>
+<li><p><strong>For</strong> <span class="math notranslate nohighlight">\(\gamma_i\)</span> (see <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_confidence_intervals</span></code>):</p>
+<div class="math notranslate nohighlight">
+\[\hat{\gamma}_i \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\gamma}_i)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\widehat{\text{se}}(\hat{\gamma}_i)\)</span> is the square root of the estimated <span class="math notranslate nohighlight">\(\text{Var}(\hat{\gamma}_i)\)</span> (using either the ‘complete’ or ‘simplified’ option).</p>
+</li>
+<li><p><strong>For Standardized Differences</strong> (see <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_confidence_intervals</span></code>): Since both indirect and direct standardized differences simplify to <span class="math notranslate nohighlight">\(\hat{\gamma}_i - \gamma_0\)</span> (where <span class="math notranslate nohighlight">\(\gamma_0\)</span> is treated as a fixed value post-estimation for CI construction), the confidence interval for the difference is:</p>
+<div class="math notranslate nohighlight">
+\[(\hat{\gamma}_i - \gamma_0) \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\gamma}_i)\]</div>
+<p>This is equivalent to shifting the confidence interval for <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> by <span class="math notranslate nohighlight">\(-\gamma_0\)</span>.</p>
+</li>
+</ul>
+</section>
+<section id="visualization">
+<h3><a class="toc-backref" href="#id34" role="doc-backlink">2.6. Visualization</a><a class="headerlink" href="#visualization" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect.LinearFixedEffectModel</span></code> class provides several plotting methods:</p>
+<ul class="simple">
+<li><p><strong>Caterpillar Plot (``plot_provider_effects``, ``plot_standardized_measures``):</strong> Displays <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> (or the standardized difference <span class="math notranslate nohighlight">\(\hat{\gamma}_i - \gamma_0\)</span>) with its confidence interval for each provider, sorted by the estimate. Helps visualize relative performance and uncertainty.</p></li>
+<li><p><strong>Funnel Plot (``plot_funnel``):</strong> Plots the standardized difference (<span class="math notranslate nohighlight">\(\hat{\gamma}_i - \gamma_0\)</span>) against group size <span class="math notranslate nohighlight">\(n_i\)</span> (as a measure of precision). Control limits are drawn based on the overall model’s residual standard deviation <span class="math notranslate nohighlight">\(\hat{\sigma}\)</span>, typically as <span class="math notranslate nohighlight">\(target \pm z_{1-\alpha/2} \times \frac{\hat{\sigma}}{\sqrt{n_i}}\)</span>, forming a funnel shape.</p></li>
+<li><p><strong>Coefficient Forest Plot (``plot_coefficient_forest``):</strong> Displays estimates and confidence intervals for covariate coefficients <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span>.</p></li>
+<li><p><strong>Residual Plots (``plot_residuals``, ``plot_qq``):</strong> Standard diagnostic plots for model assessment, such as residuals vs. fitted values and Q-Q plot of residuals.</p></li>
+</ul>
+</section>
+</section>
+<section id="implementation-and-usage">
+<h2><a class="toc-backref" href="#id35" role="doc-backlink">3. Implementation and Usage</a><a class="headerlink" href="#implementation-and-usage" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code> class in <code class="docutils literal notranslate"><span class="pre">pprof_test.linear_fixed_effect</span></code> implements these methods.</p>
+<section id="initialization-and-fitting">
+<h3><a class="toc-backref" href="#id36" role="doc-backlink">3.1. Initialization and Fitting</a><a class="headerlink" href="#initialization-and-fitting" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Assuming data_df is a pandas DataFrame with columns:</span>
+<span class="c1"># &#39;ContinuousY&#39;, &#39;Covariate1&#39;, &#39;Covariate2&#39;, &#39;Covariate3&#39;, &#39;ProviderID&#39;</span>
+<span class="c1"># And n_total_samples, linear_pred_true are defined elsewhere for example data generation.</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pprof_test.linear_fixed_effect</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearFixedEffectModel</span> <span class="c1"># Adjust import path as needed</span>
+
+<span class="c1"># Example data generation (conceptual)</span>
+<span class="c1"># n_total_samples = 1000</span>
+<span class="c1"># data_df = pd.DataFrame({</span>
+<span class="c1">#     &#39;Covariate1&#39;: np.random.rand(n_total_samples),</span>
+<span class="c1">#     &#39;Covariate2&#39;: np.random.rand(n_total_samples),</span>
+<span class="c1">#     &#39;Covariate3&#39;: np.random.rand(n_total_samples),</span>
+<span class="c1">#     &#39;ProviderID&#39;: np.random.choice(range(10), n_total_samples)</span>
+<span class="c1"># })</span>
+<span class="c1"># linear_pred_true = data_df[[&#39;Covariate1&#39;, &#39;Covariate2&#39;, &#39;Covariate3&#39;]].sum(axis=1) # Example</span>
+<span class="c1"># data_df[&#39;ContinuousY&#39;] = linear_pred_true + np.random.normal(0, 1.0, n_total_samples)</span>
+
+<span class="c1"># Initialize and fit the model</span>
+<span class="n">lin_model</span> <span class="o">=</span> <span class="n">LinearFixedEffectModel</span><span class="p">(</span><span class="n">gamma_var_option</span><span class="o">=</span><span class="s1">&#39;complete&#39;</span><span class="p">)</span>
+
+<span class="n">lin_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">data_df</span><span class="p">,</span> <span class="c1"># DataFrame containing all necessary columns</span>
+    <span class="n">y_var</span><span class="o">=</span><span class="s1">&#39;ContinuousY&#39;</span><span class="p">,</span>
+    <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Covariate1&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate2&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate3&#39;</span><span class="p">],</span>
+    <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;ProviderID&#39;</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Linear FE model fitting complete.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="accessing-results">
+<h3><a class="toc-backref" href="#id37" role="doc-backlink">3.2. Accessing Results</a><a class="headerlink" href="#accessing-results" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Coefficients</span>
+<span class="n">betas_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;beta&#39;</span><span class="p">]</span>
+<span class="n">gammas_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Linear Beta coefficients: </span><span class="si">{</span><span class="n">betas_lin</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Variances and Sigma</span>
+<span class="n">var_beta_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;beta&#39;</span><span class="p">]</span> <span class="c1"># Variance-covariance matrix for beta</span>
+<span class="n">var_gamma_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span> <span class="c1"># Diagonal matrix of variances for gamma</span>
+<span class="n">sigma_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">sigma_</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Sigma (Residual SD): </span><span class="si">{</span><span class="n">sigma_lin</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear Beta SEs: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">var_beta_lin</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Fit statistics</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear AIC: </span><span class="si">{</span><span class="n">lin_model</span><span class="o">.</span><span class="n">aic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear BIC: </span><span class="si">{</span><span class="n">lin_model</span><span class="o">.</span><span class="n">bic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># For summary of covariate coefficients (including SE, p-value, CI)</span>
+<span class="c1"># summary_df = lin_model.summary()</span>
+<span class="c1"># print(&quot;\n--- Covariate Summary ---&quot;)</span>
+<span class="c1"># print(summary_df)</span>
+</pre></div>
+</div>
+</section>
+<section id="prediction">
+<h3><a class="toc-backref" href="#id38" role="doc-backlink">3.3. Prediction</a><a class="headerlink" href="#prediction" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Predict outcomes</span>
+<span class="c1"># Assuming data_df_new has the same structure for covariates and group IDs</span>
+<span class="n">linear_predictions</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">data_df</span><span class="p">,</span> <span class="c1"># Can be new data</span>
+    <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Covariate1&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate2&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate3&#39;</span><span class="p">],</span>
+    <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;ProviderID&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;First 5 linear predictions: </span><span class="si">{</span><span class="n">linear_predictions</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="standardized-measures-calculation">
+<h3><a class="toc-backref" href="#id39" role="doc-backlink">3.4. Standardized Measures Calculation</a><a class="headerlink" href="#standardized-measures-calculation" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate Indirect Standardized Difference vs median</span>
+<span class="n">sm_results_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">calculate_standardized_measures</span><span class="p">(</span>
+    <span class="n">stdz</span><span class="o">=</span><span class="s1">&#39;indirect&#39;</span><span class="p">,</span> <span class="c1"># Can be &#39;direct&#39; or [&#39;indirect&#39;, &#39;direct&#39;]</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span>    <span class="c1"># Can be &#39;mean&#39; or a float</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Linear Indirect Measures (vs Median) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sm_results_lin</span><span class="p">[</span><span class="s1">&#39;indirect&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span> <span class="c1"># Access the DataFrame for &#39;indirect&#39; results</span>
+
+<span class="c1"># If stdz=[&#39;indirect&#39;, &#39;direct&#39;]</span>
+<span class="c1"># sm_direct_lin = sm_results_lin[&#39;direct&#39;]</span>
+</pre></div>
+</div>
+</section>
+<section id="hypothesis-testing-test">
+<h3><a class="toc-backref" href="#id40" role="doc-backlink">3.5. Hypothesis Testing (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a><a class="headerlink" href="#hypothesis-testing-test" title="Link to this heading"></a></h3>
+<p>Test provider effects (<span class="math notranslate nohighlight">\(\gamma_i\)</span>) using t-tests.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test providers vs median gamma</span>
+<span class="n">test_results_lin</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">test</span><span class="p">(</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span>    <span class="c1"># Can be &#39;mean&#39; or a float</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span> <span class="c1"># Can be &#39;less&#39; or &#39;greater&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Linear Provider Test (vs Median) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">test_results_lin</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="confidence-interval-calculation-calculate-confidence-intervals">
+<h3><a class="toc-backref" href="#id41" role="doc-backlink">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a><a class="headerlink" href="#confidence-interval-calculation-calculate-confidence-intervals" title="Link to this heading"></a></h3>
+<p>Compute CIs for <span class="math notranslate nohighlight">\(\gamma_i\)</span> or standardized differences.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get 95% CIs for gamma</span>
+<span class="n">gamma_cis_lin_results</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">calculate_confidence_intervals</span><span class="p">(</span>
+    <span class="n">option</span><span class="o">=</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span> <span class="c1"># Must be two-sided for gamma option</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Linear Gamma CIs ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">gamma_cis_lin_results</span><span class="p">[</span><span class="s1">&#39;gamma_ci&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Get 95% CIs for the Indirect Standardized Difference</span>
+<span class="n">isd_cis_lin_results</span> <span class="o">=</span> <span class="n">lin_model</span><span class="o">.</span><span class="n">calculate_confidence_intervals</span><span class="p">(</span>
+    <span class="n">option</span><span class="o">=</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span>
+    <span class="n">stdz</span><span class="o">=</span><span class="s1">&#39;indirect&#39;</span><span class="p">,</span> <span class="c1"># Can be &#39;direct&#39; or [&#39;indirect&#39;, &#39;direct&#39;]</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span> <span class="c1"># Can be &#39;less&#39; or &#39;greater&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Linear Indirect Difference CIs (vs Median) ---&quot;</span><span class="p">)</span>
+<span class="c1"># Access the DataFrame using the key &#39;{stdz}_ci&#39;, e.g., &#39;indirect_ci&#39;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">isd_cis_lin_results</span><span class="p">[</span><span class="s1">&#39;indirect_ci&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3><a class="toc-backref" href="#id42" role="doc-backlink">3.7. Visualization</a><a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>Use plotting methods from the <code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code> instance.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Funnel plot of standardized difference vs group size</span>
+<span class="c1"># lin_model.plot_funnel(stdz=&#39;indirect&#39;, null=&#39;median&#39;, alpha=0.05, target=0.0)</span>
+
+<span class="c1"># Caterpillar plot for provider effects (gamma)</span>
+<span class="c1"># lin_model.plot_provider_effects(level=0.95, use_flags=True, null=&#39;median&#39;)</span>
+
+<span class="c1"># Caterpillar plot for Indirect Standardized Difference</span>
+<span class="c1"># lin_model.plot_standardized_measures(</span>
+<span class="c1">#     stdz=&#39;indirect&#39;, level=0.95, use_flags=True, null=&#39;median&#39;</span>
+<span class="c1"># )</span>
+
+<span class="c1"># Forest plot for covariate effects (beta)</span>
+<span class="c1"># lin_model.plot_coefficient_forest() # Defaults to 95% CI</span>
+
+<span class="c1"># Residual plot</span>
+<span class="c1"># lin_model.plot_residuals()</span>
+
+<span class="c1"># Q-Q plot of residuals</span>
+<span class="c1"># lin_model.plot_qq()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="discussion">
+<h2><a class="toc-backref" href="#id43" role="doc-backlink">4. Discussion</a><a class="headerlink" href="#discussion" title="Link to this heading"></a></h2>
+<p>The linear fixed effects model provides a straightforward and robust method for risk adjustment and provider profiling when the outcome variable is quantitative. Its primary advantage over random effects models lies in its robustness to the potential correlation between provider-specific effects and patient covariates, a common scenario in observational healthcare data. By estimating a separate intercept (<span class="math notranslate nohighlight">\(\gamma_i\)</span>) for each provider, the model effectively controls for all stable provider characteristics.</p>
+<p>The estimation via within-group demeaning is computationally efficient and yields unbiased and consistent estimates for the covariate effects (<span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span>) under standard OLS assumptions (conditional on the fixed effects). The provider effects (<span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>) are subsequently recovered.</p>
+<p>Standardized differences (both indirect and direct) simplify to <span class="math notranslate nohighlight">\(\hat{\gamma}_i - \gamma_0\)</span> in the linear case, providing an easily interpretable measure of a provider’s adjusted performance relative to a benchmark (<span class="math notranslate nohighlight">\(\gamma_0\)</span>) on the original outcome scale. Inference for these effects is based on standard t-tests and t-distribution confidence intervals, leveraging the estimated residual variance (<span class="math notranslate nohighlight">\(\hat{\sigma}^2\)</span>). The choice between the ‘complete’ and ‘simplified’ variance calculation for <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> (via <code class="docutils literal notranslate"><span class="pre">gamma_var_option</span></code>) depends on whether the uncertainty in <span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}\)</span> is considered relevant for the specific application.</p>
+<p><strong>Limitations:</strong></p>
+<ul class="simple">
+<li><p><strong>Incidental Parameters:</strong> Similar to the logistic case, if <span class="math notranslate nohighlight">\(n_i\)</span> is small and <span class="math notranslate nohighlight">\(m\)</span> is large, the estimates of <span class="math notranslate nohighlight">\(\gamma_i\)</span> can have large variances, although <span class="math notranslate nohighlight">\(\hat{\boldsymbol\beta}\)</span> remains consistent under weaker conditions than in non-linear models.</p></li>
+<li><p><strong>Provider-Level Covariates:</strong> The FE model cannot estimate the effects of variables that are constant within providers (e.g., hospital teaching status, ownership).</p></li>
+<li><p><strong>Assumption of Linearity:</strong> The model assumes a linear relationship between covariates and the outcome, conditional on the provider effect.</p></li>
+<li><p><strong>Homoscedasticity:</strong> Assumes constant error variance (<span class="math notranslate nohighlight">\(\sigma^2\)</span>) across all observations. Heteroscedasticity might require robust standard errors or alternative modeling approaches.</p></li>
+</ul>
+</section>
+<section id="conclusion">
+<h2><a class="toc-backref" href="#id44" role="doc-backlink">5. Conclusion</a><a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The linear fixed effects model, as implemented in the <code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code> class, offers a valuable tool for provider profiling with quantitative outcomes. It provides robust risk adjustment through provider-specific intercepts and facilitates performance comparisons using standardized differences. The implementation includes efficient estimation, standard inference procedures based on t-tests, and methods for calculating confidence intervals. When combined with appropriate visualization tools, it enables researchers and analysts to effectively evaluate and compare provider performance while accounting for patient case mix.</p>
+</section>
+<section id="references">
+<h2><a class="toc-backref" href="#id45" role="doc-backlink">References</a><a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id6">
+<div role="list" class="citation-list">
+<div class="citation" id="id7" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>David M. Shahian, Fred H. Edwards, Jeffrey P. Jacobs, Richard L. Prager, Sharon-Lise T. Normand, Cynthia M. Shewan, Sean M. O'Brien, Eric D. Peterson, and Frederick L. Grover. Public reporting of cardiac surgery performance: part 1–history, rationale, and challenges. <em>The Annals of Thoracic Surgery</em>, 92(4):S2–S11, 2011.</p>
+</div>
+<div class="citation" id="id8" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">2</a><span class="fn-bracket">]</span></span>
+<p>Harlan M. Krumholz, Yongfei Wang, Zhenqiu Lin, Kumar Dharmarajan, Leora I. Horwitz, Joseph S. Ross, Andrew H. Patterson, and Elizabeth E. Drye. An administrative claims measure suitable for profiling hospital performance based on 30-day all-cause readmission rates among patients with heart failure. <em>Circulation: Cardiovascular Quality and Outcomes</em>, 6(2):259–268, 2013.</p>
+</div>
+<div class="citation" id="id9" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">3</a><span class="fn-bracket">]</span></span>
+<p>Lisa I. Iezzoni, editor. <em>Risk adjustment for measuring healthcare outcomes</em>. Health Administration Press, 2001.</p>
+</div>
+<div class="citation" id="id10" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">4</a><span class="fn-bracket">]</span></span>
+<p>John M. Neuhaus, John D. Kalbfleisch, and Walter W. Hauck. A comparison of cluster-specific and population-averaged approaches for analyzing correlated binary data. <em>International Statistical Review</em>, 59(1):25–35, 1991.</p>
+</div>
+<div class="citation" id="id11" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">5</a><span class="fn-bracket">]</span></span>
+<p>John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. <em>Statistics in Biosciences</em>, 5(2):208–232, 2013.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="base_model.html" class="btn btn-neutral float-left" title="Base Model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="linear_random_effect_model.html" class="btn btn-neutral float-right" title="Linear Random Effect Modeling" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

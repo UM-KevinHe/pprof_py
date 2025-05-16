@@ -1,0 +1,12 @@
+﻿pprof\_py.base\_model
+=====================
+
+.. automodule:: pprof_py.base_model
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      BaseModel
+   

@@ -1,0 +1,587 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logistic Fixed Effect Modeling &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Logistic Random Effect Modeling" href="logistic_random_effect_model.html" />
+    <link rel="prev" title="Linear Random Effect Modeling" href="linear_random_effect_model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Logistic Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-logistic-fixed-effects-model">2.1. The Logistic Fixed Effects Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameter-estimation">2.2. Parameter Estimation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-for-provider-effects">2.4. Hypothesis Testing for Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prediction">3.3. Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hypothesis-testing-test">3.5. Hypothesis Testing (.test())</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (.calculate_confidence_intervals())</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#discussion">4. Discussion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#limitations-and-considerations"><strong>Limitations and Considerations</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#future-directions"><strong>Future Directions</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Logistic Fixed Effect Modeling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/logistic_fixed_effect_model.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="logistic-fixed-effect-modeling">
+<span id="logistic-fixed-effect-model"></span><h1>Logistic Fixed Effect Modeling<a class="headerlink" href="#logistic-fixed-effect-modeling" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id33">1. Introduction</a></p></li>
+<li><p><a class="reference internal" href="#methods" id="id34">2. Methods</a></p>
+<ul>
+<li><p><a class="reference internal" href="#the-logistic-fixed-effects-model" id="id35">2.1. The Logistic Fixed Effects Model</a></p></li>
+<li><p><a class="reference internal" href="#parameter-estimation" id="id36">2.2. Parameter Estimation</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-for-performance-comparison" id="id37">2.3. Standardized Measures for Performance Comparison</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-for-provider-effects" id="id38">2.4. Hypothesis Testing for Provider Effects</a></p></li>
+<li><p><a class="reference internal" href="#confidence-intervals" id="id39">2.5. Confidence Intervals</a></p></li>
+<li><p><a class="reference internal" href="#visualization" id="id40">2.6. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#implementation-and-usage" id="id41">3. Implementation and Usage</a></p>
+<ul>
+<li><p><a class="reference internal" href="#initialization-and-fitting" id="id42">3.1. Initialization and Fitting</a></p></li>
+<li><p><a class="reference internal" href="#accessing-results" id="id43">3.2. Accessing Results</a></p></li>
+<li><p><a class="reference internal" href="#prediction" id="id44">3.3. Prediction</a></p></li>
+<li><p><a class="reference internal" href="#standardized-measures-calculation" id="id45">3.4. Standardized Measures Calculation</a></p></li>
+<li><p><a class="reference internal" href="#hypothesis-testing-test" id="id46">3.5. Hypothesis Testing (.test())</a></p></li>
+<li><p><a class="reference internal" href="#confidence-interval-calculation-calculate-confidence-intervals" id="id47">3.6. Confidence Interval Calculation (.calculate_confidence_intervals())</a></p></li>
+<li><p><a class="reference internal" href="#id8" id="id48">3.7. Visualization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#discussion" id="id49">4. Discussion</a></p>
+<ul>
+<li><p><a class="reference internal" href="#limitations-and-considerations" id="id50"><strong>Limitations and Considerations</strong></a></p></li>
+<li><p><a class="reference internal" href="#future-directions" id="id51"><strong>Future Directions</strong></a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#conclusion" id="id52">5. Conclusion</a></p></li>
+<li><p><a class="reference internal" href="#references" id="id53">References</a></p></li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id33" role="doc-backlink">1. Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Healthcare provider profiling, the process of evaluating and comparing the performance of healthcare entities like hospitals, clinics, or individual practitioners, is crucial for improving quality of care, managing costs, and informing patient choice <span id="id1">[<a class="reference internal" href="#id13" title="David M. Shahian, Fred H. Edwards, Jeffrey P. Jacobs, Richard L. Prager, Sharon-Lise T. Normand, Cynthia M. Shewan, Sean M. O'Brien, Eric D. Peterson, and Frederick L. Grover. Public reporting of cardiac surgery performance: part 1–history, rationale, and challenges. The Annals of Thoracic Surgery, 92(4):S2–S11, 2011.">Shahian <em>et al.</em>, 2011</a>, <a class="reference internal" href="#id14" title="Harlan M. Krumholz, Yongfei Wang, Zhenqiu Lin, Kumar Dharmarajan, Leora I. Horwitz, Joseph S. Ross, Andrew H. Patterson, and Elizabeth E. Drye. An administrative claims measure suitable for profiling hospital performance based on 30-day all-cause readmission rates among patients with heart failure. Circulation: Cardiovascular Quality and Outcomes, 6(2):259–268, 2013.">Krumholz <em>et al.</em>, 2013</a>]</span>. Performance is often assessed using patient outcomes such as mortality, readmission, or complication rates. However, providers serve different patient populations, necessitating robust risk adjustment methods to account for variations in patient characteristics (case mix) before making fair comparisons <span id="id2">[<a class="reference internal" href="#id15" title="Lisa I. Iezzoni, editor. Risk adjustment for measuring healthcare outcomes. Health Administration Press, 2001.">Iezzoni, 2001</a>]</span>.</p>
+<p>Generalized linear models (GLMs), particularly logistic regression for binary outcomes, are commonly employed for risk adjustment. When dealing with data clustered within providers, incorporating provider-specific effects is essential. Two primary approaches exist: random effects (RE) models and fixed effects (FE) models. RE models assume provider effects are random variables drawn from a common distribution, allowing for “borrowing strength” across providers and potentially increasing efficiency, but rely on the strong assumption that provider effects are uncorrelated with patient covariates <span id="id3">[<a class="reference internal" href="#id16" title="John M. Neuhaus, John D. Kalbfleisch, and Walter W. Hauck. A comparison of cluster-specific and population-averaged approaches for analyzing correlated binary data. International Statistical Review, 59(1):25–35, 1991.">Neuhaus <em>et al.</em>, 1991</a>]</span>. Violation of this assumption, which is common in observational healthcare data, can lead to biased estimates <span id="id4">[<a class="reference internal" href="#id17" title="John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. Statistics in Biosciences, 5(2):208–232, 2013.">Kalbfleisch and Wolfe, 2013</a>]</span>.</p>
+<p>Fixed effects models, conversely, treat each provider’s effect as a distinct, unknown parameter to be estimated. This approach is robust to the correlation between provider effects and covariates, making it preferable when unbiased estimation of individual provider performance, especially for potentially outlying providers, is the primary goal <span id="id5">[<a class="reference internal" href="#id24" title="Kevin He, Alan M. Zaslavsky, Mary Beth Landrum, John Z. Ayanian, and Arnold M. Epstein. Evaluating hospital readmission rates in medicare: a statistical and policy synthesis. Statistics in Medicine, 32(22):3849–3862, 2013.">He <em>et al.</em>, 2013</a>]</span>. However, estimating FE models with a large number of providers (<span class="math notranslate nohighlight">\(m\)</span>) poses significant computational challenges for standard GLM algorithms due to the high dimensionality (<span class="math notranslate nohighlight">\(m+p\)</span>, where <span class="math notranslate nohighlight">\(p\)</span> is the number of covariates) of the parameter space <span id="id6">[<a class="reference internal" href="#id23" title="William H. Greene. The behaviour of the maximum likelihood estimator of limited dependent variable models in the presence of fixed effects. Econometric Journal, 7(1):98–119, 2004.">Greene, 2004</a>]</span>.</p>
+<p>This paper details the statistical methodology implemented in our software for fitting logistic fixed effect models efficiently, even with a large number of providers. We focus on:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The logistic fixed effects model formulation.</p></li>
+<li><p>Computationally efficient estimation algorithms adapted from methods like SerBIN (wu2022improving).</p></li>
+<li><p>Calculation of standardized measures (Indirect and Direct Standardization) for performance comparison.</p></li>
+<li><p>Robust hypothesis testing procedures (Wald, Score, Exact Poisson-Binomial, Exact Bootstrap) for identifying providers with performance significantly different from a benchmark.</p></li>
+<li><p>Construction of corresponding confidence intervals for provider effects and standardized measures.</p></li>
+<li><p>Visualization tools for interpreting results.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="methods">
+<h2><a class="toc-backref" href="#id34" role="doc-backlink">2. Methods</a><a class="headerlink" href="#methods" title="Link to this heading"></a></h2>
+<section id="the-logistic-fixed-effects-model">
+<h3><a class="toc-backref" href="#id35" role="doc-backlink">2.1. The Logistic Fixed Effects Model</a><a class="headerlink" href="#the-logistic-fixed-effects-model" title="Link to this heading"></a></h3>
+<p>Let <span class="math notranslate nohighlight">\(Y_{ij}\)</span> be the binary outcome variable (e.g., 1 for mortality, 0 for survival) for subject <span class="math notranslate nohighlight">\(j\)</span> (<span class="math notranslate nohighlight">\(j = 1, \ldots, n_i\)</span>) within provider <span class="math notranslate nohighlight">\(i\)</span> (<span class="math notranslate nohighlight">\(i = 1, \ldots, m\)</span>). Let <span class="math notranslate nohighlight">\(\mathbf{X}_{ij}\)</span> be a <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of subject-level covariates. The logistic fixed effects model assumes:</p>
+<div class="math notranslate nohighlight">
+\[Y_{ij} | \mathbf{X}_{ij}, \gamma_i \sim \text{Bernoulli}(p_{ij})\]</div>
+<p>where the probability <span class="math notranslate nohighlight">\(p_{ij}\)</span> is modeled via the logit link function:</p>
+<div class="math notranslate nohighlight">
+\[\text{logit}(p_{ij}) = \log\left(\frac{p_{ij}}{1-p_{ij}}\right) = \eta_{ij} = \mathbf{X}_{ij}^\top\boldsymbol\beta + \gamma_i\]</div>
+<p>Here, <span class="math notranslate nohighlight">\(\boldsymbol\beta\)</span> is the <span class="math notranslate nohighlight">\(p \times 1\)</span> vector of regression coefficients for the covariates, representing the change in the log-odds of the outcome associated with a one-unit increase in the corresponding covariate, conditional on the provider. <span class="math notranslate nohighlight">\(\gamma_i\)</span> is the fixed effect for provider <span class="math notranslate nohighlight">\(i\)</span>, representing the baseline log-odds for that provider when <span class="math notranslate nohighlight">\(\mathbf{X}_{ij} = \mathbf{0}\)</span>. The full parameter vector is <span class="math notranslate nohighlight">\(\boldsymbol{\theta} = (\boldsymbol{\gamma}^\top, \boldsymbol{\beta}^\top)^\top\)</span>, where <span class="math notranslate nohighlight">\(\boldsymbol{\gamma} = (\gamma_1, \dots, \gamma_m)^\top\)</span>.</p>
+<p>The likelihood function for the observed data <span class="math notranslate nohighlight">\(D = \{(Y_{ij}, \mathbf{X}_{ij})\}_{i=1}^{m}, {j=1}^{n_i}\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[L(\boldsymbol{\theta}; D) = \prod_{i=1}^m \prod_{j=1}^{n_i} p_{ij}^{Y_{ij}} (1-p_{ij})^{1-Y_{ij}}\]</div>
+<p>The log-likelihood function is:</p>
+<div class="math notranslate nohighlight">
+\[\ell(\boldsymbol{\theta}; D) = \sum_{i=1}^m \sum_{j=1}^{n_i} \left[ Y_{ij} \eta_{ij} - \log(1 + e^{\eta_{ij}}) \right]\]</div>
+<div class="math notranslate nohighlight">
+\[\ell(\boldsymbol{\theta}; D) = \sum_{i=1}^m \sum_{j=1}^{n_i} \left[ Y_{ij} (\mathbf{X}_{ij}^\top\boldsymbol\beta + \gamma_i) - \log(1 + e^{\mathbf{X}_{ij}^\top\boldsymbol\beta + \gamma_i}) \right]\]</div>
+<p>Maximum likelihood estimation (MLE) involves finding <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\theta}}\)</span> that maximizes <span class="math notranslate nohighlight">\(\ell(\boldsymbol{\theta}; D)\)</span>.</p>
+</section>
+<section id="parameter-estimation">
+<h3><a class="toc-backref" href="#id36" role="doc-backlink">2.2. Parameter Estimation</a><a class="headerlink" href="#parameter-estimation" title="Link to this heading"></a></h3>
+<p>Maximizing the log-likelihood typically involves iterative methods like Newton-Raphson or Fisher Scoring. The update step is given by:</p>
+<div class="math notranslate nohighlight">
+\[\boldsymbol{\theta}^{(k+1)} = \boldsymbol{\theta}^{(k)} + [I(\boldsymbol{\theta}^{(k)})]^{-1} U(\boldsymbol{\theta}^{(k)})\]</div>
+<p>where <span class="math notranslate nohighlight">\(U(\boldsymbol{\theta}) = \frac{\partial \ell}{\partial \boldsymbol{\theta}}\)</span> is the score vector and <span class="math notranslate nohighlight">\(I(\boldsymbol{\theta}) = -E\left[\frac{\partial^2 \ell}{\partial \boldsymbol{\theta} \partial \boldsymbol{\theta}^\top}\right]\)</span> is the Fisher information matrix.</p>
+<p>The components of the score vector are:</p>
+<div class="math notranslate nohighlight">
+\[U(\gamma_i) = \frac{\partial \ell}{\partial \gamma_i} = \sum_{j=1}^{n_i} (Y_{ij} - p_{ij})\]</div>
+<div class="math notranslate nohighlight">
+\[U(\beta_k) = \frac{\partial \ell}{\partial \beta_k} = \sum_{i=1}^m \sum_{j=1}^{n_i} X_{ijk} (Y_{ij} - p_{ij})\]</div>
+<p>The Fisher information matrix <span class="math notranslate nohighlight">\(I(\boldsymbol{\theta})\)</span> has a block structure:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}I(\boldsymbol{\theta}) = \begin{pmatrix} I_{\gamma\gamma} &amp; I_{\gamma\beta} \\ I_{\beta\gamma} &amp; I_{\beta\beta} \end{pmatrix}\end{split}\]</div>
+<p>where</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(I_{\gamma\gamma}\)</span> is an <span class="math notranslate nohighlight">\(m \times m\)</span> diagonal matrix with diagonal elements <span class="math notranslate nohighlight">\([I_{\gamma\gamma}]_{ii} = \sum_{j=1}^{n_i} w_{ij} = \sum_{j=1}^{n_i} p_{ij}(1-p_{ij})\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(I_{\beta\beta}\)</span> is a <span class="math notranslate nohighlight">\(p \times p\)</span> matrix with elements <span class="math notranslate nohighlight">\([I_{\beta\beta}]_{kl} = \sum_{i=1}^m \sum_{j=1}^{n_i} X_{ijk} X_{ijl} w_{ij}\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(I_{\gamma\beta} = I_{\beta\gamma}^\top\)</span> is an <span class="math notranslate nohighlight">\(m \times p\)</span> matrix with elements <span class="math notranslate nohighlight">\([I_{\gamma\beta}]_{ik} = \sum_{j=1}^{n_i} X_{ijk} w_{ij}\)</span>.</p></li>
+</ul>
+<p>The key challenge is inverting <span class="math notranslate nohighlight">\(I(\boldsymbol{\theta})\)</span> when <span class="math notranslate nohighlight">\(m\)</span> is large. The SerBIN approach <span id="id7">[<a class="reference internal" href="#id28" title="Menggang Wu, Kevin He, George Michailidis, and Jian Kang. Improving estimation efficiency for fixed effects models via serbin. Statistics in Medicine, 41(18):3546–3560, 2022.">Wu <em>et al.</em>, 2022</a>]</span> leverages the fact that <span class="math notranslate nohighlight">\(I_{\gamma\gamma}\)</span> is diagonal and uses the partitioned inverse formula involving the Schur complement <span class="math notranslate nohighlight">\(S = I_{\beta\beta} - I_{\beta\gamma} I_{\gamma\gamma}^{-1} I_{\gamma\beta}\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}[I(\boldsymbol{\theta})]^{-1} = \begin{pmatrix} I_{\gamma\gamma}^{-1} + I_{\gamma\gamma}^{-1} I_{\gamma\beta} S^{-1} I_{\beta\gamma} I_{\gamma\gamma}^{-1} &amp; -I_{\gamma\gamma}^{-1} I_{\gamma\beta} S^{-1} \\ -S^{-1} I_{\beta\gamma} I_{\gamma\gamma}^{-1} &amp; S^{-1} \end{pmatrix}\end{split}\]</div>
+<p>This form is computationally advantageous because it requires inverting the diagonal <span class="math notranslate nohighlight">\(I_{\gamma\gamma}\)</span> (trivial) and the <span class="math notranslate nohighlight">\(p \times p\)</span> matrix <span class="math notranslate nohighlight">\(S\)</span>. The <code class="docutils literal notranslate"><span class="pre">SerbinAlgorithm</span></code> implemented in our package uses this structure for efficient updates. The <code class="docutils literal notranslate"><span class="pre">BanAlgorithm</span></code> employs an alternating optimization strategy, updating <span class="math notranslate nohighlight">\(\boldsymbol{\gamma}\)</span> holding <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> fixed, and then updating <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> holding <span class="math notranslate nohighlight">\(\boldsymbol{\gamma}\)</span> fixed, iteratively.</p>
+<p>To prevent numerical instability, particularly for providers with few observations or where separation occurs (all <span class="math notranslate nohighlight">\(Y_{ij}=0\)</span> or all <span class="math notranslate nohighlight">\(Y_{ij}=1\)</span>), the iterative updates for <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> are often constrained within a plausible range, such as <span class="math notranslate nohighlight">\(\hat{\gamma}_{\text{median}} \pm B\)</span>, where <span class="math notranslate nohighlight">\(B\)</span> is a predefined bound (e.g., 10). The asymptotic variance-covariance matrix of the estimators is given by the inverse of the Fisher information matrix evaluated at the MLEs, <span class="math notranslate nohighlight">\([I(\hat{\boldsymbol{\theta}})]^{-1}\)</span>. The diagonal elements corresponding to <span class="math notranslate nohighlight">\(\gamma_i\)</span> provide <span class="math notranslate nohighlight">\(\text{Var}(\hat{\gamma}_i)\)</span>.</p>
+</section>
+<section id="standardized-measures-for-performance-comparison">
+<h3><a class="toc-backref" href="#id37" role="doc-backlink">2.3. Standardized Measures for Performance Comparison</a><a class="headerlink" href="#standardized-measures-for-performance-comparison" title="Link to this heading"></a></h3>
+<p>Raw provider effects (<span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>) are adjusted for patient covariates but are on the log-odds scale and depend on the specific patient mix within each provider. Standardized measures are often preferred for comparing providers, as they adjust for case mix and provide a more interpretable metric relative to a benchmark.</p>
+<p>Let <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span> and <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\gamma}}\)</span> be the MLEs. Define a reference or baseline provider effect <span class="math notranslate nohighlight">\(\gamma_0\)</span>. Common choices for <span class="math notranslate nohighlight">\(\gamma_0\)</span> include the median or (weighted) mean of the estimated <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>.</p>
+<p><strong>2.3.1. Indirect Standardization</strong></p>
+<p>Indirect standardization compares the observed number of events in a provider to the number expected if that provider’s patients experienced the outcome probability associated with the baseline effect <span class="math notranslate nohighlight">\(\gamma_0\)</span>, given their specific covariates.</p>
+<ul>
+<li><p><strong>Observed Events</strong>  (<span class="math notranslate nohighlight">\(O_i\)</span>):<span class="math notranslate nohighlight">\(O_i = \sum_{j=1}^{n_i} Y_{ij}\)</span></p></li>
+<li><p><strong>Expected Events</strong> (<span class="math notranslate nohighlight">\(E_i\)</span>): The expected count under the null/baseline effect <span class="math notranslate nohighlight">\(\gamma_0\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[E_i(\gamma_0) = \sum_{j=1}^{n_i} P(Y_{ij}=1 | \mathbf{X}_{ij}, \gamma_0, \hat{\boldsymbol{\beta}}) = \sum_{j=1}^{n_i} \frac{e^{\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \gamma_0}}{1 + e^{\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \gamma_0}}\]</div>
+</li>
+<li><p><strong>Indirect Standardized Ratio (ISR):</strong></p>
+<div class="math notranslate nohighlight">
+\[\text{ISR}_i = \frac{O_i}{E_i(\gamma_0)}\]</div>
+<p>An ISR &gt; 1 indicates more events were observed than expected under the baseline performance level, while ISR &lt; 1 indicates fewer events were observed.</p>
+</li>
+<li><p><strong>Indirect Standardized Rate:</strong> The ISR can be scaled by the overall population event rate (<span class="math notranslate nohighlight">\(\bar{Y} = (\sum O_i) / (\sum n_i)\)</span>) to get an adjusted rate.</p>
+<div class="math notranslate nohighlight">
+\[\text{Indirect Rate}_i = \text{ISR}_i \times \bar{Y} \times 100\%\]</div>
+<p>This represents the event rate provider <span class="math notranslate nohighlight">\(i\)</span> would be expected to have if it performed like the baseline, applied to its specific patient mix, and then scaled by the overall rate. <em>Note: This rate is typically clipped to [0, 100].</em></p>
+</li>
+</ul>
+<p><strong>2.3.2. Direct Standardization</strong></p>
+<p>Direct standardization calculates the expected number of events if the <em>entire</em> population had the risk profile associated with a specific provider <span class="math notranslate nohighlight">\(k\)</span>’s estimated effect <span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>.</p>
+<ul>
+<li><p><strong>Total Observed Events</strong> (<span class="math notranslate nohighlight">\(O\)</span>): <span class="math notranslate nohighlight">\(O = \sum_{i=1}^m O_i = \sum_{i=1}^m \sum_{j=1}^{n_i} Y_{ij}\)</span></p></li>
+<li><p><strong>Expected Events under Provider</strong> <span class="math notranslate nohighlight">\(k\)</span>’s Effect (<span class="math notranslate nohighlight">\(E^{(k)}\)</span>):</p>
+<div class="math notranslate nohighlight">
+\[E^{(k)} = \sum_{i=1}^m \sum_{j=1}^{n_i} P(Y_{ij}=1 | \mathbf{X}_{ij}, \hat{\gamma}_k, \hat{\boldsymbol{\beta}}) = \sum_{i=1}^m \sum_{j=1}^{n_i} \frac{e^{\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\gamma}_k}}{1 + e^{\mathbf{X}_{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\gamma}_k}}\]</div>
+</li>
+<li><p><strong>Direct Standardized Ratio (DSR):</strong></p>
+<div class="math notranslate nohighlight">
+\[\text{DSR}_k = \frac{E^{(k)}}{O}\]</div>
+<p>A DSR &gt; 1 suggests that if the whole population experienced provider <span class="math notranslate nohighlight">\(k\)</span>’s specific effect, more events would occur than were actually observed overall.</p>
+</li>
+<li><p><strong>Direct Standardized Rate:</strong></p>
+<div class="math notranslate nohighlight">
+\[\text{Direct Rate}_k = \text{DSR}_k \times \bar{Y} \times 100\%\]</div>
+<p>This represents the overall event rate expected if the entire population was subject to provider <span class="math notranslate nohighlight">\(k\)</span>’s specific effect level.</p>
+</li>
+</ul>
+</section>
+<section id="hypothesis-testing-for-provider-effects">
+<h3><a class="toc-backref" href="#id38" role="doc-backlink">2.4. Hypothesis Testing for Provider Effects</a><a class="headerlink" href="#hypothesis-testing-for-provider-effects" title="Link to this heading"></a></h3>
+<p>To formally assess whether a provider’s performance is significantly different from a benchmark, we test the null hypothesis <span class="math notranslate nohighlight">\(H_0: \gamma_i = \gamma_0\)</span> against an alternative <span class="math notranslate nohighlight">\(H_1\)</span> (e.g., <span class="math notranslate nohighlight">\(\gamma_i \neq \gamma_0\)</span>, <span class="math notranslate nohighlight">\(\gamma_i &gt; \gamma_0\)</span>, or <span class="math notranslate nohighlight">\(\gamma_i &lt; \gamma_0\)</span>). Several test methods are implemented:</p>
+<ul>
+<li><p><strong>Wald Test:</strong> This test relies on the asymptotic normality of the MLE <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>. The test statistic is:</p>
+<div class="math notranslate nohighlight">
+\[T_W = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}_i)}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\widehat{\text{se}}(\hat{\gamma}_i)\)</span> is the estimated standard error obtained from the square root of the corresponding diagonal element of the inverse Fisher information matrix <span class="math notranslate nohighlight">\([I(\hat{\boldsymbol{\theta}})]^{-1}\)</span>. Under <span class="math notranslate nohighlight">\(H_0\)</span>, <span class="math notranslate nohighlight">\(T_W\)</span> asymptotically follows a standard Normal distribution, or often approximated by a t-distribution with <span class="math notranslate nohighlight">\(N - m - p\)</span> degrees of freedom (<span class="math notranslate nohighlight">\(N = \sum n_i\)</span>) in practice.</p>
+<ul class="simple">
+<li><p><em>Caveat:</em> This test can be unreliable for providers where <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span> is poorly estimated (e.g., small <span class="math notranslate nohighlight">\(n_i\)</span>) or infinite (due to separation), as the standard error estimate may be inaccurate or zero.</p></li>
+</ul>
+</li>
+<li><p><strong>Score Test (Modified):</strong> This test evaluates the score function <span class="math notranslate nohighlight">\(U(\gamma_i)\)</span> at the null value <span class="math notranslate nohighlight">\(\gamma_0\)</span>, using the MLE <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span> from the full model. The statistic is based on the standardized score under the null:</p>
+<div class="math notranslate nohighlight">
+\[T_S = \frac{U(\gamma_i)|_{\gamma_i=\gamma_0, \boldsymbol\beta=\hat{\boldsymbol{\beta}}}}{{\sqrt{I_{\gamma\gamma, ii}|_{\gamma_i=\gamma_0, \boldsymbol\beta=\hat{\boldsymbol{\beta}}}}}} = \frac{\sum_{j=1}^{n_i} (Y_{ij} - p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}}))}{\sqrt{\sum_{j=1}^{n_i} p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}})(1-p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}}))}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}})\)</span> is the probability calculated under <span class="math notranslate nohighlight">\(H_0\)</span>. Under <span class="math notranslate nohighlight">\(H_0\)</span>, <span class="math notranslate nohighlight">\(T_S\)</span> asymptotically follows a standard Normal distribution. This “modified” version avoids refitting the model under the restriction <span class="math notranslate nohighlight">\(\gamma_i = \gamma_0\)</span>.</p>
+</li>
+<li><p><strong>Exact Poisson-Binomial Test:</strong> This test leverages the exact distribution of the observed count <span class="math notranslate nohighlight">\(O_i = \sum_{j=1}^{n_i} Y_{ij}\)</span> under the null hypothesis <span class="math notranslate nohighlight">\(H_0: \gamma_i = \gamma_0\)</span>. Conditional on the covariates <span class="math notranslate nohighlight">\(\mathbf{X}_{i1}, \dots, \mathbf{X}_{in_i}\)</span> and <span class="math notranslate nohighlight">\(\hat{\boldsymbol{\beta}}\)</span>, the <span class="math notranslate nohighlight">\(Y_{ij}\)</span> are independent Bernoulli trials with potentially different success probabilities <span class="math notranslate nohighlight">\(p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}})\)</span>. Therefore, the sum <span class="math notranslate nohighlight">\(O_i\)</span> follows a Poisson-Binomial distribution. The p-value is calculated by summing the probabilities of outcomes as extreme or more extreme than the observed <span class="math notranslate nohighlight">\(O_i\)</span> under this distribution:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(H_1: \gamma_i &gt; \gamma_0\)</span>: <span class="math notranslate nohighlight">\(P(S \ge O_i | H_0)\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(H_1: \gamma_i &lt; \gamma_0\)</span>: <span class="math notranslate nohighlight">\(P(S \le O_i | H_0)\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(H_1: \gamma_i \neq \gamma_0\)</span>: <span class="math notranslate nohighlight">\(2 \times \min(P(S \ge O_i | H_0), P(S \le O_i | H_0))\)</span> (or similar definition for two-sided exact tests).</p></li>
+</ul>
+<p>The implementation uses efficient algorithms (e.g., FFT-based methods available in libraries like <code class="docutils literal notranslate"><span class="pre">poibin</span></code>) to compute the Poisson-Binomial PMF/CDF. This test is preferred when asymptotic approximations may be poor.</p>
+</li>
+<li><p><strong>Exact Bootstrap Test:</strong> This provides an alternative exact test by simulating the null distribution.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>For a large number of bootstrap replicates <span class="math notranslate nohighlight">\(B\)</span> (e.g., 10,000):
+a. For each subject <span class="math notranslate nohighlight">\(j\)</span> in provider <span class="math notranslate nohighlight">\(i\)</span>, simulate an outcome <span class="math notranslate nohighlight">\(Y_{ij}^{(b)} \sim \text{Bernoulli}(p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}}))\)</span>.
+b. Calculate the simulated sum <span class="math notranslate nohighlight">\(O_i^{(b)} = \sum_{j=1}^{n_i} Y_{ij}^{(b)}\)</span>.</p></li>
+<li><p>The p-value is estimated as the proportion of simulated sums <span class="math notranslate nohighlight">\(O_i^{(b)}\)</span> that are as extreme or more extreme than the actually observed sum <span class="math notranslate nohighlight">\(O_i\)</span>, according to the alternative hypothesis. For example, for <span class="math notranslate nohighlight">\(H_1: \gamma_i &gt; \gamma_0\)</span>, the p-value is estimated by <span class="math notranslate nohighlight">\((\sum_{b=1}^B \mathbb{I}(O_i^{(b)} \ge O_i)) / B\)</span>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="confidence-intervals">
+<h3><a class="toc-backref" href="#id39" role="doc-backlink">2.5. Confidence Intervals</a><a class="headerlink" href="#confidence-intervals" title="Link to this heading"></a></h3>
+<p>Confidence intervals provide a range of plausible values for the estimated parameters.</p>
+<p><strong>2.5.1. Confidence Intervals for Provider Effects</strong> (<span class="math notranslate nohighlight">\(\gamma_i\)</span>)</p>
+<ul>
+<li><p><strong>Wald Interval:</strong> Based on the asymptotic normality of <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\hat{\gamma}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\gamma}_i)\]</div>
+<p>where <span class="math notranslate nohighlight">\(z_{1-\alpha/2}\)</span> is the <span class="math notranslate nohighlight">\((1-\alpha/2)\)</span> quantile of the standard Normal distribution (or a t-distribution quantile). This is computationally simple but shares the limitations of the Wald test.</p>
+</li>
+<li><p><strong>Score Interval:</strong> Obtained by inverting the score test. It finds the set of <span class="math notranslate nohighlight">\(\gamma_0\)</span> values for which the score test statistic <span class="math notranslate nohighlight">\(T_S\)</span> falls within the acceptance region <span class="math notranslate nohighlight">\([-z_{1-\alpha/2}, z_{1-\alpha/2}]\)</span>. This involves numerically solving equations like <span class="math notranslate nohighlight">\(T_S(\gamma_0) = \pm z_{1-\alpha/2}\)</span> for <span class="math notranslate nohighlight">\(\gamma_0\)</span>.</p></li>
+<li><p><strong>Exact (Poisson-Binomial) Interval:</strong> Found by inverting the exact Poisson-Binomial test (analogous to the Clopper-Pearson interval for a binomial proportion). It identifies the range of <span class="math notranslate nohighlight">\(\gamma_0\)</span> values such that the observed <span class="math notranslate nohighlight">\(O_i\)</span> is not statistically significant at level <span class="math notranslate nohighlight">\(\alpha\)</span>. For a two-sided interval <span class="math notranslate nohighlight">\([\gamma_{L}, \gamma_{U}]\)</span>, <span class="math notranslate nohighlight">\(\gamma_L\)</span> is found such that <span class="math notranslate nohighlight">\(P(S \ge O_i | \gamma_L, \hat{\boldsymbol{\beta}}) = \alpha/2\)</span>, and <span class="math notranslate nohighlight">\(\gamma_U\)</span> is found such that <span class="math notranslate nohighlight">\(P(S \le O_i | \gamma_U, \hat{\boldsymbol{\beta}}) = \alpha/2\)</span>. This requires root-finding algorithms.</p></li>
+</ul>
+<p><strong>2.5.2. Confidence Intervals for Standardized Measures</strong></p>
+<p>Confidence intervals for standardized measures like ISR or DSR can be derived by transforming the confidence interval for the corresponding <span class="math notranslate nohighlight">\(\gamma_i\)</span> (or <span class="math notranslate nohighlight">\(\gamma_k\)</span>). Let <span class="math notranslate nohighlight">\([\gamma_{L}, \gamma_{U}]\)</span> be a <span class="math notranslate nohighlight">\(100(1-\alpha)\%\)</span> confidence interval for <span class="math notranslate nohighlight">\(\gamma_i\)</span>.</p>
+<ul>
+<li><p><strong>ISR Interval:</strong> Assuming a monotonic relationship between <span class="math notranslate nohighlight">\(\gamma_i\)</span> and <span class="math notranslate nohighlight">\(E_i(\gamma_i) = \sum_j p_{ij}(\gamma_i, \hat{\boldsymbol{\beta}})\)</span>, the interval for <span class="math notranslate nohighlight">\(\text{ISR}_i = O_i / E_i(\gamma_0)\)</span> can be approximated by transforming the bounds of the <em>expected count</em> derived from the gamma interval:</p>
+<div class="math notranslate nohighlight">
+\[\text{CI}(\text{ISR}_i) \approx \left[ \frac{E_i(\gamma_{L})}{E_i(\gamma_0)}, \frac{E_i(\gamma_{U})}{E_i(\gamma_0)} \right]\]</div>
+<p><em>Note: The observed count :math:`O_i` is fixed; the uncertainty comes from the estimation of the expected counts under different plausible values of :math:`gamma_i`. The interval bounds are derived from :math:`E_i(gamma_L)` and :math:`E_i(gamma_U)` relative to the null expectation :math:`E_i(gamma_0)`.</em></p>
+</li>
+<li><p><strong>DSR Interval:</strong> Similarly, the interval for <span class="math notranslate nohighlight">\(\text{DSR}_k = E^{(k)} / O\)</span> is approximated by:</p>
+<div class="math notranslate nohighlight">
+\[\text{CI}(\text{DSR}_k) \approx \left[ \frac{E^{(k)}(\gamma_{L})}{O}, \frac{E^{(k)}(\gamma_{U})}{O} \right]\]</div>
+<p>where <span class="math notranslate nohighlight">\(E^{(k)}(\gamma)\)</span> denotes the direct expected count calculated using <span class="math notranslate nohighlight">\(\gamma\)</span> instead of <span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>.</p>
+</li>
+<li><p><strong>Rate Intervals:</strong> Intervals for standardized rates are obtained by scaling the corresponding ratio intervals by the overall event rate <span class="math notranslate nohighlight">\(\bar{Y}\)</span>.</p></li>
+</ul>
+</section>
+<section id="visualization">
+<h3><a class="toc-backref" href="#id40" role="doc-backlink">2.6. Visualization</a><a class="headerlink" href="#visualization" title="Link to this heading"></a></h3>
+<p>Visualizations are essential for interpreting provider profiling results.</p>
+<ul class="simple">
+<li><p><strong>Caterpillar Plot:</strong> Displays the point estimate (e.g., <span class="math notranslate nohighlight">\(\hat{\gamma}_i\)</span>, ISR:math:<cite>_i</cite>, or DSR:math:<cite>_k</cite>) and its confidence interval for each provider, typically sorted by the estimate. This allows for easy visual comparison of performance and uncertainty across providers. Points can be color-coded based on statistical significance flags from hypothesis tests.</p></li>
+<li><p><strong>Funnel Plot:</strong> Plots a measure of performance (e.g., ISR:math:<cite>_i</cite>) against a measure of precision (e.g., <span class="math notranslate nohighlight">\(E_i(\gamma_0)\)</span> or <span class="math notranslate nohighlight">\(E_i(\gamma_0)^2 / \text{Var}(O_i|H_0)\)</span>). Control limits, often based on the expected variation under the null hypothesis (e.g., derived from score or exact tests), form a funnel shape. Providers falling outside the funnel limits are potential outliers. This plot helps distinguish statistical variation from potentially meaningful differences in performance, accounting for provider size/volume.</p></li>
+</ul>
+</section>
+</section>
+<section id="implementation-and-usage">
+<h2><a class="toc-backref" href="#id41" role="doc-backlink">3. Implementation and Usage</a><a class="headerlink" href="#implementation-and-usage" title="Link to this heading"></a></h2>
+<p>The methods described above are implemented in the <code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code> class. This section provides examples of its usage.</p>
+<section id="initialization-and-fitting">
+<h3><a class="toc-backref" href="#id42" role="doc-backlink">3.1. Initialization and Fitting</a><a class="headerlink" href="#initialization-and-fitting" title="Link to this heading"></a></h3>
+<p>Instantiate the model and fit it to the data using the <code class="docutils literal notranslate"><span class="pre">.fit()</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span> <span class="c1"># Assuming data_df is prepared as in Section 2.1 example</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pprof_py.logistic_fixed_effect</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogisticFixedEffectModel</span>
+
+ <span class="n">model</span> <span class="o">=</span> <span class="n">LogisticFixedEffectModel</span><span class="p">(</span><span class="n">algorithm</span><span class="o">=</span><span class="s1">&#39;Serbin&#39;</span><span class="p">,</span> <span class="n">cutoff</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+ <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+     <span class="n">X</span><span class="o">=</span><span class="n">data_df</span><span class="p">,</span>
+     <span class="n">y_var</span><span class="o">=</span><span class="s1">&#39;Outcome&#39;</span><span class="p">,</span>
+     <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Covariate1&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate2&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate3&#39;</span><span class="p">],</span>
+     <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;ProviderID&#39;</span><span class="p">,</span>
+     <span class="n">max_iter</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+     <span class="n">tol</span><span class="o">=</span><span class="mf">1e-4</span>
+ <span class="p">)</span>
+
+ <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fit complete.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="accessing-results">
+<h3><a class="toc-backref" href="#id43" role="doc-backlink">3.2. Accessing Results</a><a class="headerlink" href="#accessing-results" title="Link to this heading"></a></h3>
+<p>After fitting, access estimated parameters, variances, and fit statistics via attributes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Coefficients</span>
+<span class="n">betas</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;beta&#39;</span><span class="p">]</span>
+<span class="n">gammas</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">coefficients_</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Beta coefficients: </span><span class="si">{</span><span class="n">betas</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># print(f&quot;First 5 Gamma estimates: {gammas[:5]}&quot;) # Can be long</span>
+
+<span class="c1"># Variances</span>
+<span class="n">var_beta</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;beta&#39;</span><span class="p">]</span> <span class="c1"># VCV matrix for beta</span>
+<span class="n">var_gamma</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">variances_</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span> <span class="c1"># Variances for gamma</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Beta SEs: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">var_beta</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># print(f&quot;First 5 Gamma SEs: {np.sqrt(var_gamma[:5])}&quot;)</span>
+
+<span class="c1"># Fit statistics</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AIC: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">aic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BIC: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">bic_</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AUC: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">auc_</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Group information</span>
+<span class="c1"># print(f&quot;Groups: {model.groups_[:5]}&quot;)</span>
+<span class="c1"># print(f&quot;Group Sizes: {model.group_sizes_[:5]}&quot;)</span>
+</pre></div>
+</div>
+</section>
+<section id="prediction">
+<h3><a class="toc-backref" href="#id44" role="doc-backlink">3.3. Prediction</a><a class="headerlink" href="#prediction" title="Link to this heading"></a></h3>
+<p>Generate predicted probabilities for new or existing data.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Predict probabilities on the training data</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">X</span><span class="o">=</span><span class="n">data_df</span><span class="p">,</span>
+    <span class="n">x_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Covariate1&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate2&#39;</span><span class="p">,</span> <span class="s1">&#39;Covariate3&#39;</span><span class="p">],</span>
+    <span class="n">group_var</span><span class="o">=</span><span class="s1">&#39;ProviderID&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;First 5 predictions: </span><span class="si">{</span><span class="n">predictions</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="standardized-measures-calculation">
+<h3><a class="toc-backref" href="#id45" role="doc-backlink">3.4. Standardized Measures Calculation</a><a class="headerlink" href="#standardized-measures-calculation" title="Link to this heading"></a></h3>
+<p>Calculate ISR, DSR, and corresponding rates using <code class="docutils literal notranslate"><span class="pre">.calculate_standardized_measures()</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Calculate Indirect Standardized Ratio and Rate vs median</span>
+<span class="n">sm_indirect</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_standardized_measures</span><span class="p">(</span>
+    <span class="n">stdz</span><span class="o">=</span><span class="s1">&#39;indirect&#39;</span><span class="p">,</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span> <span class="c1"># Use median gamma as baseline</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Indirect Measures (vs Median) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sm_indirect</span><span class="p">[</span><span class="s1">&#39;indirect&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span> <span class="c1"># Access the DataFrame</span>
+</pre></div>
+</div>
+</section>
+<section id="hypothesis-testing-test">
+<h3><a class="toc-backref" href="#id46" role="doc-backlink">3.5. Hypothesis Testing (.test())</a><a class="headerlink" href="#hypothesis-testing-test" title="Link to this heading"></a></h3>
+<p>Test provider effects (<span class="math notranslate nohighlight">\(\gamma_i\)</span>) against a null value using various methods.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test providers vs median gamma using exact test (default)</span>
+<span class="n">test_results_exact</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">test</span><span class="p">(</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">test_method</span><span class="o">=</span><span class="s1">&#39;poibin_exact&#39;</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Provider Test (Exact vs Median) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">test_results_exact</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Test vs gamma=0 using score test for specific providers</span>
+<span class="c1"># test_results_score = model.test(</span>
+<span class="c1">#     providers=[&#39;Group_1&#39;, &#39;Group_2&#39;],</span>
+<span class="c1">#     null=0.0,</span>
+<span class="c1">#     level=0.95,</span>
+<span class="c1">#     test_method=&#39;score&#39;,</span>
+<span class="c1">#     alternative=&#39;two_sided&#39;</span>
+<span class="c1"># )</span>
+<span class="c1"># print(&quot;\n--- Provider Test (Score vs 0) ---&quot;)</span>
+<span class="c1"># print(test_results_score)</span>
+</pre></div>
+</div>
+<p>The output includes flags indicating significance (-1: lower, 0: expected, 1: higher).</p>
+</section>
+<section id="confidence-interval-calculation-calculate-confidence-intervals">
+<h3><a class="toc-backref" href="#id47" role="doc-backlink">3.6. Confidence Interval Calculation (.calculate_confidence_intervals())</a><a class="headerlink" href="#confidence-interval-calculation-calculate-confidence-intervals" title="Link to this heading"></a></h3>
+<p>Compute CIs for provider effects (<span class="math notranslate nohighlight">\(\gamma\)</span>) or standardized measures.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get 95% Wald CIs for gamma</span>
+<span class="n">gamma_cis</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_confidence_intervals</span><span class="p">(</span>
+    <span class="n">option</span><span class="o">=</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">test_method</span><span class="o">=</span><span class="s1">&#39;wald&#39;</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span> <span class="c1"># Must be &#39;two_sided&#39; for option=&#39;gamma&#39;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Gamma CIs (Wald) ---&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">gamma_cis</span><span class="p">[</span><span class="s1">&#39;gamma_ci&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+
+<span class="c1"># Get 90% CIs for Indirect Ratio, based on transforming &#39;exact&#39; gamma CIs</span>
+<span class="n">isr_cis</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate_confidence_intervals</span><span class="p">(</span>
+    <span class="n">option</span><span class="o">=</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span>
+    <span class="n">stdz</span><span class="o">=</span><span class="s1">&#39;indirect&#39;</span><span class="p">,</span>
+    <span class="n">measure</span><span class="o">=</span><span class="s1">&#39;ratio&#39;</span><span class="p">,</span>
+    <span class="n">level</span><span class="o">=</span><span class="mf">0.90</span><span class="p">,</span>
+    <span class="n">test_method</span><span class="o">=</span><span class="s1">&#39;exact&#39;</span><span class="p">,</span> <span class="c1"># Base gamma CI method</span>
+    <span class="n">null</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span>
+    <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;two_sided&#39;</span> <span class="c1"># Base gamma CIs must be two-sided</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- Indirect Ratio CIs (based on Exact) ---&quot;</span><span class="p">)</span>
+<span class="c1"># Access the DataFrame using the key &#39;indirect_ratio&#39;</span>
+<span class="c1"># Check column names, e.g., &#39;ci_ratio_lower&#39;, &#39;ci_ratio_upper&#39;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">isr_cis</span><span class="p">[</span><span class="s1">&#39;indirect_ratio&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3><a class="toc-backref" href="#id48" role="doc-backlink">3.7. Visualization</a><a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>Use the plotting methods to visualize results.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ensure matplotlib is installed: pip install matplotlib</span>
+<span class="c1"># Ensure poibin is installed for exact methods: pip install poibin</span>
+
+<span class="c1"># Funnel plot using score test limits</span>
+<span class="c1"># model.plot_funnel(test_method=&#39;score&#39;, alpha=0.05, target=1.0)</span>
+
+<span class="c1"># Caterpillar plot for provider effects (gamma) using Wald CIs</span>
+<span class="c1"># model.plot_provider_effects(level=0.95, test_method=&#39;wald&#39;, use_flags=True)</span>
+
+<span class="c1"># Caterpillar plot for Indirect Standardized Ratio using Score-based CIs</span>
+<span class="c1"># model.plot_standardized_measures(</span>
+<span class="c1">#     stdz=&#39;indirect&#39;, measure=&#39;ratio&#39;, level=0.95, test_method=&#39;score&#39;, use_flags=True</span>
+<span class="c1"># )</span>
+
+<span class="c1"># Forest plot for covariate effects (beta)</span>
+<span class="c1"># model.plot_coefficient_forest(level=0.95)</span>
+</pre></div>
+</div>
+<p>(Note: Plotting examples are commented out as they require matplotlib to run and display output.)</p>
+</section>
+</section>
+<section id="discussion">
+<h2><a class="toc-backref" href="#id49" role="doc-backlink">4. Discussion</a><a class="headerlink" href="#discussion" title="Link to this heading"></a></h2>
+<p>The logistic fixed effects model offers a robust approach to provider profiling, particularly valuable when potential confounding between provider characteristics and patient case mix is a concern. By directly estimating provider-specific intercepts (<span class="math notranslate nohighlight">\(\gamma_i\)</span>), the model effectively controls for all time-invariant provider attributes, whether observed or unobserved. This contrasts with random effects models, which rely on the often-untested assumption that provider effects are uncorrelated with patient covariates. While RE models may offer efficiency gains under specific conditions (large <span class="math notranslate nohighlight">\(m\)</span>, small <span class="math notranslate nohighlight">\(n_i\)</span>, and no confounding), the FE approach prioritizes unbiased estimation of provider effects, which is critical for high-stakes applications like public reporting or pay-for-performance <span id="id9">[<a class="reference internal" href="#id17" title="John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. Statistics in Biosciences, 5(2):208–232, 2013.">Kalbfleisch and Wolfe, 2013</a>]</span>.</p>
+<p>Our implementation provides several computationally efficient algorithms (Serbin, Ban) that scale well even with a large number of providers, overcoming limitations of standard GLM software. Furthermore, the inclusion of various hypothesis testing methods (Wald, Score, Exact Poisson-Binomial, Bootstrap) allows users to choose the most appropriate inferential tool based on their data characteristics and assumptions. The exact methods, particularly the Poisson-Binomial test, are recommended when asymptotic approximations underlying Wald and Score tests may be inadequate, such as with small providers or low event rates.</p>
+<p>Standardized measures (ISR, DSR) facilitate meaningful comparisons by adjusting for case mix and presenting performance relative to a benchmark (e.g., the median provider). Visualizations like caterpillar plots and funnel plots are crucial for interpreting these results. Caterpillar plots effectively display the estimate and uncertainty for each provider, while funnel plots help distinguish random variation from statistically significant deviations, particularly accounting for provider volume or precision. The precision measure used in our funnel plot (<span class="math notranslate nohighlight">\(E_i^2 / \text{Var}(O_i | H_0)\)</span>) appropriately reflects the information content for each provider under the null hypothesis.</p>
+<section id="limitations-and-considerations">
+<h3><a class="toc-backref" href="#id50" role="doc-backlink"><strong>Limitations and Considerations</strong></a><a class="headerlink" href="#limitations-and-considerations" title="Link to this heading"></a></h3>
+<p><strong>Incidental Parameters Problem</strong>: In FE models, when the number of groups (<span class="math notranslate nohighlight">\(m\)</span>) grows large while the group size (<span class="math notranslate nohighlight">\(n_i\)</span>) remains small and fixed, the MLEs for the common parameters (<span class="math notranslate nohighlight">\(\beta\)</span>) can be inconsistent <span id="id10">[<a class="reference internal" href="#id27" title="Jerzy Neyman and Elizabeth L. Scott. Consistent estimates based on partially consistent observations. Econometrica, 16(1):1–32, 1948.">Neyman and Scott, 1948</a>]</span>. However, for logistic regression, the inconsistency is typically small, and <span class="math notranslate nohighlight">\(\hat{\beta}\)</span> remains consistent if <span class="math notranslate nohighlight">\(n_i \rightarrow \infty\)</span> <span id="id11">[<a class="reference internal" href="#id23" title="William H. Greene. The behaviour of the maximum likelihood estimator of limited dependent variable models in the presence of fixed effects. Econometric Journal, 7(1):98–119, 2004.">Greene, 2004</a>]</span>. In many provider profiling scenarios where <span class="math notranslate nohighlight">\(n_i\)</span> is reasonably large, this is less of a concern.</p>
+<p><strong>Separation</strong>: Like standard logistic regression, the FE model can suffer from separation (perfect prediction) or quasi-separation, especially within smaller groups or those with zero or all events. This can lead to infinite estimates for some <span class="math notranslate nohighlight">\(\gamma_i\)</span>. Our implementation includes bounding of <span class="math notranslate nohighlight">\(\gamma_i\)</span> during optimization to mitigate numerical issues, but users should be aware of providers exhibiting such patterns (e.g., via the <code class="docutils literal notranslate"><span class="pre">log_event_providers</span></code> option during data preparation). The Wald test and associated CIs are particularly unreliable in cases of separation. Exact and score-based methods are generally more robust in these situations.</p>
+<p><strong>Computational Intensity</strong>: While the implemented algorithms are efficient, fitting models with extremely large datasets (<span class="math notranslate nohighlight">\(N\)</span>) and a very large number of providers (<span class="math notranslate nohighlight">\(m\)</span>) can still require significant computational resources. Exact bootstrap tests are particularly time-consuming.</p>
+<p><strong>Interpretation of</strong> <span class="math notranslate nohighlight">\(\gamma_i\)</span>: The fixed effects absorb all time-invariant provider characteristics. Therefore, the effects of specific, measured provider-level variables cannot be estimated directly within this model.</p>
+</section>
+<section id="future-directions">
+<h3><a class="toc-backref" href="#id51" role="doc-backlink"><strong>Future Directions</strong></a><a class="headerlink" href="#future-directions" title="Link to this heading"></a></h3>
+<p>Potential extensions could include incorporating time-varying covariates, handling different types of outcomes (e.g., count data with Poisson FE models), implementing methods for dynamic profiling over time, and exploring alternative estimation techniques like conditional likelihood approaches for logistic FE models, which can sometimes provide consistent estimates for <span class="math notranslate nohighlight">\(\beta\)</span> even when <span class="math notranslate nohighlight">\(n_i\)</span> is small.</p>
+</section>
+</section>
+<section id="conclusion">
+<h2><a class="toc-backref" href="#id52" role="doc-backlink">5. Conclusion</a><a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code> provides a robust and computationally efficient tool for healthcare provider profiling and similar analyses involving clustered binary data. By implementing the fixed effects approach, it avoids strong assumptions about the correlation between group effects and covariates, offering unbiased comparisons critical for fair evaluation. The package integrates efficient estimation algorithms, appropriate standardized measures, a suite of hypothesis tests (including exact methods), confidence interval calculations, and informative visualizations (caterpillar and funnel plots). This comprehensive toolkit empowers researchers and analysts to conduct rigorous provider profiling, identify performance outliers, and ultimately contribute to improving healthcare quality.</p>
+</section>
+<section id="references">
+<h2><a class="toc-backref" href="#id53" role="doc-backlink">References</a><a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id12">
+<div role="list" class="citation-list">
+<div class="citation" id="id13" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>David M. Shahian, Fred H. Edwards, Jeffrey P. Jacobs, Richard L. Prager, Sharon-Lise T. Normand, Cynthia M. Shewan, Sean M. O'Brien, Eric D. Peterson, and Frederick L. Grover. Public reporting of cardiac surgery performance: part 1–history, rationale, and challenges. <em>The Annals of Thoracic Surgery</em>, 92(4):S2–S11, 2011.</p>
+</div>
+<div class="citation" id="id14" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">2</a><span class="fn-bracket">]</span></span>
+<p>Harlan M. Krumholz, Yongfei Wang, Zhenqiu Lin, Kumar Dharmarajan, Leora I. Horwitz, Joseph S. Ross, Andrew H. Patterson, and Elizabeth E. Drye. An administrative claims measure suitable for profiling hospital performance based on 30-day all-cause readmission rates among patients with heart failure. <em>Circulation: Cardiovascular Quality and Outcomes</em>, 6(2):259–268, 2013.</p>
+</div>
+<div class="citation" id="id15" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">3</a><span class="fn-bracket">]</span></span>
+<p>Lisa I. Iezzoni, editor. <em>Risk adjustment for measuring healthcare outcomes</em>. Health Administration Press, 2001.</p>
+</div>
+<div class="citation" id="id16" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">4</a><span class="fn-bracket">]</span></span>
+<p>John M. Neuhaus, John D. Kalbfleisch, and Walter W. Hauck. A comparison of cluster-specific and population-averaged approaches for analyzing correlated binary data. <em>International Statistical Review</em>, 59(1):25–35, 1991.</p>
+</div>
+<div class="citation" id="id17" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id4">1</a>,<a role="doc-backlink" href="#id9">2</a>)</span>
+<p>John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. <em>Statistics in Biosciences</em>, 5(2):208–232, 2013.</p>
+</div>
+<div class="citation" id="id24" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">6</a><span class="fn-bracket">]</span></span>
+<p>Kevin He, Alan M. Zaslavsky, Mary Beth Landrum, John Z. Ayanian, and Arnold M. Epstein. Evaluating hospital readmission rates in medicare: a statistical and policy synthesis. <em>Statistics in Medicine</em>, 32(22):3849–3862, 2013.</p>
+</div>
+<div class="citation" id="id23" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id6">1</a>,<a role="doc-backlink" href="#id11">2</a>)</span>
+<p>William H. Greene. The behaviour of the maximum likelihood estimator of limited dependent variable models in the presence of fixed effects. <em>Econometric Journal</em>, 7(1):98–119, 2004.</p>
+</div>
+<div class="citation" id="id28" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id7">8</a><span class="fn-bracket">]</span></span>
+<p>Menggang Wu, Kevin He, George Michailidis, and Jian Kang. Improving estimation efficiency for fixed effects models via serbin. <em>Statistics in Medicine</em>, 41(18):3546–3560, 2022.</p>
+</div>
+<div class="citation" id="id27" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id10">9</a><span class="fn-bracket">]</span></span>
+<p>Jerzy Neyman and Elizabeth L. Scott. Consistent estimates based on partially consistent observations. <em>Econometrica</em>, 16(1):1–32, 1948.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="linear_random_effect_model.html" class="btn btn-neutral float-left" title="Linear Random Effect Modeling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="logistic_random_effect_model.html" class="btn btn-neutral float-right" title="Logistic Random Effect Modeling" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

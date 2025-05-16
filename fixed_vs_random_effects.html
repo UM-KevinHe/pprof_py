@@ -1,0 +1,321 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fixed Effects vs. Random Effects Models &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Direct vs. Indirect Standardization Methods" href="direct_vs_indirect_standardization.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fixed Effects vs. Random Effects Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fixed-effects-fe-models">Fixed Effects (FE) Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#key-assumptions-properties">Key Assumptions &amp; Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#when-to-use-fixed-effects">When to Use Fixed Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#random-effects-re-models">Random Effects (RE) Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Key Assumptions &amp; Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#when-to-use-random-effects">When to Use Random Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#key-differences-summarized">Key Differences Summarized</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#choosing-between-fixed-and-random-effects">Choosing Between Fixed and Random Effects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#relationship-to-standardization">Relationship to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Fixed Effects vs. Random Effects Models</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/fixed_vs_random_effects.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="fixed-effects-vs-random-effects-models">
+<span id="fixed-vs-random-effects"></span><h1>Fixed Effects vs. Random Effects Models<a class="headerlink" href="#fixed-effects-vs-random-effects-models" title="Link to this heading"></a></h1>
+<p>When analyzing data with a grouped or hierarchical structure (e.g., patients within hospitals, students within schools, repeated measurements on individuals), a key modeling decision is how to account for group-level heterogeneity. Two common approaches are fixed effects (FE) models and random effects (RE) models. This document outlines their differences, assumptions, and appropriate use cases.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id2">Introduction</a></p></li>
+<li><p><a class="reference internal" href="#fixed-effects-fe-models" id="id3">Fixed Effects (FE) Models</a></p>
+<ul>
+<li><p><a class="reference internal" href="#key-assumptions-properties" id="id4">Key Assumptions &amp; Properties</a></p></li>
+<li><p><a class="reference internal" href="#when-to-use-fixed-effects" id="id5">When to Use Fixed Effects</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#random-effects-re-models" id="id6">Random Effects (RE) Models</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id1" id="id7">Key Assumptions &amp; Properties</a></p></li>
+<li><p><a class="reference internal" href="#when-to-use-random-effects" id="id8">When to Use Random Effects</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#key-differences-summarized" id="id9">Key Differences Summarized</a></p></li>
+<li><p><a class="reference internal" href="#choosing-between-fixed-and-random-effects" id="id10">Choosing Between Fixed and Random Effects</a></p></li>
+<li><p><a class="reference internal" href="#relationship-to-standardization" id="id11">Relationship to Standardization</a></p></li>
+<li><p><a class="reference internal" href="#conclusion" id="id12">Conclusion</a></p></li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
+<p>Both fixed and random effects models aim to control for unobserved group-specific characteristics that might influence the outcome variable. However, they differ fundamentally in how they treat these group-specific effects and the assumptions they make.</p>
+</section>
+<section id="fixed-effects-fe-models">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Fixed Effects (FE) Models</a><a class="headerlink" href="#fixed-effects-fe-models" title="Link to this heading"></a></h2>
+<p>In a fixed effects model, the group-specific effects are treated as fixed, unknown parameters to be estimated. Essentially, each group is allowed to have its own intercept (or its own set of coefficients if interactions with group dummies are included).</p>
+<p><strong>Simple Linear Representation</strong> (Group Intercepts)
+For an observation <span class="math notranslate nohighlight">\(i\)</span> in group <span class="math notranslate nohighlight">\(k\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[y_{ik} = X_{ik}\boldsymbol{\beta} + \gamma_k + \epsilon_{ik}\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(y_{ik}\)</span> is the outcome for observation <span class="math notranslate nohighlight">\(i\)</span> in group <span class="math notranslate nohighlight">\(k\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(X_{ik}\)</span> is a vector of observed covariates.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> is a vector of fixed coefficients for the covariates, common across all groups.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\gamma_k\)</span> is the fixed effect (intercept) for group <span class="math notranslate nohighlight">\(k\)</span>. This captures all time-invariant, unobserved heterogeneity specific to group <span class="math notranslate nohighlight">\(k\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\epsilon_{ik}\)</span> is the idiosyncratic error term.</p></li>
+</ul>
+<section id="key-assumptions-properties">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Key Assumptions &amp; Properties</a><a class="headerlink" href="#key-assumptions-properties" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Correlation with Covariates</strong>: The primary strength of FE models is that they allow the unobserved group-specific effects (<span class="math notranslate nohighlight">\(\gamma_k\)</span>) to be correlated with the observed covariates (<span class="math notranslate nohighlight">\(X_{ik}\)</span>). This is crucial if unobserved group characteristics that affect the outcome are also related to the predictors.</p></li>
+<li><p><strong>Strict Exogeneity</strong>: For unbiased estimation of <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span>, the covariates <span class="math notranslate nohighlight">\(X_{ik}\)</span> must be strictly exogenous conditional on <span class="math notranslate nohighlight">\(\gamma_k\)</span>. This means <span class="math notranslate nohighlight">\(E(\epsilon_{ik} | X_{ik}, \gamma_k) = 0\)</span>.</p></li>
+<li><p><strong>Estimation</strong>: FE models are often estimated using:
+*   <strong>Least Squares Dummy Variable (LSDV)</strong>: Including a dummy variable for each group (except one reference group). This is computationally intensive for many groups.
+*   <strong>Within-Group Transformation (Demeaning)</strong>: Subtracting the group-mean from each variable. This eliminates <span class="math notranslate nohighlight">\(\gamma_k\)</span> and allows <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> to be estimated by OLS on the transformed data.</p></li>
+<li><p><strong>Incidental Parameters Problem</strong>: If the number of groups (<span class="math notranslate nohighlight">\(m\)</span>) is large and the number of observations per group (<span class="math notranslate nohighlight">\(n_k\)</span>) is small, the estimates of <span class="math notranslate nohighlight">\(\gamma_k\)</span> can be imprecise. However, the estimates of <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> can still be consistent as <span class="math notranslate nohighlight">\(N \rightarrow \infty\)</span> (if <span class="math notranslate nohighlight">\(n_k\)</span> is fixed) or as <span class="math notranslate nohighlight">\(n_k \rightarrow \infty\)</span>. For non-linear models (like logistic FE), consistency of <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> often requires <span class="math notranslate nohighlight">\(n_k \rightarrow \infty\)</span>.</p></li>
+<li><p><strong>No Time-Invariant Group-Level Predictors</strong>: FE models cannot estimate the effect of variables that are constant within groups (e.g., hospital type, gender of an individual in a panel) because the within-group transformation removes them.</p></li>
+</ol>
+</section>
+<section id="when-to-use-fixed-effects">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">When to Use Fixed Effects</a><a class="headerlink" href="#when-to-use-fixed-effects" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Primary Goal</strong>: To control for unobserved heterogeneity that is potentially correlated with the predictors. This is the main reason to choose FE over RE.</p></li>
+<li><p><strong>Data Structure</strong>: Panel data (individuals/groups observed over time) or clustered data where group-specific unobservables are a concern.</p></li>
+<li><p><strong>Interest in Within-Group Variation</strong>: FE models primarily leverage within-group variation to estimate coefficients.</p></li>
+<li><p><strong>Robustness to Endogeneity</strong>: If you suspect that unobserved group characteristics are correlated with your <span class="math notranslate nohighlight">\(X\)</span> variables, FE is generally preferred for estimating <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span>.</p></li>
+</ul>
+</section>
+</section>
+<section id="random-effects-re-models">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Random Effects (RE) Models</a><a class="headerlink" href="#random-effects-re-models" title="Link to this heading"></a></h2>
+<p>In a random effects model, the group-specific effects are treated as random variables drawn from a common distribution, typically assumed to be normal. These effects are part of the error term.</p>
+<p><strong>Simple Linear Representation</strong> (Random Intercepts):
+For an observation <span class="math notranslate nohighlight">\(i\)</span> in group <span class="math notranslate nohighlight">\(k\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[y_{ik} = X_{ik}\boldsymbol{\beta} + u_k + \epsilon_{ik}\]</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(y_{ik}\)</span>, <span class="math notranslate nohighlight">\(X_{ik}\)</span>, <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span>, <span class="math notranslate nohighlight">\(\epsilon_{ik}\)</span> are as defined before.</p></li>
+<li><p><span class="math notranslate nohighlight">\(u_k\)</span> is the random effect for group <span class="math notranslate nohighlight">\(k\)</span>. It is assumed to be a random variable, typically <span class="math notranslate nohighlight">\(u_k \sim N(0, \sigma_u^2)\)</span>.</p></li>
+<li><p>The composite error term is <span class="math notranslate nohighlight">\(v_{ik} = u_k + \epsilon_{ik}\)</span>.</p></li>
+</ul>
+<section id="id1">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Key Assumptions &amp; Properties</a><a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>No Correlation with Covariates (Crucial Assumption)</strong>: The random effects <span class="math notranslate nohighlight">\(u_k\)</span> are assumed to be uncorrelated with the observed covariates <span class="math notranslate nohighlight">\(X_{ik}\)</span>. That is, <span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) = 0\)</span>. If this assumption is violated, the estimates of <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span> will be biased and inconsistent.</p></li>
+<li><p><strong>Distributional Assumption</strong>: <span class="math notranslate nohighlight">\(u_k\)</span> are typically assumed to be i.i.d. from a specific distribution (e.g., Normal).</p></li>
+<li><p><strong>Estimation</strong>: RE models are often estimated using Generalized Least Squares (GLS) or Maximum Likelihood Estimation (MLE). These methods account for the correlation structure in the composite error term <span class="math notranslate nohighlight">\(v_{ik}\)</span> induced by the shared <span class="math notranslate nohighlight">\(u_k\)</span> within groups.</p></li>
+<li><p><strong>Efficiency</strong>: If the no-correlation assumption holds, RE estimators are more efficient (have smaller variances) than FE estimators because they use both within-group and between-group variation.</p></li>
+<li><p><strong>Time-Invariant Group-Level Predictors</strong>: RE models <em>can</em> estimate the effects of variables that are constant within groups, as these variables are not removed by the estimation procedure.</p></li>
+<li><p><strong>Prediction of Random Effects</strong>: The specific values of <span class="math notranslate nohighlight">\(u_k\)</span> are not directly estimated as parameters but can be predicted after model fitting, often referred to as Best Linear Unbiased Predictors (BLUPs).</p></li>
+</ol>
+</section>
+<section id="when-to-use-random-effects">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">When to Use Random Effects</a><a class="headerlink" href="#when-to-use-random-effects" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Primary Goal</strong>: To account for within-group correlation and improve efficiency, <em>assuming</em> the unobserved group effects are uncorrelated with predictors.</p></li>
+<li><p><strong>Data Structure</strong>: Panel data or clustered data.</p></li>
+<li><p><strong>Interest in Group-Level Predictors</strong>: If you need to estimate the effect of time-invariant group characteristics.</p></li>
+<li><p><strong>Generalizability</strong>: If the groups in your sample are considered a random sample from a larger population of groups, and you want to make inferences about that population.</p></li>
+<li><p><strong>Efficiency is Key</strong>: If you are confident that <span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) = 0\)</span>, RE is more efficient.</p></li>
+</ul>
+</section>
+</section>
+<section id="key-differences-summarized">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Key Differences Summarized</a><a class="headerlink" href="#key-differences-summarized" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26.3%" />
+<col style="width: 36.8%" />
+<col style="width: 36.8%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>Fixed Effects (FE) Model</p></th>
+<th class="head"><p>Random Effects (RE) Model</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Group Effects</strong></p></td>
+<td><p>Treated as fixed parameters to estimate</p></td>
+<td><p>Treated as random variables from a distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Correlation with X</strong></p></td>
+<td><p>Allowed (<span class="math notranslate nohighlight">\(Cov(X_{ik}, \gamma_k) \neq 0\)</span>)</p></td>
+<td><p>Not allowed (<span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) = 0\)</span>)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Estimation of</strong> <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span></p></td>
+<td><p>Uses within-group variation</p></td>
+<td><p>Uses both within &amp; between-group variation</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Efficiency</strong></p></td>
+<td><p>Less efficient if RE assumptions hold</p></td>
+<td><p>More efficient if assumptions hold</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Time-Invariant Predictors</strong></p></td>
+<td><p>Cannot estimate their effects</p></td>
+<td><p>Can estimate their effects</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Consistency of</strong> <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span></p></td>
+<td><p>Consistent even if <span class="math notranslate nohighlight">\(Cov(X_{ik}, \gamma_k) \neq 0\)</span></p></td>
+<td><p>Consistent only if <span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) = 0\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Inference Focus</strong></p></td>
+<td><p>Conditional on groups in sample</p></td>
+<td><p>Unconditional, generalizable to population of groups</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="choosing-between-fixed-and-random-effects">
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Choosing Between Fixed and Random Effects</a><a class="headerlink" href="#choosing-between-fixed-and-random-effects" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Hausman Test</strong>:</p>
+<ul class="simple">
+<li><p>The Hausman test is commonly used to help decide between FE and RE models.</p></li>
+<li><p><strong>Null Hypothesis (H0)</strong>: The random effects model is appropriate (i.e., <span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) = 0\)</span>).</p></li>
+<li><p><strong>Alternative Hypothesis (H1)</strong>: The fixed effects model is appropriate (i.e., <span class="math notranslate nohighlight">\(Cov(X_{ik}, u_k) \neq 0\)</span>).</p></li>
+<li><p>If the test rejects H0, it suggests that the RE model’s key assumption is violated, and the FE model is preferred for consistent estimation of <span class="math notranslate nohighlight">\(\boldsymbol{\beta}\)</span>.</p></li>
+<li><p>If the test fails to reject H0, it suggests that the RE model might be appropriate and more efficient.</p></li>
+<li><p><em>Caution</em>: The Hausman test has its own assumptions and limitations.</p></li>
+</ul>
+</li>
+<li><p><strong>Theoretical Considerations</strong>:</p>
+<ul class="simple">
+<li><p>Consider the nature of your data and research question. Are the unobserved group characteristics likely to be correlated with your predictors? If so, FE is safer.</p></li>
+<li><p>Are you interested in estimating the effects of time-invariant group-level variables? If so, RE (or alternative models like Hausman-Taylor) might be necessary.</p></li>
+</ul>
+</li>
+<li><p><strong>Research Goal</strong>:</p>
+<ul class="simple">
+<li><p>If the primary goal is to obtain unbiased and consistent estimates of the effects of <span class="math notranslate nohighlight">\(X\)</span> variables, and there’s a strong suspicion of correlation between unobserved group effects and <span class="math notranslate nohighlight">\(X\)</span>, FE is generally the preferred approach despite its limitations.</p></li>
+<li><p>If the groups are a random sample and you want to generalize, and you believe the orthogonality assumption holds, RE is more efficient.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="relationship-to-standardization">
+<h2><a class="toc-backref" href="#id11" role="doc-backlink">Relationship to Standardization</a><a class="headerlink" href="#relationship-to-standardization" title="Link to this heading"></a></h2>
+<p>Both FE and RE models provide a basis for standardization:</p>
+<ul class="simple">
+<li><p><strong>Fixed Effects Models</strong>: The estimated fixed effects (<span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>) directly represent the adjusted mean outcome for each group after controlling for <span class="math notranslate nohighlight">\(X\)</span>. Standardized differences can be calculated directly from these <span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span> values (e.g., <span class="math notranslate nohighlight">\(\hat{\gamma}_k - \text{reference}\)</span>).</p></li>
+<li><p><strong>Random Effects Models</strong>: The predicted random effects (BLUPs, <span class="math notranslate nohighlight">\(\hat{u}_k\)</span>) represent the deviation of each group from the average, after controlling for <span class="math notranslate nohighlight">\(X\)</span>. These <span class="math notranslate nohighlight">\(\hat{u}_k\)</span> values, combined with fixed effect predictions, are used to calculate standardized differences or ratios.</p></li>
+</ul>
+<p>The choice of FE or RE impacts the interpretation of these standardized measures. FE-based standardization is conditional on the specific groups in the sample, while RE-based standardization aims for broader population inferences.</p>
+</section>
+<section id="conclusion">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Conclusion</a><a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>The choice between fixed and random effects models is a critical one in panel and clustered data analysis. It hinges on the assumptions one is willing to make about the correlation between unobserved group-specific effects and the covariates of interest. Fixed effects models offer robustness against such correlations but cannot estimate effects of time-invariant predictors. Random effects models are more efficient and can handle time-invariant predictors but require the strong assumption that unobserved group effects are uncorrelated with covariates. Careful consideration of the research question, data properties, and diagnostic tests like the Hausman test should guide this decision.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="direct_vs_indirect_standardization.html" class="btn btn-neutral float-left" title="Direct vs. Indirect Standardization Methods" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

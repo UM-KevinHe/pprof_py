@@ -1,0 +1,353 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Direct vs. Indirect Standardization Methods &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Fixed Effects vs. Random Effects Models" href="fixed_vs_random_effects.html" />
+    <link rel="prev" title="Logistic Random Effect Modeling" href="logistic_random_effect_model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Direct vs. Indirect Standardization Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-standardization">1. Introduction to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#indirect-standardization">2. Indirect Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#core-concept-and-purpose">2.1. Core Concept and Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#process">2.2. Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#when-to-use-indirect-standardization">2.3. When to Use Indirect Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#direct-standardization">3. Direct Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">3.1. Core Concept and Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">3.2. Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#when-to-use-direct-standardization">3.3. When to Use Direct Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comparing-indirect-and-direct-standardization">4. Comparing Indirect and Direct Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#key-distinctions">4.1. Key Distinctions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#complementary-perspectives">4.2. Complementary Perspectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-note-on-model-based-standardization">4.3. A Note on Model-Based Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion-choosing-the-right-method">5. Conclusion: Choosing the Right Method</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Direct vs. Indirect Standardization Methods</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/direct_vs_indirect_standardization.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="direct-vs-indirect-standardization-methods">
+<span id="standardization-methods"></span><h1>Direct vs. Indirect Standardization Methods<a class="headerlink" href="#direct-vs-indirect-standardization-methods" title="Link to this heading"></a></h1>
+<p>Standardization methods are crucial in statistical modeling, especially in fields like healthcare and social sciences. They enable fair comparisons between groups (e.g., providers, regions) by adjusting for differences in their underlying populations or case-mix. This document explores two common approaches: indirect and direct standardization, detailing their application in both linear and logistic models.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction-to-standardization" id="id3">1. Introduction to Standardization</a></p></li>
+<li><p><a class="reference internal" href="#indirect-standardization" id="id4">2. Indirect Standardization</a></p>
+<ul>
+<li><p><a class="reference internal" href="#core-concept-and-purpose" id="id5">2.1. Core Concept and Purpose</a></p></li>
+<li><p><a class="reference internal" href="#process" id="id6">2.2. Process</a></p></li>
+<li><p><a class="reference internal" href="#when-to-use-indirect-standardization" id="id7">2.3. When to Use Indirect Standardization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#direct-standardization" id="id8">3. Direct Standardization</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id1" id="id9">3.1. Core Concept and Purpose</a></p></li>
+<li><p><a class="reference internal" href="#id2" id="id10">3.2. Process</a></p></li>
+<li><p><a class="reference internal" href="#when-to-use-direct-standardization" id="id11">3.3. When to Use Direct Standardization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#comparing-indirect-and-direct-standardization" id="id12">4. Comparing Indirect and Direct Standardization</a></p>
+<ul>
+<li><p><a class="reference internal" href="#key-distinctions" id="id13">4.1. Key Distinctions</a></p></li>
+<li><p><a class="reference internal" href="#complementary-perspectives" id="id14">4.2. Complementary Perspectives</a></p></li>
+<li><p><a class="reference internal" href="#a-note-on-model-based-standardization" id="id15">4.3. A Note on Model-Based Standardization</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#conclusion-choosing-the-right-method" id="id16">5. Conclusion: Choosing the Right Method</a></p></li>
+</ul>
+</nav>
+<section id="introduction-to-standardization">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">1. Introduction to Standardization</a><a class="headerlink" href="#introduction-to-standardization" title="Link to this heading"></a></h2>
+<p>When comparing outcomes across different groups, raw (unadjusted) figures can be misleading. Groups often differ systematically in characteristics that influence outcomes (e.g., patient severity, demographics). Standardization aims to provide a more equitable comparison by accounting for these differences.</p>
+<ul class="simple">
+<li><p><strong>Linear Models</strong>: Standardization often involves comparing adjusted mean differences in the outcome variable (e.g., difference in length of stay, cost).</p></li>
+<li><p><strong>Logistic Models</strong>: For binary outcomes, standardization typically focuses on comparing adjusted rates or ratios (e.g., standardized mortality ratio (SMR), standardized infection ratio (SIR), or standardized rates).</p></li>
+</ul>
+<p>This document focuses on model-based standardization, particularly within the context of mixed models where outcomes are influenced by both fixed (common) and random (group-specific) effects.</p>
+</section>
+<section id="indirect-standardization">
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">2. Indirect Standardization</a><a class="headerlink" href="#indirect-standardization" title="Link to this heading"></a></h2>
+<section id="core-concept-and-purpose">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">2.1. Core Concept and Purpose</a><a class="headerlink" href="#core-concept-and-purpose" title="Link to this heading"></a></h3>
+<p>Indirect standardization evaluates how a group’s outcome (often based on model predictions) deviates from an <strong>expected outcome</strong>. This expected outcome is calculated using a <strong>baseline model</strong> (typically representing common, observable characteristics, like fixed effects) applied to the specific case-mix of the group in question.</p>
+<ul class="simple">
+<li><p><strong>Focus</strong>: To assess how much a group’s performance differs from what would be expected if it performed according to a common baseline, given its specific population characteristics.</p></li>
+<li><p><strong>Purpose</strong>:
+*   To isolate and quantify the impact of group-specific factors (e.g., random effects or unmodeled characteristics) beyond the baseline predictions.
+*   To identify groups performing significantly differently than expected under a common, fixed structure (akin to calculating SMRs or SIRs).</p></li>
+</ul>
+</section>
+<section id="process">
+<h3><a class="toc-backref" href="#id6" role="doc-backlink">2.2. Process</a><a class="headerlink" href="#process" title="Link to this heading"></a></h3>
+<p>The process generally involves comparing “observed” (full model) values to “expected” (baseline model) values for the group.</p>
+<p><strong>Step 1: Define “Observed” Values (Model-Based)</strong></p>
+<p>For model-based standardization, the “observed” values for a group are typically derived from the <strong>full model predictions</strong> (including both fixed and random effects) for individuals within that group.
+Using model-fitted values (e.g., <span class="math notranslate nohighlight">\(\hat{y}_i\)</span> or <span class="math notranslate nohighlight">\(\hat{p}_i\)</span> from the full model) rather than raw actual outcomes helps to:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Focus on modeled effects, keeping the analysis within the model’s framework.</p></li>
+<li><p>Reduce the influence of random noise in the raw data not captured by the model.</p></li>
+<li><p>Ensure consistency in comparisons relative to the model’s structure.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Step 2: Define “Expected” Values</strong></p>
+<p>The “expected” values are predictions from a <strong>baseline model</strong> applied to the individuals within the group. This baseline often consists of only the fixed effects component of a mixed model.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Linear Models</strong>: Expected sum for group <span class="math notranslate nohighlight">\(k\)</span> is <span class="math notranslate nohighlight">\(\sum_{i \in k} (X_i\boldsymbol{\hat{\beta}})\)</span>.</p></li>
+<li><p><strong>Logistic Models</strong>: Expected sum of probabilities for group <span class="math notranslate nohighlight">\(k\)</span> is <span class="math notranslate nohighlight">\(\sum_{i \in k} \hat{p}_i(\text{fixed only})\)</span>.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Step 3: Calculate the Standardized Measure</strong></p>
+<ul>
+<li><p><strong>Linear Models (Indirect Standardized Difference - ISD)</strong>:</p>
+<p>The ISD quantifies the average difference per unit in the group attributable to factors beyond the baseline.</p>
+<div class="math notranslate nohighlight">
+\[\text{ISD}_k = \frac{\sum_{i \in k} \hat{y}_i(\text{full model}) - \sum_{i \in k} (X_i\boldsymbol{\hat{\beta}})}{n_k}\]</div>
+<p>Where <span class="math notranslate nohighlight">\(\hat{y}_i(\text{full model})\)</span> is the prediction from the full model for individual <span class="math notranslate nohighlight">\(i\)</span> in group <span class="math notranslate nohighlight">\(k\)</span>, <span class="math notranslate nohighlight">\(X_i\boldsymbol{\hat{\beta}}\)</span> is the prediction from the fixed-effects-only baseline model, and <span class="math notranslate nohighlight">\(n_k\)</span> is the size of group <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</li>
+<li><p><strong>Logistic Models (Indirect Standardized Ratio - ISR / Indirect Standardized Rate)</strong>:</p>
+<p>The ISR compares the sum of model-predicted probabilities (full model) to the sum of expected probabilities (baseline model) for the group.</p>
+<div class="math notranslate nohighlight">
+\[\text{ISR}_k = \frac{\sum_{i \in k} \hat{p}_i(\text{full model})}{\sum_{i \in k} \hat{p}_i(\text{fixed only})}\]</div>
+<p>The <strong>Indirect Standardized Rate</strong> can then be obtained by:</p>
+<div class="math notranslate nohighlight">
+\[\text{Indirect Rate}_k = \text{ISR}_k \times \text{Overall Population Rate}\]</div>
+</li>
+</ul>
+</section>
+<section id="when-to-use-indirect-standardization">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">2.3. When to Use Indirect Standardization</a><a class="headerlink" href="#when-to-use-indirect-standardization" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>When the primary interest is in the incremental impact of group-specific effects (e.g., random effects) over and above predictions from a common, fixed-effects structure.</p></li>
+<li><p>To assess how a group’s outcomes deviate from an expectation based on general population rates or a baseline model, applied to that group’s specific demographic or case-mix.</p></li>
+<li><p><strong>Key Question Answered</strong>: “How different is this group’s outcome from what we’d expect based on common factors, given its specific case-mix?”</p></li>
+</ul>
+</section>
+</section>
+<section id="direct-standardization">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">3. Direct Standardization</a><a class="headerlink" href="#direct-standardization" title="Link to this heading"></a></h2>
+<section id="id1">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">3.1. Core Concept and Purpose</a><a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<p>Direct standardization evaluates a group’s specific modeled effect (e.g., its fixed effects plus its unique random effect) by applying this effect to a <strong>standard population</strong>. The outcome is then compared to the outcome derived from applying a <strong>reference effect</strong> (e.g., an average or null random effect) to the same standard population.</p>
+<ul class="simple">
+<li><p><strong>Focus</strong>: To assess the impact of a group’s specific performance characteristic if it were applied universally to a standard population, allowing for comparison against a common benchmark.</p></li>
+<li><p><strong>Purpose</strong>:</p>
+<ul>
+<li><p>To compare the magnitude of different groups’ specific effects on a common footing.</p></li>
+<li><p>To understand the overall impact of a group’s estimated random effect in a broader, standardized context.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id2">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">3.2. Process</a><a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>The process involves applying different effects to a common standard population and comparing the results.</p>
+<p><strong>Step 1: Define the Standard Population</strong></p>
+<p>This is a common reference population to which different effects will be applied. It could be the entire dataset, a subset, or an external population. Let <span class="math notranslate nohighlight">\(N_{\text{std pop}}\)</span> be its size.</p>
+<p><strong>Step 2: Calculate Expected Outcomes under the Group’s Specific Effect</strong></p>
+<p>Apply the full modeled effect of group <span class="math notranslate nohighlight">\(k\)</span> (fixed effects + <span class="math notranslate nohighlight">\(\hat{\gamma}_k\)</span>, its specific random effect) to each individual <span class="math notranslate nohighlight">\(j\)</span> in the <em>standard population</em>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Linear Models</strong>: Sum of predictions is <span class="math notranslate nohighlight">\(\sum_{j \in \text{std pop}} (X_j\boldsymbol{\hat{\beta}} + \hat{\gamma}_k)\)</span>.</p></li>
+<li><p><strong>Logistic Models</strong>: Sum of probabilities is <span class="math notranslate nohighlight">\(\sum_{j \in \text{std pop}} \hat{p}_j(\text{fixed} + \text{random effect}_k)\)</span>.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Step 3: Calculate Expected Outcomes under a Reference Effect</strong></p>
+<p>Apply a reference effect (e.g., a null random effect, <span class="math notranslate nohighlight">\(\text{RE}_{\text{ref}}=0\)</span>, or the mean/median of estimated random effects) along with fixed effects to each individual <span class="math notranslate nohighlight">\(j\)</span> in the <em>standard population</em>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>Linear Models</strong>: Sum of predictions is <span class="math notranslate nohighlight">\(\sum_{j \in \text{std pop}} (X_j\boldsymbol{\hat{\beta}} + \text{RE}_{\text{ref}})\)</span>.</p></li>
+<li><p><strong>Logistic Models</strong>: Sum of probabilities is <span class="math notranslate nohighlight">\(\sum_{j \in \text{std pop}} \hat{p}_j(\text{fixed} + \text{RE}_{\text{ref}})\)</span>.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Step 4: Calculate the Standardized Measure</strong></p>
+<ul>
+<li><p><strong>Linear Models (Direct Standardized Difference - DSD)</strong>:</p>
+<p>The DSD quantifies the average difference in outcome if group <span class="math notranslate nohighlight">\(k\)</span>’s effect versus a reference effect were applied to the standard population.</p>
+<div class="math notranslate nohighlight">
+\[\text{DSD}_k = \frac{\sum_{j \in \text{std pop}} (X_j\boldsymbol{\hat{\beta}} + \hat{\gamma}_k) - \sum_{j \in \text{std pop}} (X_j\boldsymbol{\hat{\beta}} + \text{RE}_{\text{ref}})}{N_{\text{std pop}}}\]</div>
+</li>
+<li><p><strong>Logistic Models (Direct Standardized Ratio - DSR / Direct Standardized Rate)</strong>:</p>
+<p>The DSR compares the total expected events if group <span class="math notranslate nohighlight">\(k\)</span>’s specific effect were applied to the standard population, versus if a reference effect were applied.</p>
+<div class="math notranslate nohighlight">
+\[\text{DSR}_k = \frac{\sum_{j \in \text{std pop}} \hat{p}_j(\text{fixed} + \text{random effect}_k)}{\sum_{j \in \text{std pop}} \hat{p}_j(\text{fixed} + \text{RE}_{\text{ref}})}\]</div>
+<p>The <strong>Direct Standardized Rate</strong> can then be obtained by:</p>
+<div class="math notranslate nohighlight">
+\[\text{Direct Rate}_k = \text{DSR}_k \times \text{Overall Population Rate (of the standard population)}\]</div>
+</li>
+</ul>
+</section>
+<section id="when-to-use-direct-standardization">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">3.3. When to Use Direct Standardization</a><a class="headerlink" href="#when-to-use-direct-standardization" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>When you need to compare the magnitude of different groups’ specific effects as if they were applied to a common, standard population.</p></li>
+<li><p>To understand how much each group’s specific modeled effect deviates from an overall average or baseline effect when projected onto a common scale.</p></li>
+<li><p><strong>Key Question Answered</strong>: “How different is this group’s specific estimated effect compared to an average or null effect, if applied consistently to a standard population?”</p></li>
+</ul>
+</section>
+</section>
+<section id="comparing-indirect-and-direct-standardization">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">4. Comparing Indirect and Direct Standardization</a><a class="headerlink" href="#comparing-indirect-and-direct-standardization" title="Link to this heading"></a></h2>
+<section id="key-distinctions">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">4.1. Key Distinctions</a><a class="headerlink" href="#key-distinctions" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Reference Point</strong>:</p>
+<ul>
+<li><p><strong>Indirect</strong>: Compares the group’s outcome (within its <em>own case-mix</em>) to an expected outcome based on a standard <em>model or rate structure</em>.</p></li>
+<li><p><strong>Direct</strong>: Compares the outcome from applying the group’s <em>specific effect</em> to a <em>standard population</em> against the outcome from applying a reference effect to that same standard population.</p></li>
+</ul>
+</li>
+<li><p><strong>Primary Question</strong>:</p>
+<ul>
+<li><p><strong>Indirect</strong>: “How does this group’s actual (or model-fitted) performance compare to what’s expected for a group with its specific characteristics, under a baseline scenario?”</p></li>
+<li><p><strong>Direct</strong>: “What would be the impact if this group’s specific way of performing (its estimated effect) was generalized to a standard population, compared to a reference way of performing?”</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="complementary-perspectives">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">4.2. Complementary Perspectives</a><a class="headerlink" href="#complementary-perspectives" title="Link to this heading"></a></h3>
+<p>Neither method is inherently superior; they offer different, complementary insights:</p>
+<ul class="simple">
+<li><p><strong>Indirect Standardization</strong> is useful for understanding deviations <em>from a baseline model</em> for a specific group, considering its unique composition. It highlights how much a group’s random effect, for instance, causes its predictions to differ from fixed-effect-only predictions.</p></li>
+<li><p><strong>Direct Standardization</strong> is useful for understanding the impact of a group’s <em>specific estimated effect</em> if it were generalized. It helps compare the magnitude of different groups’ unique characteristics (e.g., their random effects) on a common demographic footing.</p></li>
+</ul>
+</section>
+<section id="a-note-on-model-based-standardization">
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">4.3. A Note on Model-Based Standardization</a><a class="headerlink" href="#a-note-on-model-based-standardization" title="Link to this heading"></a></h3>
+<p>In the context of mixed models or other statistical models, using model-fitted values (e.g., <span class="math notranslate nohighlight">\(\hat{y}_i\)</span> or <span class="math notranslate nohighlight">\(\hat{p}_i\)</span>) for calculations, especially for the “observed” component in indirect standardization or as the basis for group-specific effects in direct standardization, is common. This approach:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Keeps the analysis within the model’s predictive framework.</p></li>
+<li><p>Focuses on systematic variation captured by the model rather than raw, noisy data.</p></li>
+<li><p>Allows for the quantification of effects attributed to specific model components (like random effects).</p></li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+<section id="conclusion-choosing-the-right-method">
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">5. Conclusion: Choosing the Right Method</a><a class="headerlink" href="#conclusion-choosing-the-right-method" title="Link to this heading"></a></h2>
+<p>The choice between indirect and direct standardization depends fundamentally on the research question:</p>
+<ul class="simple">
+<li><p>Choose <strong>Indirect Standardization</strong> if you are asking:
+“How different is this group’s outcome from what we’d expect based on common factors and its specific case-mix?”
+This is often about assessing performance relative to an individualized baseline.</p></li>
+<li><p>Choose <strong>Direct Standardization</strong> if you are asking:
+“How different is this group’s specific estimated effect (e.g., its quality or efficiency factor) compared to an average or null effect, if this factor were applied consistently across a standard population?”
+This is often about comparing the inherent “effect” of different groups on a level playing field.</p></li>
+</ul>
+<p>Careful consideration of the analytical goals and the interpretation desired will guide the selection of the most appropriate standardization method.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="logistic_random_effect_model.html" class="btn btn-neutral float-left" title="Logistic Random Effect Modeling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fixed_vs_random_effects.html" class="btn btn-neutral float-right" title="Fixed Effects vs. Random Effects Models" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

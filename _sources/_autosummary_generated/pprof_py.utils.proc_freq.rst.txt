@@ -1,0 +1,6 @@
+﻿pprof\_py.utils.proc\_freq
+==========================
+
+.. currentmodule:: pprof_py.utils
+
+.. autofunction:: proc_freq

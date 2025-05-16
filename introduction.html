@@ -1,0 +1,159 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Base Model" href="base_model.html" />
+    <link rel="prev" title="Welcome to pprof_py’s Documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-provider-profiling">What is Provider Profiling?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-pprof-test">Why pprof_test?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-models-in-pprof-test">Core Models in pprof_test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Introduction</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/introduction.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="introduction">
+<span id="id1"></span><h1>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h1>
+<p>Welcome to the documentation for <strong>pprof_test</strong>, a Python package designed for robust provider profiling through advanced statistical modeling.</p>
+<section id="what-is-provider-profiling">
+<h2>What is Provider Profiling?<a class="headerlink" href="#what-is-provider-profiling" title="Link to this heading"></a></h2>
+<p>Provider profiling is a critical analytical process in healthcare and other service industries. It involves the systematic assessment and comparison of the performance of service providers (e.g., hospitals, physicians, clinics) based on specific metrics. These metrics often reflect quality of care, efficiency, patient outcomes, or adherence to standards.</p>
+<p>The primary goal of provider profiling is to identify variations in performance, highlight best practices, and pinpoint areas requiring improvement. Effective profiling relies on fair and accurate comparisons, which necessitates adjusting for differences in the underlying risk factors of the populations served by different providers. Without such risk adjustment, comparisons can be misleading, potentially penalizing providers who care for sicker or more complex populations.</p>
+</section>
+<section id="why-pprof-test">
+<h2>Why pprof_test?<a class="headerlink" href="#why-pprof-test" title="Link to this heading"></a></h2>
+<p>The <strong>pprof_test</strong> package offers a comprehensive suite of tools to conduct sophisticated provider profiling. It aims to provide accessible, efficient, and statistically sound methods for:</p>
+<ul class="simple">
+<li><p><strong>Risk Adjustment:</strong> Implementing models that account for patient-level or case-mix differences, ensuring fairer comparisons.</p></li>
+<li><p><strong>Performance Measurement:</strong> Calculating standardized measures that quantify provider performance relative to an expected baseline.</p></li>
+<li><p><strong>Statistical Inference:</strong> Enabling hypothesis testing to determine if observed differences in performance are statistically significant.</p></li>
+<li><p><strong>Large-Scale Data Handling:</strong> Designed with considerations for efficiency when working with substantial datasets common in healthcare analytics.</p></li>
+</ul>
+</section>
+<section id="core-models-in-pprof-test">
+<h2>Core Models in pprof_test<a class="headerlink" href="#core-models-in-pprof-test" title="Link to this heading"></a></h2>
+<p>To address diverse analytical needs and data characteristics, <strong>pprof_test</strong> implements a range of statistical models. The primary model categories include:</p>
+<ol class="arabic simple">
+<li><p><strong>Linear Fixed Effects Models:</strong>
+Suitable for continuous outcome variables where provider effects are treated as fixed, distinct parameters. These models are useful when the interest lies specifically in the performance of the observed set of providers without generalizing to a larger population of providers.</p></li>
+<li><p><strong>Linear Random Effects Models (Mixed Models):</strong>
+Also for continuous outcomes, these models treat provider effects as random variables drawn from a common distribution. This approach is beneficial for borrowing strength across providers, handling providers with sparse data, and making inferences about the broader population of providers.</p></li>
+<li><p><strong>Logistic Fixed Effects Models:</strong>
+Designed for binary outcome variables (e.g., mortality, readmission, complication). Similar to their linear counterparts, provider effects are estimated as fixed parameters, suitable for direct comparison of the observed providers.</p></li>
+<li><p><strong>Logistic Random Effects Models (Generalized Linear Mixed Models - GLMMs):</strong>
+For binary outcomes where provider effects are considered random. These models are powerful for risk adjustment in the presence of clustered data (e.g., patients within providers) and allow for more robust estimation, especially with varying group sizes.</p></li>
+</ol>
+</section>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
+<p>This documentation will guide you through the installation, usage, and API of the <strong>pprof_test</strong> package. You will find detailed explanations of each model, examples of how to fit them, interpret their results, and utilize the various utility functions for summarization, testing, and visualization.</p>
+<p>We hope <strong>pprof_test</strong> becomes a valuable tool in your provider profiling endeavors, enabling you to derive meaningful insights from your data.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to pprof_py’s Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="base_model.html" class="btn btn-neutral float-right" title="Base Model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

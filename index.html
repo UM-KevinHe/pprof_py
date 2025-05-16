@@ -1,0 +1,314 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to pprof_py’s Documentation &mdash; pprof_py 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e46d07af" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Introduction" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Welcome to pprof_py’s Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-pprof-py-s-documentation">
+<h1>Welcome to pprof_py’s Documentation<a class="headerlink" href="#welcome-to-pprof-py-s-documentation" title="Link to this heading"></a></h1>
+<p><strong>pprof_py</strong> is a Python package that provides a variety of risk-adjusted models for provider profiling, efficiently handling large-scale provider data. Implemented with Python and NumPy, it offers tools for calculating standardized measures, hypothesis testing, and visualization to evaluate healthcare provider performance and identify significant deviations from expected standards.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#what-is-provider-profiling">What is Provider Profiling?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#why-pprof-test">Why pprof_test?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#core-models-in-pprof-test">Core Models in pprof_test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#getting-started">Getting Started</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="base_model.html">Base Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#core-components">Core Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#summarymixin">SummaryMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#testmixin">TestMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#plotmixin">PlotMixin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#usage-example">Usage Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="base_model.html#extending-the-framework">Extending the Framework</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#methods">2. Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#implementation-and-usage">3. Implementation and Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_fixed_effect_model.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="linear_random_effect_model.html">Linear Random Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#methods">2. Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#implementation-and-usage">3. Implementation and Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="linear_random_effect_model.html#references">6. References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#methods">2. Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#implementation-and-usage">3. Implementation and Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_fixed_effect_model.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="logistic_random_effect_model.html">Logistic Random Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#methods">2. Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#implementation-and-usage">3. Implementation and Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logistic_random_effect_model.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="direct_vs_indirect_standardization.html#introduction-to-standardization">1. Introduction to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="direct_vs_indirect_standardization.html#indirect-standardization">2. Indirect Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="direct_vs_indirect_standardization.html#direct-standardization">3. Direct Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="direct_vs_indirect_standardization.html#comparing-indirect-and-direct-standardization">4. Comparing Indirect and Direct Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="direct_vs_indirect_standardization.html#conclusion-choosing-the-right-method">5. Conclusion: Choosing the Right Method</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#fixed-effects-fe-models">Fixed Effects (FE) Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#random-effects-re-models">Random Effects (RE) Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#key-differences-summarized">Key Differences Summarized</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#choosing-between-fixed-and-random-effects">Choosing Between Fixed and Random Effects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#relationship-to-standardization">Relationship to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixed_vs_random_effects.html#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.LinearFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.LinearRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.LogisticFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.LogisticRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.plot_caterpillar"><code class="docutils literal notranslate"><span class="pre">plot_caterpillar()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.proc_freq"><code class="docutils literal notranslate"><span class="pre">proc_freq()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.setup_logger"><code class="docutils literal notranslate"><span class="pre">setup_logger()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pprof_py.sigmoid"><code class="docutils literal notranslate"><span class="pre">sigmoid()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#models">Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#utilities">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#plotting">Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#full-modules">Full Modules</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p><strong>Note:</strong> _This package is in early development. Please report any issues._</p>
+<p>To install <cite>pprof_py</cite>, clone the repository and use <cite>pip</cite>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/UM-KevinHe/pprof_py.git
+<span class="nb">cd</span><span class="w"> </span>pprof_py
+pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="getting-help">
+<h2>Getting Help<a class="headerlink" href="#getting-help" title="Link to this heading"></a></h2>
+<p>If you encounter any problems or bugs, contact us:
+- <a class="reference external" href="mailto:xhliuu&#37;&#52;&#48;umich&#46;edu">xhliuu<span>&#64;</span>umich<span>&#46;</span>edu</a>
+- <a class="reference external" href="mailto:lfluo&#37;&#52;&#48;umich&#46;edu">lfluo<span>&#64;</span>umich<span>&#46;</span>edu</a>
+- <a class="reference external" href="mailto:taoxu&#37;&#52;&#48;umich&#46;edu">taoxu<span>&#64;</span>umich<span>&#46;</span>edu</a>
+- <a class="reference external" href="mailto:kevinhe&#37;&#52;&#48;umich&#46;edu">kevinhe<span>&#64;</span>umich<span>&#46;</span>edu</a></p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<div class="docutils container" id="id1">
+<div role="list" class="citation-list">
+<div class="citation" id="id2" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<p>David M. Shahian, Fred H. Edwards, Jeffrey P. Jacobs, Richard L. Prager, Sharon-Lise T. Normand, Cynthia M. Shewan, Sean M. O'Brien, Eric D. Peterson, and Frederick L. Grover. Public reporting of cardiac surgery performance: part 1–history, rationale, and challenges. <em>The Annals of Thoracic Surgery</em>, 92(4):S2–S11, 2011.</p>
+</div>
+<div class="citation" id="id3" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<p>Harlan M. Krumholz, Yongfei Wang, Zhenqiu Lin, Kumar Dharmarajan, Leora I. Horwitz, Joseph S. Ross, Andrew H. Patterson, and Elizabeth E. Drye. An administrative claims measure suitable for profiling hospital performance based on 30-day all-cause readmission rates among patients with heart failure. <em>Circulation: Cardiovascular Quality and Outcomes</em>, 6(2):259–268, 2013.</p>
+</div>
+<div class="citation" id="id4" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></span>
+<p>Lisa I. Iezzoni, editor. <em>Risk adjustment for measuring healthcare outcomes</em>. Health Administration Press, 2001.</p>
+</div>
+<div class="citation" id="id5" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></span>
+<p>John M. Neuhaus, John D. Kalbfleisch, and Walter W. Hauck. A comparison of cluster-specific and population-averaged approaches for analyzing correlated binary data. <em>International Statistical Review</em>, 59(1):25–35, 1991.</p>
+</div>
+<div class="citation" id="id6" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></span>
+<p>John D. Kalbfleisch and Robert A. Wolfe. On monitoring hospital performance using risk-adjusted outcome data. <em>Statistics in Biosciences</em>, 5(2):208–232, 2013.</p>
+</div>
+<div class="citation" id="id10" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></span>
+<p>Jeffrey M. Wooldridge. <em>Econometric analysis of cross section and panel data</em>. MIT press, 2010.</p>
+</div>
+<div class="citation" id="id13" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></span>
+<p>Kevin He, Alan M. Zaslavsky, Mary Beth Landrum, John Z. Ayanian, and Arnold M. Epstein. Evaluating hospital readmission rates in medicare: a statistical and policy synthesis. <em>Statistics in Medicine</em>, 32(22):3849–3862, 2013.</p>
+</div>
+<div class="citation" id="id12" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>8<span class="fn-bracket">]</span></span>
+<p>William H. Greene. The behaviour of the maximum likelihood estimator of limited dependent variable models in the presence of fixed effects. <em>Econometric Journal</em>, 7(1):98–119, 2004.</p>
+</div>
+<div class="citation" id="id17" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>9<span class="fn-bracket">]</span></span>
+<p>Menggang Wu, Kevin He, George Michailidis, and Jian Kang. Improving estimation efficiency for fixed effects models via serbin. <em>Statistics in Medicine</em>, 41(18):3546–3560, 2022.</p>
+</div>
+<div class="citation" id="id16" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>10<span class="fn-bracket">]</span></span>
+<p>Jerzy Neyman and Elizabeth L. Scott. Consistent estimates based on partially consistent observations. <em>Econometrica</em>, 16(1):1–32, 1948.</p>
+</div>
+<div class="citation" id="id18" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>11<span class="fn-bracket">]</span></span>
+<p>Douglas Bates, Martin Mächler, Ben Bolker, and Steve Walker. Fitting linear mixed-effects models using lme4. <em>Journal of Statistical Software</em>, 67(1):1–48, 2015. <a class="reference external" href="https://doi.org/10.18637/jss.v067.i01">doi:10.18637/jss.v067.i01</a>.</p>
+</div>
+<div class="citation" id="id20" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>12<span class="fn-bracket">]</span></span>
+<p>Charles E. McCulloch and Shayle R. Searle. <em>Generalized, Linear, and Mixed Models</em>. Wiley, 2001.</p>
+</div>
+<div class="citation" id="id21" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>13<span class="fn-bracket">]</span></span>
+<p>Walter W. Stroup. <em>Generalized Linear Mixed Models: Modern Concepts, Methods and Applications</em>. CRC Press, 2013.</p>
+</div>
+<div class="citation" id="id19" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>14<span class="fn-bracket">]</span></span>
+<p>The pymer4 Developers. Pymer4 documentation. <a class="reference external" href="https://eshinjolly.com/pymer4/">https://eshinjolly.com/pymer4/</a>, 2024. Consult the official pymer4 resources for usage and installation.</p>
+</div>
+<div class="citation" id="id7" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>15<span class="fn-bracket">]</span></span>
+<p>Shayle R. Searle, George Casella, and Charles E. McCulloch. <em>Variance Components</em>. Wiley Series in Probability and Statistics. Wiley, 2006.</p>
+</div>
+<div class="citation" id="id8" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>16<span class="fn-bracket">]</span></span>
+<p>José C. Pinheiro and Douglas M. Bates. <em>Mixed-Effects Models in S and S-PLUS</em>. Statistics and Computing. Springer, 2000.</p>
+</div>
+<div class="citation" id="id9" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>17<span class="fn-bracket">]</span></span>
+<p>The Statsmodels Developers. Statsmodels documentation: mixed linear models (mixed_linear.mixedlm). <a class="reference external" href="https://www.statsmodels.org/stable/mixed_linear.html">https://www.statsmodels.org/stable/mixed_linear.html</a>, 2024. Accessed on May 14, 2025.</p>
+</div>
+<div class="citation" id="id11" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>18<span class="fn-bracket">]</span></span>
+<p>Arlene S. Ash, Stephen E. Fienberg, Thomas A. Louis, Sharon-Lise T. Normand, Thérèse A. Stukel, and Jessica Utts. <em>Statistical issues in assessing hospital performance</em>. CRC Press, 2012.</p>
+</div>
+<div class="citation" id="id14" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>19<span class="fn-bracket">]</span></span>
+<p>H. E. Jones and D. J. Spiegelhalter. Use of the indirect approach to standardisation in institutional comparison. <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, 171(1):267–280, 2008.</p>
+</div>
+<div class="citation" id="id15" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>20<span class="fn-bracket">]</span></span>
+<p>John D. Kalbfleisch and Robert A. Wolfe. Discussion on “statistical methods for healthcare provider profiling” by jones, h. e., spiegelhalter, d. j. and ohlssen, d. i. <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, 181(3):605–607, 2018.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-right" title="Introduction" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

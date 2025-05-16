@@ -1,0 +1,12 @@
+﻿pprof\_py.linear\_random\_effect
+================================
+
+.. automodule:: pprof_py.linear_random_effect
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      LinearRandomEffectModel
+   

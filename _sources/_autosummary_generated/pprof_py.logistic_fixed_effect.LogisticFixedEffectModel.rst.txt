@@ -1,0 +1,36 @@
+﻿pprof\_py.logistic\_fixed\_effect.LogisticFixedEffectModel
+==========================================================
+
+.. currentmodule:: pprof_py.logistic_fixed_effect
+
+.. autoclass:: LogisticFixedEffectModel
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LogisticFixedEffectModel.__init__
+      ~LogisticFixedEffectModel.calculate_confidence_intervals
+      ~LogisticFixedEffectModel.calculate_standardized_measures
+      ~LogisticFixedEffectModel.fit
+      ~LogisticFixedEffectModel.get_params
+      ~LogisticFixedEffectModel.plot_coefficient_forest
+      ~LogisticFixedEffectModel.plot_funnel
+      ~LogisticFixedEffectModel.plot_provider_effects
+      ~LogisticFixedEffectModel.plot_qq
+      ~LogisticFixedEffectModel.plot_residuals
+      ~LogisticFixedEffectModel.plot_standardized_measures
+      ~LogisticFixedEffectModel.predict
+      ~LogisticFixedEffectModel.score
+      ~LogisticFixedEffectModel.summary
+      ~LogisticFixedEffectModel.test
+   
+   
+
+   
+   
+   

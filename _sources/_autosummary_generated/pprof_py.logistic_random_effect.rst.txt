@@ -1,0 +1,12 @@
+﻿pprof\_py.logistic\_random\_effect
+==================================
+
+.. automodule:: pprof_py.logistic_random_effect
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      LogisticRandomEffectModel
+   
