@@ -79,7 +79,7 @@ class BaseModel(ABC):
 
     def _validate_and_convert_inputs(
         self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None, 
-        use_dataprep: bool = True, screen_providers: bool = False, 
+        use_dataprep: bool = False, screen_providers: bool = False, 
         log_event_providers: bool = False, cutoff: int = 10, 
         threshold_cor: float = 0.9, threshold_vif: int = 10, **kwargs
     ) -> tuple:
@@ -103,7 +103,7 @@ class BaseModel(ABC):
             Column name in X for the response variable.
         group_var : str, optional
             Column name in X for group identifiers. Required if X is a DataFrame.
-        use_dataprep : bool, default=True
+        use_dataprep : bool, default=False
             Whether to apply data preparation using DataPrep.
         screen_providers : bool, default=False
             Whether to filter small providers (used if use_dataprep is True).
