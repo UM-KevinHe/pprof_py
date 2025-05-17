@@ -164,7 +164,7 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_and_convert_inputs</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_vars</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y_var</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">group_var</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
-        <span class="n">use_dataprep</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">screen_providers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> 
+        <span class="n">use_dataprep</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">screen_providers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> 
         <span class="n">log_event_providers</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">cutoff</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> 
         <span class="n">threshold_cor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">threshold_vif</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
@@ -188,7 +188,7 @@
 <span class="sd">            Column name in X for the response variable.</span>
 <span class="sd">        group_var : str, optional</span>
 <span class="sd">            Column name in X for group identifiers. Required if X is a DataFrame.</span>
-<span class="sd">        use_dataprep : bool, default=True</span>
+<span class="sd">        use_dataprep : bool, default=False</span>
 <span class="sd">            Whether to apply data preparation using DataPrep.</span>
 <span class="sd">        screen_providers : bool, default=False</span>
 <span class="sd">            Whether to filter small providers (used if use_dataprep is True).</span>
