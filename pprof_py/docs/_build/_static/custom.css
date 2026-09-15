@@ -1,0 +1,17 @@
+/* pprof_py documentation custom styles */
+
+/* Improve math display readability */
+.math {
+    font-size: 1.05em;
+}
+
+/* Better code block styling */
+div.highlight pre {
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+/* Admonition styling improvements */
+.admonition {
+    margin: 1.5em 0;
+}

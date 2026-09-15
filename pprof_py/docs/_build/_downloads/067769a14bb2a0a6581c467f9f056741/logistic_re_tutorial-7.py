@@ -1,0 +1,8 @@
+if hasattr(lre_model_logistic, 'model') and lre_model_logistic.model is not None and lre_model_logistic.model.fitted:
+    try:
+        fixed_effects_summary_lre_df = lre_model_logistic.summary()
+        print("\nSummary of Fixed Effects (Betas):\n", fixed_effects_summary_lre_df)
+    except Exception as e:
+        print(f"Could not generate fixed effects summary: {e}")
+else:
+    print("Model not fitted successfully. Cannot display fixed effects summary.")

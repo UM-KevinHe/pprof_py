@@ -1,4 +1,32 @@
-# pyproject.toml
 [build-system]
-requires = ["setuptools>=60", "wheel"] # Specify build dependencies
-build-backend = "setuptools.build_meta" # Use setuptools as the build backend
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pprof_py"
+version = "0.2.0"
+description = "General statistical-computing package for provider profiling and healthcare analytics (logistic, linear, and Cox survival models)."
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "scipy>=1.9",
+    "scikit-learn>=1.0",
+    "matplotlib>=3.5",
+    "seaborn>=0.12",
+    "numba>=0.56",
+    "fast_poibin>=0.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "statsmodels>=0.13"]
+# Optional solver used by LogisticRandomEffectModel; scipy fallbacks are
+# used automatically when nlopt is unavailable.
+random-effect = ["nlopt"]
+# Only required by pprof_py.compatibility.legacy_logistic_random_effect,
+# never imported by the rest of the package.
+legacy = ["rpy2", "pymer4"]
+
+[tool.setuptools.packages.find]
+include = ["pprof_py*"]
+exclude = ["pprof_py.tests*"]

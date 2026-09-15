@@ -1,22 +1,61 @@
-# pprof_py/__init__.py
-# """
-# pprof_py: A package that provides a variety of risk-adjusted models for provider profiling, efficiently handling large-scale provider data.
-# """
-__version__ = "0.1.0"
-#
-# # Import key functions to make them available directly
-# # e.g., from pprof_py import linear_fixed_effect, linear_random_effect
-from .linear_fixed_effect import LinearFixedEffectModel  
-from .linear_random_effect import LinearRandomEffectModel
-from .logistic_fixed_effect import LogisticFixedEffectModel
-from .logistic_random_effect import LogisticRandomEffectModel
-from .utils import setup_logger, proc_freq, sigmoid  # Importing all utility functions
+"""pprof_py: a general statistical-computing package for provider profiling
+and healthcare analytics.
+
+Public API
+----------
+    from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
+    from pprof_py import LinearFixedEffectModel, LinearRandomEffectModel
+    from pprof_py import CoxPH, PenalizedCoxPH, PenalizedCoxPHCV
+    from pprof_py import CauseSpecificCoxPH, FineGrayPH
+    from pprof_py import CoxPHSelector
+
+Internal implementation (algorithms, data handling, inference, plotting) is
+organized under `pprof_py.models`, `pprof_py.algorithms`, `pprof_py.data`,
+`pprof_py.inference`, `pprof_py.measures`, and `pprof_py.plotting`; analysts
+are expected to import model classes from the package root rather than from
+those internal modules directly.
+
+`LinearRandomEffectModel` is now re-exported from the package root.
+"""
+from .models.linear import LinearFixedEffectModel, LinearRandomEffectModel
+from .models.logistic import (
+    LogisticFixedEffectModel,
+    LogisticMixedEffectModel,
+    LogisticRandomEffectModel,
+)
+from .models.survival import (
+    CoxPH,
+    PenalizedCoxPH,
+    PenalizedCoxPHCV,
+    CauseSpecificCoxPH,
+    FineGrayPH,
+)
+from .selection import CoxPHSelector
+from .exceptions import NotFittedError
+from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
-# # Optionally control what `from pprof_py import *` imports
-__all__ = ['LinearFixedEffectModel', 'LinearRandomEffectModel', 
-           'LogisticFixedEffectModel', 'LogisticRandomEffectModel',
-            'setup_logger', 'proc_freq', 'sigmoid', 'plot_caterpillar',
-            "__version__"
-  ]
-# # __all__ is a convention in Python that defines what symbols will be exported when
-# # `from module import *` is used. It helps in controlling the public API of the module. 
+from .inference import huber_location_scale, estimate_empirical_null
+
+__version__ = "0.2.0"
+
+__all__ = [
+    "LinearFixedEffectModel",
+    "LinearRandomEffectModel",
+    "LogisticFixedEffectModel",
+    "LogisticMixedEffectModel",
+    "LogisticRandomEffectModel",
+    "CoxPH",
+    "PenalizedCoxPH",
+    "PenalizedCoxPHCV",
+    "CauseSpecificCoxPH",
+    "FineGrayPH",
+    "CoxPHSelector",
+    "NotFittedError",
+    "setup_logger",
+    "proc_freq",
+    "sigmoid",
+    "plot_caterpillar",
+    "huber_location_scale",
+    "estimate_empirical_null",
+    "__version__",
+]
