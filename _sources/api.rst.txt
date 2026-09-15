@@ -4,59 +4,107 @@ API Reference
 =============
 
 This section provides the API reference for the ``pprof_py`` package.
+All primary model classes are importable directly from ``pprof_py``.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Modules:
+.. contents::
+   :local:
+   :depth: 2
+
+Package Root
+------------
 
 .. automodule:: pprof_py
    :members:
    :undoc-members:
    :show-inheritance:
 
-Models
-------
-.. autosummary::
-   :toctree: _autosummary_generated
-   :nosignatures:
+Survival Models
+---------------
 
-   pprof_py.base_model.BaseModel
-   pprof_py.linear_fixed_effect.LinearFixedEffectModel
-   pprof_py.linear_random_effect.LinearRandomEffectModel
-   pprof_py.logistic_fixed_effect.LogisticFixedEffectModel
-   pprof_py.logistic_random_effect.LogisticRandomEffectModel
+.. autoclass:: pprof_py.models.survival.CoxPH
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-Utilities
+.. autoclass:: pprof_py.models.survival.PenalizedCoxPH
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pprof_py.models.survival.PenalizedCoxPHCV
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pprof_py.models.survival.CauseSpecificCoxPH
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pprof_py.models.survival.FineGrayPH
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Logistic Models
+---------------
+
+.. autoclass:: pprof_py.models.logistic.LogisticFixedEffectModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pprof_py.models.logistic.LogisticRandomEffectModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pprof_py.models.logistic.LogisticMixedEffectModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Linear Models
+-------------
+
+.. autoclass:: pprof_py.models.linear.LinearFixedEffectModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Variable Selection
+------------------
+
+.. autoclass:: pprof_py.selection.CoxPHSelector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Inference
 ---------
-.. autosummary::
-   :toctree: _autosummary_generated
-   :nosignatures:
 
-   pprof_py.utils.setup_logger
-   pprof_py.utils.proc_freq
-   pprof_py.utils.sigmoid
+.. autofunction:: pprof_py.inference.huber_location_scale
+
+.. autofunction:: pprof_py.inference.estimate_empirical_null
 
 Plotting
 --------
-.. autosummary::
-   :toctree: _autosummary_generated
-   :nosignatures:
 
-   pprof_py.plotting.plot_caterpillar
+.. autofunction:: pprof_py.plotting.plot_caterpillar
 
-Full Modules
-------------
-If you prefer to document entire modules rather than specific classes/functions:
+Utilities
+---------
 
-.. autosummary::
-   :toctree: _autosummary_generated
-   :recursive:
+.. autofunction:: pprof_py.utils.setup_logger
 
-   pprof_py.base_model
-   pprof_py.linear_fixed_effect
-   pprof_py.linear_random_effect
-   pprof_py.logistic_fixed_effect
-   pprof_py.logistic_random_effect
-   pprof_py.plotting
-   pprof_py.utils
+.. autofunction:: pprof_py.utils.proc_freq
+
+.. autofunction:: pprof_py.utils.sigmoid
+
+Exceptions
+----------
+
+.. autoclass:: pprof_py.exceptions.NotFittedError
+   :members:
+   :show-inheritance:
 

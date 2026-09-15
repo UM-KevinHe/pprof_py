@@ -3,7 +3,7 @@
 Introduction
 ==========================
 
-Welcome to the documentation for **pprof_test**, a Python package designed for robust provider profiling through advanced statistical modeling.
+Welcome to the documentation for **pprof_py**, a Python package designed for robust provider profiling through advanced statistical modeling.
 
 What is Provider Profiling?
 ---------------------------
@@ -12,36 +12,47 @@ Provider profiling is a critical analytical process in healthcare and other serv
 
 The primary goal of provider profiling is to identify variations in performance, highlight best practices, and pinpoint areas requiring improvement. Effective profiling relies on fair and accurate comparisons, which necessitates adjusting for differences in the underlying risk factors of the populations served by different providers. Without such risk adjustment, comparisons can be misleading, potentially penalizing providers who care for sicker or more complex populations.
 
-Why pprof_test?
+Why pprof_py?
 ---------------
 
-The **pprof_test** package offers a comprehensive suite of tools to conduct sophisticated provider profiling. It aims to provide accessible, efficient, and statistically sound methods for:
+The **pprof_py** package offers a comprehensive suite of tools to conduct sophisticated provider profiling. It aims to provide accessible, efficient, and statistically sound methods for:
 
 *   **Risk Adjustment:** Implementing models that account for patient-level or case-mix differences, ensuring fairer comparisons.
 *   **Performance Measurement:** Calculating standardized measures that quantify provider performance relative to an expected baseline.
 *   **Statistical Inference:** Enabling hypothesis testing to determine if observed differences in performance are statistically significant.
 *   **Large-Scale Data Handling:** Designed with considerations for efficiency when working with substantial datasets common in healthcare analytics.
 
-Core Models in pprof_test
+Core Models in pprof_py
 -------------------------
 
-To address diverse analytical needs and data characteristics, **pprof_test** implements a range of statistical models. The primary model categories include:
+To address diverse analytical needs and data characteristics, **pprof_py** implements a range of statistical models across three families:
 
-1.  **Linear Fixed Effects Models:**
-    Suitable for continuous outcome variables where provider effects are treated as fixed, distinct parameters. These models are useful when the interest lies specifically in the performance of the observed set of providers without generalizing to a larger population of providers.
+1.  **Linear Models:**
+    Suitable for continuous outcome variables. Both fixed effects (``LinearFixedEffectModel``) and random/mixed effects (``LinearRandomEffectModel``) variants are available.
 
-2.  **Linear Random Effects Models (Mixed Models):**
-    Also for continuous outcomes, these models treat provider effects as random variables drawn from a common distribution. This approach is beneficial for borrowing strength across providers, handling providers with sparse data, and making inferences about the broader population of providers.
+2.  **Logistic Models:**
+    Designed for binary outcome variables (e.g., mortality, readmission). Available as fixed effects (``LogisticFixedEffectModel``), random effects (``LogisticRandomEffectModel``), and mixed effects (``LogisticMixedEffectModel``).
 
-3.  **Logistic Fixed Effects Models:**
-    Designed for binary outcome variables (e.g., mortality, readmission, complication). Similar to their linear counterparts, provider effects are estimated as fixed parameters, suitable for direct comparison of the observed providers.
+3.  **Survival / Cox Proportional Hazards Models:**
+    For time-to-event data with censoring, the cornerstone of provider profiling for mortality and hospitalization outcomes. Includes:
 
-4.  **Logistic Random Effects Models (Generalized Linear Mixed Models - GLMMs):**
-    For binary outcomes where provider effects are considered random. These models are powerful for risk adjustment in the presence of clustered data (e.g., patients within providers) and allow for more robust estimation, especially with varying group sizes.
+    * ``CoxPH`` — standard Cox regression with Breslow/Efron ties, strata, offsets, weights, and left truncation, validated against R’s ``survival::coxph()`` to 1e-8–1e-14 relative error.
+    * ``PenalizedCoxPH`` / ``PenalizedCoxPHCV`` — Ridge, LASSO, and elastic net penalized Cox regression with cross-validation.
+    * ``CauseSpecificCoxPH`` / ``FineGrayPH`` — competing risks analysis.
+    * ``CoxPHSelector`` — automated stepwise variable selection (forward, backward, bidirectional) using AIC, BIC, or p-value criteria.
 
 Getting Started
 ---------------
 
-This documentation will guide you through the installation, usage, and API of the **pprof_test** package. You will find detailed explanations of each model, examples of how to fit them, interpret their results, and utilize the various utility functions for summarization, testing, and visualization.
+This documentation covers installation, model fitting, result interpretation, statistical methodology, and the full API. The Survival Analysis section provides a comprehensive, chapter-by-chapter tutorial from survival-data foundations through a complete case study.
 
-We hope **pprof_test** becomes a valuable tool in your provider profiling endeavors, enabling you to derive meaningful insights from your data.
+All models are importable from the package root:
+
+.. code-block:: python
+
+   from pprof_py import (
+       CoxPH, PenalizedCoxPH, PenalizedCoxPHCV,
+       CauseSpecificCoxPH, FineGrayPH, CoxPHSelector,
+       LogisticFixedEffectModel, LogisticMixedEffectModel,
+       LogisticRandomEffectModel, LinearFixedEffectModel,
+   )

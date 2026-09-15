@@ -113,18 +113,18 @@ The variance for :math:`\hat{\gamma}_i` is given by:
 
    \text{Var}(\hat{\gamma}_i) = \frac{\sigma^2}{n_i} + \bar{\mathbf{X}}_i^\top \text{Var}(\hat{\boldsymbol\beta}_{FE}) \bar{\mathbf{X}}_i
 
-The implementation (``pprof_test.linear_fixed_effect.LinearFixedEffectModel.__init__``) provides two options via the ``gamma_var_option`` parameter for estimating the diagonal elements of :math:`\text{Var}(\hat{\boldsymbol\gamma})`:
+The implementation (``LinearFixedEffectModel.__init__``) provides two options via the ``gamma_var_option`` parameter for estimating the diagonal elements of :math:`\text{Var}(\hat{\boldsymbol\gamma})`:
 
 1. **``complete``:** Uses the full formula above, :math:`\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i} + \bar{\mathbf{X}}_i^\top \widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE}) \bar{\mathbf{X}}_i`, including the term involving :math:`\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})`.
 2. **``simplified``:** Uses only the first term, :math:`\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i}`, ignoring the uncertainty in :math:`\hat{\boldsymbol\beta}_{FE}`. This may be appropriate if :math:`p` is small relative to :math:`N` or if primary interest is in ranking rather than precise inference.
 
 
 2.3. Standardized Measures for Performance Comparison
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For linear models, standardized measures typically represent differences rather than ratios. They quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix.
 
-Let :math:`\hat{\boldsymbol{\beta}}` and :math:`\hat{\boldsymbol{\gamma}}` be the OLS estimates. Define a reference or baseline provider effect :math:`\gamma_0` (e.g., median or mean of :math:`\hat{\gamma}_i`, as specified by the ``null`` parameter in ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures``).
+Let :math:`\hat{\boldsymbol{\beta}}` and :math:`\hat{\boldsymbol{\gamma}}` be the OLS estimates. Define a reference or baseline provider effect :math:`\gamma_0` (e.g., median or mean of :math:`\hat{\gamma}_i`, as specified by the ``null`` parameter in ``LinearFixedEffectModel.calculate_standardized_measures``).
 
 **2.3.1. Indirect Standardization**
 
@@ -190,14 +190,14 @@ Direct standardization compares the expected total outcome if the *entire popula
 
        \text{DSDiff}_k = \hat{\gamma}_k - \gamma_0
 
-Therefore, for linear fixed effect models, both indirect and direct standardized differences ultimately simplify to :math:`\hat{\gamma}_i - \gamma_0` when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures``) calculates and returns these differences along with the observed and expected totals for each method.
+Therefore, for linear fixed effect models, both indirect and direct standardized differences ultimately simplify to :math:`\hat{\gamma}_i - \gamma_0` when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (``LinearFixedEffectModel.calculate_standardized_measures``) calculates and returns these differences along with the observed and expected totals for each method.
 
 .. 2.3. Standardized Measures for Performance Comparison
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. For linear models, standardized measures typically represent differences rather than ratios. They quantify how much a provider's average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix.
 
-.. Let :math:`\hat{\boldsymbol{\beta}}` and :math:`\hat{\boldsymbol{\gamma}}` be the OLS estimates. Define a reference or baseline provider effect :math:`\gamma_0` (e.g., median or mean of :math:`\hat{\gamma}_i`, as specified by the ``null`` parameter in ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures``).
+.. Let :math:`\hat{\boldsymbol{\beta}}` and :math:`\hat{\boldsymbol{\gamma}}` be the OLS estimates. Define a reference or baseline provider effect :math:`\gamma_0` (e.g., median or mean of :math:`\hat{\gamma}_i`, as specified by the ``null`` parameter in ``LinearFixedEffectModel.calculate_standardized_measures``).
 
 .. **2.3.1. Indirect Standardization**
 
@@ -241,12 +241,12 @@ Therefore, for linear fixed effect models, both indirect and direct standardized
 
 ..     Similar to the indirect case, the direct standardized difference in the linear FE model simplifies to the estimated provider effect relative to the baseline.
 
-.. Therefore, for linear fixed effect models, both indirect and direct standardized *differences* are equivalent to :math:`\hat{\gamma}_i - \gamma_0`. The implementation (``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_standardized_measures``) calculates and returns this difference along with the observed sum (:math:`n_i \bar{Y}_i`) and expected sum (:math:`n_i \bar{E}_i(\gamma_0)` for indirect, or :math:`N \bar{E}^{(0)}` and :math:`N \bar{E}^{(k)}` components for direct) components.
+.. Therefore, for linear fixed effect models, both indirect and direct standardized *differences* are equivalent to :math:`\hat{\gamma}_i - \gamma_0`. The implementation (``LinearFixedEffectModel.calculate_standardized_measures``) calculates and returns this difference along with the observed sum (:math:`n_i \bar{Y}_i`) and expected sum (:math:`n_i \bar{E}_i(\gamma_0)` for indirect, or :math:`N \bar{E}^{(0)}` and :math:`N \bar{E}^{(k)}` components for direct) components.
 
 2.4. Hypothesis Testing for Provider Effects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We test the null hypothesis :math:`H_0: \gamma_i = \gamma_0` against an alternative :math:`H_1`. Given the linear model assumptions and the estimation of :math:`\sigma^2`, the natural test is a **t-test**, as implemented in ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.test``:
+We test the null hypothesis :math:`H_0: \gamma_i = \gamma_0` against an alternative :math:`H_1`. Given the linear model assumptions and the estimation of :math:`\sigma^2`, the natural test is a **t-test**, as implemented in ``LinearFixedEffectModel.test``:
 
 .. math::
 
@@ -259,21 +259,21 @@ Under :math:`H_0`, the test statistic :math:`T_i` follows a t-distribution with 
 
 Confidence intervals for :math:`\boldsymbol\beta` and :math:`\gamma_i` are constructed based on the t-distribution with :math:`N-m-p` degrees of freedom.
 
-*   **For** :math:`\beta_k` (see ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.summary``):
+*   **For** :math:`\beta_k` (see ``LinearFixedEffectModel.summary``):
 
     .. math::
 
        \hat{\beta}_k \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\beta}_k)
 
     where :math:`\widehat{\text{se}}(\hat{\beta}_k)` is the square root of the :math:`k`-th diagonal element of :math:`\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})`.
-*   **For** :math:`\gamma_i` (see ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_confidence_intervals``):
+*   **For** :math:`\gamma_i` (see ``LinearFixedEffectModel.calculate_confidence_intervals``):
 
     .. math::
 
        \hat{\gamma}_i \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\gamma}_i)
 
     where :math:`\widehat{\text{se}}(\hat{\gamma}_i)` is the square root of the estimated :math:`\text{Var}(\hat{\gamma}_i)` (using either the 'complete' or 'simplified' option).
-*   **For Standardized Differences** (see ``pprof_test.linear_fixed_effect.LinearFixedEffectModel.calculate_confidence_intervals``): Since both indirect and direct standardized differences simplify to :math:`\hat{\gamma}_i - \gamma_0` (where :math:`\gamma_0` is treated as a fixed value post-estimation for CI construction), the confidence interval for the difference is:
+*   **For Standardized Differences** (see ``LinearFixedEffectModel.calculate_confidence_intervals``): Since both indirect and direct standardized differences simplify to :math:`\hat{\gamma}_i - \gamma_0` (where :math:`\gamma_0` is treated as a fixed value post-estimation for CI construction), the confidence interval for the difference is:
 
     .. math::
 
@@ -284,7 +284,7 @@ Confidence intervals for :math:`\boldsymbol\beta` and :math:`\gamma_i` are const
 2.6. Visualization
 ^^^^^^^^^^^^^^^^^^
 
-The ``pprof_test.linear_fixed_effect.LinearFixedEffectModel`` class provides several plotting methods:
+The ``LinearFixedEffectModel`` class provides several plotting methods:
 
 *   **Caterpillar Plot (``plot_provider_effects``, ``plot_standardized_measures``):** Displays :math:`\hat{\gamma}_i` (or the standardized difference :math:`\hat{\gamma}_i - \gamma_0`) with its confidence interval for each provider, sorted by the estimate. Helps visualize relative performance and uncertainty.
 *   **Funnel Plot (``plot_funnel``):** Plots the standardized difference (:math:`\hat{\gamma}_i - \gamma_0`) against group size :math:`n_i` (as a measure of precision). Control limits are drawn based on the overall model's residual standard deviation :math:`\hat{\sigma}`, typically as :math:`target \pm z_{1-\alpha/2} \times \frac{\hat{\sigma}}{\sqrt{n_i}}`, forming a funnel shape.
@@ -294,7 +294,7 @@ The ``pprof_test.linear_fixed_effect.LinearFixedEffectModel`` class provides sev
 3. Implementation and Usage
 ---------------------------
 
-The ``LinearFixedEffectModel`` class in ``pprof_test.linear_fixed_effect`` implements these methods.
+The ``LinearFixedEffectModel`` class in ``pprof_py`` implements these methods.
 
 3.1. Initialization and Fitting
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -306,7 +306,7 @@ The ``LinearFixedEffectModel`` class in ``pprof_test.linear_fixed_effect`` imple
    # And n_total_samples, linear_pred_true are defined elsewhere for example data generation.
    import numpy as np
    import pandas as pd
-   from pprof_test.linear_fixed_effect import LinearFixedEffectModel # Adjust import path as needed
+   from pprof_py import LinearFixedEffectModel
 
    # Example data generation (conceptual)
    # n_total_samples = 1000

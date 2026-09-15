@@ -12,12 +12,12 @@ Logistic Random Effect Modeling
 
 When analyzing binary patient outcomes (e.g., mortality, readmission) clustered within healthcare providers, logistic random effect models, also known as Generalized Linear Mixed Models (GLMMs) with a logit link, are a common approach :cite:`Bates2015lme4,McCulloch2001GLMM,Stroup2013GLMM`. These models account for the correlation of outcomes within providers by incorporating provider-specific random effects, typically random intercepts. This allows for provider comparisons while adjusting for patient-level covariates.
 
-The ``pprof_test.logistic_random_effect.LogisticRandomEffectModel`` class implements such a model by leveraging the ``pymer4`` library :cite:`pymer4doc`, which serves as a Python interface to R's powerful ``lme4`` package. This approach combines the statistical robustness of ``lme4`` with the convenience of a Python environment.
+The ``LogisticRandomEffectModel`` class implements such a model using a pure-Python reimplementation of the ``lme4`` :cite:`Bates2015lme4` fitting algorithm (PIRLS + Laplace approximation). No R or ``pymer4`` dependency is required.
 
 This document outlines the statistical methodology underpinning the ``LogisticRandomEffectModel``, covering:
 
   * The logistic random intercept model formulation.
-  * Parameter estimation via ``pymer4`` (interfacing ``lme4``), including fixed effects and variance components, and prediction of random effects (BLUPs).
+  * Parameter estimation via PIRLS + Laplace approximation (lme4-style), including fixed effects and variance components, and prediction of random effects (BLUPs).
   * Calculation of standardized measures (e.g., Standardized Mortality/Morbidity Ratios - SMRs, Standardized Rates) for performance comparison.
   * Hypothesis testing procedures for provider random effects.
   * Construction of confidence intervals for fixed effects and random effects.
@@ -47,12 +47,12 @@ The model aims to estimate the fixed effects :math:`\boldsymbol\beta`, the rando
 2.2. Parameter Estimation and Prediction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``LogisticRandomEffectModel`` utilizes ``pymer4.models.Lmer`` (with ``family='binomial'``) to fit the GLMM. ``lme4`` typically uses (Restricted) Maximum Likelihood estimation, often employing methods like Laplace approximation or Penalized Quasi-Likelihood (PQL) for GLMMs.
+The ``LogisticRandomEffectModel`` fits the GLMM using a pure-Python implementation of the lme4 algorithm: Penalized Iteratively Reweighted Least Squares (PIRLS) for the inner loop, with a two-stage outer optimization (nAGQ=0 then Laplace/nAGQ=1). No R or pymer4 dependency is required.
 
-*   **Fixed Effects** (:math:`\hat{\boldsymbol\beta}`): Estimates of the population-average covariate effects. Stored in ``coefficients_['fixed_effect']``.
-*   **Random Effects** Variance (:math:`\hat{\sigma}^2_u`): Estimate of the variability between providers. Stored in ``variances_['re_var']``.
-*   **Random Effects** (BLUPs, :math:`\hat{u}_i`): Predictions of the provider-specific deviations from the overall intercept. These are Best Linear Unbiased Predictors (BLUPs) on the log-odds scale and exhibit shrinkage towards the mean (zero). Stored in ``coefficients_['random_effect']``.
-*   **Variance-Covariance of Fixed Effects:** Stored in ``variances_['fe_var_cov']``.
+*   **Fixed Effects** (:math:`\hat{\boldsymbol\beta}`): Estimates of the population-average covariate effects. Stored in ``coefficients_['beta']`` (a ``pd.Series``).
+*   **Random Effects** Variance (:math:`\hat{\sigma}^2_u`): Estimate of the variability between providers. Stored in ``variances_['alpha']`` (a dict mapping group_var to :math:`\sigma^2_u`).
+*   **Random Effects** (BLUPs, :math:`\hat{u}_i`): Predictions of the provider-specific deviations from the overall intercept. These are Best Linear Unbiased Predictors (BLUPs) on the log-odds scale and exhibit shrinkage towards the mean (zero). Stored in ``coefficients_['alpha']`` (a dict of ``pd.Series`` per group_var). Also accessible via ``get_random_effects(group_var)``.
+*   **Variance-Covariance of Fixed Effects:** Stored in ``variances_['beta']``.
 
 The fitted probabilities :math:`\hat{p}_{ij}` (including random effects) are stored in ``fitted_``. The linear predictor from fixed effects only, :math:`\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta}`, is stored in ``xbeta_``.
 
@@ -167,7 +167,7 @@ To assess if a provider's random effect :math:`u_i` is significantly different f
 
    Z_i = \frac{\hat{u}_i - u_0}{\widehat{\text{se}}(\hat{u}_i)}
 
-where :math:`\hat{u}_i` is the BLUP for provider :math:`i`, and :math:`\widehat{\text{se}}(\hat{u}_i)` is its posterior standard error. These standard errors are obtained from the ``lme4`` model via ``pymer4`` (see ``_get_blup_post_se`` method).
+where :math:`\hat{u}_i` is the BLUP for provider :math:`i`, and :math:`\widehat{\text{se}}(\hat{u}_i)` is its posterior standard error. These standard errors are derived from the posterior conditional variance of the BLUPs (see ``_get_posterior_se`` method).
 
 Under the null hypothesis :math:`H_0: u_i = u_0`, the statistic :math:`Z_i` is assumed to follow a standard normal distribution. P-values are calculated based on this distribution according to the specified ``alternative`` ('two_sided', 'less', 'greater') in the ``test`` method.
 
@@ -189,27 +189,22 @@ Under the null hypothesis :math:`H_0: u_i = u_0`, the statistic :math:`Z_i` is a
        \hat{u}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{u}_i)
 
 *   **For Standardized Measures** (Ratios/Rates):
-    Calculating robust confidence intervals for standardized ratios or rates derived from logistic random effect models is statistically complex. It often requires methods like the Delta method on the log/logit scale or extensive bootstrapping. The ``calculate_confidence_intervals`` method with ``option='SM'`` raises a ``NotImplementedError``, advising users to consider these advanced methods or consult a statistician.
+    The ``calculate_confidence_intervals`` method with ``option='SM'`` computes approximate CIs for standardized ratios and rates using a Delta-method transformation of the BLUP posterior standard errors on the log scale.
 
 2.6. Visualization
 ^^^^^^^^^^^^^^^^^^
 
-The ``LogisticRandomEffectModel`` class offers several plotting methods:
+The ``LogisticRandomEffectModel`` class provides several plotting methods via the ``RandomEffectPlottingMixin``:
 
-*   **Caterpillar Plot for Provider Effects** (``plot_provider_effects``): Displays BLUPs :math:`\hat{u}_i` (on the log-odds scale) with their approximate confidence intervals.
-*   **Coefficient Forest Plot** (``plot_coefficient_forest``): Displays estimates and confidence intervals for fixed effect coefficients :math:`\hat{\boldsymbol{\beta}}`.
-*   **Residual Plots** (``plot_residuals``): Plots response or Pearson residuals against fitted probabilities. Note that residuals from logistic models have specific patterns and are not expected to be homoscedastic or normally distributed like in linear models.
-
-The following plots are **not implemented** due to theoretical complexities or limited utility in the logistic random effect context:
-
-*   **Funnel Plot** (``plot_funnel``): Standard funnel plots with control limits are difficult to define rigorously for random effect models, especially logistic ones.
-*   **Q-Q Plot of Residuals** (``plot_qq``): Residuals from logistic regression are not expected to be normally distributed, making standard Q-Q plots less meaningful for overall model assessment.
-*   **Caterpillar Plot for Standardized Measures** (``plot_standardized_measures``): This is not implemented because robust CIs for these measures are not provided by the corresponding CI calculation method.
+*   **Funnel Plot** (``plot_funnel``): Plots the indirect standardized ratio (O/E) against expected count (precision).  Control limits use the Poisson approximation :math:`target \pm z_{1-\alpha/2} / \sqrt{E_i}`, with ``target=1.0`` for ratios.  Providers are flagged using the ``test()`` method.
+*   **Caterpillar Plot for Provider Effects** (``plot_provider_effects``): Displays BLUPs :math:`\hat{u}_i` on the log-odds scale with confidence intervals from the posterior standard errors.  Optionally colour-codes providers using significance flags.
+*   **Caterpillar Plot for Standardized Measures** (``plot_standardized_measures``): Displays indirect or direct standardized ratios or rates with CIs from ``calculate_confidence_intervals(option='SM')``.
+*   **Coefficient Forest Plot** (``plot_coefficient_forest``): Displays fixed-effect estimates :math:`\hat{\boldsymbol{\beta}}` and z-based Wald confidence intervals.
 
 3. Implementation and Usage
 ---------------------------
 
-The ``LogisticRandomEffectModel`` class in ``pprof_test.logistic_random_effect`` implements these methods.
+The ``LogisticRandomEffectModel`` class in ``pprof_py`` implements these methods.
 
 3.1. Initialization and Fitting
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,7 +213,7 @@ The ``LogisticRandomEffectModel`` class in ``pprof_test.logistic_random_effect``
 
    import pandas as pd
    import numpy as np
-   from pprof_test.logistic_random_effect import LogisticRandomEffectModel
+   from pprof_py import LogisticRandomEffectModel
 
    # Generate synthetic data (from class docstring)
    np.random.seed(123)
@@ -235,8 +230,7 @@ The ``LogisticRandomEffectModel`` class in ``pprof_test.logistic_random_effect``
    # Initialize and fit the model
    logit_re_model = LogisticRandomEffectModel()
    logit_re_model.fit(X=data, y_var='Y', x_vars=['X1', 'X2'], group_var='GroupID')
-   # Output: Fitting Lmer model with formula: Y ~ X1 + X2 + (1 | GroupID)
-   # Output: Model fitting complete.
+   # Logs: Fitting logistic GLMM (lme4-style PIRLS + Laplace)...
 
 3.2. Accessing Results
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -244,19 +238,20 @@ The ``LogisticRandomEffectModel`` class in ``pprof_test.logistic_random_effect``
 .. code-block:: python
 
    # Fixed Effects Coefficients (log-odds scale)
-   fixed_effects = logit_re_model.coefficients_['fixed_effect']
+   fixed_effects = logit_re_model.coefficients_['beta']
    print("Estimated Fixed Effects (Betas):")
    print(fixed_effects)
 
    # Predicted Random Effects (BLUPs, log-odds scale)
-   random_effects_blups = logit_re_model.coefficients_['random_effect']
+   random_effects_blups = logit_re_model.get_random_effects()
    print("\nPredicted Random Effects (BLUPs, first 5):")
    print(random_effects_blups.head())
 
    # Variance Components
-   fe_var_cov = logit_re_model.variances_['fe_var_cov']
-   re_var = logit_re_model.variances_['re_var'] # Variance of random effects (sigma_u^2)
-   print(f"\nEstimated Variance of Random Effects (sigma_u^2): {re_var:.3f}")
+   fe_var_cov = logit_re_model.variances_['beta']
+   re_var = logit_re_model.variances_['alpha']  # {group_var: sigma_u^2}
+   sigma_u2 = list(re_var.values())[0]
+   print(f"\nEstimated Variance of Random Effects (sigma_u^2): {sigma_u2:.3f}")
 
    # Fit statistics
    print(f"\nAIC: {logit_re_model.aic_:.2f}")
@@ -293,8 +288,7 @@ The ``LogisticRandomEffectModel`` class in ``pprof_test.logistic_random_effect``
    # Calculate Indirect Standardized Ratios and Rates vs median random effect
    sm_results_logit_re = logit_re_model.calculate_standardized_measures(
        stdz='indirect',
-       null='median',
-       measure=['ratio', 'rate']
+       null='median'
    )
    print("\n--- Logistic RE Indirect Measures (vs Median Random Effect) ---")
    if 'indirect' in sm_results_logit_re:
@@ -331,11 +325,16 @@ Compute CIs for provider random effects (:math:`u_i`, on log-odds scale).
    if 'alpha_ci' in alpha_cis_logit_re_results:
        print(alpha_cis_logit_re_results['alpha_ci'].head())
    
-   # Note: CIs for standardized measures (option='SM') are not implemented.
-   # try:
-   #     sm_cis_results = logit_re_model.calculate_confidence_intervals(option='SM')
-   # except NotImplementedError as e:
-   #     print(f"\nError for SM CIs: {e}")
+   # CIs for standardized measures (ratio and rate)
+   sm_cis_results = logit_re_model.calculate_confidence_intervals(
+       option='SM',
+       stdz='indirect',
+       null='median',
+       measure=['ratio', 'rate'],
+       level=0.95
+   )
+   if 'indirect_ratio' in sm_cis_results:
+       print(sm_cis_results['indirect_ratio'].head())
 
 3.7. Visualization
 ^^^^^^^^^^^^^^^^^^
@@ -343,35 +342,39 @@ Use plotting methods from the ``LogisticRandomEffectModel`` instance.
 
 .. code-block:: python
 
-   # Example: Plot provider random effects (BLUPs on log-odds scale)
-   # logit_re_model.plot_provider_effects(null=0.0, level=0.95)
+   # Funnel plot: indirect standardized ratio (O/E) vs expected count
+   logit_re_model.plot_funnel(
+       test_method='wald', null='median', target=1.0, alpha=[0.05, 0.01]
+   )
 
-   # Example: Forest plot for fixed covariate effects (beta on log-odds scale)
-   # logit_re_model.plot_coefficient_forest()
+   # Provider effects caterpillar (BLUPs on log-odds scale)
+   logit_re_model.plot_provider_effects(
+       null='median', level=0.95, use_flags=True
+   )
 
-   # Example: Residual plot (Pearson residuals vs. fitted probabilities)
-   # logit_re_model.plot_residuals(residual_type="pearson")
-   
-   # The following plots will raise NotImplementedError:
-   # logit_re_model.plot_funnel()
-   # logit_re_model.plot_qq()
-   # logit_re_model.plot_standardized_measures()
+   # Standardized measures caterpillar (indirect ratio with CIs)
+   logit_re_model.plot_standardized_measures(
+       stdz='indirect', measure='ratio', level=0.95, use_flags=True
+   )
+
+   # Forest plot of fixed-effect coefficients (z-based Wald CIs)
+   logit_re_model.plot_coefficient_forest()
 
 4. Discussion
 -------------
 
-Logistic random effect models, as implemented via ``pymer4`` and ``lme4``, provide a robust framework for analyzing binary outcomes clustered within providers. They account for provider-level heterogeneity through random intercepts, allowing for more nuanced comparisons than models ignoring such clustering.
+Logistic random effect models, as implemented in ``pprof_py`` using lme4-style PIRLS + Laplace approximation, provide a robust framework for analyzing binary outcomes clustered within providers. They account for provider-level heterogeneity through random intercepts, allowing for more nuanced comparisons than models ignoring such clustering.
 
 **Advantages:**
 
 *   Appropriately models binary outcomes and accounts for data clustering.
-*   Leverages the well-established ``lme4`` package in R for estimation.
+*   Uses a pure-Python reimplementation of the ``lme4`` fitting algorithm, eliminating R dependencies.
 *   Provides estimates of fixed effects (population average) and predictions of random effects (provider-specific deviations, BLUPs).
 *   BLUPs incorporate shrinkage, which can be beneficial for ranking or comparing providers, especially those with small sample sizes or extreme raw rates.
 
 **Limitations and Assumptions:**
 
-*   **Software Dependency:** Requires ``pymer4``, R, and the ``lme4`` R package to be correctly installed and configured.
+*   **Software Dependencies:** Requires ``scipy`` and ``numpy`` (standard Python scientific stack). No R, ``lme4``, or ``pymer4`` is required.
 *   **GLMM Assumptions:** Relies on standard GLMM assumptions, including linearity on the logit scale, correct specification of the random effects distribution (typically normal), and independence of random effects from covariates.
 *   **Computational Complexity:** Fitting GLMMs can be computationally intensive, especially with large datasets or complex random effects structures.
 *   **Interpretation of Standardized Measures:** Standardized ratios/rates derived from logistic models can be complex to interpret, and their confidence intervals are challenging to compute accurately without advanced statistical methods (e.g., bootstrapping). The current implementation provides point estimates for these measures.

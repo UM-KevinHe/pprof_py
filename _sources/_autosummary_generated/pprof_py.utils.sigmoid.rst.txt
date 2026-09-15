@@ -1,6 +1,0 @@
-﻿pprof\_py.utils.sigmoid
-=======================
-
-.. currentmodule:: pprof_py.utils
-
-.. autofunction:: sigmoid

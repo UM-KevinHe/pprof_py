@@ -14,7 +14,7 @@ When evaluating provider performance using quantitative outcomes, linear mixed-e
 
 Unlike FE models that estimate a distinct parameter for each provider, RE models treat provider effects as random variables drawn from a common distribution. This approach can lead to more efficient estimates, especially when the number of observations per provider is small. However, a key assumption is that the random effects are uncorrelated with the covariates in the model. If this assumption is violated, estimates of covariate effects (:math:`\boldsymbol\beta`) can be biased :cite:`Wooldridge2010Econometric`.
 
-This document details the statistical methodology for linear random effect models as implemented in the ``pprof_test.linear_random_effect.LinearRandomEffectModel`` class, which utilizes ``statsmodels.regression.mixed_linear_model.MixedLM`` for estimation. We cover:
+This document details the statistical methodology for linear random effect models as implemented in the ``LinearRandomEffectModel`` class, which uses a pure-Python lme4-style (Restricted) Maximum Likelihood solver. We cover:
 
   * The linear random effects model formulation (focusing on random intercepts).
   * Parameter estimation (fixed effects, variance components) via (Restricted) Maximum Likelihood.
@@ -48,7 +48,7 @@ The model aims to estimate the fixed effects :math:`\boldsymbol\beta`, the varia
 2.2. Parameter Estimation and Prediction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The parameters (:math:`\boldsymbol\beta`, :math:`\sigma^2_u`, :math:`\sigma^2_e`) are typically estimated using Maximum Likelihood (ML) or Restricted Maximum Likelihood (REML). REML is often preferred for estimating variance components as it accounts for the degrees of freedom used in estimating fixed effects. The ``LinearRandomEffectModel`` uses ``statsmodels.MixedLM`` for this purpose, which allows specifying REML (default) or ML.
+The parameters (:math:`\boldsymbol\beta`, :math:`\sigma^2_u`, :math:`\sigma^2_e`) are typically estimated using Maximum Likelihood (ML) or Restricted Maximum Likelihood (REML). REML is often preferred for estimating variance components as it accounts for the degrees of freedom used in estimating fixed effects. The ``LinearRandomEffectModel`` implements a pure-Python solver for this purpose, following the lme4 profiled-deviance formulation.  Both REML (default) and ML are supported via the ``reml`` parameter.
 
 Once the variance components are estimated, the fixed effects :math:`\hat{\boldsymbol\beta}` are estimated. The random effects :math:`u_i` are not directly estimated as parameters but are predicted using Best Linear Unbiased Predictors (BLUPs), denoted as :math:`\hat{u}_i`. BLUPs are empirical Bayes estimates and exhibit shrinkage towards the overall mean (zero in this formulation), especially for providers with fewer observations or less precise estimates.
 
@@ -61,14 +61,17 @@ The BLUP for a random intercept :math:`u_i` is given by:
 where :math:`\frac{n_i \sigma^2_u}{n_i \sigma^2_u + \sigma^2_e}` is the shrinkage factor.
 
 The implementation stores:
-*   Fixed effects: ``coefficients_['fixed_effect']`` (:math:`\hat{\boldsymbol\beta}`)
-*   Random effects (BLUPs): ``coefficients_['random_effect']`` (:math:`\hat{u}_i`)
-*   Variance-covariance of fixed effects: ``variances_['fe_var_cov']`` (:math:`\widehat{\text{Var}}(\hat{\boldsymbol\beta})`)
-*   Variance of random effects: ``variances_['re_var']`` (:math:`\hat{\sigma}^2_u`)
-*   Residual standard deviation: ``sigma_`` (:math:`\hat{\sigma}_e`)
+*   Fixed effects: ``coefficients_['beta']`` (:math:`\hat{\boldsymbol\beta}`) — ``pd.Series``
+*   Random effects (BLUPs): ``coefficients_['alpha']`` (:math:`\hat{u}_i`) — ``pd.Series`` (single group) or ``dict`` of ``pd.Series`` (multiple groups)
+*   Variance-covariance of fixed effects: ``variances_['beta']`` (:math:`\widehat{\text{Var}}(\hat{\boldsymbol\beta})`) — ``pd.DataFrame``
+*   Variance of random effects: ``variances_['alpha']`` (:math:`\hat{\sigma}^2_u`) — ``pd.DataFrame`` (single group) or ``dict`` (multiple groups)
+*   Residual standard deviation: ``sigma_`` (:math:`\hat{\sigma}_e`) — ``float``
+*   Random-effect standard deviations: ``random_effect_sd_`` — ``dict`` mapping each group variable name to :math:`\hat{\sigma}_u`
+*   Log-likelihood at convergence: ``loglike_``
+*   REML/ML objective at convergence: ``objective_``
 
 2.3. Standardized Measures for Performance Comparison
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For linear random effects models, standardized measures quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix. These measures are calculated either by comparing observed outcomes to expected outcomes under a baseline random effect (indirect standardization), or by comparing expected outcomes for the entire population under each provider's random effect to those under the baseline (direct standardization).
 
@@ -141,7 +144,7 @@ Direct standardization compares the expected total outcome if the *entire popula
 Therefore, for linear random effects models, both indirect and direct standardized differences ultimately simplify to :math:`\hat{\alpha}_i - \alpha_0` when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (``LinearRandomEffectModel.calculate_standardized_measures``) calculates and returns these differences along with the observed and expected totals for each method.
 
 .. 2.3. Standardized Measures for Performance Comparison
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. Standardized measures quantify how a provider's adjusted performance (:math:`\hat{u}_i`) compares to a baseline or reference level (:math:`u_0`). The baseline :math:`u_0` can be the median or mean of :math:`\hat{u}_i`, or a specified value (e.g., 0), as defined by the ``null`` parameter in relevant methods.
 
@@ -222,7 +225,7 @@ The ``LinearRandomEffectModel`` class provides several plotting methods:
 3. Implementation and Usage
 ---------------------------
 
-The ``LinearRandomEffectModel`` class in ``pprof_test.linear_random_effect`` implements these methods.
+The ``LinearRandomEffectModel`` class in ``pprof_py`` implements these methods.
 
 3.1. Initialization and Fitting
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -231,7 +234,7 @@ The ``LinearRandomEffectModel`` class in ``pprof_test.linear_random_effect`` imp
 
    import numpy as np
    import pandas as pd
-   from pprof_test.linear_random_effect import LinearRandomEffectModel
+   from pprof_py import LinearRandomEffectModel
 
    # Example data generation
    np.random.seed(0)
@@ -262,15 +265,14 @@ The ``LinearRandomEffectModel`` class in ``pprof_test.linear_random_effect`` imp
                              np.random.normal(0, sigma_e_true, n_total_samples))
 
    # Initialize and fit the model
-   lre_model = LinearRandomEffectModel()
+   lre_model = LinearRandomEffectModel(verbose=False)
    lre_model.fit(
-       X=data_df,
+       data_df,
        y_var='ContinuousY',
-       x_vars=['Covariate1', 'Covariate2'], # Intercept is added by default by statsmodels
+       x_vars=['Covariate1', 'Covariate2'],
        group_var='ProviderID',
-       use_reml=True
+       reml=True
    )
-   # Output: Model fitting complete.
 
 3.2. Accessing Results
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -278,21 +280,24 @@ The ``LinearRandomEffectModel`` class in ``pprof_test.linear_random_effect`` imp
 .. code-block:: python
 
    # Fixed Effects Coefficients
-   fixed_effects = lre_model.coefficients_['fixed_effect']
+   fixed_effects = lre_model.coefficients_['beta']
    print("Estimated Fixed Effects (Betas):")
    print(fixed_effects)
 
    # Predicted Random Effects (BLUPs)
-   random_effects_blups = lre_model.coefficients_['random_effect']
+   random_effects_blups = lre_model.coefficients_['alpha']
    print("\nPredicted Random Effects (BLUPs, first 5):")
    print(random_effects_blups.head())
 
    # Variance Components
-   fe_var_cov = lre_model.variances_['fe_var_cov']
-   re_var = lre_model.variances_['re_var'] # Variance of random effects (sigma_u^2)
-   sigma_e = lre_model.sigma_ # Residual standard deviation (sigma_e)
+   fe_var_cov = lre_model.variances_['beta']
+   re_var = lre_model.variances_['alpha']   # Variance of random effects (sigma_u^2)
+   sigma_e = lre_model.sigma_               # Residual standard deviation (sigma_e)
+   re_sd = lre_model.random_effect_sd_      # Dict of group_var -> sigma_u
    print(f"\nEstimated Variance of Random Effects (sigma_u^2): {re_var.iloc[0,0]:.3f}")
    print(f"Estimated Residual Standard Deviation (sigma_e): {sigma_e:.3f}")
+   print(f"Random-effect SD per group variable: {re_sd}")
+   print(f"Log-likelihood: {lre_model.loglike_:.2f}")
 
    # Fit statistics
    print(f"\nAIC: {lre_model.aic_:.2f}")
@@ -305,22 +310,31 @@ The ``LinearRandomEffectModel`` class in ``pprof_test.linear_random_effect`` imp
 
 3.3. Prediction
 ^^^^^^^^^^^^^^^
-Predictions are typically based on fixed effects only, or can include specific random effects if known/estimated for the prediction set. The current ``predict`` method uses fixed effects.
+Predictions use fixed effects by default.  Set ``use_re=True`` to add
+BLUPs for known grouping levels (unknown levels receive zero, matching
+lme4's conditional-prediction convention).
 
 .. code-block:: python
 
-   # Predict outcomes using only fixed effects
-   # Create a sample new data DataFrame (ensure it has the x_vars)
+   # Fixed-effects-only predictions (new data, no group column needed)
    new_data_df = pd.DataFrame({
        'Covariate1': np.random.rand(5),
        'Covariate2': np.random.randn(5)
    })
-   
    predictions_fe_only = lre_model.predict(
-       X=new_data_df,
+       new_data_df,
        x_vars=['Covariate1', 'Covariate2']
    )
    print(f"\nFirst 5 predictions (fixed effects only): {predictions_fe_only}")
+
+   # Predictions including random effects (BLUPs)
+   predictions_with_re = lre_model.predict(
+       data_df,
+       x_vars=['Covariate1', 'Covariate2'],
+       group_var='ProviderID',
+       use_re=True
+   )
+   print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
 
 3.4. Standardized Measures Calculation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -385,23 +399,21 @@ Use plotting methods from the ``LinearRandomEffectModel`` instance. (Examples as
 
 .. code-block:: python
 
-   # Example: Plot provider random effects (alpha/u_i)
-   # lre_model.plot_provider_effects(null='median', level=0.95)
+   # Provider random effects (BLUPs) with CIs
+   lre_model.plot_provider_effects(null='median', level=0.95, use_flags=True)
 
-   # Example: Plot standardized differences
-   # lre_model.plot_standardized_measures(stdz='indirect', null='median', level=0.95)
+   # Standardized differences caterpillar
+   lre_model.plot_standardized_measures(stdz='indirect', null='median', level=0.95)
 
-   # Example: Funnel plot
-   # lre_model.plot_funnel(stdz='indirect', null='median', target=0.0, alpha=0.05)
-   
-   # Example: Forest plot for fixed covariate effects (beta)
-   # lre_model.plot_coefficient_forest()
+   # Funnel plot (differences vs provider size)
+   lre_model.plot_funnel(stdz='indirect', null='median', target=0.0, alpha=[0.05, 0.01])
 
-   # Example: Residual plot
-   # lre_model.plot_residuals()
+   # Forest plot of fixed-effect coefficients
+   lre_model.plot_coefficient_forest()
 
-   # Example: Q-Q plot of residuals
-   # lre_model.plot_qq()
+   # Model diagnostics: residuals vs fitted, Q-Q plot
+   lre_model.plot_residuals()
+   lre_model.plot_qq()
 
 4. Discussion
 -------------
@@ -420,10 +432,11 @@ Linear random effect models provide a powerful framework for analyzing clustered
 *   **Random Effects Assumption:** Assumes random effects are drawn from a specific distribution (typically normal) and are uncorrelated with covariates. Violation of the latter can lead to biased :math:`\boldsymbol\beta` estimates.
 *   **Distributional Assumptions:** Relies on normality assumptions for errors and random effects for exact inference, though estimates can be robust.
 *   **Complexity:** Conceptually and computationally more complex than simple OLS or FE models.
+*   **Multiple Grouping Factors:** The current implementation supports multiple independent random-intercept terms (crossed grouping factors) via the ``group_vars`` parameter.
 
 5. Conclusion
 -------------
-The ``LinearRandomEffectModel`` class, leveraging ``statsmodels.MixedLM``, offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization. This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
+The ``LinearRandomEffectModel`` class offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization.  The pure-Python lme4-style solver supports both REML and ML, optional observation weights and offsets, and multiple crossed random-intercept terms.  This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
 
 6. References
 -------------

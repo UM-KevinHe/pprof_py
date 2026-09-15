@@ -1,8 +1,8 @@
 .. _fixed_vs_random_effects:
 
-====================================
+=======================================
 Fixed Effects vs. Random Effects Models
-====================================
+=======================================
 
 When analyzing data with a grouped or hierarchical structure (e.g., patients within hospitals, students within schools, repeated measurements on individuals), a key modeling decision is how to account for group-level heterogeneity. Two common approaches are fixed effects (FE) models and random effects (RE) models. This document outlines their differences, assumptions, and appropriate use cases.
 

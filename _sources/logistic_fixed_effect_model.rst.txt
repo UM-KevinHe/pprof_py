@@ -266,7 +266,7 @@ Instantiate the model and fit it to the data using the ``.fit()`` method.
 .. code-block:: python
 
    # Assuming data_df is prepared as in Section 2.1 example
-  from pprof_py.logistic_fixed_effect import LogisticFixedEffectModel
+  from pprof_py import LogisticFixedEffectModel
 
    model = LogisticFixedEffectModel(algorithm='Serbin', cutoff=5)
 
@@ -283,6 +283,7 @@ Instantiate the model and fit it to the data using the ``.fit()`` method.
 
 3.2. Accessing Results
 ^^^^^^^^^^^^^^^^^^^^^^
+
 After fitting, access estimated parameters, variances, and fit statistics via attributes:
 
 .. code-block:: python
@@ -310,6 +311,7 @@ After fitting, access estimated parameters, variances, and fit statistics via at
 
 3.3. Prediction
 ^^^^^^^^^^^^^^^
+
 Generate predicted probabilities for new or existing data.
 
 .. code-block:: python
@@ -324,6 +326,7 @@ Generate predicted probabilities for new or existing data.
 
 3.4. Standardized Measures Calculation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Calculate ISR, DSR, and corresponding rates using ``.calculate_standardized_measures()``.
 
 .. code-block:: python
@@ -338,6 +341,7 @@ Calculate ISR, DSR, and corresponding rates using ``.calculate_standardized_meas
 
 3.5. Hypothesis Testing (.test())
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Test provider effects (:math:`\gamma_i`) against a null value using various methods.
 
 .. code-block:: python
@@ -367,6 +371,7 @@ The output includes flags indicating significance (-1: lower, 0: expected, 1: hi
 
 3.6. Confidence Interval Calculation (.calculate_confidence_intervals())
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Compute CIs for provider effects (:math:`\gamma`) or standardized measures.
 
 .. code-block:: python
@@ -398,6 +403,7 @@ Compute CIs for provider effects (:math:`\gamma`) or standardized measures.
 
 3.7. Visualization
 ^^^^^^^^^^^^^^^^^^
+
 Use the plotting methods to visualize results.
 
 .. code-block:: python
@@ -431,7 +437,7 @@ Our implementation provides several computationally efficient algorithms (Serbin
 Standardized measures (ISR, DSR) facilitate meaningful comparisons by adjusting for case mix and presenting performance relative to a benchmark (e.g., the median provider). Visualizations like caterpillar plots and funnel plots are crucial for interpreting these results. Caterpillar plots effectively display the estimate and uncertainty for each provider, while funnel plots help distinguish random variation from statistically significant deviations, particularly accounting for provider volume or precision. The precision measure used in our funnel plot (:math:`E_i^2 / \text{Var}(O_i | H_0)`) appropriately reflects the information content for each provider under the null hypothesis.
 
 **Limitations and Considerations**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Incidental Parameters Problem**: In FE models, when the number of groups (:math:`m`) grows large while the group size (:math:`n_i`) remains small and fixed, the MLEs for the common parameters (:math:`\beta`) can be inconsistent :cite:`Neyman1948Consistent`. However, for logistic regression, the inconsistency is typically small, and :math:`\hat{\beta}` remains consistent if :math:`n_i \rightarrow \infty` :cite:`Greene2004Behaviour`. In many provider profiling scenarios where :math:`n_i` is reasonably large, this is less of a concern.
 
@@ -442,12 +448,12 @@ Standardized measures (ISR, DSR) facilitate meaningful comparisons by adjusting 
 **Interpretation of** :math:`\gamma_i`: The fixed effects absorb all time-invariant provider characteristics. Therefore, the effects of specific, measured provider-level variables cannot be estimated directly within this model.
 
 **Future Directions**
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 Potential extensions could include incorporating time-varying covariates, handling different types of outcomes (e.g., count data with Poisson FE models), implementing methods for dynamic profiling over time, and exploring alternative estimation techniques like conditional likelihood approaches for logistic FE models, which can sometimes provide consistent estimates for :math:`\beta` even when :math:`n_i` is small.
 
 5. Conclusion
-----------
+-------------
 
 The ``LogisticFixedEffectModel`` provides a robust and computationally efficient tool for healthcare provider profiling and similar analyses involving clustered binary data. By implementing the fixed effects approach, it avoids strong assumptions about the correlation between group effects and covariates, offering unbiased comparisons critical for fair evaluation. The package integrates efficient estimation algorithms, appropriate standardized measures, a suite of hypothesis tests (including exact methods), confidence interval calculations, and informative visualizations (caterpillar and funnel plots). This comprehensive toolkit empowers researchers and analysts to conduct rigorous provider profiling, identify performance outliers, and ultimately contribute to improving healthcare quality.
 

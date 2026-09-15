@@ -1,0 +1,1079 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chapter 1 — Survival Data: What It Is and Why It’s Different &mdash; pprof_py 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Chapter 2 — The Cox Proportional Hazards Model" href="02_the_cox_model.html" />
+    <link rel="prev" title="Survival Analysis in pprof_py: A Complete Guide" href="00_start_here.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            pprof_py
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Package Overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction.html#what-is-provider-profiling">What is Provider Profiling?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction.html#why-pprof-py">Why pprof_py?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction.html#core-models-in-pprof-py">Core Models in pprof_py</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction.html#getting-started">Getting Started</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Core Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../direct_vs_indirect_standardization.html">Direct vs. Indirect Standardization Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../direct_vs_indirect_standardization.html#introduction-to-standardization">1. Introduction to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../direct_vs_indirect_standardization.html#indirect-standardization">2. Indirect Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#core-concept-and-purpose">2.1. Core Concept and Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#process">2.2. Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#when-to-use-indirect-standardization">2.3. When to Use Indirect Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../direct_vs_indirect_standardization.html#direct-standardization">3. Direct Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#id1">3.1. Core Concept and Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#id2">3.2. Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#when-to-use-direct-standardization">3.3. When to Use Direct Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../direct_vs_indirect_standardization.html#comparing-indirect-and-direct-standardization">4. Comparing Indirect and Direct Standardization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#key-distinctions">4.1. Key Distinctions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#complementary-perspectives">4.2. Complementary Perspectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../direct_vs_indirect_standardization.html#a-note-on-model-based-standardization">4.3. A Note on Model-Based Standardization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../direct_vs_indirect_standardization.html#conclusion-choosing-the-right-method">5. Conclusion: Choosing the Right Method</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../fixed_vs_random_effects.html">Fixed Effects vs. Random Effects Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#fixed-effects-fe-models">Fixed Effects (FE) Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../fixed_vs_random_effects.html#key-assumptions-properties">Key Assumptions &amp; Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fixed_vs_random_effects.html#when-to-use-fixed-effects">When to Use Fixed Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#random-effects-re-models">Random Effects (RE) Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../fixed_vs_random_effects.html#id1">Key Assumptions &amp; Properties</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fixed_vs_random_effects.html#when-to-use-random-effects">When to Use Random Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#key-differences-summarized">Key Differences Summarized</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#choosing-between-fixed-and-random-effects">Choosing Between Fixed and Random Effects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#relationship-to-standardization">Relationship to Standardization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../fixed_vs_random_effects.html#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Statistical Models — Linear</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../linear_fixed_effect_model.html">Linear Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#the-linear-fixed-effects-model">2.1. The Linear Fixed Effects Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#parameter-estimation">2.2. Parameter Estimation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#hypothesis-testing-for-provider-effects">2.4. Hypothesis Testing for Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#prediction">3.3. Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#hypothesis-testing-test">3.5. Hypothesis Testing (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fixed_effect_model.html#id5">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fixed_effect_model.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../linear_random_effect_model.html">Linear Random Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#the-linear-random-effects-model-random-intercept">2.1. The Linear Random Effects Model (Random Intercept)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#parameter-estimation-and-prediction">2.2. Parameter Estimation and Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#hypothesis-testing-for-provider-effects">2.4. Hypothesis Testing for Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#prediction">3.3. Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#hypothesis-testing-for-provider-effects-test">3.5. Hypothesis Testing for Provider Effects (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_random_effect_model.html#id3">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_random_effect_model.html#references">6. References</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Statistical Models — Logistic</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_fixed_effect_model.html">Logistic Fixed Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#the-logistic-fixed-effects-model">2.1. The Logistic Fixed Effects Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#parameter-estimation">2.2. Parameter Estimation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#hypothesis-testing-for-provider-effects">2.4. Hypothesis Testing for Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#prediction">3.3. Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#hypothesis-testing-test">3.5. Hypothesis Testing (.test())</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (.calculate_confidence_intervals())</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#id8">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#discussion">4. Discussion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#limitations-and-considerations"><strong>Limitations and Considerations</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fixed_effect_model.html#future-directions"><strong>Future Directions</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fixed_effect_model.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_random_effect_model.html">Logistic Random Effect Modeling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#introduction">1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#methods">2. Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#the-logistic-random-intercept-model">2.1. The Logistic Random Intercept Model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#parameter-estimation-and-prediction">2.2. Parameter Estimation and Prediction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#standardized-measures-for-performance-comparison">2.3. Standardized Measures for Performance Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#hypothesis-testing-for-provider-random-effects">2.4. Hypothesis Testing for Provider Random Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#confidence-intervals">2.5. Confidence Intervals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#visualization">2.6. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#implementation-and-usage">3. Implementation and Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#initialization-and-fitting">3.1. Initialization and Fitting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#accessing-results">3.2. Accessing Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#prediction-fixed-effects-only">3.3. Prediction (Fixed Effects Only)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#standardized-measures-calculation">3.4. Standardized Measures Calculation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#hypothesis-testing-for-provider-random-effects-test">3.5. Hypothesis Testing for Provider Random Effects (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#confidence-interval-calculation-calculate-confidence-intervals">3.6. Confidence Interval Calculation (<code class="docutils literal notranslate"><span class="pre">calculate_confidence_intervals</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_random_effect_model.html#id3">3.7. Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#discussion">4. Discussion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#conclusion">5. Conclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_random_effect_model.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Survival Analysis — Cox Proportional Hazards</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="00_start_here.html">Survival Analysis in <code class="docutils literal notranslate"><span class="pre">pprof_py</span></code>: A Complete Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#from-survival-analysis-theory-to-practice">From Survival Analysis Theory to Practice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#what-this-guide-is">What this guide is</a></li>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#why-survival-analysis-exists-in-pprof-py">Why survival analysis exists in <code class="docutils literal notranslate"><span class="pre">pprof_py</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#the-running-example">The running example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#how-the-chapters-build-on-each-other">How the chapters build on each other</a></li>
+<li class="toctree-l2"><a class="reference internal" href="00_start_here.html#installing-and-importing">Installing and importing</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Chapter 1 — Survival Data: What It Is and Why It’s Different</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-problem-in-one-picture">1.1 The problem in one picture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#censoring-you-know-at-least-how-long">1.2 Censoring: you know <em>at least</em> how long</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#left-truncation-the-other-half-of-the-same-idea">Left truncation: the other half of the same idea</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-hazard-function-risk-right-now-given-survival-so-far">1.3 The hazard function: risk <em>right now</em>, given survival so far</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-survival-function-the-flip-side-of-the-hazard">1.4 The survival function: the flip side of the hazard</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-kaplan-meier-curve-a-first-model-free-estimate">The Kaplan-Meier curve: a first, model-free estimate</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#what-s-next">1.5 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="02_the_cox_model.html">Chapter 2 — The Cox Proportional Hazards Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#the-proportional-hazards-idea">2.1 The proportional hazards idea</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#reading-a-coefficient-the-hazard-ratio">2.2 Reading a coefficient: the hazard ratio</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#the-partial-likelihood-estimating-beta-without-ever-estimating-lambda-0-t">2.3 The partial likelihood: estimating <span class="math notranslate nohighlight">\(\beta\)</span> without ever estimating <span class="math notranslate nohighlight">\(\lambda_0(t)\)</span></a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#tied-event-times-breslow-vs-efron">2.4 Tied event times: Breslow vs. Efron</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#stratification-letting-the-baseline-hazard-differ-by-group">2.5 Stratification: letting the baseline hazard differ by group</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#offsets-a-covariate-whose-coefficient-you-ve-already-decided-is-1">2.6 Offsets: a covariate whose coefficient you’ve already decided is 1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_the_cox_model.html#what-you-can-now-do-and-what-s-still-missing">2.7 What you can now do, and what’s still missing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="03_fitting_your_first_model.html">Chapter 3 — Fitting Your First Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#preparing-the-data">3.1 Preparing the data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#fitting-the-model">3.2 Fitting the model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#reading-summary">3.3 Reading <code class="docutils literal notranslate"><span class="pre">summary()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#the-rest-of-the-fitted-attributes">3.4 The rest of the fitted attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#the-baseline-hazard">3.5 The baseline hazard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#why-there-s-no-intercept">3.6 Why there’s no intercept</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#predictions">3.7 Predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#a-first-diagnostic-martingale-residuals">3.8 A first diagnostic: martingale residuals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_fitting_your_first_model.html#what-s-next">3.9 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="04_indirect_standardization_smr_shr.html">Chapter 4 — Indirect Standardization: The Standardized Mortality Ratio</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#the-problem-comparing-facilities-fairly">4.1 The problem: comparing facilities fairly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#why-this-needs-two-models-not-one">4.2 Why this needs two models, not one</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#notation">4.3 Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#stage-1-the-stratified-model">4.4 Stage 1: the stratified model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#stage-2-the-offset-only-national-model">4.5 Stage 2: the offset-only national model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#a-gotcha-worth-knowing-before-you-compute-a-single-expected-death">4.6 A gotcha worth knowing before you compute a single expected death</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#computing-expected-deaths-and-the-smr">4.7 Computing expected deaths and the SMR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#is-an-smr-of-1-45-actually-surprising">4.8 Is an SMR of 1.45 actually surprising?</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#p-values-is-o-k-surprising-given-a-poisson-e-k-null">P-values: is <span class="math notranslate nohighlight">\(O_k\)</span> surprising, given a Poisson(<span class="math notranslate nohighlight">\(E_k\)</span>) null?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#confidence-intervals-on-the-smr">Confidence intervals on the SMR</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#a-note-on-reliability-how-much-of-the-variation-is-signal">4.9 A note on reliability: how much of the variation is signal?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#a-newer-alternative-one-stage-estimation">4.10 A newer alternative: one-stage estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_indirect_standardization_smr_shr.html#what-s-next">4.11 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="05_robust_and_clustered_variance.html">Chapter 5 — Robust and Clustered Variance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#a-quiet-assumption-you-ve-been-relying-on-since-chapter-3">5.1 A quiet assumption you’ve been relying on since Chapter 3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#the-fix-intuitively-stop-trusting-the-model-s-own-math-for-uncertainty">5.2 The fix, intuitively: stop trusting the model’s own math for uncertainty</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#clustering-pooling-correlated-observations-before-sandwiching">5.3 Clustering: pooling correlated observations before sandwiching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#in-coxph">5.4 In <code class="docutils literal notranslate"><span class="pre">coxph</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#extending-the-running-example-multi-year-records">5.5 Extending the running example: multi-year records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#when-to-reach-for-this">5.6 When to reach for this</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_robust_and_clustered_variance.html#what-s-next">5.7 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="06_time_dependent_covariates.html">Chapter 6 — Time-Dependent Covariates</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#a-covariate-that-isn-t-fixed">6.1 A covariate that isn’t fixed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#immortal-time-bias-worked-through-concretely">6.2 Immortal time bias, worked through concretely</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#the-fix-represent-time-correctly">6.3 The fix: represent time correctly</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="06_time_dependent_covariates.html#build-skeleton-the-starting-point"><code class="docutils literal notranslate"><span class="pre">build_skeleton</span></code>: the starting point</a></li>
+<li class="toctree-l3"><a class="reference internal" href="06_time_dependent_covariates.html#tmerge-layering-in-what-changed-and-when"><code class="docutils literal notranslate"><span class="pre">tmerge</span></code>: layering in what changed, and when</a></li>
+<li class="toctree-l3"><a class="reference internal" href="06_time_dependent_covariates.html#refitting-correctly">Refitting, correctly</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#a-different-tool-for-a-different-job-survsplit">6.4 A different tool for a different job: <code class="docutils literal notranslate"><span class="pre">survsplit</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#when-this-matters-most">6.5 When this matters most</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_time_dependent_covariates.html#what-s-next">6.6 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="07_competing_risks.html">Chapter 7 — Competing Risks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#when-censoring-isn-t-quite-censoring">7.1 When “censoring” isn’t quite censoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#two-genuinely-different-questions">7.2 Two genuinely different questions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#cause-specific-hazards-the-easy-half">7.3 Cause-specific hazards: the easy half</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#fine-gray-modeling-the-actual-cumulative-incidence">7.4 Fine-Gray: modeling the actual cumulative incidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#seeing-the-bias-directly">7.5 Seeing the bias directly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#choosing-between-them">7.6 Choosing between them</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_competing_risks.html#what-s-next">7.7 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="08_penalized_regression.html">Chapter 8 — Penalized Regression: Ridge, LASSO, and Elastic Net</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#the-problem-more-covariates-create">8.1 The problem more covariates create</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#ridge-lasso-and-elastic-net-what-the-shape-buys-you">8.2 Ridge, LASSO, and elastic net: what the shape buys you</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#the-regularization-path">8.3 The regularization path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#picking-a-lambda-cross-validation">8.4 Picking a lambda: cross-validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#a-worked-comparison-on-the-running-cohort">8.5 A worked comparison on the running cohort</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#a-caution-worth-stating-plainly">8.6 A caution worth stating plainly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_penalized_regression.html#what-s-next">8.7 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="09_variable_selection.html">Chapter 9 — Automated Variable Selection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="09_variable_selection.html#an-older-more-transparent-alternative-to-penalization">9.1 An older, more transparent alternative to penalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_variable_selection.html#the-three-scoring-rules">9.2 The three scoring rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_variable_selection.html#running-it">9.3 Running it</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_variable_selection.html#selection-versus-penalization-which-to-reach-for">9.4 Selection versus penalization: which to reach for</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_variable_selection.html#what-s-next">9.5 What’s next</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="10_complete_case_study.html">Chapter 10 — Complete Case Study: A Facility Profiling Report, Start to Finish</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#start-from-patient-year-records-not-one-row-per-patient">10.1 Start from patient-year records, not one row per patient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#choose-the-adjustment-covariates-deliberately">10.2 Choose the adjustment covariates deliberately</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#stage-1-stratified-and-clustered">10.3 Stage 1: stratified <em>and</em> clustered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#stage-2-offset-only-unstratified-still-clustered">10.4 Stage 2: offset-only, unstratified, still clustered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#expected-deaths-the-one-genuinely-new-wrinkle">10.5 Expected deaths — the one genuinely new wrinkle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#the-final-report">10.6 The final report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#where-the-other-chapters-extend-this">10.7 Where the other chapters extend this</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_complete_case_study.html#closing">10.8 Closing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Validation and R Compatibility</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="R_COMPATIBILITY.html">R compatibility notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#risk-set-definition-for-start-stop">1. Risk-set definition for <code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop]</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#tied-event-times-breslow-and-efron">2. Tied event times: Breslow and Efron</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#ordering-of-start-stop-event-records">3. Ordering of start/stop/event records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#zero-width-intervals">4. Zero-width intervals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#weight-semantics">5. Weight semantics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#offset-handling-the-least-obvious-finding-in-this-package">6. Offset handling — the least obvious finding in this package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#stratified-baseline-hazards">7. Stratified baseline hazards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#baseline-hazard-table-shape">8. Baseline hazard table shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#martingale-residuals-under-left-truncation">9. Martingale residuals under left truncation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#b-martingale-residuals-under-efron-ties-need-a-third-separate-formula">9b. Martingale residuals under Efron ties need a THIRD separate formula</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#convergence-step-halving-singular-matrices-missing-values">10–13. Convergence, step-halving, singular matrices, missing values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#centering-scaling-behavior">14. Centering / scaling behavior</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#zero-weight-observations">15. Zero-weight observations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#numerical-precision-exact-score-hessian-formulas">16–17. Numerical precision, exact score/Hessian formulas</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="R_COMPATIBILITY.html#phase-3-penalized-regression-and-variable-selection">Phase 3: Penalized regression and variable selection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#penalized-cox-regression-vs-glmnet-4-1-8">18. Penalized Cox regression vs. glmnet 4.1-8</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#a-naming-conventions">18a. Naming conventions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#b-standardization-convention">18b. Standardization convention</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#c-the-c-scaling-factor">18c. The <code class="docutils literal notranslate"><span class="pre">c</span></code> scaling factor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#d-penalty-factor-rescaling">18d. Penalty factor rescaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#e-lambda-sequence-generation">18e. Lambda sequence generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#f-ridge-at-extreme-lambda">18f. Ridge at extreme lambda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#g-cross-validation-deviance">18g. Cross-validation deviance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#h-efron-ties-under-penalization">18h. Efron ties under penalization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="R_COMPATIBILITY.html#i-capability-preservation-under-penalization">18i. Capability preservation under penalization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#variable-selection-vs-r-s-step-extractaic">19. Variable selection vs. R’s step()/extractAIC()</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="R_COMPATIBILITY.html#phase-4-competing-risks-robust-variance-time-dependent-covariates">Phase 4: Competing risks, robust variance, time-dependent covariates</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#cause-specific-hazards">20. Cause-specific hazards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#fine-gray-subdistribution-hazard">21. Fine-Gray subdistribution hazard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#robust-sandwich-cluster-robust-variance">22. Robust/sandwich (cluster-robust) variance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#time-dependent-covariates-tmerge">23. Time-dependent covariates: tmerge()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="R_COMPATIBILITY.html#what-was-not-investigated-is-known-to-differ">What was <em>not</em> investigated / is known to differ</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="VALIDATION_REPORT.html">Validation report</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#production-scale-checks-not-part-of-the-standing-suite-below">Production-scale checks (not part of the standing suite below)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#engine-self-consistency-compiled-vs-pure-python-not-just-python-vs-r">Engine self-consistency: compiled vs. pure-Python, not just Python vs. R</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#standing-test-suite">Standing test suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#phase-3-penalized-regression-test-penalized-r-comparison-py">Phase 3: Penalized regression (test_penalized_r_comparison.py)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#phase-3-variable-selection-test-selector-r-comparison-py">Phase 3: Variable selection (test_selector_r_comparison.py)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#phase-4-competing-risks-test-phase4-r-comparison-py">Phase 4: Competing risks (test_phase4_r_comparison.py)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#phase-4-robust-sandwich-variance-test-phase4-r-comparison-py">Phase 4: Robust/sandwich variance (test_phase4_r_comparison.py)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#phase-4-time-dependent-covariates-test-phase4-r-comparison-py">Phase 4: Time-dependent covariates (test_phase4_r_comparison.py)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="VALIDATION_REPORT.html#what-is-and-isn-t-covered-here">What is and isn’t covered here</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ARCHITECTURE.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#the-core-algorithm-in-one-paragraph">The core algorithm, in one paragraph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#why-centering-x-needed-a-deliberate-design-decision">Why centering <code class="docutils literal notranslate"><span class="pre">X</span></code> needed a deliberate design decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#phase-3-penalized-regression-and-variable-selection">Phase 3: Penalized regression and variable selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#phase-4-competing-risks-robust-variance-time-dependent-covariates">Phase 4: Competing risks, robust variance, time-dependent covariates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ARCHITECTURE.html#empirical-null-calibration-inference-survival-empirical-null-py">Empirical-null calibration (inference/survival/empirical_null.py)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../linear_fe_tutorial.html">A Guide to Linear Fixed Effect Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#getting-started-fitting-your-first-model">1. Getting Started: Fitting Your First Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#import-libraries">1.1. Import Libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#prepare-your-data">1.2. Prepare Your Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#initialize-and-fit-the-model">1.3. Initialize and Fit the Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#understanding-model-results">2. Understanding Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#coefficients-beta-and-gamma">2.1. Coefficients (Beta and Gamma)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#variances-and-sigma">2.2. Variances and Sigma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#model-fit-statistics-aic-bic">2.3. Model Fit Statistics (AIC, BIC)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#detailed-summary-of-covariate-effects">2.4. Detailed Summary of Covariate Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#making-predictions">3. Making Predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#standardized-measures-for-fair-comparison">4. Standardized Measures for Fair Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#hypothesis-testing-identifying-outliers">5. Hypothesis Testing: Identifying Outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#confidence-intervals-for-effects-and-measures">6. Confidence Intervals for Effects and Measures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#cis-for-provider-effects-gamma-i">6.1. CIs for Provider Effects (<span class="math notranslate nohighlight">\(\gamma_i\)</span>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#cis-for-standardized-measures">6.2. CIs for Standardized Measures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#visualizing-model-results">7. Visualizing Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#caterpillar-plot-of-provider-effects">7.1. Caterpillar Plot of Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#caterpillar-plot-of-standardized-measures">7.2. Caterpillar Plot of Standardized Measures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#funnel-plot">7.3. Funnel Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#forest-plot-of-covariate-coefficients">7.4. Forest Plot of Covariate Coefficients</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_fe_tutorial.html#model-diagnostic-plots">7.5. Model Diagnostic Plots</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_fe_tutorial.html#quick-interpretation-guide">8. Quick Interpretation Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../linear_re_tutorial.html">Using the Linear Random Effect Model for Provider Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#getting-started-fitting-your-first-model">1. Getting Started: Fitting Your First Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#import-libraries">1.1. Import Libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#prepare-your-data">1.2. Prepare Your Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#initialize-and-fit-the-model">1.3. Initialize and Fit the Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#understanding-model-results">2. Understanding Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#coefficients-fixed-and-random-effects">2.1. Coefficients (Fixed and Random Effects)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#variances">2.2. Variances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#model-fit-statistics-aic-bic-sigma">2.3. Model Fit Statistics (AIC, BIC, Sigma)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#detailed-summary-of-fixed-effects">2.4. Detailed Summary of Fixed Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#making-predictions">3. Making Predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#standardized-measures-for-fair-comparison">4. Standardized Measures for Fair Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#hypothesis-testing-identifying-outlier-providers">5. Hypothesis Testing: Identifying Outlier Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#confidence-intervals-for-effects-and-measures">6. Confidence Intervals for Effects and Measures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#cis-for-provider-random-effects-u-i">6.1. CIs for Provider Random Effects (<span class="math notranslate nohighlight">\(u_i\)</span>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#cis-for-standardized-measures">6.2. CIs for Standardized Measures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#visualizing-model-results">7. Visualizing Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#caterpillar-plot-of-provider-random-effects">7.1. Caterpillar Plot of Provider Random Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#caterpillar-plot-of-standardized-measures">7.2. Caterpillar Plot of Standardized Measures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#funnel-plot">7.3. Funnel Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#forest-plot-of-fixed-effect-coefficients">7.4. Forest Plot of Fixed Effect Coefficients</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../linear_re_tutorial.html#model-diagnostic-plots">7.5. Model Diagnostic Plots</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../linear_re_tutorial.html#quick-interpretation-guide">8. Quick Interpretation Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_fe_tutorial.html">Tutorial: Logistic Fixed Effect Models for Provider Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#getting-started-fitting-your-first-model">1. Getting Started: Fitting Your First Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#import-libraries">1.1. Import Libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#prepare-your-data">1.2. Prepare Your Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#initialize-and-fit-the-model">1.3. Initialize and Fit the Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#understanding-model-results">2. Understanding Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#coefficients-beta-and-gamma">2.1. Coefficients (Beta and Gamma)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#variances">2.2. Variances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#model-fit-statistics-aic-bic-auc">2.3. Model Fit Statistics (AIC, BIC, AUC)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#detailed-summary-of-covariate-effects">2.4. Detailed Summary of Covariate Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#making-predictions">3. Making Predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#standardized-measures-for-fair-comparison">4. Standardized Measures for Fair Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#hypothesis-testing-identifying-outliers">5. Hypothesis Testing: Identifying Outliers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#confidence-intervals-for-effects-and-measures">6. Confidence Intervals for Effects and Measures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#cis-for-provider-effects-gamma-i">6.1. CIs for Provider Effects (<span class="math notranslate nohighlight">\(\gamma_i\)</span>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#cis-for-standardized-measures">6.2. CIs for Standardized Measures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#visualizing-model-results">7. Visualizing Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#caterpillar-plot-of-provider-effects">7.1. Caterpillar Plot of Provider Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#caterpillar-plot-of-standardized-measures">7.2. Caterpillar Plot of Standardized Measures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#funnel-plot">7.3. Funnel Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#forest-plot-of-covariate-coefficients">7.4. Forest Plot of Covariate Coefficients</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_fe_tutorial.html#model-diagnostic-plots-residuals-q-q">7.5. Model Diagnostic Plots (Residuals, Q-Q)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_fe_tutorial.html#quick-interpretation-guide">8. Quick Interpretation Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../logistic_re_tutorial.html">Logistic Random Effect Models for Provider Profiling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#getting-started-fitting-your-first-model">1. Getting Started: Fitting Your First Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#import-libraries">1.1. Import Libraries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#prepare-your-data">1.2. Prepare Your Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#initialize-and-fit-the-model">1.3. Initialize and Fit the Model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#understanding-model-results">2. Understanding Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#variances">2.2. Variances</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#model-fit-statistics-aic-bic-loglik">2.3. Model Fit Statistics (AIC, BIC, LogLik)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#detailed-summary-of-fixed-effects">2.4. Detailed Summary of Fixed Effects</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#making-predictions">3. Making Predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#standardized-measures-for-fair-comparison">4. Standardized Measures for Fair Comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#hypothesis-testing-identifying-outlier-providers">5. Hypothesis Testing: Identifying Outlier Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#confidence-intervals-for-effects-and-measures">6. Confidence Intervals for Effects and Measures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#cis-for-provider-random-effects-u-i">6.1. CIs for Provider Random Effects (<span class="math notranslate nohighlight">\(u_i\)</span>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#cis-for-standardized-measures">6.2. CIs for Standardized Measures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#visualizing-model-results">7. Visualizing Model Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#funnel-plot">7.1. Funnel Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#caterpillar-plot-of-provider-random-effects">7.2. Caterpillar Plot of Provider Random Effects</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#caterpillar-plot-of-standardized-measures">7.3. Caterpillar Plot of Standardized Measures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../logistic_re_tutorial.html#forest-plot-of-fixed-effect-coefficients">7.4. Forest Plot of Fixed Effect Coefficients</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../logistic_re_tutorial.html#quick-interpretation-guide">8. Quick Interpretation Guide</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-pprof_py">Package Root</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#public-api">Public API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel.score"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearFixedEffectModel.get_params"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.get_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.get_random_effects"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.get_random_effects()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.get_sigma"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.get_sigma()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.get_random_effect_sd"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.get_random_effect_sd()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.standard_errors"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.standard_errors()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.fixed_effects_table"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.fixed_effects_table()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.conf_int"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.conf_int()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.residual_standard_error"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.residual_standard_error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LinearRandomEffectModel.fitted_values"><code class="docutils literal notranslate"><span class="pre">LinearRandomEffectModel.fitted_values()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.algorithm_type"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.algorithm_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.coefficients_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.coefficients_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.variances_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.variances_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.fitted_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.fitted_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.aic_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.aic_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.bic_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.bic_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.groups_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.groups_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.add_providers"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.add_providers()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.score"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticFixedEffectModel.get_params"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.get_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.gamma_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.gamma_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.beta_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.beta_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.sigma_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.sigma_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.alpha_mean_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_mean_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.alpha_var_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_var_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.alpha_mean_cluster_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_mean_cluster_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.alpha_var_cluster_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_var_cluster_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.xbeta_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.xbeta_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.fitted_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.fitted_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.provider_ids_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.provider_ids_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.cluster_ids_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.cluster_ids_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.n_providers_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.n_providers_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.n_clusters_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.n_clusters_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.iterations_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.iterations_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.convergence_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.convergence_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticMixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.fit()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.get_random_effects"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.get_random_effects()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.get_sigma"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.get_sigma()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.pearson_residuals"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.pearson_residuals()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.LogisticRandomEffectModel.deviance_residuals"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.deviance_residuals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.CoxPH"><code class="docutils literal notranslate"><span class="pre">CoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.fit"><code class="docutils literal notranslate"><span class="pre">CoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.predict"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.predict_cumulative_hazard"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_cumulative_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.predict_survival_function"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_survival_function()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.score"><code class="docutils literal notranslate"><span class="pre">CoxPH.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.summary"><code class="docutils literal notranslate"><span class="pre">CoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_predict_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPH.set_score_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_score_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.fit"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.coef_at"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.coef_at()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.nonzero_features"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.nonzero_features()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.predict"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.summary"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.fit"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.predict_linear"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.predict"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.summary"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.set_fit_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.PenalizedCoxPHCV.set_predict_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.CauseSpecificCoxPH"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CauseSpecificCoxPH.fit"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CauseSpecificCoxPH.summary"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CauseSpecificCoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.set_fit_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH"><code class="docutils literal notranslate"><span class="pre">FineGrayPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.fit"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.predict"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.predict_cumulative_hazard"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_cumulative_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.predict_survival_function"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_survival_function()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.summary"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.FineGrayPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.CoxPHSelector"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPHSelector.fit"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPHSelector.summary"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.CoxPHSelector.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.set_fit_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.NotFittedError"><code class="docutils literal notranslate"><span class="pre">NotFittedError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.setup_logger"><code class="docutils literal notranslate"><span class="pre">setup_logger()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.proc_freq"><code class="docutils literal notranslate"><span class="pre">proc_freq()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.sigmoid"><code class="docutils literal notranslate"><span class="pre">sigmoid()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.plot_caterpillar"><code class="docutils literal notranslate"><span class="pre">plot_caterpillar()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.huber_location_scale"><code class="docutils literal notranslate"><span class="pre">huber_location_scale()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.estimate_empirical_null"><code class="docutils literal notranslate"><span class="pre">estimate_empirical_null()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#survival-models">Survival Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH"><code class="docutils literal notranslate"><span class="pre">CoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.fit"><code class="docutils literal notranslate"><span class="pre">CoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.predict"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.predict_cumulative_hazard"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_cumulative_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.predict_survival_function"><code class="docutils literal notranslate"><span class="pre">CoxPH.predict_survival_function()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.score"><code class="docutils literal notranslate"><span class="pre">CoxPH.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.summary"><code class="docutils literal notranslate"><span class="pre">CoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_predict_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CoxPH.set_score_request"><code class="docutils literal notranslate"><span class="pre">CoxPH.set_score_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.fit"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.coef_at"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.coef_at()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.nonzero_features"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.nonzero_features()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.predict"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.summary"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPH.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.fit"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.predict_linear"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.predict"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.summary"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.set_fit_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.PenalizedCoxPHCV.set_predict_request"><code class="docutils literal notranslate"><span class="pre">PenalizedCoxPHCV.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.survival.CauseSpecificCoxPH"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CauseSpecificCoxPH.fit"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CauseSpecificCoxPH.summary"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.CauseSpecificCoxPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CauseSpecificCoxPH.set_fit_request()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH"><code class="docutils literal notranslate"><span class="pre">FineGrayPH</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.fit"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.predict_linear"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_linear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.predict_partial_hazard"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_partial_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.predict"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.predict_cumulative_hazard"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_cumulative_hazard()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.predict_survival_function"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.predict_survival_function()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.summary"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.set_fit_request"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.set_fit_request()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.survival.FineGrayPH.set_predict_request"><code class="docutils literal notranslate"><span class="pre">FineGrayPH.set_predict_request()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#logistic-models">Logistic Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.algorithm_type"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.algorithm_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.coefficients_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.coefficients_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.variances_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.variances_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.fitted_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.fitted_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.aic_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.aic_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.bic_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.bic_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.groups_"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.groups_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.add_providers"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.add_providers()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.score"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticFixedEffectModel.get_params"><code class="docutils literal notranslate"><span class="pre">LogisticFixedEffectModel.get_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.get_random_effects"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.get_random_effects()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.get_sigma"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.get_sigma()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.pearson_residuals"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.pearson_residuals()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticRandomEffectModel.deviance_residuals"><code class="docutils literal notranslate"><span class="pre">LogisticRandomEffectModel.deviance_residuals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.gamma_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.gamma_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.beta_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.beta_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.sigma_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.sigma_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.alpha_mean_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_mean_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.alpha_var_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_var_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.alpha_mean_cluster_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_mean_cluster_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.alpha_var_cluster_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.alpha_var_cluster_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.xbeta_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.xbeta_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.fitted_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.fitted_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.provider_ids_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.provider_ids_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.cluster_ids_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.cluster_ids_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.n_providers_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.n_providers_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.n_clusters_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.n_clusters_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.iterations_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.iterations_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.convergence_"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.convergence_</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.logistic.LogisticMixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LogisticMixedEffectModel.fit()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#linear-models">Linear Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.models.linear.LinearFixedEffectModel"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.linear.LinearFixedEffectModel.fit"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.linear.LinearFixedEffectModel.predict"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.linear.LinearFixedEffectModel.score"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.models.linear.LinearFixedEffectModel.get_params"><code class="docutils literal notranslate"><span class="pre">LinearFixedEffectModel.get_params()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#variable-selection">Variable Selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.selection.CoxPHSelector"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.selection.CoxPHSelector.fit"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.selection.CoxPHSelector.summary"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#pprof_py.selection.CoxPHSelector.set_fit_request"><code class="docutils literal notranslate"><span class="pre">CoxPHSelector.set_fit_request()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#inference">Inference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.inference.huber_location_scale"><code class="docutils literal notranslate"><span class="pre">huber_location_scale()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.inference.estimate_empirical_null"><code class="docutils literal notranslate"><span class="pre">estimate_empirical_null()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#plotting">Plotting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.plotting.plot_caterpillar"><code class="docutils literal notranslate"><span class="pre">plot_caterpillar()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#utilities">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.utils.setup_logger"><code class="docutils literal notranslate"><span class="pre">setup_logger()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.utils.proc_freq"><code class="docutils literal notranslate"><span class="pre">proc_freq()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.utils.sigmoid"><code class="docutils literal notranslate"><span class="pre">sigmoid()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#exceptions">Exceptions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#pprof_py.exceptions.NotFittedError"><code class="docutils literal notranslate"><span class="pre">NotFittedError</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pprof_py</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Chapter 1 — Survival Data: What It Is and Why It’s Different</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/survival/01_survival_data_foundations.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="chapter-1-survival-data-what-it-is-and-why-it-s-different">
+<h1>Chapter 1 — Survival Data: What It Is and Why It’s Different<a class="headerlink" href="#chapter-1-survival-data-what-it-is-and-why-it-s-different" title="Link to this heading"></a></h1>
+<section id="the-problem-in-one-picture">
+<h2>1.1 The problem in one picture<a class="headerlink" href="#the-problem-in-one-picture" title="Link to this heading"></a></h2>
+<p>Imagine you enroll 4,000 dialysis patients in a study on January 1st
+and you want to know, three years later, “how long did people live?”
+For some patients the answer is simple and complete: they died 14
+months in, full stop. But for many others, the study simply <em>ended</em>
+before they died — they were alive and well on the last day you looked.
+For a smaller group, they moved away, switched insurance, or you
+otherwise lost track of them at some point before the study ended.</p>
+<p>None of these people give you a “final answer” the way a died-on-day-X
+patient does. But they are not useless, either — a patient who was
+alive after 3 years tells you something important: <em>whatever their risk
+of dying is, it didn’t happen within 3 years.</em> Survival analysis is the
+set of statistical tools built specifically to use that partial
+information honestly, rather than discarding it or pretending it’s
+something it isn’t.</p>
+</section>
+<section id="censoring-you-know-at-least-how-long">
+<h2>1.2 Censoring: you know <em>at least</em> how long<a class="headerlink" href="#censoring-you-know-at-least-how-long" title="Link to this heading"></a></h2>
+<p>The formal name for “the study ended, or I lost track of them, before
+the event happened” is <strong>censoring</strong>. The specific, by far most common
+kind is <strong>right censoring</strong>: you know the person survived up to some
+time <span class="math notranslate nohighlight">\(C\)</span>, and after that you know nothing. This is different from
+simply not having a value — you have a <em>lower bound</em> on their true
+survival time.</p>
+<p>For every subject <span class="math notranslate nohighlight">\(i\)</span> in a right-censored dataset, there are really two
+clocks running: their true time to the event, <span class="math notranslate nohighlight">\(D_i\)</span> (death, failure,
+whatever “the event” is), and their time to being censored, <span class="math notranslate nohighlight">\(C_i\)</span>
+(end of study, loss to follow-up). You only ever get to observe the
+smaller of the two:</p>
+<div class="math notranslate nohighlight">
+\[
+T_i = \min(D_i, C_i), \qquad \delta_i = \mathbb{1}(D_i \le C_i)
+\]</div>
+<p><span class="math notranslate nohighlight">\(T_i\)</span> is the observed time, and <span class="math notranslate nohighlight">\(\delta_i\)</span> (the <strong>event indicator</strong>) is
+1 if you actually saw the event happen and 0 if the observation was cut
+off by censoring first. In <code class="docutils literal notranslate"><span class="pre">coxph</span></code>, and in essentially every survival
+package, this pair — a time and a 0/1 event flag — is the basic unit of
+data. In our running cohort, that’s the <code class="docutils literal notranslate"><span class="pre">time</span></code> and <code class="docutils literal notranslate"><span class="pre">death</span></code> columns:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cohort</span><span class="p">[[</span><span class="s2">"patient_id"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">,</span> <span class="s2">"death"</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>   <span class="n">patient_id</span>   <span class="n">time</span>  <span class="n">death</span>
+<span class="mi">0</span>           <span class="mi">0</span>  <span class="mf">1.442</span>      <span class="mi">1</span>
+<span class="mi">1</span>           <span class="mi">1</span>  <span class="mf">0.187</span>      <span class="mi">0</span>
+<span class="mi">2</span>           <span class="mi">2</span>  <span class="mf">2.664</span>      <span class="mi">0</span>
+<span class="mi">3</span>           <span class="mi">3</span>  <span class="mf">0.940</span>      <span class="mi">1</span>
+<span class="mi">4</span>           <span class="mi">4</span>  <span class="mf">0.501</span>      <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Patient 1 was followed for only 0.187 years and did not die in that
+window (<code class="docutils literal notranslate"><span class="pre">death=0</span></code>) — maybe the study simply ended for them there, maybe
+they transferred care elsewhere. We don’t know what would have happened
+to them at year 1 or year 5. What we <em>do</em> know is that they survived at
+least 0.187 years, and a correct analysis has to use exactly that much
+information — no more, no less.</p>
+<p><strong>Why can’t you just drop the censored people, or treat <code class="docutils literal notranslate"><span class="pre">time</span></code> as a
+regular outcome and run linear regression on it?</strong> Two reasons, and
+both cause real, directional bias, not just lost precision:</p>
+<ul class="simple">
+<li><p><strong>Dropping censored patients</strong> throws away exactly the patients who,
+so far, are doing <em>well</em> (they haven’t died yet). What’s left behind
+is enriched for the patients who died quickly. Your dataset silently
+becomes sicker than reality, and any estimate of average survival
+will be biased <em>downward</em>.</p></li>
+<li><p><strong>Treating the censored time as if it were the true survival time</strong>
+(i.e., pretending patient 1 “survived” exactly 0.187 years and
+nothing more) understates how long people actually live, in the
+opposite but equally wrong way — it treats “still alive” as
+equivalent to “died right now.”</p></li>
+</ul>
+<p>Ordinary least-squares regression, and even most of machine learning’s
+default toolbox, has no built-in concept of “I know a lower bound but
+not the exact value.” That gap is precisely what survival analysis
+fills.</p>
+<section id="left-truncation-the-other-half-of-the-same-idea">
+<h3>Left truncation: the other half of the same idea<a class="headerlink" href="#left-truncation-the-other-half-of-the-same-idea" title="Link to this heading"></a></h3>
+<p>Censoring is about not knowing what happens <em>after</em> your observation
+window closes. <strong>Left truncation</strong> (also called <em>delayed entry</em>) is the
+mirror-image problem at the <em>start</em>: sometimes a subject wasn’t even
+eligible to be observed until some time had already passed.</p>
+<p>The clearest example is in this guide’s own running example. A patient
+enrolled in a facility profiling study might already have been on
+dialysis for two years before the study period even began — they don’t
+enter our data at “time since starting dialysis equals zero,” they
+enter at “time since starting dialysis equals two years,” and if they
+had died in year one, we would never have seen them at all. Ignoring
+this — analyzing “years since dialysis started” as if everyone entered
+at zero — silently removes the sickest, fastest-dying patients from the
+early part of the timeline in a way that has nothing to do with them
+actually being healthier. This exact issue is why the SMR methodology
+in Chapter 4 explicitly includes “duration of ESRD” (dialysis vintage)
+as a covariate: it is the field’s standard way of acknowledging and
+correcting for left truncation.</p>
+<p>Handled correctly, every subject contributes to the risk calculation
+only during the interval they were actually <em>at risk and being
+observed</em> — from their entry time to their exit time (event or
+censoring), and not a moment before or after. <code class="docutils literal notranslate"><span class="pre">coxph</span></code> represents this
+directly as a <code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">stop]</span></code> interval per row, which is why you will
+see <code class="docutils literal notranslate"><span class="pre">start=</span></code> and <code class="docutils literal notranslate"><span class="pre">stop=</span></code> arguments throughout this guide instead of a
+single <code class="docutils literal notranslate"><span class="pre">time=</span></code> column whenever truncation matters (Chapters 4 and 6
+use this explicitly).</p>
+</section>
+</section>
+<section id="the-hazard-function-risk-right-now-given-survival-so-far">
+<h2>1.3 The hazard function: risk <em>right now</em>, given survival so far<a class="headerlink" href="#the-hazard-function-risk-right-now-given-survival-so-far" title="Link to this heading"></a></h2>
+<p>The central object in survival analysis is not “the probability of
+death,” full stop — it’s the <strong>hazard function</strong>, <span class="math notranslate nohighlight">\(\lambda(t)\)</span>: the
+instantaneous rate of the event happening at time <span class="math notranslate nohighlight">\(t\)</span>, <em>among those
+who have survived to just before <span class="math notranslate nohighlight">\(t\)</span></em>.</p>
+<div class="math notranslate nohighlight">
+\[
+\lambda(t) = \lim_{dt \to 0} \frac{1}{dt}\, P(t \le D &lt; t + dt \mid D \ge t)
+\]</div>
+<p>Read the words, not just the symbols: <em>given that you’ve made it to
+time <span class="math notranslate nohighlight">\(t\)</span> alive, what’s your instantaneous risk of dying right now?</em>
+This conditioning — “given you’ve survived this far” — is what makes
+the hazard fundamentally different from an unconditional probability,
+and it’s exactly the right way to think about risk that can change
+over someone’s lifetime (rising as patients age or accumulate time on
+dialysis, for instance).</p>
+<p>A hazard doesn’t have to be constant. It can go up, down, spike, or
+stay flat. What proportional hazards models (the whole subject of
+Chapter 2) do is separate the hazard into a <strong>baseline</strong> shape that’s
+free to be whatever it wants over time, times a <strong>multiplier</strong> that
+depends on a person’s own characteristics and doesn’t change over time.
+That’s the “proportional” in “proportional hazards” and it is the
+single most important modeling assumption in this entire guide — worth
+sitting with before moving on.</p>
+</section>
+<section id="the-survival-function-the-flip-side-of-the-hazard">
+<h2>1.4 The survival function: the flip side of the hazard<a class="headerlink" href="#the-survival-function-the-flip-side-of-the-hazard" title="Link to this heading"></a></h2>
+<p>The <strong>survival function</strong> <span class="math notranslate nohighlight">\(S(t) = P(D &gt; t)\)</span> is the probability of
+<em>not</em> having had the event by time <span class="math notranslate nohighlight">\(t\)</span> — the familiar “percent still
+alive at time <span class="math notranslate nohighlight">\(t\)</span>” curve. It’s mathematically just the hazard
+function’s photographic negative: accumulate (“integrate”) the hazard
+over time to get the <strong>cumulative hazard</strong> <span class="math notranslate nohighlight">\(\Lambda(t) = \int_0^t
+\lambda(u)\,du\)</span>, and then</p>
+<div class="math notranslate nohighlight">
+\[
+S(t) = \exp(-\Lambda(t))
+\]</div>
+<p>This relationship is worth internalizing because it’s exactly how
+<code class="docutils literal notranslate"><span class="pre">coxph</span></code> computes every survival curve it ever shows you: it estimates
+the cumulative hazard first (Chapter 3 shows this as
+<code class="docutils literal notranslate"><span class="pre">baseline_hazard_</span></code> and <code class="docutils literal notranslate"><span class="pre">predict_cumulative_hazard</span></code>), and <em>then</em>
+exponentiates to get a survival curve, never the other way around.</p>
+<section id="the-kaplan-meier-curve-a-first-model-free-estimate">
+<h3>The Kaplan-Meier curve: a first, model-free estimate<a class="headerlink" href="#the-kaplan-meier-curve-a-first-model-free-estimate" title="Link to this heading"></a></h3>
+<p>Before you fit any regression at all, there’s a simple, honest way to
+estimate <span class="math notranslate nohighlight">\(S(t)\)</span> for a group of patients directly from the data, using
+only who was still being observed and who had an event at each
+distinct event time. This is the <strong>Kaplan-Meier estimator</strong>, and while
+<code class="docutils literal notranslate"><span class="pre">coxph</span></code> does not implement it directly (it is a <em>non-parametric</em>
+one-group summary, not a regression), it is worth seeing once, because
+the same “who is still at risk right now” bookkeeping is the seed idea
+behind everything the Cox model does in Chapter 2:</p>
+<div class="math notranslate nohighlight">
+\[
+\hat{S}(t) = \prod_{t_j \le t} \left(1 - \frac{d_j}{n_j}\right)
+\]</div>
+<p>where at each observed death time <span class="math notranslate nohighlight">\(t_j\)</span>, <span class="math notranslate nohighlight">\(d_j\)</span> is the number of deaths
+and <span class="math notranslate nohighlight">\(n_j\)</span> is the number of people still <strong>at risk</strong> — still under
+observation, neither dead nor censored yet — at that exact moment. Two
+things about this formula matter for everything that follows:</p>
+<ul class="simple">
+<li><p>Every time someone is censored, they simply drop out of <span class="math notranslate nohighlight">\(n_j\)</span> from
+that point forward — they contribute to the “still at risk” count for
+as long as they were actually observed, and not a moment longer. This
+is the mechanical embodiment of “use exactly the information you
+have, no more, no less” from Section 1.2.</p></li>
+<li><p>The set of people “at risk” at time <span class="math notranslate nohighlight">\(t_j\)</span> — the <strong>risk set</strong> — is
+the central bookkeeping object in survival analysis. Every method in
+this guide, from the plain Cox model to Fine-Gray competing risks in
+Chapter 7, is fundamentally a different way of defining or weighting
+that risk set and comparing whoever’s in it.</p></li>
+</ul>
+</section>
+</section>
+<section id="what-s-next">
+<h2>1.5 What’s next<a class="headerlink" href="#what-s-next" title="Link to this heading"></a></h2>
+<p>You now have the vocabulary this entire guide is built on: censoring,
+truncation, the hazard function, the survival function, and the risk
+set. Chapter 2 takes the single-group Kaplan-Meier idea above and
+extends it into a full regression model — one that lets age, diabetes,
+facility, and any other covariate shift a patient’s hazard up or down,
+while leaving the underlying shape of risk over time — the baseline
+hazard — completely unspecified. That model is the Cox proportional
+hazards model, and it is what every other chapter in this guide is
+built on top of.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="00_start_here.html" class="btn btn-neutral float-left" title="Survival Analysis in pprof_py: A Complete Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02_the_cox_model.html" class="btn btn-neutral float-right" title="Chapter 2 — The Cox Proportional Hazards Model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Kevin He.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

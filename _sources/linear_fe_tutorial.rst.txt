@@ -1,0 +1,379 @@
+.. _linear_fixed_effect_tutorial:
+
+A Guide to Linear Fixed Effect Model
+===========================================================
+
+.. contents::
+   :local:
+   :depth: 2
+
+Introduction
+------------
+This tutorial will guide you through using the ``LinearFixedEffectModel`` from the ``pprof_py`` package. This model is designed for provider profiling when you have a continuous (quantitative) outcome, such as cost of care, length of stay, or a clinical measurement. It helps you assess provider performance while adjusting for patient-level risk factors by estimating a unique effect for each provider.
+
+The key idea is to model an outcome :math:`Y_{ij}` for patient :math:`j` at provider :math:`i` as:
+
+.. math::
+
+   Y_{ij} = \gamma_i + \mathbf{X}_{ij}^\top\boldsymbol\beta + \epsilon_{ij}
+
+Where:
+
+* :math:`\gamma_i` is the unique effect for provider :math:`i`.
+* :math:`\mathbf{X}_{ij}^\top\boldsymbol\beta` represents the effects of patient-level covariates.
+* :math:`\epsilon_{ij}` is the random error.
+
+This tutorial focuses on practical application: fitting the model, understanding its outputs, and visualizing the results.
+
+1. Getting Started: Fitting Your First Model
+---------------------------------------------
+Let's begin by importing necessary libraries, preparing some example data, and fitting the model.
+
+
+1.1. Import Libraries
+~~~~~~~~~~~~~~~~~~~~~
+You'll primarily need ``pandas`` for data manipulation and the ``LinearFixedEffectModel`` itself.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   import pandas as pd
+   import numpy as np
+   from pprof_py import LinearFixedEffectModel
+   import matplotlib.pyplot as plt
+   print("Libraries imported.")
+
+1.2. Prepare Your Data
+~~~~~~~~~~~~~~~~~~~~~~
+The model expects your data in a ``pandas`` DataFrame with:
+
+* An **outcome variable** column (e.g., 'cost', 'length_of_stay').
+* One or more **covariate columns** (patient risk factors, e.g., 'age', 'comorbidity_score').
+* A **group variable** column (provider identifiers, e.g., 'hospital_id').
+
+Here's how you can simulate some data for this tutorial:
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   # Simulate data for demonstration
+   np.random.seed(42)
+   n_providers = 100
+   n_patients_per_provider = np.random.randint(30, 100, n_providers) # Varying provider sizes
+   n_total_patients = np.sum(n_patients_per_provider)
+
+   provider_ids = []
+   for i, count in enumerate(n_patients_per_provider):
+       provider_ids.extend([f"Provider_{i+1}"] * count)
+
+   data = pd.DataFrame({
+       'patient_id': range(n_total_patients),
+       'provider_id': provider_ids,
+       'age': np.random.normal(60, 10, n_total_patients),
+       'severity_score': np.random.rand(n_total_patients) * 5,
+       'is_urgent': np.random.choice([0, 1], n_total_patients, p=[0.7, 0.3])
+   })
+
+   # Simulate true provider effects and outcome (e.g., length of stay in days)
+   provider_effect_map = {f"Provider_{i+1}": np.random.normal(0, 2) for i in range(n_providers)}
+   data['true_provider_effect'] = data['provider_id'].map(provider_effect_map)
+   
+   data['length_of_stay'] = (
+       5  # Base length of stay
+       + 0.05 * data['age']
+       + 0.5 * data['severity_score']
+       + 1.5 * data['is_urgent']
+       + data['true_provider_effect']
+       + np.random.normal(0, 1.5, n_total_patients) # Random error
+   )
+   data['length_of_stay'] = np.maximum(1, data['length_of_stay']) # Ensure positive LOS
+
+   # Define variable names for the model
+   outcome_var = 'length_of_stay'
+   covariate_vars = ['age', 'severity_score', 'is_urgent']
+   group_var = 'provider_id'
+
+   print("Sample data (first 5 rows):")
+   print(data.head())
+   print(f"\nOutcome: {outcome_var}, Covariates: {covariate_vars}, Group: {group_var}")
+
+1.3. Initialize and Fit the Model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Instantiate ``LinearFixedEffectModel`` and use its ``fit()`` method.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   # Initialize the model
+   # gamma_var_option:
+   #  'complete': Considers uncertainty in covariate effects when calculating variance of provider effects. More accurate but slower.
+   #  'simplified': A faster approximation for provider effect variance (sigma^2 / n_i).
+   lfe_model = LinearFixedEffectModel(gamma_var_option='complete')
+
+   # Fit the model
+   lfe_model.fit(
+       X=data,                 # Your DataFrame
+       y_var=outcome_var,      # Name of the outcome column
+       x_vars=covariate_vars,  # List of covariate column names
+       group_var=group_var     # Name of the provider ID column
+   )
+
+   print("\nModel fitting complete.")
+
+2. Understanding Model Results
+------------------------------
+Once the model is fitted, you can access various estimated parameters and statistics.
+
+2.1. Coefficients (Beta and Gamma)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*   **Beta (:math:`\boldsymbol{\beta}`):** Estimated effects of your patient-level covariates.
+*   **Gamma (:math:`\boldsymbol{\gamma}`):** Estimated fixed effects for each provider. These represent the provider-specific intercepts after adjusting for covariates.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   coefficients = lfe_model.coefficients_
+   beta_coeffs = coefficients['beta']  # Covariate effects 
+   gamma_coeffs = coefficients['gamma'] # Provider fixed effects
+
+   print("\nEstimated Beta Coefficients (Covariates):\n", beta_coeffs)
+   print("\nEstimated Gamma Coefficients (Providers, first 5):\n", gamma_coeffs[:5])
+
+2.2. Variances and Sigma
+~~~~~~~~~~~~~~~~~~~~~~~~
+Access variance estimates for coefficients and the overall model error.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   variances = lfe_model.variances_
+   var_beta = variances['beta']    # Variance-covariance matrix for beta
+   var_gamma = variances['gamma']  # Variances for gamma
+   sigma_hat = lfe_model.sigma_       # Estimated residual standard deviation
+
+   print("\nVariance-Covariance Matrix for Beta:\n", var_beta)
+   print("\nVariances for Gamma (Providers, first 5):\n", var_gamma[:5])
+   print(f"\nEstimated Sigma (Residual Standard Deviation): {sigma_hat:.4f}")
+
+2.3. Model Fit Statistics (AIC, BIC)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AIC and BIC can be used for model comparison (lower is generally better).
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   aic = lfe_model.aic_
+   bic = lfe_model.bic_
+
+   print(f"\nAIC: {aic:.2f}")
+   print(f"BIC: {bic:.2f}")
+
+2.4. Detailed Summary of Covariate Effects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The ``summary()`` method provides a table with estimates, standard errors, t-statistics, p-values, and confidence intervals for the **beta** coefficients.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   covariate_summary_df = lfe_model.summary()
+   print("\nSummary of Covariate Effects (Betas):\n", covariate_summary_df)
+
+3. Making Predictions
+---------------------
+Use the ``predict()`` method to get predicted outcomes.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   # Predict on the training data
+   data['predicted_los'] = lfe_model.predict(
+       X=data,
+       x_vars=covariate_vars,
+       group_var=group_var
+   )
+   print("\nData with predictions (selected columns, first 5 rows):\n", data[[group_var, outcome_var, 'predicted_los']].head())
+
+4. Standardized Measures for Fair Comparison
+--------------------------------------------
+Standardized measures adjust provider outcomes to a common baseline, facilitating fairer comparisons. For linear models, these are typically **differences**.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   # Calculate indirect standardized differences against the median provider performance
+   sm_results = lfe_model.calculate_standardized_measures(
+       stdz='indirect',
+       null='median'
+   )
+
+   indirect_diff_df = sm_results['indirect']
+   print("\nIndirect Standardized Differences (vs median gamma, first 5):\n", indirect_diff_df.head())
+
+5. Hypothesis Testing: Identifying Outliers
+-------------------------------------------
+The ``test()`` method performs t-tests for each provider's estimated effect (:math:`\hat{\gamma}_i`) against a null baseline.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   # Test provider effects against the median gamma
+   provider_test_results_df = lfe_model.test(
+       null='median',
+       level=0.95,
+       alternative='two_sided'
+   )
+
+   print("\nProvider Test Results (vs median gamma, first 5):\n", provider_test_results_df.head())
+   print("\nProviders flagged as significantly different (example):\n", provider_test_results_df[provider_test_results_df['flag'] != 0].head())
+
+6. Confidence Intervals for Effects and Measures
+------------------------------------------------
+
+6.1. CIs for Provider Effects (:math:`\gamma_i`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   gamma_ci_results = lfe_model.calculate_confidence_intervals(
+       option='gamma',
+       level=0.95,
+       alternative='two_sided'
+   )
+   gamma_ci_df = gamma_ci_results['gamma_ci']
+   print("\nConfidence Intervals for Gamma (first 5):\n", gamma_ci_df.head())
+
+6.2. CIs for Standardized Measures
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   sm_ci_results = lfe_model.calculate_confidence_intervals(
+       option='SM',
+       stdz='indirect',
+       null='median',
+       level=0.95,
+       alternative='two_sided'
+   )
+   indirect_sm_ci_df = sm_ci_results['indirect_ci']
+   print("\nCIs for Indirect Standardized Difference (first 5):\n", indirect_sm_ci_df.head())
+
+7. Visualizing Model Results
+----------------------------
+Visualizations are crucial for understanding provider performance.
+
+7.1. Caterpillar Plot of Provider Effects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Shows each provider's estimated :math:`\hat{\gamma}_i` with confidence intervals.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   lfe_model.plot_provider_effects(
+       level=0.95,
+       use_flags=True,
+       null='median',
+       plot_title="Provider Performance: Adjusted Length of Stay (Gamma Effects)",
+       figure_size=(8, 6)
+   )
+
+7.2. Caterpillar Plot of Standardized Measures
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Similar to above, but for standardized differences.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   lfe_model.plot_standardized_measures(
+       stdz='indirect',
+       measure='difference',
+       level=0.95,
+       use_flags=True,
+       null='median',
+       plot_title="Provider Standardized Differences (Indirect vs Median)",
+       figure_size=(8, 6)
+   )
+
+7.3. Funnel Plot
+~~~~~~~~~~~~~~~~
+Plots standardized differences against provider precision (group size).
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   lfe_model.plot_funnel(
+       stdz='indirect',
+       null='median',
+       target=0.0,
+       alpha=[0.05, 0.01],
+       plot_title="Funnel Plot: Standardized LOS Differences vs Provider Size",
+       xlab="Provider Size (Number of Patients)",
+       ylab="Standardized Difference in LOS"
+   )
+
+7.4. Forest Plot of Covariate Coefficients
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Visualizes the estimated :math:`\hat{\beta}_k` coefficients and their CIs.
+
+.. plot::
+   :context: close-figs
+   :include-source: True
+
+   lfe_model.plot_coefficient_forest(
+       plot_title="Forest Plot of Covariate Effects (Beta) on Length of Stay"
+   )
+
+7.5. Model Diagnostic Plots
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*   **Residuals vs. Fitted Values:**
+
+  .. plot::
+    :context: close-figs
+    :include-source: True
+
+       lfe_model.plot_residuals(
+           title="Residuals vs. Fitted Values"
+       )
+
+*   **Normal Q-Q Plot of Residuals:**
+
+    .. plot::
+       :context: close-figs
+       :include-source: True
+
+       lfe_model.plot_qq(
+           title="Normal Q-Q Plot of Residuals"
+       )
+
+8. Quick Interpretation Guide
+-----------------------------
+*   **Covariate Coefficients (:math:`\boldsymbol{\beta}`):** Indicate how much the outcome changes for a one-unit change in a covariate, after accounting for provider effects. Statistical significance (p-value in ``summary()``) suggests the covariate is a relevant risk adjuster.
+*   **Provider Effects (:math:`\boldsymbol{\gamma_i}` / Standardized Differences):**
+
+    *   These are your primary measures of provider performance, adjusted for case mix.
+    *   A :math:`\gamma_i` or standardized difference far from the average/median (and statistically significant via ``test()`` or CIs) suggests that provider performs differently.
+    *   **Caterpillar plots** make these comparisons easy to see.
+*   **Funnel Plots:**
+
+    *   Providers within the funnel are performing as expected given their size.
+    *   Providers outside the funnel are potential outliers. Small providers have wider limits (more variability expected).
+*   **Residual Plots:**
+
+    *   `plot_residuals`: Check for non-linearity (U-shapes) or non-constant variance (heteroscedasticity - fanning shape).
+    *   `plot_qq`: Check if the assumption of normally distributed errors holds.
+
+This tutorial provides a foundation for using the ``LinearFixedEffectModel``. Always refer to the specific method docstrings for detailed parameter explanations and explore the various customization options for plots to best suit your analysis.
