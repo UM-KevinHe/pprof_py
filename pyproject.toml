@@ -7,6 +7,22 @@ name = "pprof_py"
 version = "0.2.0"
 description = "General statistical-computing package for provider profiling and healthcare analytics (logistic, linear, and Cox survival models)."
 requires-python = ">=3.9"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Kevin He", email = "kevinhe@umich.edu"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+
 dependencies = [
     "numpy>=1.23",
     "pandas>=1.5",
@@ -17,6 +33,9 @@ dependencies = [
     "numba>=0.56",
     "fast_poibin>=0.4",
 ]
+
+[project.urls]
+Homepage = "https://github.com/UM-KevinHe/pprof_py"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "statsmodels>=0.13"]

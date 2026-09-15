@@ -8,18 +8,21 @@ Implemented in Python with NumPy, validated against R reference implementations,
 
 ## Models
 
-| Family | Classes | Key features |
-| --- | --- | --- |
-| **Logistic** | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel` | SerBIN algorithm for large-*m* fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; Wald, score, exact, and bootstrap hypothesis tests |
-| **Linear** | `LinearFixedEffectModel`, `LinearRandomEffectModel` | Profile-based fixed effects; WLS and statsmodels-backed mixed effects; direct and indirect standardization |
-| **Survival** | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV` | Breslow and Efron ties; strata, offset, weights, left truncation; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow |
-| **Competing risks** | `CauseSpecificCoxPH`, `FineGrayPH` | Cause-specific hazards; Fine-Gray subdistribution hazards |
-| **Variable selection** | `CoxPHSelector` | Stepwise forward/backward/bidirectional selection with AIC, BIC, or p-value criteria |
+| Family                 | Classes                                                                             | Key features                                                                                                                                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel` | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; Wald, score, exact, and bootstrap hypothesis tests                       |
+| **Linear**             | `LinearFixedEffectModel`, `LinearRandomEffectModel`                                 | Profile-based fixed effects; pure-Python lme4-style REML/ML random intercepts (single and crossed); direct and indirect standardization                                                                                              |
+| **Survival**           | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`                                       | Breslow and Efron ties; strata, offset, weights, left truncation; robust/sandwich and clustered variance; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow |
+| **Competing risks**    | `CauseSpecificCoxPH`, `FineGrayPH`                                                  | Cause-specific hazards; Fine-Gray subdistribution hazards                                                                                                                                                                            |
+| **Variable selection** | `CoxPHSelector`                                                                     | Stepwise forward/backward/bidirectional selection with AIC, BIC, or p-value criteria                                                                                                                                                 |
 
 ## Quick start
 
 ```python
-from pprof_py import CoxPH, LogisticFixedEffectModel, LinearFixedEffectModel
+from pprof_py import (
+    CoxPH, LogisticFixedEffectModel, LogisticRandomEffectModel,
+    LinearFixedEffectModel, LinearRandomEffectModel,
+)
 ```
 
 ### Cox proportional hazards
@@ -35,7 +38,7 @@ model.baseline_hazard_      # DataFrame: stratum, time, hazard, survival
 model.martingale_residuals_
 ```
 
-Left truncation, strata, offset, and weights — any combination:
+Left truncation, strata, offset, weights, and robust/clustered variance — any combination:
 
 ```python
 model.fit(
@@ -43,6 +46,8 @@ model.fit(
     strata=provider,
     offset=log_exposure,
     sample_weight=weight,
+    robust=True,            # sandwich variance
+    groups=cluster_id,      # clustered sandwich variance
 )
 ```
 
@@ -84,6 +89,37 @@ model.test()
 model.calculate_standardized_measures()
 ```
 
+### Linear random effect model
+
+```python
+model = LinearRandomEffectModel(verbose=False)
+model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], group_var='provider', reml=True)
+
+model.coefficients_['beta']       # fixed effects
+model.coefficients_['alpha']      # BLUPs (random intercepts)
+model.random_effect_sd_           # {group_var: sigma_u}
+model.sigma_                      # residual SD
+model.summary()
+model.test(null='median')
+model.calculate_standardized_measures(stdz='indirect')
+model.plot_funnel()
+model.plot_provider_effects()
+```
+
+### Logistic random effect model
+
+```python
+model = LogisticRandomEffectModel(verbose=False)
+model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+
+model.coefficients_['beta']       # fixed effects (log-odds)
+model.get_random_effects()        # BLUPs
+model.test(null='median', test_method='wald')
+model.calculate_standardized_measures(stdz='indirect')
+model.plot_funnel()
+model.plot_standardized_measures(stdz='indirect', measure='ratio')
+```
+
 ### Penalized Cox regression
 
 ```python
@@ -105,22 +141,24 @@ pip install .
 
 Requires Python ≥ 3.9.
 
-**Core dependencies:** `numpy`, `pandas`, `scipy`, `scikit-learn`, `statsmodels`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
+**Core dependencies:** `numpy`, `pandas`, `scipy`, `scikit-learn`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
 
 **Optional:**
 
 ```bash
-pip install ".[dev]"            # pytest
+pip install ".[dev]"            # pytest + statsmodels (cross-validation tests)
 pip install ".[random-effect]"  # nlopt (optional solver for LogisticRandomEffectModel)
 ```
 
 ## Validation
 
-The CoxPH implementation is validated against real R 4.3.3 / `survival` 3.5.8 output on shared synthetic datasets covering right-censored, left-truncated, stratified, offset, weighted data, and every combination — under both Breslow and Efron ties. Coefficients, standard errors, log-likelihood, baseline hazard, and martingale residuals all match to 1e⁻⁸–1e⁻¹⁴ relative error. Penalized regression (`PenalizedCoxPH` / `PenalizedCoxPHCV`) is validated against R's `glmnet(family="cox")`.
+The CoxPH implementation is validated against real R 4.3.3 / `survival` 3.5.8 output on shared synthetic datasets covering right-censored, left-truncated, stratified, offset, weighted data, and every combination — under both Breslow and Efron ties. Coefficients, standard errors, log-likelihood, baseline hazard, and martingale residuals all match to 1e⁻⁸–1e⁻¹⁴ relative error. Robust/sandwich and clustered variance estimates are validated against R's `survival::coxph(robust=TRUE, cluster=...)`. Penalized regression (`PenalizedCoxPH` / `PenalizedCoxPHCV`) is validated against R's `glmnet(family="cox")`.
+
+The `LinearRandomEffectModel` is validated against R's `lme4::lmer` (REML and ML, weighted and unweighted) with beta, sigma, RE SD, log-likelihood, and BLUP errors at 10⁻⁷–10⁻⁹.
 
 Production-scale checks (200,000 rows / 3,000 strata / 6 covariates, and 50,000 rows / 57 covariates) confirm agreement to 1e⁻¹⁴–1e⁻¹⁶ relative error — no discrepancy beyond floating-point noise.
 
-See [`docs/source/validation/`](pprof_py/docs/source/validation/) for the full validation report, R compatibility notes, and architecture documentation.
+See [`docs/source/survival/`](pprof_py/docs/source/survival/) for the full validation report, R compatibility notes, and architecture documentation.
 
 ## Performance
 
@@ -128,37 +166,37 @@ Cox fitting uses numba-compiled kernels (`@njit(cache=True)`) for the risk-set s
 
 Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combination):
 
-| n | strata | covariates | tie method | fit time |
-| --- | --- | --- | --- | --- |
-| 2,000 | 10 | 2 | breslow | 0.14 s |
-| 50,000 | 250 | 2 | breslow | 2.73 s |
-| 200,000 | 3,000 | 6 | breslow | 1.8 s |
-| 200,000 | 3,000 | 6 | efron | 1.9 s |
-| 50,000 | 700 | 57 | efron | 1.8 s |
+| n       | strata | covariates | tie method | fit time |
+| ------- | ------ | ---------- | ---------- | -------- |
+| 2,000   | 10     | 2          | breslow    | 0.14 s   |
+| 50,000  | 250    | 2          | breslow    | 2.73 s   |
+| 200,000 | 3,000  | 6          | breslow    | 1.8 s    |
+| 200,000 | 3,000  | 6          | efron      | 1.9 s    |
+| 50,000  | 700    | 57         | efron      | 1.8 s    |
 
 ## Feature matrix — Survival models
 
-| Feature | Status |
-| --- | --- |
-| Right-censored data | ✅ validated against R |
-| Left truncation / `(start, stop]` | ✅ validated against R |
-| Strata (own baseline hazard, shared coefficients) | ✅ validated against R |
-| Offset (including the `basehaz` offset-mean subtlety) | ✅ validated against R |
-| Case weights (model-based SE) | ✅ validated against R |
-| Breslow ties (default) | ✅ validated against R |
-| Efron ties | ✅ validated against R |
-| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood | ✅ |
-| Baseline cumulative hazard / survival | ✅ |
-| Martingale residuals (left-truncation-correct, Efron-correct) | ✅ |
-| Two-stage SMR and SHR patterns | ✅ validated end to end |
-| Prediction (linear, partial hazard, cumulative hazard, survival) | ✅ |
-| Penalized regression (ridge / LASSO / elastic net + CV) | ✅ validated against `glmnet` |
-| Competing risks (cause-specific, Fine-Gray) | ✅ |
-| Automated variable selection (forward/backward/both) | ✅ |
-| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅ |
-| Exact ties | ❌ not implemented |
-| Robust/sandwich variance, clustering | ❌ not implemented |
-| Formula interface | ❌ not implemented — pass a numeric design matrix |
+| Feature                                                              | Status                                            |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| Right-censored data                                                  | ✅ validated against R                            |
+| Left truncation / `(start, stop]`                                    | ✅ validated against R                            |
+| Strata (own baseline hazard, shared coefficients)                    | ✅ validated against R                            |
+| Offset (including the `basehaz` offset-mean subtlety)                | ✅ validated against R                            |
+| Case weights (model-based SE)                                        | ✅ validated against R                            |
+| Breslow ties (default)                                               | ✅ validated against R                            |
+| Efron ties                                                           | ✅ validated against R                            |
+| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood           | ✅                                                |
+| Baseline cumulative hazard / survival                                | ✅                                                |
+| Martingale residuals (left-truncation-correct, Efron-correct)        | ✅                                                |
+| Two-stage SMR and SHR patterns                                       | ✅ validated end to end                           |
+| Prediction (linear, partial hazard, cumulative hazard, survival)     | ✅                                                |
+| Penalized regression (ridge / LASSO / elastic net + CV)              | ✅ validated against `glmnet`                     |
+| Competing risks (cause-specific, Fine-Gray)                          | ✅                                                |
+| Automated variable selection (forward/backward/both)                 | ✅                                                |
+| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                |
+| Exact ties                                                           | ❌ not implemented                                |
+| Robust/sandwich variance, clustering                                 | ✅ validated against R                            |
+| Formula interface                                                    | ❌ not implemented — pass a numeric design matrix |
 
 ## Package layout
 
@@ -187,7 +225,7 @@ pprof_py/
 └── utils/             numerical helpers, grouping, misc
 ```
 
-See [`docs/source/validation/architecture.md`](pprof_py/docs/source/validation/architecture.md) for the full layering rationale.
+See [`docs/source/survival/ARCHITECTURE.md`](pprof_py/docs/source/survival/ARCHITECTURE.md) for the full layering rationale.
 
 ## Running the tests
 
@@ -240,14 +278,14 @@ If you encounter any problems or bugs, please contact:
 
 ## References
 
-1. Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting linear mixed-effects models using lme4. *Journal of Statistical Software*, 67(1), 1–48. https://doi.org/10.18637/jss.v067.i01
+1. Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting linear mixed-effects models using lme4. _Journal of Statistical Software_, 67(1), 1–48. https://doi.org/10.18637/jss.v067.i01
 
-2. He, K., Kalbfleisch, J. D., Li, Y., & Li, Y. (2013). Evaluating hospital readmission rates in dialysis facilities; adjusting for hospital effects. *Lifetime Data Analysis*, 19, 490–512. https://doi.org/10.1007/s10985-013-9264-6
+2. He, K., Kalbfleisch, J. D., Li, Y., & Li, Y. (2013). Evaluating hospital readmission rates in dialysis facilities; adjusting for hospital effects. _Lifetime Data Analysis_, 19, 490–512. https://doi.org/10.1007/s10985-013-9264-6
 
-3. He, K. (2019). Indirect and direct standardization for evaluating transplant centers. *Journal of Hospital Administration*, 8(1), 9–14. https://doi.org/10.5430/jha.v8n1p9
+3. He, K. (2019). Indirect and direct standardization for evaluating transplant centers. _Journal of Hospital Administration_, 8(1), 9–14. https://doi.org/10.5430/jha.v8n1p9
 
-4. Hsiao, C. (2022). *Analysis of Panel Data* (No. 64). Cambridge University Press.
+4. Hsiao, C. (2022). _Analysis of Panel Data_ (No. 64). Cambridge University Press.
 
-5. Wu, W., Kuriakose, J. P., Weng, W., Burney, R. E., & He, K. (2023). Test-specific funnel plots for healthcare provider profiling leveraging individual- and summary-level information. *Health Services and Outcomes Research Methodology*, 23(1), 45–58. https://doi.org/10.1007/s10742-022-00287-3
+5. Wu, W., Kuriakose, J. P., Weng, W., Burney, R. E., & He, K. (2023). Test-specific funnel plots for healthcare provider profiling leveraging individual- and summary-level information. _Health Services and Outcomes Research Methodology_, 23(1), 45–58. https://doi.org/10.1007/s10742-022-00287-3
 
-6. Wu, W., Yang, Y., Kang, J., & He, K. (2022). Improving large-scale estimation and inference for profiling health care providers. *Statistics in Medicine*, 41(15), 2840–2853. https://doi.org/10.1002/sim.9387
+6. Wu, W., Yang, Y., Kang, J., & He, K. (2022). Improving large-scale estimation and inference for profiling health care providers. _Statistics in Medicine_, 41(15), 2840–2853. https://doi.org/10.1002/sim.9387
