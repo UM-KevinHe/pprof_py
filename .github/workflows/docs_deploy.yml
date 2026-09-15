@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy-docs:
@@ -32,8 +35,10 @@ jobs:
           cd pprof_py/docs
           sphinx-build -E -b html source _build/html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./pprof_py/docs/_build/html
+          path: pprof_py/docs/_build/html
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
