@@ -25,7 +25,6 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
-    'sphinx_rtd_theme',
     'sphinx.ext.intersphinx',
     'sphinx.ext.githubpages',
     'sphinxcontrib.bibtex',
@@ -41,7 +40,7 @@ myst_enable_extensions = [
     'colon_fence',
     'deflist',
 ]
-myst_heading_anchors = 3
+myst_heading_anchors = 2
 
 # Supported source suffixes
 source_suffix = {
@@ -60,12 +59,14 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'shibuya'
 html_static_path = ['_static']
 html_theme_options = {
-    'navigation_depth': 4,
-    'collapse_navigation': False,
-    'sticky_navigation': True,
+    'globaltoc_expand_depth': 1,
+    'toctree_titles_only': True,
+    'nav_links': [
+        {'title': 'GitHub', 'url': 'https://github.com/UM-KevinHe/pprof_py'},
+    ],
 }
 
 # Napoleon settings

@@ -41,7 +41,7 @@ Homepage = "https://github.com/UM-KevinHe/pprof_py"
 dev = ["pytest>=7.0", "statsmodels>=0.13"]
 docs = [
     "sphinx>=6.0",
-    "sphinx_rtd_theme>=1.2",
+    "shibuya>=2024.8",
     "myst-parser>=1.0",
     "sphinxcontrib-bibtex>=2.5",
     "matplotlib>=3.5",
