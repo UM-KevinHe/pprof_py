@@ -114,158 +114,112 @@ For linear models, standardized measures typically represent differences rather 
 
 Let $\hat{\boldsymbol{\beta}}$ and $\hat{\boldsymbol{\gamma}}$ be the OLS estimates. Define a reference or baseline provider effect $\gamma_0$ (e.g., median or mean of $\hat{\gamma}_i$, as specified by the `null` parameter in `LinearFixedEffectModel.calculate_standardized_measures`).
 
-**2.3.1. Indirect Standardization**
+#### 2.3.1. Indirect Standardization
 
 Indirect standardization compares the observed total outcome for a provider to the expected total outcome if that provider performed at the baseline level $\gamma_0$, given its specific patient mix.
 
-- **Observed Total Outcome for Provider i** ($O_i$):
-  The sum of actual outcomes for all $n_i$ subjects in provider $i$. This corresponds to the `observed` column in the output DataFrame for indirect standardization.
+Observed Total Outcome for Provider $i$ ($O_i$)
 
-      $$
+The sum of actual outcomes for all $n_i$ subjects in provider $i$. This corresponds to the `observed` column in the output DataFrame for indirect standardization.
 
-  O*i = \sum*{j=1}^{n*i} Y*{ij}
-  $$
+$$
+O_i = \sum_{j=1}^{n_i} Y_{ij}
+$$
 
-* **Expected Total Outcome for Provider i under Baseline** ($E_i(\gamma_0)$):
-  The sum of expected outcomes for provider $i$'s $n_i$ subjects, if the provider effect was the baseline $\gamma_0$, adjusted for their specific covariates $\mathbf{X}_{ij}$. This corresponds to the `expected` column in the output DataFrame for indirect standardization.
+Expected Total Outcome for Provider $i$ under Baseline ($E_i(\gamma_0)$)
 
-      $$
+The sum of expected outcomes for provider $i$'s $n_i$ subjects, if the provider effect was the baseline $\gamma_0$, adjusted for their specific covariates $\mathbf{X}_{ij}$. This corresponds to the `expected` column in the output DataFrame for indirect standardization.
 
-  E*i(\gamma_0) = \sum*{j=1}^{n*i} (\gamma_0 + \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}})
+$$
+E_i(\gamma_0) = \sum_{j=1}^{n_i} \left( \gamma_0 + \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} \right)
+$$
 
-  $$
-  $$
+Indirect Standardized Difference for Provider $i$ ($\text{ISDiff}_i$)
 
-* **Indirect Standardized Difference for Provider i** ($\text{ISDiff}_i$):
-  The average difference between observed and expected outcomes for provider $i$. This is calculated as the total observed outcome minus the total expected outcome, divided by the number of subjects in the provider ($n_i$). This corresponds to the `indirect_difference` column in the output DataFrame.
+The average difference between observed and expected outcomes for provider $i$. This is calculated as the total observed outcome minus the total expected outcome, divided by the number of subjects in the provider ($n_i$). This corresponds to the `indirect_difference` column in the output DataFrame.
 
-      $$
+$$
+\text{ISDiff}_i = \frac{O_i - E_i(\gamma_0)}{n_i}
+$$
 
-  \text{ISDiff}\_i = \frac{O_i - E_i(\gamma_0)}{n_i}
-  $$
+This difference can also be expressed as the difference between the observed mean, $\bar{Y}_i = O_i / n_i$, and the expected mean for provider $i$ under baseline effect $\gamma_0$, $\bar{E}_i(\gamma_0) = E_i(\gamma_0) / n_i$:
 
-This difference can also be expressed as the difference between the observed mean ($\bar{Y}_i = O_i / n_i$) and the expected mean for provider $i$ under baseline effect $\gamma_0$ ($\bar{E}_i(\gamma_0) = E_i(\gamma_0) / n_i$):
-
-    $$
-
-\text{ISDiff}\_i = \bar{Y}\_i - (\gamma_0 + \bar{\mathbf{X}}\_i^\top\hat{\boldsymbol{\beta}})
-
+$$
+\text{ISDiff}_i = \bar{Y}_i - \left( \gamma_0 + \bar{\mathbf{X}}_i^\top \hat{\boldsymbol{\beta}} \right)
 $$
 
 where $\bar{\mathbf{X}}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} \mathbf{X}_{ij}$ is the mean covariate vector for provider $i$.
 
-**2.3.2. Direct Standardization**
+#### 2.3.2. Direct Standardization
 
-Direct standardization compares the expected total outcome if the *entire population* experienced provider $k$'s effect ($\hat{\gamma}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\gamma_0$).
+Direct standardization compares the expected total outcome if the _entire population_ experienced provider $k$'s effect ($\hat{\gamma}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\gamma_0$).
 
-- **Expected Total Outcome under Provider k's Effect** ($E^{(k)}$):
-    The total expected outcome for the entire population if all subjects experienced provider $k$'s effect ($\hat{\gamma}_k$), adjusted for their specific covariates.
+Expected Total Outcome under Provider $k$'s Effect ($E^{(k)}$)
 
-
-$$
-
-E^{(k)} = \sum*{i=1}^m \sum*{j=1}^{n*i} (\hat{\gamma}\_k + \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}})
+The total expected outcome for the entire population if all subjects experienced provider $k$'s effect ($\hat{\gamma}_k$), adjusted for their specific covariates.
 
 $$
-
-*   **Expected Total Outcome under Baseline Effect** ($E^{(0)}$):
-    The total expected outcome for the entire population if all subjects experienced the baseline effect ($\gamma_0$), adjusted for their specific covariates.
-
-
+E^{(k)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \left( \hat{\gamma}_k + \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} \right)
 $$
 
-E^{(0)} = \sum*{i=1}^m \sum*{j=1}^{n*i} (\gamma_0 + \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}})
+Expected Total Outcome under Baseline Effect ($E^{(0)}$)
+
+The total expected outcome for the entire population if all subjects experienced the baseline effect ($\gamma_0$), adjusted for their specific covariates.
 
 $$
-
-*   **Direct Standardized Difference for Provider k** ($\text{DSDiff}_k$):
-    The average difference between the total expected outcomes under provider $k$'s effect and the baseline effect, divided by the total sample size ($N = \sum_{i=1}^m n_i$). This corresponds to the `direct_difference` column in the output DataFrame.
-
-
+E^{(0)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \left( \gamma_0 + \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} \right)
 $$
 
-\text{DSDiff}\_k = \frac{E^{(k)} - E^{(0)}}{N}
+Direct Standardized Difference for Provider $k$ ($\text{DSDiff}_k$)
 
+The average difference between the total expected outcomes under provider $k$'s effect and the baseline effect, divided by the total sample size ($N = \sum_{i=1}^m n_i$). This corresponds to the `direct_difference` column in the output DataFrame.
+
+$$
+\text{DSDiff}_k = \frac{E^{(k)} - E^{(0)}}{N}
 $$
 
 This difference can also be expressed as the difference between the expected mean outcome under provider $k$'s effect ($\bar{E}^{(k)} = E^{(k)} / N$) and the expected mean outcome under the baseline effect ($\bar{E}^{(0)} = E^{(0)} / N$):
 
-
 $$
-
-\text{DSDiff}\_k = \hat{\gamma}\_k - \gamma_0
-
+\text{DSDiff}_k = \hat{\gamma}_k - \gamma_0
 $$
 
 Therefore, for linear fixed effect models, both indirect and direct standardized differences ultimately simplify to $\hat{\gamma}_i - \gamma_0$ when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (`LinearFixedEffectModel.calculate_standardized_measures`) calculates and returns these differences along with the observed and expected totals for each method.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### 2.4. Hypothesis Testing for Provider Effects
 
-We test the null hypothesis $H_0: \gamma_i = \gamma_0$ against an alternative $H_1$. Given the linear model assumptions and the estimation of $\sigma^2$, the natural test is a **t-test**, as implemented in `LinearFixedEffectModel.test`:
-
-
-$$
-
-T_i = \frac{\hat{\gamma}\_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}\_i)}
+We test the null hypothesis $H_0: \gamma_i = \gamma_0$ against an alternative $H_1$. Given the linear model assumptions and the estimation of $\sigma^2$, the natural test is a t-test, as implemented in `LinearFixedEffectModel.test`:
 
 $$
+T_i = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\operatorname{se}}(\hat{\gamma}_i)}
+$$
 
-Under $H_0$, the test statistic $T_i$ follows a t-distribution with $N - m - p$ degrees of freedom. P-values are calculated based on this distribution according to the specified `alternative` ('two_sided', 'less', or 'greater').
+Under $H_0$, the test statistic $T_i$ follows a t-distribution with $N - m - p$ degrees of freedom. P-values are calculated from this distribution according to the specified `alternative` (`'two_sided'`, `'less'`, or `'greater'`).
 
 ### 2.5. Confidence Intervals
 
-Confidence intervals for $\boldsymbol\beta$ and $\gamma_i$ are constructed based on the t-distribution with $N-m-p$ degrees of freedom.
+Confidence intervals for $\boldsymbol{\beta}$ and $\gamma_i$ are constructed using the t-distribution with $N - m - p$ degrees of freedom.
 
-- **For** $\beta_k$ (see `LinearFixedEffectModel.summary`):
-
-
-$$
-
-\hat{\beta}_k \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\beta}\_k)
+For $\beta_k$ (see `LinearFixedEffectModel.summary`), the confidence interval is
 
 $$
-
-where $\widehat{\text{se}}(\hat{\beta}_k)$ is the square root of the $k$-th diagonal element of $\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})$.
-- **For** $\gamma_i$ (see `LinearFixedEffectModel.calculate_confidence_intervals`):
-
-
+\hat{\beta}_k \pm t_{1-\alpha/2,\, N-m-p} \times \widehat{\operatorname{se}}(\hat{\beta}_k)
 $$
 
-\hat{\gamma}_i \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\gamma}\_i)
+where $\widehat{\operatorname{se}}(\hat{\beta}_k)$ is the square root of the $k$-th diagonal element of $\widehat{\operatorname{Var}}(\hat{\boldsymbol{\beta}}_{FE})$.
+
+For $\gamma_i$ (see `LinearFixedEffectModel.calculate_confidence_intervals`), the confidence interval is
 
 $$
-
-where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the square root of the estimated $\text{Var}(\hat{\gamma}_i)$ (using either the 'complete' or 'simplified' option).
-- **For Standardized Differences** (see `LinearFixedEffectModel.calculate_confidence_intervals`): Since both indirect and direct standardized differences simplify to $\hat{\gamma}_i - \gamma_0$ (where $\gamma_0$ is treated as a fixed value post-estimation for CI construction), the confidence interval for the difference is:
-
-
+\hat{\gamma}_i \pm t_{1-\alpha/2,\, N-m-p} \times \widehat{\operatorname{se}}(\hat{\gamma}_i)
 $$
 
-(\hat{\gamma}_i - \gamma_0) \pm t_{1-\alpha/2, N-m-p} \times \widehat{\text{se}}(\hat{\gamma}\_i)
+where $\widehat{\operatorname{se}}(\hat{\gamma}_i)$ is the square root of the estimated $\operatorname{Var}(\hat{\gamma}_i)$ using either the `complete` or `simplified` option.
 
+For standardized differences (see `LinearFixedEffectModel.calculate_confidence_intervals`), both indirect and direct standardized differences simplify to $\hat{\gamma}_i - \gamma_0$, where $\gamma_0$ is treated as a fixed value after estimation for confidence-interval construction. The confidence interval is
+
+$$
+(\hat{\gamma}_i - \gamma_0) \pm t_{1-\alpha/2,\, N-m-p} \times \widehat{\operatorname{se}}(\hat{\gamma}_i)
 $$
 
 This is equivalent to shifting the confidence interval for $\hat{\gamma}_i$ by $-\gamma_0$.
@@ -379,6 +333,7 @@ print(sm_results_lin['indirect'].head()) # Access the DataFrame for 'indirect' r
 ```
 
 ### 3.5. Hypothesis Testing (`test`)
+
 Test provider effects ($\gamma_i$) using t-tests.
 
 ```python
@@ -395,6 +350,7 @@ print(test_results_lin.head())
 ```
 
 ### 3.6. Confidence Interval Calculation (`calculate_confidence_intervals`)
+
 Compute CIs for $\gamma_i$ or standardized differences.
 
 ```python
@@ -423,6 +379,7 @@ print(isd_cis_lin_results['indirect_ci'].head())
 ```
 
 ### 3.7. Visualization
+
 Use plotting methods from the `LinearFixedEffectModel` instance.
 
 ```python
@@ -468,11 +425,10 @@ Standardized differences (both indirect and direct) simplify to $\hat{\gamma}_i 
 
 The linear fixed effects model, as implemented in the `LinearFixedEffectModel`` class, offers a valuable tool for provider profiling with quantitative outcomes. It provides robust risk adjustment through provider-specific intercepts and facilitates performance comparisons using standardized differences. The implementation includes efficient estimation, standard inference procedures based on t-tests, and methods for calculating confidence intervals. When combined with appropriate visualization tools, it enables researchers and analysts to effectively evaluate and compare provider performance while accounting for patient case mix.
 
-References
-----------
+## References
+
 ```{bibliography} ../references.bib
 :list: enumerate
 :filter: docname in docnames
 :keyprefix: linfe-
 ```
-$$

@@ -77,151 +77,110 @@ Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\al
 
 Indirect standardization compares the observed total outcome for a provider to the expected total outcome if that provider had the baseline random effect $\alpha_0$, given its specific patient mix.
 
-- **Observed Total Outcome for Provider i** ($O_i$):
-  The sum of fitted values (including both fixed and random effects) for all $n_i$ subjects in provider $i$. This corresponds to the `observed` column in the output DataFrame for indirect standardization.
+Observed Total Outcome for Provider $i$ ($O_i$)
 
-      $$
+The sum of fitted values (including both fixed and random effects) for all $n_i$ subjects in provider $i$. This corresponds to the `observed` column in the output DataFrame for indirect standardization.
 
-  O*i = \sum*{j=1}^{n*i} \left( \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\alpha}\_i \right)
-  $$
+$$
+O_i = \sum_{j=1}^{n_i} \left( \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} + \hat{\alpha}_i \right)
+$$
 
-* **Expected Total Outcome for Provider i under Baseline** ($E_i(\alpha_0)$):
-  The sum of expected outcomes for provider $i$'s $n_i$ subjects, if the provider effect was the baseline $\alpha_0$, adjusted for their specific covariates. This corresponds to the `expected` column in the output DataFrame for indirect standardization.
+Expected Total Outcome for Provider $i$ under Baseline ($E_i(\alpha_0)$)
 
-      $$
+The sum of expected outcomes for provider $i$'s $n_i$ subjects, if the provider effect was the baseline $\alpha_0$, adjusted for their specific covariates. This corresponds to the `expected` column in the output DataFrame for indirect standardization.
 
-  E*i(\alpha_0) = \sum*{j=1}^{n*i} \left( \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}} + \alpha_0 \right)
+$$
+E_i(\alpha_0) = \sum_{j=1}^{n_i} \left( \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} + \alpha_0 \right)
+$$
 
-  $$
-  $$
+Indirect Standardized Difference for Provider $i$ ($\text{ISDiff}_i$)
 
-* **Indirect Standardized Difference for Provider i** ($\text{ISDiff}_i$):
-  The average difference between observed and expected outcomes for provider $i$. This is calculated as the total observed outcome minus the total expected outcome, divided by the number of subjects in the provider ($n_i$). This corresponds to the `indirect_difference` column in the output DataFrame.
+The average difference between observed and expected outcomes for provider $i$. This is calculated as the total observed outcome minus the total expected outcome, divided by the number of subjects in the provider ($n_i$). This corresponds to the `indirect_difference` column in the output DataFrame.
 
-      $$
-
-  \text{ISDiff}\_i = \frac{O_i - E_i(\alpha_0)}{n_i}
-  $$
+$$
+\text{ISDiff}_i = \frac{O_i - E_i(\alpha_0)}{n_i}
+$$
 
 This difference can also be expressed as the difference between the observed mean and the expected mean for provider $i$ under the baseline effect:
 
-    $$
-
-\text{ISDiff}\_i = \left( \bar{Y}\_i^{\text{fitted}} - (\bar{\mathbf{X}}\_i^\top\hat{\boldsymbol{\beta}} + \alpha_0) \right)
-
+$$
+\text{ISDiff}_i = \bar{Y}_i^{\text{fitted}} - \left( \bar{\mathbf{X}}_i^\top \hat{\boldsymbol{\beta}} + \alpha_0 \right)
 $$
 
 where $\bar{Y}_i^{\text{fitted}}$ is the mean fitted value for provider $i$, and $\bar{\mathbf{X}}_i$ is the mean covariate vector for provider $i$.
 
 #### 2.3.2. Direct Standardization
 
-Direct standardization compares the expected total outcome if the *entire population* experienced provider $k$'s random effect ($\hat{\alpha}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\alpha_0$).
+Direct standardization compares the expected total outcome if the _entire population_ experienced provider $k$'s random effect ($\hat{\alpha}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\alpha_0$).
 
-- **Expected Total Outcome under Provider k's Effect** ($E^{(k)}$):
-    The total expected outcome for the entire population if all subjects experienced provider $k$'s random effect ($\hat{\alpha}_k$), adjusted for their specific covariates.
+Expected Total Outcome under Provider $k$'s Effect ($E^{(k)}$)
 
-
-$$
-
-E^{(k)} = \sum*{i=1}^m \sum*{j=1}^{n*i} \left( \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}} + \hat{\alpha}\_k \right)
+The total expected outcome for the entire population if all subjects experienced provider $k$'s random effect ($\hat{\alpha}_k$), adjusted for their specific covariates.
 
 $$
-
-*   **Expected Total Outcome under Baseline Effect** ($E^{(0)}$):
-    The total expected outcome for the entire population if all subjects experienced the baseline effect ($\alpha_0$), adjusted for their specific covariates.
-
-
+E^{(k)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \left( \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} + \hat{\alpha}_k \right)
 $$
 
-E^{(0)} = \sum*{i=1}^m \sum*{j=1}^{n*i} \left( \mathbf{X}*{ij}^\top\hat{\boldsymbol{\beta}} + \alpha_0 \right)
+Expected Total Outcome under Baseline Effect ($E^{(0)}$)
+
+The total expected outcome for the entire population if all subjects experienced the baseline effect ($\alpha_0$), adjusted for their specific covariates.
 
 $$
-
-*   **Direct Standardized Difference for Provider k** ($\text{DSDiff}_k$):
-    The average difference between the total expected outcomes under provider $k$'s effect and the baseline effect, divided by the total sample size ($N = \sum_{i=1}^m n_i$). This corresponds to the `direct_difference` column in the output DataFrame.
-
-
+E^{(0)} = \sum_{i=1}^m \sum_{j=1}^{n_i} \left( \mathbf{X}_{ij}^\top \hat{\boldsymbol{\beta}} + \alpha_0 \right)
 $$
 
-\text{DSDiff}\_k = \frac{E^{(k)} - E^{(0)}}{N}
+Direct Standardized Difference for Provider $k$ ($\text{DSDiff}_k$)
 
+The average difference between the total expected outcomes under provider $k$'s effect and the baseline effect, divided by the total sample size ($N = \sum_{i=1}^m n_i$). This corresponds to the `direct_difference` column in the output DataFrame.
+
+$$
+\text{DSDiff}_k = \frac{E^{(k)} - E^{(0)}}{N}
 $$
 
 This difference can also be expressed as the difference between the expected mean outcome under provider $k$'s effect and the expected mean outcome under the baseline effect:
 
-
 $$
-
-\text{DSDiff}\_k = \hat{\alpha}\_k - \alpha_0
-
+\text{DSDiff}_k = \hat{\alpha}_k - \alpha_0
 $$
 
 Therefore, for linear random effects models, both indirect and direct standardized differences ultimately simplify to $\hat{\alpha}_i - \alpha_0$ when expressed on a per-subject basis. However, the calculations differ in how they aggregate observed and expected outcomes (by group size for indirect, and by total sample size for direct). The implementation (`LinearRandomEffectModel.calculate_standardized_measures`) calculates and returns these differences along with the observed and expected totals for each method.
-
-
-
-
-
-
-
-
-
 
 ### 2.4. Hypothesis Testing for Provider Effects
 
 We test the null hypothesis $H_0: u_i = u_0$ against an alternative $H_1$. The test is based on the predicted random effects (BLUPs) $\hat{u}_i$ and their standard errors. The test statistic is a Z-score:
 
-
+$$
+Z_i = \frac{\hat{u}_i - u_0}{\widehat{\operatorname{se}}(\hat{u}_i)}
 $$
 
-Z_i = \frac{\hat{u}\_i - u_0}{\widehat{\text{se}}(\hat{u}\_i)}
+The standard error of the BLUP, $\widehat{\operatorname{se}}(\hat{u}_i)$, is derived from the posterior variance of $u_i$ given the data:
 
 $$
-
-The standard error of the BLUP, $\widehat{\text{se}}(\hat{u}_i)$, is derived from the posterior variance of $u_i$ given the data:
-
-
+\widehat{\operatorname{se}}(\hat{u}_i) = \sqrt{\frac{\hat{\sigma}^2_u}{\hat{\sigma}^2_u + \hat{\sigma}^2_e / n_i} \cdot \frac{\hat{\sigma}^2_e}{n_i}}
 $$
 
-\widehat{\text{se}}(\hat{u}\_i) = \sqrt{\frac{\hat{\sigma}^2_u}{\hat{\sigma}^2_u + \hat{\sigma}^2_e/n_i} \frac{\hat{\sigma}^2_e}{n_i}}
-
-$$
-
-Under $H_0$, $Z_i$ is assumed to follow a standard normal distribution. P-values are calculated based on this distribution according to the specified `alternative` ('two_sided', 'less', 'greater') in the `test` method.
+Under $H_0$, $Z_i$ is assumed to follow a standard normal distribution. P-values are calculated from this distribution according to the specified `alternative` (`'two_sided'`, `'less'`, `'greater'`) in the `test` method.
 
 ### 2.5. Confidence Intervals
 
-Confidence intervals are constructed for the fixed effects $\boldsymbol\beta$ (via `summary` method, using t-distribution) and for the provider random effects $u_i$ or standardized differences $u_i - u_0$ (via `calculate_confidence_intervals` method, using normal approximation for BLUPs).
+Confidence intervals are constructed for the fixed effects $\boldsymbol{\beta}$ (via `summary` method, using t-distribution) and for the provider random effects $u_i$ or standardized differences $u_i - u_0$ (via `calculate_confidence_intervals` method, using normal approximation for BLUPs).
 
-- **For Fixed Effects** $\beta_k$ (see `summary`):
-    Uses t-distribution with degrees of freedom $N - p - m$ (total observations - num fixed effects - num groups).
-
+For fixed effects $\beta_k$ (see `summary`), the t-distribution with degrees of freedom $N - p - m$ (total observations minus number of fixed effects minus number of groups) is used:
 
 $$
-
-\hat{\beta}_k \pm t_{1-\alpha/2, df} \times \widehat{\text{se}}(\hat{\beta}\_k)
-
+\hat{\beta}_k \pm t_{1-\alpha/2,\, df} \times \widehat{\operatorname{se}}(\hat{\beta}_k)
 $$
 
-*   **For Random Effects** $u_i$ (BLUPs, option `'alpha'` in `calculate_confidence_intervals`):
-    Based on the normal approximation for BLUPs.
-
+For random effects $u_i$ (BLUPs, option `'alpha'` in `calculate_confidence_intervals`), the normal approximation gives a two-sided interval:
 
 $$
-
-\hat{u}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{u}\_i)
-
+\hat{u}_i \pm z_{1-\alpha/2} \times \widehat{\operatorname{se}}(\hat{u}_i)
 $$
 
-This is typically a two-sided interval.
-- **For Standardized Differences** $\hat{u}_i - u_0$ (option `'SM'` in `calculate_confidence_intervals`):
-    The confidence interval for $\hat{u}_i$ is shifted by $-u_0$.
-
+For standardized differences $\hat{u}_i - u_0$ (option `'SM'` in `calculate_confidence_intervals`), the confidence interval for $\hat{u}_i$ is shifted by $-u_0$:
 
 $$
-
-(\hat{u}_i - u_0) \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{u}\_i)
-
+(\hat{u}_i - u_0) \pm z_{1-\alpha/2} \times \widehat{\operatorname{se}}(\hat{u}_i)
 $$
 
 The implementation handles one-sided and two-sided alternatives.
@@ -233,9 +192,9 @@ The `LinearRandomEffectModel` class provides several plotting methods:
 - **Caterpillar Plot for Provider Effects** (`plot_provider_effects`): Displays BLUPs $\hat{u}_i$ with their confidence intervals.
 - **Caterpillar Plot for Standardized Measures** (`plot_standardized_measures`): Displays standardized differences $\hat{u}_i - u_0$ with confidence intervals.
 - **Funnel Plot** (`plot_funnel`): Plots standardized differences $\hat{u}_i - u_0$ against group size $n_i$. Control limits are typically based on the overall residual standard deviation $\hat{\sigma}_e$, e.g., $target \pm z_{1-\alpha/2} \times \frac{\hat{\sigma}_e}{\sqrt{n_i}}$.
-- **Coefficient Forest Plot** (`plot_coefficient_forest`):** Displays estimates and confidence intervals for fixed effect coefficients $\hat{\boldsymbol{\beta}}$.
+- **Coefficient Forest Plot** (`plot_coefficient_forest`):\*\* Displays estimates and confidence intervals for fixed effect coefficients $\hat{\boldsymbol{\beta}}$.
 - **Residual Plots** (`plot_residuals`): Standard residuals vs. fitted values plot.
-- **Q-Q Plot** (`plot_qq`):** Q-Q plot of residuals against a normal distribution to check normality assumption.
+- **Q-Q Plot** (`plot_qq`):\*\* Q-Q plot of residuals against a normal distribution to check normality assumption.
 
 ## 3. Implementation and Usage
 
@@ -325,7 +284,8 @@ print(f"BIC: {lre_model.bic_:.2f}")
 ```
 
 ### 3.3. Prediction
-Predictions use fixed effects by default.  Set `use_re=True` to add
+
+Predictions use fixed effects by default. Set `use_re=True` to add
 BLUPs for known grouping levels (unknown levels receive zero, matching
 lme4's conditional-prediction convention).
 
@@ -369,6 +329,7 @@ if 'indirect' in sm_results_lre:
 ```
 
 ### 3.5. Hypothesis Testing for Provider Effects (`test`)
+
 Test provider random effects ($u_i$) against a null value.
 
 ```python
@@ -385,6 +346,7 @@ print(test_results_lre.head())
 ```
 
 ### 3.6. Confidence Interval Calculation (`calculate_confidence_intervals`)
+
 Compute CIs for provider random effects ($u_i$) or standardized differences.
 
 ```python
@@ -414,6 +376,7 @@ if 'indirect_ci' in isd_cis_lre_results:
 ```
 
 ### 3.7. Visualization
+
 Use plotting methods from the `LinearRandomEffectModel` instance. (Examples assume plots are shown interactively or saved).
 
 ```python
@@ -455,7 +418,8 @@ Linear random effect models provide a powerful framework for analyzing clustered
 - **Multiple Grouping Factors:** The current implementation supports multiple independent random-intercept terms (crossed grouping factors) via the `group_vars` parameter.
 
 ## 5. Conclusion
-The `LinearRandomEffectModel`` class offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization.  The pure-Python lme4-style solver supports both REML and ML, optional observation weights and offsets, and multiple crossed random-intercept terms.  This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
+
+The `LinearRandomEffectModel`` class offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization. The pure-Python lme4-style solver supports both REML and ML, optional observation weights and offsets, and multiple crossed random-intercept terms. This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
 
 ## 6. References
 
@@ -464,4 +428,3 @@ The `LinearRandomEffectModel`` class offers a comprehensive tool for provider pr
 :filter: docname in docnames
 :keyprefix: linre-
 ```
-$$
