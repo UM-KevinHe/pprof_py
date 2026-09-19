@@ -3,7 +3,7 @@
 provider-level confidence intervals, and provider-effect hypothesis
 testing. Mixed into the model class so that
 `models/linear/fixed_effect.py` can stay focused on configuration,
-fitting, and prediction (see AGENTS.md Sections 9 and 16).
+fitting, and prediction.
 """
 from __future__ import annotations
 

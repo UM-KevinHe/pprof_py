@@ -116,6 +116,7 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         optimizer_stage1: str = "bobyqa",
         optimizer_stage2: str = "nelder-mead",
     ) -> None:
+        """Logistic random-intercept provider model (R: ``lme4::glmer``)."""
         if sigma_upper <= 0 and not np.isinf(sigma_upper):
             raise ValueError("sigma_upper must be positive or np.inf")
         self.max_iter_pirls = int(max_iter_pirls)
@@ -329,7 +330,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         # ---------------- Stage 1: nAGQ = 0 ----------------
         stage1_cache = {"beta": beta0.copy(), "u": u0.copy()}
 
-        def stage1_objective(sigma: Array) -> float:
+        def stage1_objective(sigma: Array) -> float:  # noqa: D401
+            """Stage-1 (nAGQ=0) deviance as a function of *sigma*."""
             sigma = np.asarray(sigma, dtype=float)
             state = self._pirls(
                 sigma=sigma,
@@ -381,7 +383,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             par0 = np.r_[sigma1, state1.beta]
             stage2_cache = {"u": state1.u.copy()}
 
-            def stage2_objective(par: Array) -> float:
+            def stage2_objective(par: Array) -> float:  # noqa: D401
+                """Stage-2 (nAGQ=1) Laplace deviance over sigma and beta."""
                 sigma = np.clip(np.asarray(par[: len(group_vars)], dtype=float), 0.0, self.sigma_upper)
                 beta = np.asarray(par[len(group_vars) :], dtype=float)
                 state = self._pirls(
@@ -486,7 +489,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             opt.set_maxeval(max(self.max_iter_outer, 100))
             calls = [0]
 
-            def wrapped(x, grad):
+            def wrapped(x, grad):  # noqa: D401
+                """NLopt-compatible wrapper (ignores *grad*)."""
                 calls[0] += 1
                 return float(fun(np.asarray(x, dtype=float)))
 
@@ -778,6 +782,17 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
     # ------------------------------------------------------------------
 
     def get_random_effects(self, group_var: Optional[str] = None) -> pd.Series:
+        """Per-provider random intercepts (BLUPs).
+
+        Parameters
+        ----------
+        group_var : str or None
+            Required when multiple grouping variables are present.
+
+        Returns
+        -------
+        Series
+        """
         self._check_is_fitted()
         re = self.coefficients_["alpha"]
         if group_var is None:
@@ -789,6 +804,17 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         return re[group_var]
 
     def get_sigma(self, group_var: Optional[str] = None) -> float:
+        """Estimated random-effect standard deviation.
+
+        Parameters
+        ----------
+        group_var : str or None
+            Required when multiple grouping variables are present.
+
+        Returns
+        -------
+        float
+        """
         if self.sigma_ is None:
             raise ValueError("Model has not been fitted")
         if group_var is None:

@@ -2,7 +2,7 @@
 and standardized-measure caterpillar plots, coefficient forest plot, and
 residual/Q-Q diagnostic plots. Mixed into the model class so that
 `models/linear/random_effect.py` can stay focused on configuration,
-fitting, and prediction (see AGENTS.md Sections 9, 17-20).
+fitting, and prediction.
 """
 from __future__ import annotations
 

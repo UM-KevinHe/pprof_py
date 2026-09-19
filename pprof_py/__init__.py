@@ -17,16 +17,35 @@ those internal modules directly.
 
 `LinearRandomEffectModel` is now re-exported from the package root.
 """
-from .models.linear import LinearFixedEffectModel, LinearRandomEffectModel
+from .models.linear import (
+    LinearFixedEffectModel,
+    LinearRandomEffectModel,
+    PenalizedLinear,
+    PenalizedLinearCV,
+    GroupLassoLinear,
+)
 from .models.logistic import (
     LogisticFixedEffectModel,
     LogisticMixedEffectModel,
     LogisticRandomEffectModel,
+    PenalizedLogistic,
+    PenalizedLogisticCV,
+    GroupLassoLogistic,
+    GroupLassoLogisticCV,
+    ProviderPenalizedLogistic,
+    ProviderPenalizedLogisticCV,
 )
 from .models.survival import (
     CoxPH,
     PenalizedCoxPH,
     PenalizedCoxPHCV,
+    GroupLassoCoxPH,
+    GroupLassoCoxPHCV,
+    ProviderPenalizedCoxPH,
+    DiscreteSurvival,
+    DiscreteSurvivalCV,
+    ProviderPenalizedDiscreteSurvival,
+    ProviderPenalizedDiscreteSurvivalCV,
     CauseSpecificCoxPH,
     FineGrayPH,
 )
@@ -36,20 +55,41 @@ from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
 from .inference import huber_location_scale, estimate_empirical_null
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 
 __all__ = [
+    # Linear
     "LinearFixedEffectModel",
     "LinearRandomEffectModel",
+    "PenalizedLinear",
+    "PenalizedLinearCV",
+    "GroupLassoLinear",
+    # Logistic
     "LogisticFixedEffectModel",
     "LogisticMixedEffectModel",
     "LogisticRandomEffectModel",
+    "PenalizedLogistic",
+    "PenalizedLogisticCV",
+    "GroupLassoLogistic",
+    "GroupLassoLogisticCV",
+    "ProviderPenalizedLogistic",
+    "ProviderPenalizedLogisticCV",
+    # Survival
     "CoxPH",
     "PenalizedCoxPH",
     "PenalizedCoxPHCV",
+    "GroupLassoCoxPH",
+    "GroupLassoCoxPHCV",
+    "ProviderPenalizedCoxPH",
+    "DiscreteSurvival",
+    "DiscreteSurvivalCV",
+    "ProviderPenalizedDiscreteSurvival",
+    "ProviderPenalizedDiscreteSurvivalCV",
     "CauseSpecificCoxPH",
     "FineGrayPH",
+    # Selection
     "CoxPHSelector",
+    # Utilities
     "NotFittedError",
     "setup_logger",
     "proc_freq",

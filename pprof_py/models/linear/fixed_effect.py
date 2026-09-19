@@ -1,3 +1,10 @@
+"""User-facing ``LinearFixedEffectModel`` estimator.
+
+Fits a linear regression with provider-specific fixed intercepts
+(gamma) via closed-form weighted least squares with group demeaning,
+and provides covariate-level inference, provider-effect measures,
+and diagnostic plots through mixin composition.
+"""
 import numpy as np
 from ...data.validation import validate_and_convert_inputs
 from ...exceptions import NotFittedError
@@ -22,8 +29,8 @@ class LinearFixedEffectModel(
     The Linear Fixed Effect model is a linear regression model that includes fixed effects.
     The model is fitted using the weighted least squares method.
 
-    Responsibilities are split across mixins so this class itself stays focused on
-    configuration, input handling, fitting, and prediction (see AGENTS.md Sections 9, 15, 16):
+    Responsibilities are split across mixins so this class stays focused on
+    configuration, input handling, fitting, and prediction:
 
     - `FixedEffectInferenceMixin` (`pprof_py.inference.linear`): sigma/variance estimation,
       `summary()`.
@@ -32,8 +39,8 @@ class LinearFixedEffectModel(
     - `FixedEffectPlottingMixin` (`pprof_py.plotting.linear`): funnel/caterpillar/forest/
       residual/Q-Q plots.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     - gamma_var_option: str, default="complete"
         Option for variance calculation. Must be "complete" or "simplified".
 
@@ -54,6 +61,7 @@ class LinearFixedEffectModel(
     """
 
     def __init__(self, gamma_var_option: str = "complete") -> None:
+        """Linear fixed-effect provider model."""
         if gamma_var_option not in {"complete", "simplified"}:
             raise ValueError("'gamma_var_option' must be 'complete' or 'simplified'.")
         self.gamma_var_option = gamma_var_option
@@ -85,7 +93,7 @@ class LinearFixedEffectModel(
     def fit(self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None) -> "LinearFixedEffectModel":
         """Fit the LinearFixedEffect model.
 
-        Parameters:
+        Parameters
         ----------
         - X: array-like, shape (n_samples, n_features) or pd.DataFrame
             Design matrix (covariates) or complete dataset.
@@ -182,7 +190,7 @@ class LinearFixedEffectModel(
     def score(self, X, y, groups) -> float:
         """Compute the R^2 score for the model.
 
-        Parameters:
+        Parameters
         ----------
         - X: array-like, shape (n_samples, n_features)
             Design matrix (covariates).
@@ -201,12 +209,23 @@ class LinearFixedEffectModel(
         ss_residual = np.sum((y - y_pred)**2)
         return 1 - (ss_residual / ss_total)
 
-    def get_params(self) -> dict:
-        """Return model parameters.
+    def get_fitted_params(self) -> dict:
+        """Return fitted statistical parameters.
 
-        Returns:
+        Returns a dictionary of the estimated model quantities (coefficients,
+        variances, residual standard error, information criteria). These are
+        the *fitted* results, not the constructor configuration — see the
+        class ``__init__`` for hyper-parameters.
+
+        .. note::
+           Renamed from ``get_params`` in 0.4.0 to avoid collision with
+           ``sklearn.base.BaseEstimator.get_params()``, which returns
+           constructor arguments.
+
+        Returns
         -------
-        - params: dict, Model parameters including coefficients, variances, sigma, AIC, and BIC.
+        dict
+            Keys: ``coefficients``, ``variances``, ``sigma``, ``aic``, ``bic``.
         """
         return {
             "coefficients": self.coefficients_,

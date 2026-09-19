@@ -8,20 +8,38 @@ Implemented in Python with NumPy, validated against R reference implementations,
 
 ## Models
 
-| Family                 | Classes                                                                             | Key features                                                                                                                                                                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel` | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; Wald, score, exact, and bootstrap hypothesis tests                       |
-| **Linear**             | `LinearFixedEffectModel`, `LinearRandomEffectModel`                                 | Profile-based fixed effects; pure-Python lme4-style REML/ML random intercepts (single and crossed); direct and indirect standardization                                                                                              |
-| **Survival**           | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`                                       | Breslow and Efron ties; strata, offset, weights, left truncation; robust/sandwich and clustered variance; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow |
-| **Competing risks**    | `CauseSpecificCoxPH`, `FineGrayPH`                                                  | Cause-specific hazards; Fine-Gray subdistribution hazards                                                                                                                                                                            |
-| **Variable selection** | `CoxPHSelector`                                                                     | Stepwise forward/backward/bidirectional selection with AIC, BIC, or p-value criteria                                                                                                                                                 |
+| Family                 | Classes                                                                                                                                              | Key features                                                                                                                                                                                                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`                                                                  | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; Wald, score, exact, and bootstrap hypothesis tests                                                                      |
+| **Penalized logistic** | `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` | Elastic net / ridge / LASSO with coordinate descent; group lasso for structured variable selection; two-stage provider + penalized covariate profiling; built-in cross-validation                                                                                                   |
+| **Linear**             | `LinearFixedEffectModel`, `LinearRandomEffectModel`                                                                                                  | Profile-based fixed effects; pure-Python lme4-style REML/ML random intercepts (single and crossed); direct and indirect standardization                                                                                                                                             |
+| **Penalized linear**   | `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear`                                                                                           | Elastic net / ridge / LASSO for linear models; group lasso; cross-validation                                                                                                                                                                                                        |
+| **Survival**           | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`                                      | Breslow and Efron ties; strata, offset, weights, left truncation; robust/sandwich and clustered variance; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow; group lasso and provider-penalized extensions |
+| **Discrete survival**  | `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`                                 | Discrete-time survival with penalized covariates; three-layer provider + baseline hazard + covariate architecture; elastic net and group lasso penalties                                                                                                                            |
+| **Competing risks**    | `CauseSpecificCoxPH`, `FineGrayPH`                                                                                                                   | Cause-specific hazards; Fine-Gray subdistribution hazards                                                                                                                                                                                                                           |
+| **Variable selection** | `CoxPHSelector`                                                                                                                                      | Stepwise forward/backward/bidirectional selection with AIC, BIC, or p-value criteria                                                                                                                                                                                                |
 
 ## Quick start
 
 ```python
 from pprof_py import (
-    CoxPH, LogisticFixedEffectModel, LogisticRandomEffectModel,
+    # Logistic
+    LogisticFixedEffectModel, LogisticRandomEffectModel,
+    LogisticMixedEffectModel,
+    PenalizedLogistic, PenalizedLogisticCV,
+    GroupLassoLogistic, GroupLassoLogisticCV,
+    ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
+    # Linear
     LinearFixedEffectModel, LinearRandomEffectModel,
+    PenalizedLinear, PenalizedLinearCV, GroupLassoLinear,
+    # Survival
+    CoxPH, PenalizedCoxPH, PenalizedCoxPHCV,
+    GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH,
+    DiscreteSurvival, DiscreteSurvivalCV,
+    ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV,
+    CauseSpecificCoxPH, FineGrayPH,
+    # Selection
+    CoxPHSelector,
 )
 ```
 
@@ -203,23 +221,24 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 ```
 pprof_py/
 ├── models/
-│   ├── logistic/      fixed_effect, random_effect, mixed_effect
-│   ├── linear/        fixed_effect, random_effect
-│   └── survival/      coxph, penalized_coxph, competing_risks
+│   ├── logistic/      fixed_effect, random_effect, mixed_effect, penalized, group_lasso, provider_penalized
+│   ├── linear/        fixed_effect, random_effect, penalized, group_lasso
+│   └── survival/      coxph, penalized_coxph, group_lasso_coxph, provider_coxph, discrete_survival, provider_discrete_survival, competing_risks
 ├── algorithms/
-│   ├── logistic/      serbin, ban
-│   ├── linear/
-│   └── survival/      cox_likelihood, risk_sets, ties, optimization, penalty, finegray, coordinate_descent
-├── data/              validation, preparation, survival_data, timedep
+│   ├── logistic/      fixed_effect, likelihood, provider_effects
+│   ├── linear/        fixed_effect, likelihood
+│   └── survival/      cox_likelihood, risk_sets, ties, optimization, partial_likelihood, penalty, coordinate_descent, provider_effects, discrete_survival, finegray
+├── data/              validation, preparation, survival_data, survival_validation, timedep
 ├── inference/
 │   ├── logistic/      fixed_effect, random_effect, mixed_effect
 │   ├── linear/        fixed_effect, random_effect
-│   └── survival/      inference, baseline, residuals, robust, deviance, empirical_null
+│   └── survival/      inference, baseline, residuals, robust, empirical_null
 ├── measures/
 │   ├── logistic/      standardized_measures, confidence_intervals, provider_tests
 │   ├── linear/        fixed_effect, random_effect
 │   └── iur/           bootstrap, split_half, direct
-├── selection/         CoxPHSelector (AIC/BIC/p-value criteria)
+├── statistics/        deviance (saturated log-likelihood, Cox deviance, deviance ratio)
+├── selection/         CoxPHSelector (AIC/BIC/p-value criteria), criteria
 ├── diagnostics/       preflight checks, R-comparison harness
 ├── plotting/          caterpillar, funnel, coefficient forest, style system
 └── utils/             numerical helpers, grouping, misc
@@ -271,8 +290,6 @@ MIT © 2025 Kevin He. See [LICENSE.md](LICENSE.md).
 
 If you encounter any problems or bugs, please contact:
 
-- xhliuu@umich.edu
-- lfluo@umich.edu
 - taoxu@umich.edu
 - kevinhe@umich.edu
 

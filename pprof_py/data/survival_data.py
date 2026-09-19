@@ -2,11 +2,10 @@
 
 Everything downstream of validation (risk sets, the partial-likelihood
 engine, optimization) operates on this plain-NumPy container rather than
-on a DataFrame. That boundary is deliberate: it is the seam a future
-Spark/distributed backend would replace (each partition computing its own
+on a DataFrame.  That boundary is deliberate: it is the seam a future
+distributed backend would replace (each partition computing its own
 partial sums over this same field layout), without the user-facing
-`CoxPH` class or anything in `algorithms/` needing to change. See
-Section 29 of the project design notes.
+``CoxPH`` class or anything in ``algorithms/`` needing to change.
 """
 from __future__ import annotations
 

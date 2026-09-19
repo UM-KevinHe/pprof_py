@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph.selection import CoxPHSelector
+from pprof_py.selection import CoxPHSelector
 
 HERE = os.path.dirname(__file__)
 DATA = os.path.join(HERE, "..", "r_reference", "data")
@@ -150,7 +150,7 @@ def test_left_truncated_start_stop_pass_through():
     # Confirm start/stop genuinely took effect: fitting the same variables
     # ignoring start (i.e. as if right-censored from 0) should generally
     # give a different log-likelihood than respecting left truncation.
-    from coxph import CoxPH
+    from pprof_py import CoxPH
     with_truncation = CoxPH().fit(d[sel.selected_variables_], start=d["start"], stop=d["stop"], event=d["event"])
     without_truncation = CoxPH().fit(d[sel.selected_variables_], duration=d["stop"], event=d["event"])
     assert with_truncation.log_likelihood_ != pytest.approx(without_truncation.log_likelihood_)

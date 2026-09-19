@@ -1,11 +1,10 @@
 """Structural-typing contracts (Protocols) for model classes.
 
-These were originally ``ABC`` marker mixins that contributed no shared
-implementation — only ``@abstractmethod`` signatures used as documentation.
-Tier 3 of the refactoring plan replaced them with ``typing.Protocol``
-equivalents: same names, same method signatures, zero behavior change,
-but no more forced MRO position and no more ``abstractmethod`` machinery
-for something that was always just an interface contract.
+These are ``typing.Protocol`` interfaces (same names and method signatures
+as the original ABC marker mixins, zero behavior change) that document
+which methods a model class is expected to provide.  Using Protocol instead
+of ABC avoids forced MRO positioning and unnecessary ``abstractmethod``
+machinery for what is purely an interface contract.
 
 Model classes that previously listed these in their bases can continue to
 do so (a class that inherits a Protocol explicitly is considered to

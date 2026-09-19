@@ -57,6 +57,7 @@ class CauseSpecificCoxPH(BaseEstimator):
         eps: float = 1e-9,
         confidence_level: float = 0.95,
     ):
+        """Cause-specific Cox model for competing risks."""
         self.ties = ties
         self.fit_intercept = fit_intercept
         self.max_iter = max_iter
@@ -84,8 +85,22 @@ class CauseSpecificCoxPH(BaseEstimator):
         offset=None,
         sample_weight=None,
     ) -> "CauseSpecificCoxPH":
-        """`event`: 0 = censored, any other value a cause label. `causes`
-        defaults to every distinct nonzero value observed in `event`.
+        """Fit one CoxPH per cause, recoding other causes as censored.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_samples, n_features)
+        event : Series or ndarray
+            0 = censored, any other value = cause label.
+        duration, start, stop, strata, offset, sample_weight
+            Same as ``CoxPH.fit``.
+        causes : sequence or None
+            Cause codes to fit; defaults to all distinct nonzero values
+            in ``event``.
+
+        Returns
+        -------
+        self
         """
         event_arr = event.to_numpy() if isinstance(event, (pd.Series, pd.Index)) else np.asarray(event)
         event_arr = event_arr.astype(np.float64)
@@ -133,8 +148,13 @@ class CauseSpecificCoxPH(BaseEstimator):
         return self.models_[cause]
 
     def summary(self) -> pd.DataFrame:
-        """Every cause's `CoxPH.summary()`, stacked, with a leading
-        `cause` column.
+        """Stacked summary of all cause-specific fits.
+
+        Returns
+        -------
+        DataFrame
+            Every cause's ``CoxPH.summary()`` concatenated with a
+            leading ``cause`` column.
         """
         self._check_is_fitted()
         frames = []
@@ -168,6 +188,7 @@ class FineGrayPH(BaseEstimator):
         eps: float = 1e-9,
         confidence_level: float = 0.95,
     ):
+        """Fine-Gray subdistribution hazard model for competing risks."""
         self.ties = ties
         self.fit_intercept = fit_intercept
         self.max_iter = max_iter
@@ -186,6 +207,28 @@ class FineGrayPH(BaseEstimator):
         strata=None,
         sample_weight=None,
     ) -> "FineGrayPH":
+        """Fit Fine-Gray subdistribution hazard regression.
+
+        Internally runs ``finegray_transform`` then fits a weighted,
+        cluster-robust ``CoxPH`` on the resulting pseudo-observations.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_samples, n_features)
+        event : Series or ndarray
+            0 = censored, positive = cause label.
+        failcode : scalar
+            The cause of interest (other causes become censored).
+        duration, start, stop : Series or ndarray or None
+            Follow-up time specification.
+        id : Series or ndarray or None
+            Subject identifiers (needed for correct clustering).
+        strata, sample_weight : Series or ndarray or None
+
+        Returns
+        -------
+        self
+        """
         if isinstance(X, pd.DataFrame):
             feature_names = [str(c) for c in X.columns]
             X_arr = X.to_numpy(dtype=np.float64, copy=True)
@@ -271,14 +314,47 @@ class FineGrayPH(BaseEstimator):
             raise NotFittedError("This FineGrayPH instance is not fitted yet. Call 'fit' first.")
 
     def predict_linear(self, X, offset=None) -> np.ndarray:
+        """Linear predictor from the underlying CoxPH fit.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         self._check_is_fitted()
         return self.model_.predict_linear(X, offset=offset)
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:
+        """Partial hazard ``exp(linear_predictor)``.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         self._check_is_fitted()
         return self.model_.predict_partial_hazard(X, offset=offset)
 
     def predict(self, X, offset=None) -> np.ndarray:
+        """Alias for ``predict_partial_hazard``.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         self._check_is_fitted()
         return self.model_.predict(X, offset=offset)
 
@@ -295,5 +371,11 @@ class FineGrayPH(BaseEstimator):
         return self.model_.predict_survival_function(X, offset=offset, stratum=stratum)
 
     def summary(self) -> pd.DataFrame:
+        """Coefficient summary from the underlying Fine-Gray CoxPH fit.
+
+        Returns
+        -------
+        DataFrame
+        """
         self._check_is_fitted()
         return self.model_.summary()

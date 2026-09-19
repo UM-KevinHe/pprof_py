@@ -4,11 +4,11 @@ Wald-type inference (covariance, standard errors, z-statistics, p-values,
 confidence intervals) computed from the observed information matrix at
 convergence, plus Poisson-based exact tests for standardised count ratios.
 
-See docs/R_COMPATIBILITY.md for why observed information is the correct
-matrix for both the Newton-Raphson step *and* the covariance estimate in
-this model (no separate "expected information" step is needed), and for
-the deliberate decision to defer robust/sandwich variance to a future
-version (Section 20 of the design notes).
+See ``docs/source/survival/R_COMPATIBILITY.md`` for why observed
+information is the correct matrix for both the Newton-Raphson step *and*
+the covariance estimate in this model (no separate "expected information"
+step is needed).  Robust/sandwich variance is in
+``inference/survival/robust.py``.
 """
 from __future__ import annotations
 

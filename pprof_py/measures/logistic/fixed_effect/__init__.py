@@ -3,10 +3,10 @@
 provider-level confidence intervals, and provider-effect hypothesis
 testing (including empirical-null calibration).
 
-Formerly a single 1,774-line file; split into three concern-specific
-sub-modules in Tier 5.  Mixed into the model class so that
-``models/logistic/fixed_effect.py`` can stay focused on configuration,
-fitting, and prediction (see AGENTS.md Sections 9 and 16).
+Formerly a single file; split into three concern-specific sub-modules
+(standardized measures, confidence intervals, provider tests).  Mixed
+into the model class so that ``models/logistic/fixed_effect.py`` stays
+focused on configuration, fitting, and prediction.
 """
 from __future__ import annotations
 

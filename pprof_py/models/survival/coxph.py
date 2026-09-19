@@ -28,10 +28,7 @@ from ...inference.survival.robust import cluster_score_residuals, robust_covaria
 from ...inference.survival.baseline import compute_baseline_hazard
 from ...inference.survival.residuals import martingale_residuals
 from ...utils.numerical import col_means, safe_exp
-
-
-class NotFittedError(RuntimeError):
-    """Raised when a fitted-only attribute or method is accessed before `fit()`."""
+from ...exceptions import NotFittedError
 
 
 class CoxPH(BaseEstimator):
@@ -91,6 +88,7 @@ class CoxPH(BaseEstimator):
         confidence_level: float = 0.95,
         robust: bool = False,
     ):
+        """Cox proportional hazards estimator (R: ``survival::coxph``)."""
         self.ties = ties
         self.fit_intercept = fit_intercept
         self.max_iter = max_iter
@@ -113,6 +111,41 @@ class CoxPH(BaseEstimator):
         sample_weight=None,
         cluster=None,
     ) -> "CoxPH":
+        """Fit the Cox PH model by partial-likelihood maximization.
+
+        Accepts either right-censored data (``duration`` + ``event``) or
+        left-truncated / counting-process data (``start``, ``stop``,
+        ``event``).  Strata, offsets, observation weights, and cluster
+        identifiers are all optional.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_samples, n_features)
+            Covariate matrix.
+        duration : Series or ndarray or None
+            Follow-up time (right-censored data).  Mutually exclusive
+            with ``start`` / ``stop``.
+        event : Series or ndarray
+            Event indicator (1 = event, 0 = censored).
+        start, stop : Series or ndarray or None
+            Entry and exit times for counting-process (left-truncated)
+            data.  Mutually exclusive with ``duration``.
+        strata : Series or ndarray or None
+            Stratum labels; separate baseline hazards are estimated per
+            stratum while sharing a single coefficient vector.
+        offset : Series or ndarray or None
+            Known offset added to the linear predictor.
+        sample_weight : Series or ndarray or None
+            Per-observation case weights.
+        cluster : Series or ndarray or None
+            Cluster identifiers for robust (sandwich) standard errors.
+            Implies ``robust=True``.  If omitted and ``robust=True``,
+            each row is its own cluster.
+
+        Returns
+        -------
+        self
+        """
         clean = validate_fit_inputs(
             X,
             duration=duration,
@@ -168,7 +201,8 @@ class CoxPH(BaseEstimator):
         # re-create 7000+ boolean masks on the full 4.8M-row array.
         _stratum_idx = precompute_stratum_indices(data.strata_codes)
 
-        def objective(beta):
+        def objective(beta):  # noqa: D401
+            """Negative partial log-likelihood, score, and information at *beta*."""
             return cox_partial_likelihood(
                 Xc,
                 data.start,
@@ -303,8 +337,20 @@ class CoxPH(BaseEstimator):
     # Prediction
     # ------------------------------------------------------------------
     def predict_linear(self, X, offset=None) -> np.ndarray:
-        """X @ coef_ + offset -- usable directly as the offset for a
-        second-stage CoxPH model (the two-stage SMR/SHR workflow)."""
+        """Linear predictor ``X @ coef_ + offset``.
+
+        Usable directly as the offset for a second-stage CoxPH model
+        (the two-stage SMR/SHR workflow).
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         self._check_is_fitted()
         X_arr, _ = validate_X(X)
         if offset is None:
@@ -314,27 +360,57 @@ class CoxPH(BaseEstimator):
         return X_arr @ self.coef_ + offset_arr
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:
-        """exp(X @ coef_ + offset)."""
+        """Partial hazard ``exp(X @ coef_ + offset)``.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         return safe_exp(self.predict_linear(X, offset=offset))
 
     def predict(self, X, offset=None) -> np.ndarray:
-        """Alias for `predict_partial_hazard`, for scikit-learn-style symmetry."""
+        """Alias for ``predict_partial_hazard``.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+
+        Returns
+        -------
+        ndarray, shape (n_new,)
+        """
         return self.predict_partial_hazard(X, offset=offset)
 
     def predict_cumulative_hazard(self, X, offset=None, stratum=None) -> pd.DataFrame:
-        """Per-subject cumulative hazard H_i(t) = H0(t) * exp(eta_i),
-        returned as a DataFrame indexed by the baseline event times of
-        the requested stratum, one column per row of `X`.
+        """Per-subject cumulative hazard H_i(t) = H0(t) * exp(eta_i).
 
-        `stratum` is required if the fitted model has more than one
-        stratum (there is no single baseline hazard to apply otherwise);
-        it is optional and defaults to the only stratum when the model
-        is unstratified.
+        Returned as a DataFrame indexed by the baseline event times of
+        the requested stratum, one column per row of ``X``.
 
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+        stratum : scalar or None
+            Required if the fitted model has more than one stratum;
+            defaults to the only stratum when unstratified.
+
+        Returns
+        -------
+        DataFrame, shape (n_event_times, n_new)
+
+        Notes
+        -----
         Uses the raw baseline hazard at (X=0, offset=0) internally, NOT
-        the `baseline_hazard_` public attribute -- the latter matches R's
-        `basehaz(centered=FALSE)` convention of reporting the hazard at
-        offset=mean(offset) (see `fit`), which would silently bias every
+        the ``baseline_hazard_`` public attribute -- the latter matches
+        R's ``basehaz(centered=FALSE)`` convention of reporting the
+        hazard at offset=mean(offset), which would silently bias every
         prediction by exp(mean(offset)) if used here instead.
         """
         self._check_is_fitted()
@@ -357,18 +433,39 @@ class CoxPH(BaseEstimator):
         return pd.DataFrame(H, index=pd.Index(times, name="time"))
 
     def predict_survival_function(self, X, offset=None, stratum=None) -> pd.DataFrame:
-        """Per-subject baseline-relative survival S_i(t) = exp(-H_i(t))."""
+        """Per-subject survival S_i(t) = exp(-H_i(t)).
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_new, n_features)
+        offset : ndarray or None
+        stratum : scalar or None
+
+        Returns
+        -------
+        DataFrame, shape (n_event_times, n_new)
+        """
         return np.exp(-self.predict_cumulative_hazard(X, offset=offset, stratum=stratum))
 
     # ------------------------------------------------------------------
     # Inference / summary
     # ------------------------------------------------------------------
     def score(self, X, duration=None, event=None, start=None, stop=None, strata=None, offset=None, sample_weight=None) -> float:
-        """Partial log-likelihood of the given data evaluated at the
-        already-fitted coefficients -- the natural analogue of
-        scikit-learn's `score()` for a model fit by (partial) maximum
-        likelihood. (A concordance-index-based score is a natural future
-        addition; not implemented in this version.)
+        """Partial log-likelihood at the fitted coefficients.
+
+        The natural analogue of scikit-learn's ``score()`` for a model
+        fit by (partial) maximum likelihood.
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape (n_samples, n_features)
+        duration, event, start, stop, strata, offset, sample_weight
+            Same as ``fit``.
+
+        Returns
+        -------
+        float
+            Partial log-likelihood.
         """
         self._check_is_fitted()
         clean = validate_fit_inputs(

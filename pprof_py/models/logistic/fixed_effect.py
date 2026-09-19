@@ -1,3 +1,10 @@
+"""User-facing ``LogisticFixedEffectModel`` estimator.
+
+Fits a logistic regression with provider-specific fixed intercepts
+(gamma) via iterative Newton methods (Serbin or Ban algorithm),
+and provides covariate-level inference, standardized provider-effect
+measures, and diagnostic plots through mixin composition.
+"""
 import logging
 from dataclasses import replace
 
@@ -30,8 +37,8 @@ class LogisticFixedEffectModel(
     via the DataPrep class, estimates coefficients for covariates and group effects, and provides
     methods for fitting, prediction, and diagnostics.
 
-    Responsibilities are split across mixins so this class itself stays focused on
-    configuration, input handling, fitting, and prediction (see AGENTS.md Sections 9, 15, 16):
+    Responsibilities are split across mixins so this class stays focused on
+    configuration, input handling, fitting, and prediction:
 
     - `FixedEffectInferenceMixin` (`pprof_py.inference.logistic`): variance estimation and
       covariate (beta) hypothesis tests (Wald/LR/score), `summary()`.
@@ -479,13 +486,23 @@ class LogisticFixedEffectModel(
         # Compute accuracy
         return np.mean(y_pred_class == y)
 
-    def get_params(self) -> dict:
-        """Return model parameters.
+    def get_fitted_params(self) -> dict:
+        """Return fitted statistical parameters.
+
+        Returns a dictionary of the estimated model quantities (coefficients,
+        variances, information criteria, AUC). These are the *fitted* results,
+        not the constructor configuration — see the class ``__init__`` for
+        hyper-parameters.
+
+        .. note::
+           Renamed from ``get_params`` in 0.4.0 to avoid collision with
+           ``sklearn.base.BaseEstimator.get_params()``, which returns
+           constructor arguments.
 
         Returns
         -------
         dict
-            Model parameters including coefficients, variances, aic, and bic.
+            Keys: ``coefficients``, ``variances``, ``aic``, ``bic``, ``auc``.
         """
         return {
             "coefficients": self.coefficients_,

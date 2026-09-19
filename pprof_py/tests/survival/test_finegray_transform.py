@@ -23,7 +23,7 @@ regression test.
 import numpy as np
 import pytest
 
-from coxph.algorithms.competing_risks import finegray_transform
+from pprof_py.algorithms.survival.finegray import finegray_transform
 
 # The 14-subject example used throughout R survival's tests/finegray.R.
 TIME = np.array([1, 2, 3, 4, 4, 4, 5, 5, 6, 8, 8, 9, 10, 12], dtype=float)

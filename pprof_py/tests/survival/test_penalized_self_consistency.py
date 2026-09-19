@@ -21,14 +21,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph import CoxPH, PenalizedCoxPH, PenalizedCoxPHCV
-from coxph.algorithms import coordinate_descent as cd
-from coxph.algorithms.penalty import (
+from pprof_py import CoxPH, PenalizedCoxPH, PenalizedCoxPHCV
+from pprof_py.algorithms.survival import coordinate_descent as cd
+from pprof_py.algorithms.survival.penalty import (
     soft_threshold, elastic_net_penalty_value, weighted_column_scale, rescale_penalty_factors,
 )
-from coxph.data.validation import validate_fit_inputs
-from coxph.data.survival_data import SurvivalData
-from coxph.algorithms.partial_likelihood import cox_partial_likelihood, precompute_stratum_indices
+from pprof_py.data.survival_validation import validate_fit_inputs
+from pprof_py.data.survival_data import SurvivalData
+from pprof_py.algorithms.survival.partial_likelihood import cox_partial_likelihood, precompute_stratum_indices
 
 
 def _synthetic(n=300, p=6, seed=0, ties_round=None):

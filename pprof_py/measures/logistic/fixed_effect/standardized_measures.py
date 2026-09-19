@@ -1,8 +1,7 @@
 """Standardized rate/ratio computation for logistic fixed-effect models.
 
-Extracted from the former monolithic ``measures/logistic/fixed_effect.py``
-in Tier 5.  Contains ``_StandardizedMeasureMethods``, a mixin fragment
-providing :meth:`calculate_standardized_measures`.
+Contains ``_StandardizedMeasureMethods``, a mixin fragment providing
+:meth:`calculate_standardized_measures`.
 """
 from __future__ import annotations
 

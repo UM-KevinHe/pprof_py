@@ -37,7 +37,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph import PenalizedCoxPH, PenalizedCoxPHCV
+from pprof_py import PenalizedCoxPH, PenalizedCoxPHCV
 
 HERE = os.path.dirname(__file__)
 DATA = os.path.join(HERE, "..", "r_reference", "data")

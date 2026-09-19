@@ -1,3 +1,10 @@
+"""Coefficient-path and lambda-path visualization for penalized models.
+
+Plots regularization paths (coefficients vs. log-lambda), CV error
+curves, and related diagnostics for ``PenalizedLogistic``,
+``PenalizedLinear``, ``PenalizedCoxPH``, and their group-lasso
+variants.
+"""
 import numpy as np
 import pandas as pd
 

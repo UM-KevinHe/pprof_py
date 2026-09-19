@@ -33,9 +33,9 @@ row.
 import numpy as np
 import pytest
 
-from coxph.models.coxph import CoxPH
-from coxph.statistics.residuals import score_residuals, dfbeta_residuals
-from coxph.algorithms.partial_likelihood import cox_partial_likelihood
+from pprof_py.models.survival.coxph import CoxPH
+from pprof_py.inference.survival.residuals import score_residuals, dfbeta_residuals
+from pprof_py.algorithms.survival.partial_likelihood import cox_partial_likelihood
 
 
 def _assert_score_residuals_correct(X, start, stop, event, strata_codes, weight, ties, atol=1e-6):

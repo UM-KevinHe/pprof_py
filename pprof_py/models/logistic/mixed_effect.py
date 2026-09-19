@@ -19,6 +19,8 @@ from scipy.special import expit as plogis
 from numpy.polynomial.hermite import hermgauss
 from typing import Optional, List
 
+from sklearn.base import BaseEstimator
+
 from ...exceptions import NotFittedError
 from ...inference.logistic import MixedEffectInferenceMixin
 from ...measures.logistic import MixedEffectMeasuresMixin
@@ -49,7 +51,7 @@ def gauss_hermite_normal(n_nodes: int, sigma: float):
     return nodes, weights
 
 
-class LogisticMixedEffectModel(MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
+class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
     """Logistic model with fixed provider effects and random cluster effects.
 
     Estimates the model:
@@ -64,8 +66,8 @@ class LogisticMixedEffectModel(MixedEffectInferenceMixin, MixedEffectMeasuresMix
     2. Newton-Raphson updates for gamma (provider) given posterior moments
     3. Convergence via relative change in marginal log-likelihood
 
-    Responsibilities are split across mixins so this class itself stays focused on
-    configuration, input handling, fitting, and prediction (see AGENTS.md Sections 9, 15, 16):
+    Responsibilities are split across mixins so this class stays focused on
+    configuration, input handling, fitting, and prediction:
 
     - `MixedEffectInferenceMixin` (`pprof_py.inference.logistic`): covariate (beta)
       statistical inference, `summary()`.
@@ -127,6 +129,7 @@ class LogisticMixedEffectModel(MixedEffectInferenceMixin, MixedEffectMeasuresMix
         bound: float = 10.0,
         update_sigma: bool = False,
     ):
+        """Logistic mixed-effect provider model."""
         self.n_nodes = n_nodes
         self.max_iter = max_iter
         self.tol = tol

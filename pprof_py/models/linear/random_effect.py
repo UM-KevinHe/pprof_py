@@ -102,6 +102,7 @@ class LinearRandomEffectModel(
         verbose: bool = True,
         optimizer: str = "powell",
     ) -> None:
+        """Linear random-intercept provider model (R: ``lme4::lmer``)."""
         if theta_upper <= 0 and not np.isinf(theta_upper):
             raise ValueError("theta_upper must be positive or np.inf")
         optimizer = str(optimizer).lower()
@@ -867,6 +868,12 @@ class LinearRandomEffectModel(
         return re[group_var]
 
     def get_sigma(self) -> float:
+        """Profiled residual standard deviation.
+
+        Returns
+        -------
+        float
+        """
         if self.sigma_ is None:
             raise ValueError("Model has not been fitted")
         return float(self.sigma_)
@@ -875,6 +882,17 @@ class LinearRandomEffectModel(
         self,
         group_var: Optional[str] = None,
     ) -> Union[float, Dict[str, float]]:
+        """Estimated random-effect standard deviation.
+
+        Parameters
+        ----------
+        group_var : str or None
+            Required when multiple grouping variables are present.
+
+        Returns
+        -------
+        float or dict
+        """
         if self.random_effect_sd_ is None:
             raise ValueError("Model has not been fitted")
         if group_var is None:
@@ -1015,6 +1033,12 @@ class LinearRandomEffectModel(
         return self.get_sigma()
 
     def fitted_values(self) -> Array:
+        """Fitted (predicted) values from the training data.
+
+        Returns
+        -------
+        ndarray, shape (n_train,)
+        """
         if self.fitted_ is None:
             raise ValueError("Model has not been fitted")
         return self.fitted_.copy()

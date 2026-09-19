@@ -40,7 +40,7 @@ class DirectIUR(BaseEstimator):
 
     Examples
     --------
-    >>> from coxph.iur import DirectIUR
+    >>> from pprof_py.measures.iur import DirectIUR
     >>> model = DirectIUR()
     >>> model.fit(sizes=counts, estimates=pie_j, standard_errors=se_pie_j)
     >>> print(f"IUR = {model.iur_:.4f}")

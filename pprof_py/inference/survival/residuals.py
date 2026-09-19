@@ -31,9 +31,8 @@ output under weights during validation, not merely assumed.)
 `score_residuals` returns, per observation, the p-length vector U_i =
 integral over time of (x_i(t) - xbar(t)) dM_i(t) -- the per-observation
 decomposition of the log partial likelihood's gradient (R's
-`residuals(fit, type="score")`). It is what Phase 4's robust/sandwich
-variance is built from (see `statistics/inference.py`'s
-`robust_covariance`): summed over all observations, U_i reproduces the
+``residuals(fit, type="score")``).  It is what the robust/sandwich
+variance is built from (see ``inference/survival/robust.py``): summed over all observations, U_i reproduces the
 total score, which is exactly zero at the fitted beta -- a property this
 module's own tests check directly (a self-consistency route to
 correctness that does not require R, since it follows from the

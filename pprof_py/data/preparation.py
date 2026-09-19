@@ -1,3 +1,11 @@
+"""Data preparation for provider-profiling models.
+
+Provides ``DataPrep``, the main entry point for converting a raw
+DataFrame into the arrays and index structures that model classes
+consume: provider sorting and renaming, covariate extraction,
+train/test splitting, and diagnostic checks (missingness, variation,
+collinearity).
+"""
 import logging
 import numpy as np
 import pandas as pd

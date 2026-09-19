@@ -63,7 +63,7 @@ class BootstrapIUR(BaseEstimator):
 
     Examples
     --------
-    >>> from coxph.iur import BootstrapIUR
+    >>> from pprof_py.measures.iur import BootstrapIUR
     >>> model = BootstrapIUR(n_boot=100, seed=42)
     >>> model.fit(obs, exp, groups)
     >>> print(f"IUR = {model.iur_:.4f}")

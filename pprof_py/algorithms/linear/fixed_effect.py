@@ -1,11 +1,17 @@
 """Numerical kernels for the linear fixed-effect model.
 
-Extracted from ``models/linear/fixed_effect.py`` in Tier 5 so that the
-model class stays focused on configuration, fitting, and prediction
-(AGENTS.md Section 9).
+Implements the closed-form weighted-least-squares fit used by
+``LinearFixedEffectModel``: group means are projected out via a
+block-diagonal demeaning matrix, then beta is solved directly --
+no iteration, which is why this model has no ``max_iter`` / ``tol``.
 
-All functions are stateless — they operate on NumPy arrays and return
-results without touching model state.
+Kept separate from ``models/linear/fixed_effect.py`` so that the
+model class stays focused on configuration and the public
+fit/predict API -- the same split used for inference, measures,
+and plotting.
+
+All functions are stateless: NumPy arrays in, NumPy arrays out,
+no access to model state.
 """
 from __future__ import annotations
 

@@ -3,9 +3,9 @@ counting-process dataset from a fixed follow-up skeleton plus one or more
 streams of "this covariate changed value at this time" or "this event
 happened at this time" records -- R's `tmerge()` and `survSplit()`.
 
-This is the convenience API for time-dependent covariates: `CoxPH` has
-supported genuinely time-varying covariates since Phase 1 by simply
-accepting (start, stop] rows with different covariate values for the same
+This is the convenience API for time-dependent covariates: ``CoxPH``
+natively supports time-varying covariates by accepting (start, stop]
+rows with different covariate values for the same
 subject -- a time-dependent covariate is not a new statistical feature
 there, only a particular way of shaping the input.  What was missing is
 the tooling to BUILD that shape from the way the data usually starts out:

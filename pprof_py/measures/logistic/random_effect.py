@@ -3,7 +3,7 @@
 provider-level confidence intervals, and provider-effect hypothesis
 testing. Mixed into the model class so that
 `models/logistic/random_effect.py` can stay focused on configuration,
-fitting, and prediction (see AGENT.md Task 1).
+fitting, and prediction.
 """
 from __future__ import annotations
 

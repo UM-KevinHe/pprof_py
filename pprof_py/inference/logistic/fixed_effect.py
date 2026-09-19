@@ -1,7 +1,7 @@
 """Variance estimation and covariate (beta) hypothesis tests for
-`LogisticFixedEffectModel`, mixed into the model class so that
-`models/logistic/fixed_effect.py` can stay focused on configuration,
-fitting, and prediction (see AGENTS.md Sections 9 and 15).
+``LogisticFixedEffectModel``.  Mixed into the model class so that
+``models/logistic/fixed_effect.py`` stays focused on configuration,
+fitting, and prediction.
 """
 from __future__ import annotations
 

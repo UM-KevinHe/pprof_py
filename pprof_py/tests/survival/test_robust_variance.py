@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph.models.coxph import CoxPH
+from pprof_py.models.survival.coxph import CoxPH
 
 lifelines = pytest.importorskip("lifelines")
 statsmodels_phreg = pytest.importorskip("statsmodels.duration.hazard_regression")

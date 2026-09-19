@@ -29,8 +29,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph import CoxPH, CauseSpecificCoxPH, FineGrayPH, finegray_transform
-from coxph.data.timedep import build_skeleton, tmerge, UpdateStream
+from pprof_py import CoxPH, CauseSpecificCoxPH, FineGrayPH
+from pprof_py.algorithms.survival.finegray import finegray_transform
+from pprof_py.data.timedep import build_skeleton, tmerge, UpdateStream
 
 HERE = os.path.dirname(__file__)
 DATA = os.path.join(HERE, "..", "r_reference", "data")

@@ -1,8 +1,7 @@
 """Provider-level confidence intervals for logistic fixed-effect models.
 
-Extracted from the former monolithic ``measures/logistic/fixed_effect.py``
-in Tier 5.  Contains ``_ConfidenceIntervalMethods``, a mixin fragment
-providing :meth:`calculate_confidence_intervals` and supporting helpers.
+Contains ``_ConfidenceIntervalMethods``, a mixin fragment providing
+:meth:`calculate_confidence_intervals` and supporting helpers.
 """
 from __future__ import annotations
 
@@ -348,7 +347,7 @@ class _ConfidenceIntervalMethods:
 
             gamma_est = gamma_vals[i]
             if test_method == "wald":
-                lower, upper = -inf, inf
+                lower, upper = -np.inf, np.inf
                 if alternative in {"two_sided", "less", "greater"}:
                     # Reuse _compute_ci_bounds for just *one* provider if we wish
                     g_lower, g_upper = self._compute_ci_bounds(

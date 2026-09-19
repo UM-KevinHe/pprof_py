@@ -1,7 +1,6 @@
-"""Covariate-level statistical inference for `LinearRandomEffectModel`,
-mixed into the model class so that `models/linear/random_effect.py` can
-stay focused on configuration, fitting, and prediction (see AGENTS.md
-Sections 9 and 15).
+"""Covariate-level statistical inference for ``LinearRandomEffectModel``.
+Mixed into the model class so that ``models/linear/random_effect.py``
+stays focused on configuration, fitting, and prediction.
 """
 from __future__ import annotations
 

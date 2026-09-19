@@ -80,7 +80,7 @@ class SplitHalfIUR(BaseEstimator):
 
     Examples
     --------
-    >>> from coxph.iur import SplitHalfIUR
+    >>> from pprof_py.measures.iur import SplitHalfIUR
     >>> model = SplitHalfIUR(n_iter=10, seed=42)
     >>> model.fit(obs, exp, groups)
     >>> print(f"IUR (Pearson) = {model.iur_pearson_:.4f}")

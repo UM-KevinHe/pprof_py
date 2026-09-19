@@ -1,7 +1,6 @@
 """Provider-effect hypothesis testing for logistic fixed-effect models.
 
-Extracted from the former monolithic ``measures/logistic/fixed_effect.py``
-in Tier 5.  Contains ``_ProviderTestMethods``, a mixin fragment providing
+Contains ``_ProviderTestMethods``, a mixin fragment providing
 :meth:`test` (gamma-level tests) and :meth:`test_standardized`
 (standardized-measure tests with empirical-null calibration).
 """

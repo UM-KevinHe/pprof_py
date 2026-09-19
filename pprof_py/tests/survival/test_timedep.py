@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph.data.timedep import build_skeleton, tmerge, survsplit, UpdateStream
+from pprof_py.data.timedep import build_skeleton, tmerge, survsplit, UpdateStream
 
 
 @pytest.fixture
@@ -200,7 +200,7 @@ def test_tmerge_output_recovers_known_time_varying_effect_in_coxph():
     time, built into (start, stop] form via `build_skeleton` + `tmerge`,
     must let `CoxPH` recover that true coefficient.
     """
-    from coxph.models.coxph import CoxPH
+    from pprof_py.models.survival.coxph import CoxPH
 
     rng = np.random.default_rng(5)
     n = 2000

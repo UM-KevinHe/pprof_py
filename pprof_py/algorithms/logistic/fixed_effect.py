@@ -1,3 +1,17 @@
+"""Newton-based optimization for logistic fixed-effect provider models.
+
+Two algorithms are implemented:
+
+* ``SerbinAlgorithm`` — block-update Newton steps (gamma and beta solved
+  jointly via a Schur-complement factorization), with optional
+  Armijo backtracking.
+* ``BanAlgorithm`` — alternating one-block-at-a-time updates (gamma
+  then beta), with optional backtracking on each block.
+
+Both share a common ``BaseAlgorithm`` that owns data validation,
+precomputed provider structure (sparse indicator matrix), and the
+log-likelihood evaluation.
+"""
 import logging
 
 import numpy as np
@@ -182,6 +196,7 @@ class BaseAlgorithm(ABC):
         """
         self.iter = 0
         self.beta_crit = np.inf
+        self.gamma_crit = np.inf
         if self.backtrack:
             self._backtrack()
         else:
@@ -360,15 +375,28 @@ class BanAlgorithm(BaseAlgorithm):
             (gamma_obs, p, q, score_gamma, delta_gamma)
         """
         gamma_obs = self.gamma_prov[self._prov_indices]
-        linear = gamma_obs + self.X @ self.beta
-        p = sigmoid(linear)
-        q = self.N * p * (1 - p)
-        # Zero-guard (matches R's Fixed_effect.cpp lines 128-129)
+
+        eta = gamma_obs + self.X @ self.beta
+        p = sigmoid(eta)
+        q = self.N * p * (1.0 - p)
         q = np.maximum(q, 1e-20)
-        indices = self._prov_indices
-        n_provs = self._n_providers
-        score_gamma = np.bincount(indices, weights=(self.y - self.N * p), minlength=n_provs)
-        delta_gamma = score_gamma / np.bincount(indices, weights=q, minlength=n_provs)
+
+        residuals = self.y - self.N * p
+
+        score_gamma = np.bincount(
+            self._prov_indices,
+            weights=residuals,
+            minlength=self._n_providers,
+        )
+
+        info_gamma = np.bincount(
+            self._prov_indices,
+            weights=q,
+            minlength=self._n_providers,
+        )
+
+        delta_gamma = score_gamma / info_gamma
+
         return gamma_obs, p, q, score_gamma, delta_gamma
 
     def _update_beta(self, p: np.ndarray, q: np.ndarray) -> tuple:
@@ -379,60 +407,173 @@ class BanAlgorithm(BaseAlgorithm):
         tuple
             (score_beta, delta_beta)
         """
-        score_beta = self.X.T @ (self.y - self.N * p)
+        residuals = self.y - self.N * p
+
+        score_beta = self.X.T @ residuals
         info_beta = self.X.T @ (q[:, None] * self.X)
+
         delta_beta = np.linalg.solve(info_beta, score_beta)
+
         return score_beta, delta_beta
 
     def _backtrack(self) -> None:
-        """Alternating backtracking updates for gamma and beta.
+        """BAN alternating Newton updates with backtracking.
         """
-        s, t = 0.01, 0.8
-        while self.iter < self.max_iter and self.beta_crit > self.tol:
+        s, t = 0.01, 0.6
+        while self.iter < self.max_iter and max(self.gamma_crit, self.beta_crit) > self.tol:
             self.iter += 1
-            # Gamma update
-            gamma_obs, p, q, sc_g, d_g = self._update_gamma()
+
+            # ---------------------------------------------------------
+            # 1. Update gamma with beta fixed
+            # ---------------------------------------------------------
+            gamma_old = self.gamma_prov.copy()
+
+            (
+                gamma_obs,
+                p,
+                q,
+                score_gamma,
+                delta_gamma,
+            ) = self._update_gamma()
+
             v = 1.0
             ll_old = self._loglikelihood(gamma_obs, self.beta)
-            while True:
-                ll_new = self._loglikelihood(
-                    (self.gamma_prov + v * d_g)[self._prov_indices],
-                    self.beta
-                )
-                if ll_new - ll_old >= s * v * (sc_g @ d_g):
-                    break
-                v *= t
-            self.gamma_prov += v * d_g
-            med = np.median(self.gamma_prov)
-            self.gamma_prov = np.clip(self.gamma_prov, med - self.bound, med + self.bound)
 
-            # Beta update
-            _, d_b = self._update_beta(p, q)
-            v = 1.0
-            ll_old = self._loglikelihood(self.gamma_prov[self._prov_indices], self.beta)
+            lambda_gamma = score_gamma @ delta_gamma
+
             while True:
-                beta_cand = self.beta + v * d_b
-                ll_new = self._loglikelihood(self.gamma_prov[self._prov_indices], beta_cand)
-                if ll_new - ll_old >= s * v * (d_b @ d_b):
+                gamma_candidate = self.gamma_prov + v * delta_gamma
+
+                ll_new = self._loglikelihood(
+                    gamma_candidate[self._prov_indices],
+                    self.beta,
+                )
+
+                if ll_new - ll_old >= s * v * lambda_gamma:
                     break
+
                 v *= t
-            beta_cand = self.beta + v * d_b
-            self.beta_crit = np.linalg.norm(self.beta - beta_cand, np.inf)
-            self.beta = beta_cand
+
+            self.gamma_prov += v * delta_gamma
+
+            med = np.median(self.gamma_prov)
+            self.gamma_prov = np.clip(
+                self.gamma_prov,
+                med - self.bound,
+                med + self.bound,
+            )
+
+            self.gamma_crit = np.linalg.norm(
+                self.gamma_prov - gamma_old,
+                ord=np.inf,
+            )
+
+            # ---------------------------------------------------------
+            # 2. Recompute p and q after gamma update
+            # ---------------------------------------------------------
+            gamma_obs = self.gamma_prov[self._prov_indices]
+
+            eta = gamma_obs + self.X @ self.beta
+            p = sigmoid(eta)
+            q = self.N * p * (1.0 - p)
+            q = np.maximum(q, 1e-20)
+
+            # ---------------------------------------------------------
+            # 3. Update beta with gamma fixed
+            # ---------------------------------------------------------
+            score_beta, delta_beta = self._update_beta(p, q)
+
+            v = 1.0
+            ll_old = self._loglikelihood(
+                gamma_obs,
+                self.beta,
+            )
+
+            lambda_beta = score_beta @ delta_beta
+
+            while True:
+                beta_candidate = self.beta + v * delta_beta
+
+                ll_new = self._loglikelihood(
+                    gamma_obs,
+                    beta_candidate,
+                )
+
+                if ll_new - ll_old >= s * v * lambda_beta:
+                    break
+
+                v *= t
+
+            beta_candidate = self.beta + v * delta_beta
+
+            self.beta_crit = np.linalg.norm(
+                self.beta - beta_candidate,
+                ord=np.inf,
+            )
+
+            self.beta = beta_candidate
+
+        if self.iter >= self.max_iter and max(self.gamma_crit, self.beta_crit) > self.tol:
+            logger.warning(
+                "BAN backtracking did not converge in %d iterations "
+                "(gamma_crit=%.3e, beta_crit=%.3e, tol=%.3e)",
+                self.max_iter, self.gamma_crit, self.beta_crit, self.tol,
+            )
 
     def _no_backtrack(self) -> None:
-        """Alternating simple updates without line search.
+        """BAN alternating Newton updates without line search.
         """
-        while self.iter < self.max_iter and self.beta_crit > self.tol:
+        while self.iter < self.max_iter and max(self.gamma_crit, self.beta_crit) > self.tol:
             self.iter += 1
-            # Gamma update
-            _, p, q, _, d_g = self._update_gamma()
-            self.gamma_prov += d_g
-            med = np.median(self.gamma_prov)
-            self.gamma_prov = np.clip(self.gamma_prov, med - self.bound, med + self.bound)
 
-            # Beta update
-            _, d_b = self._update_beta(p, q)
-            beta_cand = self.beta + d_b
-            self.beta_crit = np.linalg.norm(self.beta - beta_cand, np.inf)
-            self.beta = beta_cand
+            # ---------------------------------------------------------
+            # 1. Update gamma
+            # ---------------------------------------------------------
+            gamma_old = self.gamma_prov.copy()
+
+            _, _, _, _, delta_gamma = self._update_gamma()
+
+            self.gamma_prov += delta_gamma
+
+            med = np.median(self.gamma_prov)
+            self.gamma_prov = np.clip(
+                self.gamma_prov,
+                med - self.bound,
+                med + self.bound,
+            )
+
+            self.gamma_crit = np.linalg.norm(
+                self.gamma_prov - gamma_old,
+                ord=np.inf,
+            )
+
+            # ---------------------------------------------------------
+            # 2. Recompute p and q after gamma update
+            # ---------------------------------------------------------
+            gamma_obs = self.gamma_prov[self._prov_indices]
+
+            eta = gamma_obs + self.X @ self.beta
+            p = sigmoid(eta)
+            q = self.N * p * (1.0 - p)
+            q = np.maximum(q, 1e-20)
+
+            # ---------------------------------------------------------
+            # 3. Update beta
+            # ---------------------------------------------------------
+            _, delta_beta = self._update_beta(p, q)
+
+            beta_candidate = self.beta + delta_beta
+
+            self.beta_crit = np.linalg.norm(
+                self.beta - beta_candidate,
+                ord=np.inf,
+            )
+
+            self.beta = beta_candidate
+
+        if self.iter >= self.max_iter and max(self.gamma_crit, self.beta_crit) > self.tol:
+            logger.warning(
+                "BAN did not converge in %d iterations "
+                "(gamma_crit=%.3e, beta_crit=%.3e, tol=%.3e)",
+                self.max_iter, self.gamma_crit, self.beta_crit, self.tol,
+            )

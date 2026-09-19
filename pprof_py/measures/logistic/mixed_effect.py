@@ -3,8 +3,7 @@
 and provider-effect significance testing (resampling or exact
 Poisson-binomial, with optional empirical-null calibration). Mixed into
 the model class so that `models/logistic/mixed_effect.py` can stay
-focused on configuration, fitting, and prediction (see AGENTS.md
-Sections 9 and 16).
+focused on configuration, fitting, and prediction.
 """
 from __future__ import annotations
 

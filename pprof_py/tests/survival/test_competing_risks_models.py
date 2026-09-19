@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from coxph.models.coxph import CoxPH
-from coxph.models.competing_risks import CauseSpecificCoxPH, FineGrayPH
-from coxph.algorithms.competing_risks import finegray_transform
+from pprof_py.models.survival.coxph import CoxPH
+from pprof_py.models.survival.competing_risks import CauseSpecificCoxPH, FineGrayPH
+from pprof_py.algorithms.survival.finegray import finegray_transform
 
 
 def _synthetic_competing_risks(n=300, seed=0):

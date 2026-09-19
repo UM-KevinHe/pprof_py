@@ -17,9 +17,10 @@ Parallel to ``survival_validation.py`` (CoxPH), this module provides:
    container analogous to ``SurvivalData``), optionally applying
    structural checks and provider screening via ``DataPrep``.
 
-Tier 6: extracted from ``DataPrep`` methods (``data/preparation.py``)
-and ``models/base.py::validate_and_convert_inputs``.  ``models/base.py``
-now re-exports the symbols for backward compatibility.
+Originally part of ``DataPrep`` (``data/preparation.py``) and
+``models/base.py``; extracted here as the canonical location.
+``models/__init__.py`` re-exports the symbols for backward
+compatibility.
 """
 from __future__ import annotations
 

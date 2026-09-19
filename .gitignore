@@ -20,6 +20,7 @@ parts/
 sdist/
 var/
 *.egg-info/
+pprof_py.egg-info/
 .installed.cfg
 *.egg
 
@@ -83,3 +84,7 @@ $RECYCLE.BIN/
 
 # PyCharm
 *.iml
+
+# Sphinx documentation build output
+pprof_py/docs/_build/
+pprof_py/docs/build/

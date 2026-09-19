@@ -2,7 +2,7 @@
 provider-effect and standardized-measure caterpillar plots, and a
 coefficient forest plot.  Mixed into the model class so that
 ``models/logistic/random_effect.py`` can stay focused on configuration,
-fitting, and prediction (see AGENTS.md Sections 9, 17-20).
+fitting, and prediction.
 """
 from __future__ import annotations
 
