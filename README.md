@@ -59,13 +59,13 @@ model.martingale_residuals_
 Left truncation, strata, offset, weights, and robust/clustered variance — any combination:
 
 ```python
+model = CoxPH(robust=True)     # sandwich variance (each row is its own cluster)
 model.fit(
     X, start=start, stop=stop, event=event,
     strata=provider,
     offset=log_exposure,
     sample_weight=weight,
-    robust=True,            # sandwich variance
-    groups=cluster_id,      # clustered sandwich variance
+    cluster=cluster_id,        # clustered sandwich variance (implies robust)
 )
 ```
 
@@ -93,7 +93,7 @@ stage2.baseline_hazard_   # the "expected" side of an SMR/SHR comparison
 ```python
 model.predict_linear(X_new, offset=offset_new)          # X @ coef_ + offset
 model.predict_partial_hazard(X_new, offset=offset_new)   # exp(...)
-model.predict_cumulative_hazard(X_new, stratum=...)      # per-subject H(t)
+model.predict_cumulative_hazard(X_new, stratum=...)      # per-subject H(t), at the stratum's event times
 model.predict_survival_function(X_new, stratum=...)      # exp(-H(t))
 ```
 
@@ -145,8 +145,9 @@ from pprof_py import PenalizedCoxPHCV
 
 model = PenalizedCoxPHCV(alpha=0.5, n_lambda=50)  # elastic net
 model.fit(X, duration=time, event=event)
-model.coef_           # coefficients at best lambda
-model.lambda_best_    # cross-validated lambda
+model.coef_           # coefficients at the selected lambda (lambda_min_ by default)
+model.lambda_min_     # lambda with the minimum cross-validated deviance
+model.lambda_1se_     # largest lambda within one standard error of the minimum
 ```
 
 ## Installation
@@ -170,17 +171,19 @@ pip install ".[random-effect]"  # nlopt (optional solver for LogisticRandomEffec
 
 ## Validation
 
-The CoxPH implementation is validated against real R 4.3.3 / `survival` 3.5.8 output on shared synthetic datasets covering right-censored, left-truncated, stratified, offset, weighted data, and every combination — under both Breslow and Efron ties. Coefficients, standard errors, log-likelihood, baseline hazard, and martingale residuals all match to 1e⁻⁸–1e⁻¹⁴ relative error. Robust/sandwich and clustered variance estimates are validated against R's `survival::coxph(robust=TRUE, cluster=...)`. Penalized regression (`PenalizedCoxPH` / `PenalizedCoxPHCV`) is validated against R's `glmnet(family="cox")`.
+The CoxPH implementation is validated against real R 4.3.3 / `survival` 3.5.8 output on shared synthetic datasets covering right-censored, left-truncated, stratified, offset, weighted data, and every combination — under both Breslow and Efron ties. Coefficients, standard errors, log-likelihood, baseline hazard, and martingale residuals all match to 1e⁻⁸–1e⁻¹⁴ relative error. Robust/sandwich and clustered variance estimates are validated against R's `survival::coxph(robust=TRUE, cluster=...)` (with the same tie method on both sides — R defaults to Efron, this package to Breslow). Penalized regression (`PenalizedCoxPH` / `PenalizedCoxPHCV`) is validated against R's `glmnet(family="cox")`.
 
 The `LinearRandomEffectModel` is validated against R's `lme4::lmer` (REML and ML, weighted and unweighted) with beta, sigma, RE SD, log-likelihood, and BLUP errors at 10⁻⁷–10⁻⁹.
 
 Production-scale checks (200,000 rows / 3,000 strata / 6 covariates, and 50,000 rows / 57 covariates) confirm agreement to 1e⁻¹⁴–1e⁻¹⁶ relative error — no discrepancy beyond floating-point noise.
 
-See [`docs/source/survival/`](pprof_py/docs/source/survival/) for the full validation report, R compatibility notes, and architecture documentation.
+A fresh re-run on 2026-09-20 (R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8) reproduced all 55 Phase 1–2 checks and the penalized-regression checks; Fine–Gray regression on **left-truncated** data does not match R (see _Known limitations_). Group lasso, provider-penalized and discrete-time models have no R reference.
+
+See [`docs/source/survival/`](pprof_py/docs/source/survival/) for the full validation report, R compatibility notes, architecture documentation, and the per-estimator reference pages in [`reference/`](pprof_py/docs/source/survival/reference/).
 
 ## Performance
 
-Cox fitting uses numba-compiled kernels (`@njit(cache=True)`) for the risk-set sweep, tie-method accumulation, baseline hazard increments, and martingale residuals. A pure-Python fallback is available when numba is not installed.
+Cox fitting uses numba-compiled kernels (`@njit(cache=True)`) for the risk-set sweep, tie-method accumulation, baseline hazard increments, and martingale residuals. numba is installed with the package; if it cannot be imported, a pure-Python fallback (much slower on large data) is used automatically.
 
 Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combination):
 
@@ -194,27 +197,40 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 
 ## Feature matrix — Survival models
 
-| Feature                                                              | Status                                            |
-| -------------------------------------------------------------------- | ------------------------------------------------- |
-| Right-censored data                                                  | ✅ validated against R                            |
-| Left truncation / `(start, stop]`                                    | ✅ validated against R                            |
-| Strata (own baseline hazard, shared coefficients)                    | ✅ validated against R                            |
-| Offset (including the `basehaz` offset-mean subtlety)                | ✅ validated against R                            |
-| Case weights (model-based SE)                                        | ✅ validated against R                            |
-| Breslow ties (default)                                               | ✅ validated against R                            |
-| Efron ties                                                           | ✅ validated against R                            |
-| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood           | ✅                                                |
-| Baseline cumulative hazard / survival                                | ✅                                                |
-| Martingale residuals (left-truncation-correct, Efron-correct)        | ✅                                                |
-| Two-stage SMR and SHR patterns                                       | ✅ validated end to end                           |
-| Prediction (linear, partial hazard, cumulative hazard, survival)     | ✅                                                |
-| Penalized regression (ridge / LASSO / elastic net + CV)              | ✅ validated against `glmnet`                     |
-| Competing risks (cause-specific, Fine-Gray)                          | ✅                                                |
-| Automated variable selection (forward/backward/both)                 | ✅                                                |
-| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                |
-| Exact ties                                                           | ❌ not implemented                                |
-| Robust/sandwich variance, clustering                                 | ✅ validated against R                            |
-| Formula interface                                                    | ❌ not implemented — pass a numeric design matrix |
+| Feature                                                              | Status                                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Right-censored data                                                  | ✅ validated against R                                       |
+| Left truncation / `(start, stop]`                                    | ✅ validated against R                                       |
+| Strata (own baseline hazard, shared coefficients)                    | ✅ validated against R                                       |
+| Offset (including the `basehaz` offset-mean subtlety)                | ✅ validated against R                                       |
+| Case weights (model-based SE)                                        | ✅ validated against R                                       |
+| Breslow ties (default)                                               | ✅ validated against R                                       |
+| Efron ties                                                           | ✅ validated against R                                       |
+| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood           | ✅                                                           |
+| Baseline cumulative hazard / survival                                | ✅                                                           |
+| Martingale residuals (left-truncation-correct, Efron-correct)        | ✅                                                           |
+| Two-stage SMR and SHR patterns                                       | ✅ validated end to end                                      |
+| Prediction (linear, partial hazard, cumulative hazard, survival)     | ✅                                                           |
+| Penalized regression (ridge / LASSO / elastic net + CV)              | ✅ validated against `glmnet`                                |
+| Cause-specific hazards                                               | ✅ validated against R (same ties on both sides)             |
+| Fine-Gray subdistribution hazards                                    | ✅ right-censored · ⚠️ left-truncated: weights differ from R |
+| Group lasso / provider-penalized Cox                                 | ✅ implemented; no R reference (internal tests)              |
+| Discrete-time survival (penalized, provider)                         | ✅ implemented; no R reference (internal tests)              |
+| Automated variable selection (forward/backward/both)                 | ✅                                                           |
+| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                           |
+| Exact ties                                                           | ❌ not implemented                                           |
+| Robust/sandwich variance, clustering                                 | ✅ validated against R                                       |
+| Formula interface                                                    | ❌ not implemented — pass a numeric design matrix            |
+
+## Known limitations (survival)
+
+- `FineGrayPH` with left-truncated data does not reproduce R's `finegray()` weights (coefficients differ by ~3e-3 on the reference dataset).
+- `CoxPH(fit_intercept=True)` fits, but every `predict_*` method then raises `ValueError`.
+- `CoxPH` does not warn when `max_iter` is reached; check `converged_`.
+- `ties="exact"` is not implemented; `GroupLassoCoxPH(method="MM")` is not implemented.
+- The R-comparison tests for variable selection need datasets that no script in the repository generates.
+
+Details and workarounds: [`reference/conventions.md`](pprof_py/docs/source/survival/reference/conventions.md).
 
 ## Package layout
 
@@ -250,26 +266,31 @@ See [`docs/source/survival/ARCHITECTURE.md`](pprof_py/docs/source/survival/ARCHI
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -v
+pytest pprof_py/tests/survival -q        # engine self-consistency + input validation need no R
 ```
 
-The R-comparison tests (`test_r_comparison.py`) require pre-generated R reference data:
+The R-comparison tests read reference data that must be generated first (needs R with `survival` and `glmnet`):
 
 ```bash
-python r_reference/generate_data.py
-Rscript r_reference/run_all.R r_reference
-pytest tests/ -v
+cd pprof_py/r_reference
+python generate_data.py && python generate_penalized_data.py && python generate_phase4_data.py
+Rscript run_all.R . && Rscript run_penalized.R . \
+  && Rscript run_phase4_competing_risks.R . && Rscript run_phase4_robust.R . && Rscript run_phase4_timedep.R .
+cd ../..
+ln -s ../r_reference pprof_py/tests/r_reference   # the tests currently look in two places
+pytest pprof_py/tests/survival -q
 ```
 
-Engine self-consistency tests and input validation tests do not require R.
+A fresh run currently ends with 200 passed, 26 failed, 1 skipped; the failures are explained, group by group, in
+[`reference/validation_tools.md`](pprof_py/docs/source/survival/reference/validation_tools.md).
 
 ## Documentation
 
 Full Sphinx documentation lives under `pprof_py/docs/` and can be built with:
 
 ```bash
+pip install ".[docs]"
 cd pprof_py/docs
-pip install sphinx sphinx-rtd-theme myst-parser sphinxcontrib-bibtex matplotlib
 make html
 ```
 
@@ -279,6 +300,7 @@ The documentation includes:
 - **Core concepts** — direct vs. indirect standardization, fixed vs. random effects
 - **Statistical models** — detailed methodology for linear, logistic, and survival models
 - **Survival analysis tutorial** — 11 chapters from survival-data foundations through a complete facility-profiling case study
+- **Survival reference** — `CoxPH`, competing risks and selection, penalized / group-lasso / provider Cox, discrete-time survival, data preparation, inference utilities, validation tools
 - **Validation** — R compatibility notes, numerical validation report, architecture design
 - **API reference** — autodoc-generated from source docstrings
 

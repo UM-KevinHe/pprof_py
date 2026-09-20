@@ -57,7 +57,7 @@ from sklearn.base import BaseEstimator
 
 from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
-from ...algorithms.survival.partial_likelihood import (
+from ...algorithms.survival.cox_likelihood import (
     cox_partial_likelihood,
     precompute_stratum_indices,
 )

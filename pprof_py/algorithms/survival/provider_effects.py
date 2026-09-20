@@ -358,7 +358,7 @@ def compute_provider_scores(
         if strata_codes is None:
             stratum_indices = [np.arange(n, dtype=np.int64)]
         else:
-            from .partial_likelihood import precompute_stratum_indices
+            from .cox_likelihood import precompute_stratum_indices
             stratum_indices = precompute_stratum_indices(strata_codes)
 
     for idx in stratum_indices:

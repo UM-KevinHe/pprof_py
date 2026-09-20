@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../')) # Points to the project root directory
+sys.path.insert(0, os.path.abspath('../../..'))  # Repository root (one level above pprof_py/)
 
 # Configuration file for the Sphinx documentation builder.
 #

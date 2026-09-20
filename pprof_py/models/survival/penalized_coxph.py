@@ -5,7 +5,7 @@ to `cv.glmnet(family="cox")`).
 
 Both are built the same way ``CoxPHSelector`` is built on top of
 ``CoxPH``: they reuse `data/validation.py` and `data/survival_data.py`
-untouched, and reuse `algorithms/partial_likelihood.py` (via a closure
+untouched, and reuse `algorithms/survival/cox_likelihood.py` (via a closure
 identical in shape to `CoxPH.fit`'s `objective(beta)`) for every
 likelihood/score/information evaluation. The new numerical work
 (standardization, the penalty, coordinate descent, the lambda path,
@@ -38,7 +38,7 @@ from sklearn.base import BaseEstimator
 
 from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
-from ...algorithms.survival.partial_likelihood import cox_partial_likelihood, precompute_stratum_indices
+from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.penalty import weighted_column_scale, rescale_penalty_factors
 from ...algorithms.survival.coordinate_descent import (
     fit_regularization_path,

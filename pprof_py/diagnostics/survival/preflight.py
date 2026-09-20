@@ -8,7 +8,7 @@ extract) without that being a concern.
 The synthetic datasets this package was validated against
 (r_reference/data/) were constructed to be clean: no missing values, no
 non-numeric junk, no pathologically tiny strata. Real production data
-usually isn't, and CoxPH.fit()'s validation (data/validation.py) is
+usually isn't, and CoxPH.fit()'s validation (data/survival_validation.py) is
 deliberately strict -- it raises immediately on the first NaN it finds,
 rather than guessing at an imputation. That's the right behavior for
 fitting, but a bare `SurvivalDataError: X contains NaN` gives you no

@@ -159,9 +159,24 @@ import pprof_py
 print(pprof_py.__version__)
 ```
 
-Every code example in this guide assumes `cohort` (or an extended
-version of it, introduced when needed) is already in memory, and that
-`pprof_py` has been imported. Full chapters are self-contained otherwise —
-copy a chapter's code top to bottom and it will run.
+Every code example in this guide assumes `cohort` (defined above) and the
+shared variables below are in memory. Chapters are otherwise independent,
+with three deliberate exceptions, each flagged where it occurs: Chapter 9 reuses
+`X_wide` from Chapter 8, Chapter 10 reuses `make_multi_year_records` from
+Chapter 5, and Chapters 6 and 7 build the extra columns they need themselves.
+
+```python
+# Shared variables assumed by the short snippets in Chapters 2-9
+X = cohort[["age", "sex", "diabetes", "comorbidity_count"]]
+time = cohort["time"]
+death = cohort["death"]
+patient_id = cohort["patient_id"]
+```
+
+This tutorial teaches `CoxPH`, penalized Cox, competing risks and selection.
+The remaining estimators (group lasso, provider-penalized Cox, discrete-time
+survival), the full argument and attribute lists, the data-preparation helpers
+and the validation tools are covered in the **Survival Analysis — Reference**
+pages (start with `survival/reference/coxph`).
 
 Onward to Chapter 1.

@@ -34,7 +34,7 @@ from sklearn.base import BaseEstimator
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
-from ...algorithms.survival.partial_likelihood import (
+from ...algorithms.survival.cox_likelihood import (
     cox_partial_likelihood, precompute_stratum_indices,
 )
 from ...algorithms.survival.penalty import (
@@ -165,14 +165,12 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         ``'MM'`` (diagonal majorization, not yet implemented).
     ties : str, default 'breslow'
         Tie-handling method: ``'breslow'`` or ``'efron'``.
-    active_set : bool, default False
+    use_active_set : bool, default False
         When True, the proximal-Newton inner CD solver uses active-set
         screening to skip groups whose coefficients are zero.  This
         can speed up large problems (many groups, most inactive) but
         may yield slightly different sparsity patterns at intermediate
-        lambda values due to proximal-Newton path dependence.  The
-        selected-by-CV solution is unaffected in practice
-        Placeholder for future active-set screening.
+        lambda values due to proximal-Newton path dependence.
     max_outer_iter : int, default 100
     outer_tol : float, default 1e-9
     max_inner_iter : int, default 1000
@@ -476,7 +474,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         Explicit fold assignment (0..K-1 or 1..K).
     se_method : str, default 'analytical'
         ``'analytical'`` (glmnet-style weighted CV SE) or
-        ``'bootstrap'`` (placeholder, not yet implemented).
+        ``'bootstrap'`` (Breslow ties only).
     random_state : int or None, default None
     select : str, default 'lambda_min'
         ``'lambda_min'`` or ``'lambda_1se'``.

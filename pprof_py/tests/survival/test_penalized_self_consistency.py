@@ -28,7 +28,7 @@ from pprof_py.algorithms.survival.penalty import (
 )
 from pprof_py.data.survival_validation import validate_fit_inputs
 from pprof_py.data.survival_data import SurvivalData
-from pprof_py.algorithms.survival.partial_likelihood import cox_partial_likelihood, precompute_stratum_indices
+from pprof_py.algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 
 
 def _synthetic(n=300, p=6, seed=0, ties_round=None):

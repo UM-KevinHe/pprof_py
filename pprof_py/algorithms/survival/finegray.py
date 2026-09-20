@@ -354,11 +354,17 @@ def _truncation_curve(
     #   dprob <- c(rev(Htemp$surv[...])[-1], 1)
     dtime = utime[entry_index_desc][::-1]
     reversed_survival = reverse_survival[::-1]
+    # R: dprob <- c(rev(Htemp$surv[...])[-1], 1)
+    # After reversal, drop the *first* element (earliest original time)
+    # and append 1.0 at the end (latest original time).  The original
+    # code incorrectly dropped the *last* element instead of the first,
+    # producing an off-by-one shift that only affected left-truncated
+    # data (right-censored data never enters this branch).
     dprob = np.empty_like(reversed_survival)
     if dprob.size == 1:
         dprob[0] = 1.0
     else:
-        dprob[:-1] = reversed_survival[:-1]
+        dprob[:-1] = reversed_survival[1:]   # R's [-1]: skip first of reversed
         dprob[-1] = 1.0
     return dtime, dprob
 

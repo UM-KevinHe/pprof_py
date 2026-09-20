@@ -14,7 +14,7 @@ smooth one) even though both consume the exact same
 built from `cox_partial_likelihood`. Neither `optimization.py` nor
 this module duplicates any Breslow/Efron/strata/offset/weight/
 start-stop math -- both are pure consumers of
-`algorithms/partial_likelihood.py`.
+`algorithms/survival/cox_likelihood.py`.
 
 Algorithm
 ---------

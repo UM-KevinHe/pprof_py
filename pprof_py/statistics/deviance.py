@@ -26,7 +26,7 @@ form, not a re-derivation from first principles.
 Grouping is by `stop` time among `event == 1` rows in every case
 (ordinary right-censored data is the start=0 special case of
 start/stop data throughout this package -- see
-`algorithms/partial_likelihood.py`), matching glmnet's use of
+`algorithms/survival/cox_likelihood.py`), matching glmnet's use of
 `stop_time` for ties in its (start, stop] deviance routine.
 """
 from __future__ import annotations

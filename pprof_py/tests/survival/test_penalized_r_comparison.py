@@ -40,8 +40,8 @@ import pytest
 from pprof_py import PenalizedCoxPH, PenalizedCoxPHCV
 
 HERE = os.path.dirname(__file__)
-DATA = os.path.join(HERE, "..", "r_reference", "data")
-RESULTS = os.path.join(HERE, "..", "r_reference", "results")
+DATA = os.path.join(HERE, "..", "..", "r_reference", "data")
+RESULTS = os.path.join(HERE, "..", "..", "r_reference", "results")
 
 # See module docstring: strata/left-truncation/combined show slightly
 # more numerical spread than the plain right-censored cases (max

@@ -63,6 +63,39 @@ work.
 
 ## 7.3 Cause-specific hazards: the easy half
 
+First, extend the running cohort with the competing event. Each patient gets a latent transplant time; a patient whose transplant would come before their death or censoring is observed to have a transplant instead (`event = 2`). This block defines `final_time`, `event` and `X` used by the rest of the chapter.
+
+```python
+import numpy as np
+
+def add_transplant(cohort, rate=0.25, seed=7):
+    """Extend `cohort` with a competing event: kidney transplant.
+
+    Returns (final_time, event) with event 0 = censored, 1 = death,
+    2 = transplant. Younger patients without diabetes are transplanted
+    sooner (purely illustrative)."""
+    rng = np.random.default_rng(seed)
+    age = cohort["age"].to_numpy()
+    diabetes = cohort["diabetes"].to_numpy()
+    follow_up = cohort["time"].to_numpy()
+    tx_rate = rate * np.exp(-0.03 * (age - 62) - 0.3 * diabetes)
+    tx_time = rng.exponential(1.0 / tx_rate)
+    transplanted = tx_time < follow_up          # transplanted before death/censoring
+    final_time = np.where(transplanted, tx_time, follow_up)
+    event = np.where(transplanted, 2, cohort["death"].to_numpy())
+    return np.maximum(final_time, 1e-3), event
+
+final_time, event = add_transplant(cohort)
+X = cohort[["age", "sex", "diabetes", "comorbidity_count"]]
+print(f"{(event == 2).mean():.0%} transplanted, {(event == 1).mean():.0%} died, {(event == 0).mean():.0%} censored")
+```
+
+```
+38% transplanted, 5% died, 57% censored
+```
+
+Now the cause-specific fits:
+
 ```python
 from pprof_py import CauseSpecificCoxPH
 
@@ -144,13 +177,13 @@ print("correct Fine-Gray mean CIF:      ", correct_cif.loc[t].mean())
 ```
 
 ```
-naive (mis-specified) mean CIF:   0.0510
-correct Fine-Gray mean CIF:       0.0441
+naive (mis-specified) mean CIF:   0.0528
+correct Fine-Gray mean CIF:       0.0449
 ```
 
 The naive version overstates the true cumulative incidence of death by
-a real, meaningful margin — about 16% too high, in this dataset, where
-37% of patients eventually get transplanted. The direction is not a
+a real, meaningful margin — about 18% too high, in this dataset, where
+38% of patients eventually get transplanted. The direction is not a
 coincidence: the naive calculation implicitly assumes every transplant
 recipient would have gone on accumulating risk of dialysis-death at the
 same rate as everyone still on dialysis, when in fact they can no

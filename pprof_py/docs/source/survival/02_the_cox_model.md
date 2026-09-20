@@ -227,8 +227,14 @@ Two situations call for this, and both come up directly in this guide:
    one combined likelihood for both stages at once.
 
 ```python
+import pandas as pd
+
+stage1 = CoxPH(ties="efron").fit(X, duration=time, event=death, strata=cohort["facility_id"])
+linear_predictor_from_stage1 = stage1.predict_linear(X)
+
+# Stage 2 has no covariates of its own (an empty design matrix): only the offset.
 stage2 = CoxPH(ties="efron").fit(
-    X_stage2, duration=time, event=death,
+    pd.DataFrame(index=X.index), duration=time, event=death,
     offset=linear_predictor_from_stage1,
 )
 ```

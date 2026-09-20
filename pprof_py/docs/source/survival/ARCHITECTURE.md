@@ -9,7 +9,7 @@
 ```
 CoxPH (models/survival/coxph.py)                              <- user-facing, sklearn-conventioned, pandas in/out
     |
-validate_fit_inputs (data/validation.py)                      <- pandas/mixed input -> plain numpy, with clear errors
+validate_fit_inputs (data/survival_validation.py)             <- pandas/mixed input -> plain numpy, with clear errors
     |
 SurvivalData (data/survival_data.py)                          <- plain-numpy container, no pandas below this line
     |
@@ -52,7 +52,7 @@ Each arrow is a real module boundary a future change could stop at:
   small, contained change, but a real one, and `models/survival/coxph.py` did
   need a one-line update (passing `ties=self.ties` through) that the
   original architecture sketch didn't anticipate. See
-  `docs/R_COMPATIBILITY.md`, question 2, for the full account, including
+  `R_COMPATIBILITY.md`, question 2, for the full account, including
   why martingale residuals needed a third, separate algorithm on top of
   that (a literal port of `agmart3.c` rather than a formula reachable
   from the other two at all).
@@ -63,7 +63,7 @@ Each arrow is a real module boundary a future change could stop at:
   has an `@njit(cache=True)` implementation used automatically when
   numba is installed, with the original pure-Python version kept as a
   fallback and, more importantly, as a _paired reference_ --
-  `tests/survival/test_engine_self_consistency.py` checks every compiled kernel
+  `pprof_py/tests/survival/test_engine_self_consistency.py` checks every compiled kernel
   against its own Python fallback at random coefficient values, not just
   against R. That extra check earned its keep in practice: the first
   attempt at this only wired the numba kernel into `BreslowTies`,
@@ -71,8 +71,8 @@ Each arrow is a real module boundary a future change could stop at:
   therefore completely unaccelerated -- correct, but not what "add numba"
   was supposed to accomplish, and not something a purely
   correctness-focused test (which passed the whole time) would ever
-  have caught. See `docs/R_COMPATIBILITY.md`'s closing section and
-  `docs/README.md`'s Performance section for the full account.
+  have caught. See `R_COMPATIBILITY.md`'s closing section and
+  the root `README.md`'s Performance section for the full account.
 - **Penalization / robust variance / clustering** slot into
   `optimization.py` (a penalty term added to the objective) and
   `inference/survival/inference.py` (a different covariance formula given the
@@ -123,7 +123,7 @@ The sweep is still **not** vectorized _across_ strata into a single pass
 into a numba-compiled kernel for the actual work), finding each one's
 rows via the above. This is a deliberate choice, not an oversight: most
 realistic workloads (including the ones benchmarked in
-`docs/README.md`, thousands of same-size facilities) are dominated by
+the root `README.md`, thousands of same-size facilities) are dominated by
 _many small_ strata rather than a few huge ones, and a naive single-pass
 vectorization across strata doesn't obviously help that shape of problem
 without also batching multiple strata's event times together, which is
@@ -147,7 +147,7 @@ correct (centering is provably inert for those; see
 hazard at `X = mean(X)` instead of `X = 0`. This class of bug — every
 number _looks_ plausible, cross-checks against a naive re-implementation
 even pass, and it's still wrong relative to R — is exactly why
-`docs/R_COMPATIBILITY.md` exists as a standing, itemized document rather
+`R_COMPATIBILITY.md` exists as a standing, itemized document rather
 than being left as implicit knowledge in the code: the offset/`basehaz`
 finding there was exactly this shape of bug (see that document's
 Section 6), caught only by fitting against real R output, not by
@@ -189,7 +189,7 @@ penalty math (algorithms/survival/penalty.py)
     |── rescale_penalty_factors (sum to p, matching glmnet)
     |── soft_threshold, elastic_net_penalty_value
     |
-deviance (inference/survival/deviance.py)
+deviance (statistics/deviance.py)
     |── saturated_log_likelihood (glmnet's coxnet.deviance formula)
     |── cox_deviance, deviance_ratio (for dev.ratio path reporting)
     |── cross-validation grouped deviance (Verweij & Van Houwelingen 1993)
@@ -277,3 +277,53 @@ workflow), `fit_empirical_null` estimates a robust location and scale
 (Huber or Tukey bisquare psi) and `adjust_empirical_null` re-calibrates
 z-scores and p-values accordingly. This sits entirely downstream of
 fitted model outputs — it never touches the likelihood engine.
+
+## Group lasso, provider-penalized and discrete-time estimators
+
+Added after Phase 4; each is a thin layer over an existing engine.
+
+```
+GroupLassoCoxPH / GroupLassoCoxPHCV (models/survival/group_lasso_coxph.py)
+    |── shares _PenalizedCoxPHBase / _PenalizedCoxPHCVBase with PenalizedCoxPH
+    |── sparse-group proximal operator and group utilities (algorithms/survival/penalty.py)
+    |── path solver (algorithms/survival/coordinate_descent.py::fit_group_regularization_path)
+    |
+cox_partial_likelihood (algorithms/survival/cox_likelihood.py)   <- UNCHANGED
+
+ProviderPenalizedCoxPH (models/survival/provider_coxph.py)
+    |── outer layer: one-step Newton update of provider effects gamma
+    |     (algorithms/survival/provider_effects.py), clamped to median(gamma) +/- bound
+    |── inner layer: the penalized beta solver above; both warm-started along the lambda path
+
+DiscreteSurvival / DiscreteSurvivalCV (models/survival/discrete_survival.py)
+    |── person-period expansion, logistic hazard, baseline parameters alpha_k
+    |     (algorithms/survival/discrete_survival.py)
+    |── penalty utilities from algorithms/survival/penalty.py
+
+ProviderPenalizedDiscreteSurvival (+CV) (models/survival/provider_discrete_survival.py)
+    |── three layers: provider effects, baseline hazard, penalized covariates
+    |── reuses the *logistic* provider-effect update (algorithms/logistic/provider_effects.py)
+        and the family-independent algorithms/penalty.py
+```
+
+None of these has an R reference in the test suite. The Cox-based ones inherit correctness of the likelihood from `CoxPH`; the
+penalty and provider layers are covered by internal tests only.
+
+## Data preparation and diagnostics
+
+- `data/survival_validation.py` — `validate_fit_inputs` (the input contract) and `SurvivalDataError`.
+- `data/timedep.py` — `tmerge`, `survsplit`, `build_skeleton`, `UpdateStream` (pure reshaping, not exported at the package root).
+- `diagnostics/survival/preflight.py` — `preflight_report` / `PreflightResult`; `diagnostics/survival/validate_against_r.py` — the
+  Python-vs-R harness for user data.
+- `selection/` — `CoxPHSelector` plus the `aic` / `bic` criteria.
+
+## Module notes for maintainers
+
+- `algorithms/survival/cox_likelihood.py` and `algorithms/survival/partial_likelihood.py` are byte-identical. `CoxPH` and
+  `algorithms/survival/__init__.py` import `cox_likelihood`; treat it as canonical and `partial_likelihood` as a redundant copy.
+- Two penalty / coordinate-descent implementations exist. The survival Cox estimators import `algorithms/survival/penalty.py` and
+  `algorithms/survival/coordinate_descent.py`; the logistic, linear and provider-discrete models use the family-independent
+  `algorithms/penalty.py` and `algorithms/coordinate_descent.py`.
+- Numba-compiled kernels appear in `risk_sets.py`, `ties.py`, `inference/survival/residuals.py`, `inference/survival/robust.py`,
+  `algorithms/survival/provider_effects.py` and the coordinate-descent modules, each with a pure-Python fallback.
+- Reference pages for every public estimator: `reference/` (start with `reference/coxph.md`).

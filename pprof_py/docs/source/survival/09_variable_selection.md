@@ -51,6 +51,8 @@ an earlier choice that later turned out to be a mistake).
 
 ## 9.3 Running it
 
+> **Continues from Chapter 8:** the snippets below reuse `X_wide`, the wide covariate matrix built there, together with `cohort` from Chapter 0.
+
 ```python
 from pprof_py import CoxPHSelector
 

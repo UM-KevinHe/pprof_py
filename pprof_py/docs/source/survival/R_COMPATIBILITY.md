@@ -1,14 +1,14 @@
+(r_compatibility)=
 # R compatibility notes
 
 This package targets `survival::coxph()` (R's `survival` package, version
 3.5-8, R 4.3.3) as the source of truth. Every claim below was checked
-against actual R output during development (`r_reference/run_all.R` +
-`tests/test_r_comparison.py`), not inferred from documentation alone —
+against actual R output during development (`pprof_py/r_reference/run_all.R` +
+`pprof_py/tests/survival/test_r_comparison.py`), not inferred from documentation alone —
 several of R's own docs are silent or misleading on exactly these points,
 which is precisely why they needed checking.
 
-This file answers the specific questions raised in the project brief
-(Section 27). Each entry states the convention, why it matters, and how
+This file answers a fixed checklist of R-compatibility questions (the numbering follows that checklist, so a few numbers group several questions). Each entry states the convention, why it matters, and how
 it was verified.
 
 ## 1. Risk-set definition for `(start, stop]`
@@ -25,7 +25,7 @@ right-closed. Concretely:
 is subtly wrong, which shows up as a small, hard-to-localize bias in
 `coef_` rather than an obvious failure.
 
-**Verified by:** `tests/test_r_comparison.py::test_left_truncation` and
+**Verified by:** `pprof_py/tests/survival/test_r_comparison.py::test_left_truncation` and
 `::test_combined`, both with real staggered entry — coefficients match R
 to relative error ~1e-9 or tighter. Implemented in
 `algorithms/survival/risk_sets.py::sweep_risk_sets`.
@@ -73,7 +73,7 @@ LL_j = sum_{i in D_j} w_i*eta_i
 with score and information the first and second derivatives of that
 expression in the same S0/S1/S2 terms `algorithms/survival/ties.py::BreslowTies`
 already uses. Validated against R on unweighted AND weighted, tied data
-to 1e-14–1e-15 relative error (`tests/test_r_comparison.py::test_efron_basic`,
+to 1e-14–1e-15 relative error (`pprof_py/tests/survival/test_r_comparison.py::test_efron_basic`,
 `::test_efron_weights`, `::test_efron_left_truncation`). As a consistency
 check independent of R entirely: with `d_j == 1` (no actual tie),
 `meanwt_j == d*_j` and the formula's single `k=1` term reduces exactly to
@@ -120,7 +120,7 @@ results, not just by reading R's docs.)
 
 Rejected outright (`start < stop` is required) — both packages treat
 this as a data error, not a numerical edge case. See
-`data/validation.py`.
+`data/survival_validation.py`.
 
 ## 5. Weight semantics
 
@@ -132,15 +132,7 @@ weight-times-risk-score sum). This package implements exactly that (the
 "model-based" covariance, i.e. the inverse of the weighted information
 matrix — the same quantity R reports as `se(coef)`).
 
-**Important:** when weights aren't exact integer replication counts, R's
-`summary()` *also* prints a `robust se` column (a sandwich/cluster-robust
-variance) and notes it may be more appropriate. This package does not
-implement robust variance in this version (Section 20 of the design
-notes defers it explicitly) — `standard_errors_` always corresponds to
-R's `se(coef)` column, never `robust se`. Comparing against the wrong
-column is an easy mistake to make when validating against R's console
-output; `tests/test_r_comparison.py` extracts `se(coef)` specifically,
-by regex-anchored column name, to avoid it.
+**Important:** when weights aren't exact integer replication counts, R's `summary()` *also* prints a `robust se` column (a sandwich/cluster-robust variance) and notes it may be more appropriate. R turns the robust variance on automatically when weights are non-integer or a cluster term is present; `CoxPH` does **not** — it reports the model-based variance unless you ask for robust inference (`CoxPH(robust=True)` or `fit(..., cluster=...)`, see Section 22). So, by default, `standard_errors_` corresponds to R's `se(coef)` column (and `naive_standard_errors_` always does); with robust inference on, `standard_errors_` corresponds to R's `robust se`. Comparing against the wrong column is an easy mistake to make when validating against R's console output; `pprof_py/tests/survival/test_r_comparison.py` extracts `se(coef)` specifically, by regex-anchored column name, to avoid it.
 
 **This trap is worse than it looks if you compare programmatically
 instead of visually.** `summary(fit)$coefficients[, "se(coef)"]` is the
@@ -160,14 +152,14 @@ model-based variance actually lives. `vcov(fit, robust=FALSE)` does
 
 So anyone scripting a comparison against this package (rather than
 eyeballing `summary()`'s printout) needs `fit$naive.var`, not `vcov(fit)`
-— `tests/test_r_comparison.py::test_efron_weights` checks against
+— `pprof_py/tests/survival/test_r_comparison.py::test_efron_weights` checks against
 `fit$naive.var` explicitly, and separately asserts `standard_errors_`
 does *not* match `fit$var`, so a future tolerance change couldn't make
 both pass by accident.
 
 **Zero weights** are accepted (drop an observation's influence while
 keeping it in the data) and were exercised directly
-(`tests/test_validation.py::test_allows_zero_weight`).
+(`pprof_py/tests/survival/test_validation.py::test_allows_zero_weight`).
 
 **`n_events_`** is the *raw* count of rows with `event=1`, not a
 weight-weighted sum — confirmed against R's reported `nevent` under
@@ -206,8 +198,7 @@ curve's construction and `basehaz`'s un-centering step, leaving:
 basehaz(fit, centered=FALSE)  ==  H0_at_(X=0, offset=0)(t)  *  exp(offset_mean)
 ```
 
-**This package matches that exactly**, on purpose, because Section 15 of
-the brief explicitly asks for output "equivalent to
+**This package matches that exactly**, on purpose, because the design goal is output "equivalent to
 `basehaz(coxph_model, centered=FALSE)`" and this is what that call
 actually computes. `models/survival/coxph.py::fit` computes the "pure"
 `H0_at_(X=0,offset=0)` internally first (needed for residuals and
@@ -262,7 +253,7 @@ Computed independently per stratum (own risk sets, own event times, own
 `coxph(... + strata(g))`. R's `strata()` labels basehaz() rows like
 `"provider=0"` rather than the bare value; this package's
 `baseline_hazard_["stratum"]` uses the bare stratum value instead
-(`tests/test_r_comparison.py` extracts R's numeric suffix for
+(`pprof_py/tests/survival/test_r_comparison.py` extracts R's numeric suffix for
 comparison, rather than this package adopting R's string-labeling
 convention).
 
@@ -275,10 +266,7 @@ forward unchanged from the last actual event. This package's
 (the minimal representation of the same right-continuous step function —
 every Python-reported time and hazard value is present, verbatim, in
 R's larger table; R's table just also repeats the same value at
-additional non-jump timestamps). `predict_cumulative_hazard` /
-`predict_survival_function` evaluate the step function correctly at
-*any* query time regardless, via a proper "last value at or before t"
-lookup — so nothing is lost, the public table is just more compact.
+additional non-jump timestamps). `predict_cumulative_hazard` / `predict_survival_function` return the step function **at the stratum's event times only** (they have no `times=` argument); to read it at other times, forward-fill the returned frame (recipe in the `CoxPH` reference page). Nothing is lost: the compact table and the step function carry the same information.
 
 ## 9. Martingale residuals under left truncation
 
@@ -288,8 +276,7 @@ the subject was actually at risk, not `H0(stop_i)` alone (which would
 overstate a late entrant's expected event count by including hazard
 accrued before they entered). Verified against R's
 `residuals(fit, type="martingale")` on the left-truncation and combined
-(truncation + strata + offset + weights) datasets to ~1e-8 absolute
-tolerance.
+(truncation + strata + offset + weights) datasets; the test tolerance is 1e-4 absolute and the largest difference in a fresh run was below 5e-9 (see the validation report).
 
 ## 9b. Martingale residuals under Efron ties need a THIRD separate formula
 
@@ -326,8 +313,7 @@ two-pointer sweep (mirroring the *variable names and control flow* of
 the C source, not a cleaned-up reformulation of it), then validated
 against R rather than trusted on the strength of the derivation. It
 reduces to question 9's simple formula exactly when there are no ties
-(or `ties="breslow"`), and matches R to ~1e-4 absolute tolerance on
-tied, weighted, and left-truncated Efron fits alike.
+(or `ties="breslow"`), and matches R on tied, weighted, and left-truncated Efron fits alike (test tolerance 1e-4 absolute; largest difference in a fresh run below 9e-9).
 
 ## 10–13. Convergence, step-halving, singular matrices, missing values
 
@@ -356,6 +342,7 @@ tied, weighted, and left-truncated Efron fits alike.
   fail-fast-by-default behavior (`coxph` also errors on `NA` unless
   `na.action` is changed) rather than R's alternative
   listwise-deletion options, which are not implemented.
+- **Non-convergence:** reaching `max_iter` neither raises nor warns; `converged_` is `False` and `convergence_message_` says why. Check `converged_` in production code.
 
 ## 14. Centering / scaling behavior
 
@@ -380,8 +367,7 @@ comment at the point `eta_fit` is computed) so "baseline" means `X=0` in
 the user's own units, not `X=mean(X)`. The offset-mean subtlety in
 Section 6 above is the one place a *second*, R-specific centering
 convention (of the offset, not `X`) had to be matched explicitly rather
-than left as an implementation detail, precisely because Section 15 of
-the brief asks for bit-compatibility with `basehaz(centered=FALSE)`
+than left as an implementation detail, precisely because the design goal is bit-compatibility with `basehaz(centered=FALSE)`
 specifically.
 
 ## 15. Zero-weight observations
@@ -496,7 +482,7 @@ glmnet's Cox family only implements Breslow ties (confirmed by reading
 package are validated separately by self-consistency: `PenalizedCoxPH`
 with `lambda → 0` must converge to this package's own (R-validated)
 `CoxPH(ties="efron")` solution. See
-`tests/survival/test_penalized_self_consistency.py`.
+`pprof_py/tests/survival/test_penalized_self_consistency.py`.
 
 ### 18i. Capability preservation under penalization
 
@@ -543,7 +529,7 @@ fit is a standard `CoxPH` already validated in Phases 1-2.
 
 **Verified by:** `test_phase4_r_comparison.py` — cause-specific
 coefficients and SEs for both causes, on simple and left-truncated
-competing-risks data, against R's `coxph(Surv(..., event == k) ~ ...)`.
+competing-risks data, against R's `coxph(Surv(..., event == k) ~ ...)`. R's `coxph` defaults to Efron ties and this package to Breslow, so the comparison must set `ties` the same on both sides.
 
 ## 21. Fine-Gray subdistribution hazard
 
@@ -574,6 +560,8 @@ fresh, larger synthetic data (400 subjects) row-for-row against R's
 actual `finegray()` output, plus the fitted Fine-Gray coefficients and
 SEs.
 
+**Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. The committed Phase-4 comparison tests also compare this package's default Breslow ties with R's default Efron, and `FineGrayPH`'s robust SE with R's model-based `se(coef)` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
+
 ## 22. Robust/sandwich (cluster-robust) variance
 
 The sandwich estimator follows `survival::coxph`:
@@ -585,7 +573,7 @@ residue kernels are semantic ports of R's `coxscore2.c` (right-censored)
 and `agscore3.c` (start/stop data), but cluster-aggregated on the fly
 so memory is O(n_clusters * p) rather than O(n * p).
 
-Activated by `CoxPH.fit(..., cluster=...)`. When `cluster` is set,
+Activated by `CoxPH.fit(..., cluster=...)`, or by constructing `CoxPH(robust=True)` (each row is then its own cluster). When `cluster` is set,
 `standard_errors_` reports the robust SE; `naive_covariance_` preserves
 the model-based (naive) covariance for comparison.
 
@@ -639,3 +627,8 @@ plus fitted coefficients and SEs on the merged dataset).
   implemented — missing values always raise.
 - Formula-interface parsing (`Surv(time, event) ~ x1 + x2`) is not
   implemented; a numeric design matrix is expected.
+- **Fine–Gray with left truncation** does not reproduce R's IPCW weights (Section 21, status note).
+- **`fit_intercept=True`** fits, but every `predict_*` method then raises `ValueError`.
+- **No convergence warning:** check `converged_` (Sections 10–13).
+- **Group lasso, provider-penalized and discrete-time estimators** have no R reference implementation in the test suite; they are covered by internal tests only.
+- **Default ties differ from R** for every estimator (Breslow here, Efron in R); set them explicitly when comparing.

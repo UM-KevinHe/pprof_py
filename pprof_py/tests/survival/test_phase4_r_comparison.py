@@ -34,8 +34,8 @@ from pprof_py.algorithms.survival.finegray import finegray_transform
 from pprof_py.data.timedep import build_skeleton, tmerge, UpdateStream
 
 HERE = os.path.dirname(__file__)
-DATA = os.path.join(HERE, "..", "r_reference", "data")
-RESULTS = os.path.join(HERE, "..", "r_reference", "results")
+DATA = os.path.join(HERE, "..", "..", "r_reference", "data")
+RESULTS = os.path.join(HERE, "..", "..", "r_reference", "results")
 
 RTOL_COEF = 1e-5
 RTOL_LOGLIK = 1e-6
@@ -71,7 +71,7 @@ def _run_competing_risks(csvname, prefix, has_truncation):
     X = d[["x1", "x2"]]
     kwargs = dict(start=d["start"], stop=d["stop"]) if has_truncation else dict(duration=d["stop"])
 
-    csc = CauseSpecificCoxPH().fit(X, event=d["event"], causes=[1, 2], **kwargs)
+    csc = CauseSpecificCoxPH(ties="efron").fit(X, event=d["event"], causes=[1, 2], **kwargs)
     r_cause1 = _r_coef_table(f"{prefix}_cause1")
     r_cause2 = _r_coef_table(f"{prefix}_cause2")
     _check(f"{prefix}: cause 1 coef", csc[1].coef_, r_cause1["coef"], RTOL_COEF)
@@ -96,7 +96,7 @@ def _run_competing_risks(csvname, prefix, has_truncation):
     _check(f"{prefix}: finegray fgstart", py_transform["fgstart"], r_transform["fgstart"], 1e-6)
     _check(f"{prefix}: finegray fgstop", py_transform["fgstop"], r_transform["fgstop"], 1e-6)
 
-    fg = FineGrayPH().fit(X, event=d["event"], failcode=1, id=d["id"], **kwargs)
+    fg = FineGrayPH(ties="efron").fit(X, event=d["event"], failcode=1, id=d["id"], **kwargs)
     r_fg = _r_coef_table(f"{prefix}_finegray_fit")
     _check(f"{prefix}: finegray fit coef", fg.coef_, r_fg["coef"], RTOL_COEF)
     _check(f"{prefix}: finegray fit se", fg.standard_errors_, r_fg["se_coef"], 1e-3)
@@ -113,7 +113,7 @@ def test_competing_risks_truncated():
 # ----------------------------------------------------------------- robust variance
 def test_robust_strata_truncation_clustering():
     d = pd.read_csv(os.path.join(DATA, "robust_strata_truncation.csv"))
-    m = CoxPH().fit(
+    m = CoxPH(ties="efron").fit(
         d[["x1", "x2"]], start=d["start"], stop=d["stop"], event=d["event"],
         strata=d["strata"], cluster=d["cluster"],
     )
@@ -150,7 +150,7 @@ def test_timedep_tmerge_and_fit():
     _check("timedep: tstop", py_merged["tstop"], r_merged["tstop"], 1e-6)
     _check("timedep: death", py_merged["death"], r_merged["death"], 1e-9)
 
-    model = CoxPH().fit(
+    model = CoxPH(ties="efron").fit(
         merged[["treated"]], start=merged["tstart"], stop=merged["tstop"], event=merged["death"],
     )
     r_fit = _r_coef_table("timedep")

@@ -56,7 +56,7 @@ class TestProviderPenalizedCoxPH:
             n_lambda=10, ties="breslow",
         )
         result = model.fit(
-            X, duration=stop, event=event, provider_id=prov,
+            X, duration=stop, event=event, provider=prov,
         )
         assert result is model
 
@@ -67,7 +67,7 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=10, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         n_lambda = len(model.lambda_path_)
         n_prov = len(model.provider_labels_)
         assert model.gamma_path_.shape == (n_lambda, n_prov)
@@ -79,7 +79,7 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=10, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         assert model.coef_path_.shape[1] == X.shape[1]
 
     def test_first_lambda_coef_zero(self, synth_data):
@@ -89,7 +89,7 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=20, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         assert np.all(np.abs(model.coef_path_[0]) < 1e-10)
 
     def test_sparsity_monotonicity(self, synth_data):
@@ -99,7 +99,7 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=20, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         nz = np.array([np.sum(row != 0) for row in model.coef_path_])
         assert np.all(np.diff(nz) >= 0), f"Sparsity not monotonic: {nz}"
 
@@ -111,7 +111,7 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=10, provider_bound=bound, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         median_gamma = np.median(model.gamma_path_, axis=1, keepdims=True)
         deviations = np.abs(model.gamma_path_ - median_gamma)
         assert np.all(deviations <= bound + 1e-6)
@@ -123,6 +123,6 @@ class TestProviderPenalizedCoxPH:
             penalty_type="elastic_net", alpha=1.0,
             n_lambda=10, ties="breslow",
         )
-        model.fit(X, duration=stop, event=event, provider_id=prov)
+        model.fit(X, duration=stop, event=event, provider=prov)
         assert np.all(model.deviance_ratio_path_ >= -1e-10)
         assert np.all(model.deviance_ratio_path_ <= 1.0 + 1e-10)

@@ -49,8 +49,8 @@ docs = [
 # Optional solver used by LogisticRandomEffectModel; scipy fallbacks are
 # used automatically when nlopt is unavailable.
 random-effect = ["nlopt"]
-# Only required by pprof_py.compatibility.legacy_logistic_random_effect,
-# never imported by the rest of the package.
+# R interoperability tools for comparison and validation workflows;
+# never imported by the package itself.
 legacy = ["rpy2", "pymer4"]
 
 [tool.setuptools.packages.find]

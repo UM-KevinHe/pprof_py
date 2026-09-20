@@ -137,4 +137,4 @@ class TestGroupLassoCoxPHCV:
             n_folds=5, random_state=42, ties="breslow",
         )
         cv.fit(X, duration=stop, event=event)
-        assert np.all(cv.cv_se_ >= 0)
+        assert np.all(cv.cv_se_deviance_ >= 0)

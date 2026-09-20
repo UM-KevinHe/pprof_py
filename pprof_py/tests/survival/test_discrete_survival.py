@@ -109,7 +109,7 @@ class TestDiscreteSurvival:
         X, time, event, _ = synth_data
         model = DiscreteSurvival(penalty_type="lasso", n_lambda=10)
         model.fit(X, time=time, event=event)
-        hazard = model.predict_hazard(X)
+        hazard = model.predict_hazard(X, time=time)
         assert hazard.shape[0] == X.shape[0]
 
     def test_predict_survival_range(self, synth_data):
@@ -117,7 +117,7 @@ class TestDiscreteSurvival:
         X, time, event, _ = synth_data
         model = DiscreteSurvival(penalty_type="lasso", n_lambda=10)
         model.fit(X, time=time, event=event)
-        surv = model.predict_survival(X)
+        surv = model.predict_survival(X, time=time)
         assert np.all(surv >= -1e-10)
         assert np.all(surv <= 1.0 + 1e-10)
 
@@ -140,12 +140,14 @@ class TestDiscreteSurvivalCV:
         assert cv.lambda_1se_ >= cv.lambda_min_
 
     def test_coef_at_selected_lambda(self, synth_data):
-        """Selected coef_ should have correct shape."""
+        """Refit model from best_model_ should have correct coef shape."""
         X, time, event, _ = synth_data
         cv = DiscreteSurvivalCV(
             penalty_type="lasso", n_lambda=15,
             n_folds=5, random_state=42,
         )
         cv.fit(X, time=time, event=event)
-        assert hasattr(cv, "coef_")
-        assert cv.coef_.shape == (X.shape[1],)
+        # DiscreteSurvivalCV has no coef_ attribute;
+        # coefficients are accessed via the refit model.
+        assert hasattr(cv, "best_model_")
+        assert cv.best_model_.coef_path_.shape[1] == X.shape[1]

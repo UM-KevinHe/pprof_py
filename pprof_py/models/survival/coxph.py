@@ -7,6 +7,7 @@ what happens inside `fit`, not the class's public surface.
 """
 from __future__ import annotations
 
+import warnings
 from typing import Optional, Union
 
 import numpy as np
@@ -38,8 +39,8 @@ class CoxPH(BaseEstimator):
     Designed to reproduce R's `survival::coxph()` as closely as
     numerically possible for the supported feature set: right-censored
     and left-truncated data, strata, offsets, and observation weights.
-    See docs/R_COMPATIBILITY.md for the conventions matched and the
-    known differences/limitations.
+    See the R compatibility notes (``docs/source/survival/R_COMPATIBILITY.md``)
+    for the conventions matched and the known differences/limitations.
 
     Parameters
     ----------
@@ -73,7 +74,7 @@ class CoxPH(BaseEstimator):
     -------------------------
     coef_, standard_errors_, covariance_, z_scores_, p_values_,
     confidence_intervals_, log_likelihood_, log_likelihood_null_,
-    n_iter_, converged_, n_obs_, n_events_, n_features_in_,
+    n_iter_, converged_, convergence_message_, n_obs_, n_events_, n_features_in_,
     feature_names_in_, baseline_hazard_, martingale_residuals_,
     naive_covariance_, naive_standard_errors_, robust_covariance_,
     robust_, n_clusters_, cluster_labels_
@@ -230,6 +231,15 @@ class CoxPH(BaseEstimator):
         self.convergence_message_ = result.message
         self.log_likelihood_ = result.log_likelihood
 
+        if not self.converged_:
+            warnings.warn(
+                f"CoxPH did not converge after {self.n_iter_} iterations "
+                f"(max_iter={self.max_iter}, eps={self.eps}). "
+                f"Increase max_iter or check for separation/collinearity. "
+                f"Details: {self.convergence_message_}",
+                stacklevel=2,
+            )
+
         null_loglik, _, _ = cox_partial_likelihood(
             Xc,
             data.start,
@@ -353,6 +363,8 @@ class CoxPH(BaseEstimator):
         """
         self._check_is_fitted()
         X_arr, _ = validate_X(X)
+        if self.fit_intercept:
+            X_arr = np.column_stack([X_arr, np.ones(X_arr.shape[0])])
         if offset is None:
             offset_arr = np.zeros(X_arr.shape[0])
         else:

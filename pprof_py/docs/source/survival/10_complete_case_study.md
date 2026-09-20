@@ -14,6 +14,8 @@ Real ESRD claims data arrives as one record per patient per year
 (Chapter 4's own notation said so explicitly), which immediately means
 one patient can appear more than once — precisely Chapter 5's setup:
 
+> **Continues from Chapter 5:** this chapter reuses `make_multi_year_records` (defined in Section 5.5) together with `cohort` from Chapter 0.
+
 ```python
 import numpy as np
 import pandas as pd

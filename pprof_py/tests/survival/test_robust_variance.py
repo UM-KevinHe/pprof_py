@@ -172,7 +172,7 @@ def test_robust_matches_real_r_auto_promoted_variance():
     import os
     import pandas as pd
 
-    base = os.path.join(os.path.dirname(__file__), "..", "r_reference")
+    base = os.path.join(os.path.dirname(__file__), "..", "..", "r_reference")
     data_path = os.path.join(base, "data", "weights.csv")
     result_path = os.path.join(base, "results", "weights_efron_naive_vs_robust.csv")
     if not (os.path.exists(data_path) and os.path.exists(result_path)):

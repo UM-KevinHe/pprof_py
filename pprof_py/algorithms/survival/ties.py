@@ -12,7 +12,7 @@ half-open (start, stop] convention -- lives in risk_sets.py and is
 identical across tie methods; only how the denominator at a tied event
 time is built from that risk set differs. Because of that split, adding
 Efron or exact tie support later is a matter of adding a class here,
-not touching partial_likelihood.py, optimization.py, or CoxPH itself.
+not touching cox_likelihood.py, optimization.py, or CoxPH itself.
 
 Breslow is this package's default (matching the existing `phregSHR` R
 workflow this package targets) and Efron is implemented as of this
@@ -35,7 +35,7 @@ from ...utils.numerical import safe_exp
 class StratumContribution:
     """One stratum's additive contribution to the total log-likelihood,
     score, and information matrix. Coefficients are shared across strata,
-    so the caller (partial_likelihood.cox_partial_likelihood) simply sums
+    so the caller (cox_likelihood.cox_partial_likelihood) simply sums
     these across strata."""
 
     log_likelihood: float
@@ -178,7 +178,7 @@ class BreslowTies(TieMethod):
 
     Score and (observed) information follow by differentiating this
     expression w.r.t. beta once and twice respectively; see
-    partial_likelihood.py's module docstring for the closed forms in
+    cox_likelihood.py's module docstring for the closed forms in
     terms of S0, S1 = sum w*r*X, and S2 = sum w*r*outer(X,X).
     """
 

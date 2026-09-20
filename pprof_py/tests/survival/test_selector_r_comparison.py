@@ -14,8 +14,8 @@ import pytest
 from pprof_py.selection import CoxPHSelector
 
 HERE = os.path.dirname(__file__)
-DATA = os.path.join(HERE, "..", "r_reference", "data")
-RESULTS = os.path.join(HERE, "..", "r_reference", "results")
+DATA = os.path.join(HERE, "..", "..", "r_reference", "data")
+RESULTS = os.path.join(HERE, "..", "..", "r_reference", "results")
 
 RTOL = 1e-6
 

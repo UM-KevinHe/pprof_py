@@ -96,7 +96,9 @@ which is exactly what this chapter's two new functions are for.
 ### `build_skeleton`: the starting point
 
 ```python
-from pprof_py import build_skeleton
+# build_skeleton, tmerge, UpdateStream and survsplit live in pprof_py.data.timedep;
+# they are not exported from the package root.
+from pprof_py.data.timedep import build_skeleton
 
 skeleton = build_skeleton(id=cohort["patient_id"].to_numpy(), tstop=cohort["time"].to_numpy())
 skeleton.head()
@@ -119,7 +121,7 @@ this time" records and splits each patient's interval wherever
 something actually happened to them:
 
 ```python
-from pprof_py import tmerge, UpdateStream
+from pprof_py.data.timedep import tmerge, UpdateStream
 
 merged = tmerge(
     skeleton.id.to_numpy(), skeleton.tstart.to_numpy(), skeleton.tstop.to_numpy(),
@@ -208,7 +210,7 @@ times, shared by everyone, usually to let an effect differ before and
 after a landmark:
 
 ```python
-from pprof_py import survsplit
+from pprof_py.data.timedep import survsplit
 
 split = survsplit(
     id=cohort["patient_id"].to_numpy(),

@@ -6,6 +6,9 @@ Public API
     from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
     from pprof_py import LinearFixedEffectModel, LinearRandomEffectModel
     from pprof_py import CoxPH, PenalizedCoxPH, PenalizedCoxPHCV
+    from pprof_py import GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH
+    from pprof_py import DiscreteSurvival, DiscreteSurvivalCV
+    from pprof_py import ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV
     from pprof_py import CauseSpecificCoxPH, FineGrayPH
     from pprof_py import CoxPHSelector
 
