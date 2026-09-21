@@ -23,8 +23,7 @@ linear random-effect model, and a Cox proportional hazards model share
 almost no fitting logic. Forcing them into a common inheritance tree
 added complexity without adding value.
 
-**scikit-learn estimator conventions.** All model classes follow
-scikit-learn's estimator interface:
+**scikit-learn estimator conventions.** Most model classes follow scikit-learn's estimator interface. The exceptions are `LinearFixedEffectModel`, `LinearRandomEffectModel`, `LogisticFixedEffectModel` and `LogisticRandomEffectModel`, which do not inherit `BaseEstimator` and have no `get_params()` / `set_params()`:
 
 - Constructor arguments define model *configuration* (e.g., `ties`,
   `confidence_level`).
@@ -143,8 +142,7 @@ visual style is defined in `pprof_py.plotting.style`.
 Each model family exposes its plotting methods through a dedicated
 `PlottingMixin` (e.g., `plotting.linear.RandomEffectPlottingMixin`,
 `plotting.logistic.RandomEffectPlottingMixin`,
-`plotting.logistic.FixedEffectPlottingMixin`). The linear random-effect
-model additionally provides `plot_residuals` and `plot_qq`.
+`plotting.logistic.FixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticMixedEffectModel` have neither.
 
 ## Common Fitted Attributes
 
@@ -180,6 +178,8 @@ The naming conventions differ slightly between families.
 | `residuals_` | Residuals (response scale) |
 | `converged_` | Boolean convergence flag |
 
+This table describes the random-effect classes. The fixed-effect classes have `coefficients_['gamma']` (provider effects) instead of `'alpha'`, `variances_['gamma']`, no `loglike_` or `converged_`, and `LogisticFixedEffectModel` adds `auc_`. Exact shapes and the different `summary()` layouts are listed in the reference ({ref}`ll_ref_conventions`).
+
 ## Typical Workflow
 
 **Survival model:**
@@ -212,7 +212,7 @@ model.predict_survival_function(X_new)
 from pprof_py import LogisticFixedEffectModel
 
 model = LogisticFixedEffectModel()
-model.fit(y, X, group)
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -230,7 +230,7 @@ model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs
 model.random_effect_sd_           # {group_var: sigma_u}
 model.summary()
-model.test(null='median')
+model.test(null=0)               # numeric null for the linear random-effect model
 model.calculate_standardized_measures(stdz='indirect')
 model.plot_funnel()
 model.plot_provider_effects()

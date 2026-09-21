@@ -58,6 +58,106 @@ def validate_X(X) -> Tuple[np.ndarray, List[str]]:
     return X_arr, feature_names
 
 
+def validate_X_predict(
+    X,
+    feature_names_in: List[str],
+    n_features_in: int,
+) -> np.ndarray:
+    """Validate a design matrix for prediction against the fitted schema.
+
+    For DataFrames: checks that column names match ``feature_names_in``
+    exactly (no missing, extra, or duplicate columns).  If the columns
+    are the same set but in a different order, the DataFrame is silently
+    reordered to match the fit-time order -- this prevents the silent
+    wrong-answer bug described in COX_USER_REVIEW Finding 1.
+
+    For plain arrays: checks that the feature count matches
+    ``n_features_in``.
+
+    Returns
+    -------
+    np.ndarray, shape (n_samples, n_features_in)
+    """
+    if isinstance(X, pd.DataFrame):
+        cols = [str(c) for c in X.columns]
+        if len(cols) != len(set(cols)):
+            raise ValueError(
+                "X has duplicate column names; prediction requires unique columns."
+            )
+        fit_set = set(feature_names_in)
+        pred_set = set(cols)
+        missing = fit_set - pred_set
+        extra = pred_set - fit_set
+        if missing or extra:
+            parts = []
+            if missing:
+                parts.append(f"missing: {sorted(missing)}")
+            if extra:
+                parts.append(f"unexpected: {sorted(extra)}")
+            raise ValueError(
+                f"X columns do not match the fitted feature names. "
+                + "; ".join(parts)
+                + f".  Expected: {feature_names_in}"
+            )
+        # Reorder to match fit-time column order.
+        X = X[feature_names_in]
+        X_arr = X.to_numpy(dtype=np.float64, copy=True)
+    elif isinstance(X, pd.Series):
+        X_arr = X.to_numpy(dtype=np.float64, copy=True).reshape(-1, 1)
+    else:
+        X_arr = np.asarray(X, dtype=np.float64)
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(-1, 1)
+
+    if X_arr.ndim != 2:
+        raise SurvivalDataError(f"X must be 2-dimensional, got shape {X_arr.shape}")
+    if X_arr.shape[1] != n_features_in:
+        raise ValueError(
+            f"X has {X_arr.shape[1]} feature(s), but the model was fitted "
+            f"with {n_features_in}. Provide the same features used at fit time."
+        )
+    if not np.all(np.isfinite(X_arr)):
+        raise SurvivalDataError(
+            "X contains NaN or infinite values; predictions require finite covariates."
+        )
+    return X_arr
+
+
+def validate_predict_offset(
+    offset,
+    n_samples: int,
+) -> np.ndarray:
+    """Validate an offset array for prediction.
+
+    Ensures the offset is 1-dimensional with the correct length and
+    contains only finite values.  Prevents the shape-broadcasting bug
+    (a (3,1) offset with 3 patients produces a (3,3) linear predictor
+    and 9 survival curves for 3 people).
+    """
+    if offset is None:
+        return np.zeros(n_samples, dtype=np.float64)
+    offset_arr = np.asarray(offset, dtype=np.float64)
+    if offset_arr.ndim == 0:
+        # Scalar offset: broadcast to all samples.
+        offset_arr = np.full(n_samples, float(offset_arr), dtype=np.float64)
+    if offset_arr.ndim != 1:
+        raise ValueError(
+            f"offset must be 1-dimensional, got shape {offset_arr.shape}. "
+            f"If you have a column vector, use .ravel() or .squeeze()."
+        )
+    if offset_arr.shape[0] != n_samples:
+        raise ValueError(
+            f"offset has {offset_arr.shape[0]} element(s) but X has "
+            f"{n_samples} row(s); they must match."
+        )
+    if not np.all(np.isfinite(offset_arr)):
+        raise ValueError(
+            "offset contains NaN or infinite values; predictions require "
+            "finite offsets."
+        )
+    return offset_arr
+
+
 def validate_fit_inputs(
     X,
     duration=None,

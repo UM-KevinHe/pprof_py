@@ -145,7 +145,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
     Parameters
     ----------
     alpha_en : float, default=1.0
-        Elastic net mixing (1 = lasso, 0 = ridge).
+        Elastic net mixing (1 = lasso, 0 = ridge).  Alias:
+        ``alpha`` (accepted for cross-family consistency).
     gamma_bound : float, default=10.0
         Maximum provider effect deviation from median.
     n_lambda : int, default=100
@@ -185,6 +186,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
         self,
         alpha_en: float = 1.0,
         gamma_bound: float = 10.0,
+        alpha: Optional[float] = None,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
@@ -199,7 +201,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
         use_active_set: bool = True,
     ):
         """Two-layer provider + penalized discrete survival."""
-        self.alpha_en = alpha_en
+        # ISSUE-022: accept alpha as alias for alpha_en.
+        self.alpha_en = alpha if alpha is not None else alpha_en
         self.gamma_bound = gamma_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio

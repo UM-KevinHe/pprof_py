@@ -43,6 +43,16 @@ def ratio_measure(
     measures : ndarray of shape (n_groups,)
         Ratio measure for each group, in sorted group order.
     """
+    # ISSUE-027: sort defensively so np.add.reduceat sees contiguous
+    # groups, rather than silently returning wrong values when the
+    # caller hasn't pre-sorted.  BootstrapIUR / SplitHalfIUR already
+    # sort before calling measure_fn, so this only costs an extra
+    # argsort for direct callers.
+    order = np.argsort(groups, kind="stable")
+    groups = groups[order]
+    obs = obs[order]
+    exp = exp[order]
+
     _, idx = np.unique(groups, return_index=True)
     obs_sum = np.add.reduceat(obs, idx)
     exp_sum = np.add.reduceat(exp, idx)

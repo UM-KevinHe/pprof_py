@@ -10,11 +10,11 @@ Implemented in Python with NumPy, validated against R reference implementations,
 
 | Family                 | Classes                                                                                                                                              | Key features                                                                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`                                                                  | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; Wald, score, exact, and bootstrap hypothesis tests                                                                      |
+| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`                                                                  | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; provider tests (Wald, score, Poisson-binomial exact `poibin_exact`, bootstrap `bootstrap_exact`, resampling)                                                                      |
 | **Penalized logistic** | `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` | Elastic net / ridge / LASSO with coordinate descent; group lasso for structured variable selection; two-stage provider + penalized covariate profiling; built-in cross-validation                                                                                                   |
 | **Linear**             | `LinearFixedEffectModel`, `LinearRandomEffectModel`                                                                                                  | Profile-based fixed effects; pure-Python lme4-style REML/ML random intercepts (single and crossed); direct and indirect standardization                                                                                                                                             |
 | **Penalized linear**   | `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear`                                                                                           | Elastic net / ridge / LASSO for linear models; group lasso; cross-validation                                                                                                                                                                                                        |
-| **Survival**           | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`                                      | Breslow and Efron ties; strata, offset, weights, left truncation; robust/sandwich and clustered variance; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow; group lasso and provider-penalized extensions |
+| **Survival**           | `CoxPH`, `FrailtyCoxPH`, `TimeVaryingCoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`  | Breslow and Efron ties; strata, offset, weights, left truncation; robust/sandwich and clustered variance; shared Gamma frailty (EM); time-varying coefficients; validated against R's `survival::coxph()` to 1e⁻⁸–1e⁻¹⁴ relative error; numba-compiled kernels; two-stage SMR/SHR workflow; group lasso and provider-penalized extensions |
 | **Discrete survival**  | `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`                                 | Discrete-time survival with penalized covariates; three-layer provider + baseline hazard + covariate architecture; elastic net and group lasso penalties                                                                                                                            |
 | **Competing risks**    | `CauseSpecificCoxPH`, `FineGrayPH`                                                                                                                   | Cause-specific hazards; Fine-Gray subdistribution hazards                                                                                                                                                                                                                           |
 | **Variable selection** | `CoxPHSelector`                                                                                                                                      | Stepwise forward/backward/bidirectional selection with AIC, BIC, or p-value criteria                                                                                                                                                                                                |
@@ -33,7 +33,8 @@ from pprof_py import (
     LinearFixedEffectModel, LinearRandomEffectModel,
     PenalizedLinear, PenalizedLinearCV, GroupLassoLinear,
     # Survival
-    CoxPH, PenalizedCoxPH, PenalizedCoxPHCV,
+    CoxPH, FrailtyCoxPH, TimeVaryingCoxPH,
+    PenalizedCoxPH, PenalizedCoxPHCV,
     GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH,
     DiscreteSurvival, DiscreteSurvivalCV,
     ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV,
@@ -101,7 +102,7 @@ model.predict_survival_function(X_new, stratum=...)      # exp(-H(t))
 
 ```python
 model = LogisticFixedEffectModel()
-model.fit(y, X, group)
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')   # or the array form: model.fit(X, y, groups)
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -118,7 +119,7 @@ model.coefficients_['alpha']      # BLUPs (random intercepts)
 model.random_effect_sd_           # {group_var: sigma_u}
 model.sigma_                      # residual SD
 model.summary()
-model.test(null='median')
+model.test(null=0)                # null must be numeric for the linear random-effect model
 model.calculate_standardized_measures(stdz='indirect')
 model.plot_funnel()
 model.plot_provider_effects()
@@ -173,13 +174,13 @@ pip install ".[random-effect]"  # nlopt (optional solver for LogisticRandomEffec
 
 The CoxPH implementation is validated against real R 4.3.3 / `survival` 3.5.8 output on shared synthetic datasets covering right-censored, left-truncated, stratified, offset, weighted data, and every combination — under both Breslow and Efron ties. Coefficients, standard errors, log-likelihood, baseline hazard, and martingale residuals all match to 1e⁻⁸–1e⁻¹⁴ relative error. Robust/sandwich and clustered variance estimates are validated against R's `survival::coxph(robust=TRUE, cluster=...)` (with the same tie method on both sides — R defaults to Efron, this package to Breslow). Penalized regression (`PenalizedCoxPH` / `PenalizedCoxPHCV`) is validated against R's `glmnet(family="cox")`.
 
-The `LinearRandomEffectModel` is validated against R's `lme4::lmer` (REML and ML, weighted and unweighted) with beta, sigma, RE SD, log-likelihood, and BLUP errors at 10⁻⁷–10⁻⁹.
+The `LinearRandomEffectModel` is validated against R's `lme4::lmer` (REML and ML, weighted and unweighted) with beta, sigma, RE SD, log-likelihood, and BLUP errors at 10⁻⁷–10⁻⁹ (re-checked on 2026-09-20 against lme4 1.1.35.1: largest difference 2e-7; the comparison script is not in the repository). `LogisticRandomEffectModel` agrees with `glmer(nAGQ=1)` to about 2e-5, and the penalized linear and logistic estimators reproduce glmnet's λ sequence to 5e-14 (details in [`reference/`](pprof_py/docs/source/reference/)).
 
 Production-scale checks (200,000 rows / 3,000 strata / 6 covariates, and 50,000 rows / 57 covariates) confirm agreement to 1e⁻¹⁴–1e⁻¹⁶ relative error — no discrepancy beyond floating-point noise.
 
-A fresh re-run on 2026-09-20 (R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8) reproduced all 55 Phase 1–2 checks and the penalized-regression checks; Fine–Gray regression on **left-truncated** data does not match R (see _Known limitations_). Group lasso, provider-penalized and discrete-time models have no R reference.
+A fresh re-run on 2026-09-20 (R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8) reproduced all 55 Phase 1–2 checks and the penalized-regression checks; Fine–Gray regression on **left-truncated** data does not match R (see *Known limitations*). Group lasso, provider-penalized and discrete-time models have no R reference.
 
-See [`docs/source/survival/`](pprof_py/docs/source/survival/) for the full validation report, R compatibility notes, architecture documentation, and the per-estimator reference pages in [`reference/`](pprof_py/docs/source/survival/reference/).
+See [`docs/source/survival/`](pprof_py/docs/source/survival/) for the full validation report, R compatibility notes, and architecture documentation. Per-estimator reference pages are in [`docs/source/reference/`](pprof_py/docs/source/reference/).
 
 ## Performance
 
@@ -197,30 +198,32 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 
 ## Feature matrix — Survival models
 
-| Feature                                                              | Status                                                       |
-| -------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Right-censored data                                                  | ✅ validated against R                                       |
-| Left truncation / `(start, stop]`                                    | ✅ validated against R                                       |
-| Strata (own baseline hazard, shared coefficients)                    | ✅ validated against R                                       |
-| Offset (including the `basehaz` offset-mean subtlety)                | ✅ validated against R                                       |
-| Case weights (model-based SE)                                        | ✅ validated against R                                       |
-| Breslow ties (default)                                               | ✅ validated against R                                       |
-| Efron ties                                                           | ✅ validated against R                                       |
-| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood           | ✅                                                           |
-| Baseline cumulative hazard / survival                                | ✅                                                           |
-| Martingale residuals (left-truncation-correct, Efron-correct)        | ✅                                                           |
-| Two-stage SMR and SHR patterns                                       | ✅ validated end to end                                      |
-| Prediction (linear, partial hazard, cumulative hazard, survival)     | ✅                                                           |
-| Penalized regression (ridge / LASSO / elastic net + CV)              | ✅ validated against `glmnet`                                |
-| Cause-specific hazards                                               | ✅ validated against R (same ties on both sides)             |
+| Feature                                                              | Status                                            |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| Right-censored data                                                  | ✅ validated against R                            |
+| Left truncation / `(start, stop]`                                    | ✅ validated against R                            |
+| Strata (own baseline hazard, shared coefficients)                    | ✅ validated against R                            |
+| Offset (including the `basehaz` offset-mean subtlety)                | ✅ validated against R                            |
+| Case weights (model-based SE)                                        | ✅ validated against R                            |
+| Breslow ties (default)                                               | ✅ validated against R                            |
+| Efron ties                                                           | ✅ validated against R                            |
+| Coefficients, SE, covariance, Wald z/p, CI, log-likelihood           | ✅                                                |
+| Baseline cumulative hazard / survival                                | ✅                                                |
+| Martingale residuals (left-truncation-correct, Efron-correct)        | ✅                                                |
+| Two-stage SMR and SHR patterns                                       | ✅ validated end to end                           |
+| Prediction (linear, partial hazard, cumulative hazard, survival)     | ✅                                                |
+| Penalized regression (ridge / LASSO / elastic net + CV)              | ✅ validated against `glmnet`                     |
+| Cause-specific hazards                                               | ✅ validated against R (same ties on both sides)  |
 | Fine-Gray subdistribution hazards                                    | ✅ right-censored · ⚠️ left-truncated: weights differ from R |
-| Group lasso / provider-penalized Cox                                 | ✅ implemented; no R reference (internal tests)              |
-| Discrete-time survival (penalized, provider)                         | ✅ implemented; no R reference (internal tests)              |
-| Automated variable selection (forward/backward/both)                 | ✅                                                           |
-| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                           |
-| Exact ties                                                           | ❌ not implemented                                           |
-| Robust/sandwich variance, clustering                                 | ✅ validated against R                                       |
-| Formula interface                                                    | ❌ not implemented — pass a numeric design matrix            |
+| Group lasso / provider-penalized Cox                                 | ✅ implemented; no R reference (internal tests)   |
+| Discrete-time survival (penalized, provider)                         | ✅ implemented; no R reference (internal tests)   |
+| Shared Gamma frailty (EM algorithm)                                  | ✅ implemented (`FrailtyCoxPH`)                   |
+| Time-varying coefficients                                            | ✅ implemented (`TimeVaryingCoxPH`)               |
+| Automated variable selection (forward/backward/both)                 | ✅                                                |
+| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                |
+| Exact ties                                                           | ❌ not implemented                                |
+| Robust/sandwich variance, clustering                                 | ✅ validated against R                            |
+| Formula interface                                                    | ❌ not implemented — pass a numeric design matrix |
 
 ## Known limitations (survival)
 
@@ -230,7 +233,11 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 - `ties="exact"` is not implemented; `GroupLassoCoxPH(method="MM")` is not implemented.
 - The R-comparison tests for variable selection need datasets that no script in the repository generates.
 
-Details and workarounds: [`reference/conventions.md`](pprof_py/docs/source/survival/reference/conventions.md).
+## Known limitations (linear and logistic)
+
+- `LinearRandomEffectModel.test` needs a numeric `null`; `test()` and `calculate_standardized_measures()` support one grouping factor only.
+- `LogisticRandomEffectModel` uses `nlopt` (optional) for its default optimizer and silently falls back to another one without it — set `optimizer_stage1="powell"` explicitly if `nlopt` is not installed.
+- `LogisticFixedEffectModel.fit(n_var=...)` accepts a trials-count column but the response is still validated as 0/1 — use one row per patient.
 
 ## Package layout
 
@@ -239,11 +246,11 @@ pprof_py/
 ├── models/
 │   ├── logistic/      fixed_effect, random_effect, mixed_effect, penalized, group_lasso, provider_penalized
 │   ├── linear/        fixed_effect, random_effect, penalized, group_lasso
-│   └── survival/      coxph, penalized_coxph, group_lasso_coxph, provider_coxph, discrete_survival, provider_discrete_survival, competing_risks
+│   └── survival/      coxph, frailty_coxph, time_varying_coxph, penalized_coxph, group_lasso_coxph, provider_coxph, discrete_survival, provider_discrete_survival, competing_risks
 ├── algorithms/
 │   ├── logistic/      fixed_effect, likelihood, provider_effects
 │   ├── linear/        fixed_effect, likelihood
-│   └── survival/      cox_likelihood, risk_sets, ties, optimization, partial_likelihood, penalty, coordinate_descent, provider_effects, discrete_survival, finegray
+│   └── survival/      cox_likelihood, frailty, time_varying, risk_sets, ties, optimization, partial_likelihood, penalty, coordinate_descent, provider_effects, discrete_survival, finegray
 ├── data/              validation, preparation, survival_data, survival_validation, timedep
 ├── inference/
 │   ├── logistic/      fixed_effect, random_effect, mixed_effect
@@ -281,8 +288,8 @@ ln -s ../r_reference pprof_py/tests/r_reference   # the tests currently look in 
 pytest pprof_py/tests/survival -q
 ```
 
-A fresh run currently ends with 200 passed, 26 failed, 1 skipped; the failures are explained, group by group, in
-[`reference/validation_tools.md`](pprof_py/docs/source/survival/reference/validation_tools.md).
+A fresh run currently ends with 200 passed, 26 failed, 1 skipped; the failures are explained in
+[`R_COMPATIBILITY.md`](pprof_py/docs/source/survival/R_COMPATIBILITY.md).
 
 ## Documentation
 
@@ -296,11 +303,12 @@ make html
 
 The documentation includes:
 
-- **Getting started** — introduction and base model architecture
+- **Getting started** — introduction, model architecture, and changelog
 - **Core concepts** — direct vs. indirect standardization, fixed vs. random effects
 - **Statistical models** — detailed methodology for linear, logistic, and survival models
-- **Survival analysis tutorial** — 11 chapters from survival-data foundations through a complete facility-profiling case study
-- **Survival reference** — `CoxPH`, competing risks and selection, penalized / group-lasso / provider Cox, discrete-time survival, data preparation, inference utilities, validation tools
+- **Survival analysis** — 15 chapters (00–14) from survival-data foundations through group lasso, provider-penalized Cox, and discrete-time survival
+- **Tutorials** — hands-on walkthroughs for linear and logistic fixed-effect and random-effect models
+- **Reference** — quick-reference cheat sheets for all model families (linear, logistic, penalized, survival), plus guides for empirical null calibration, plotting, data preparation, deviance statistics, diagnostics, and inter-unit reliability
 - **Validation** — R compatibility notes, numerical validation report, architecture design
 - **API reference** — autodoc-generated from source docstrings
 

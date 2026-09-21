@@ -366,6 +366,8 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         offset=None,
         sample_weight=None,
         provider=None,
+        *,
+        provider_id=None,
     ) -> "ProviderPenalizedCoxPH":
         """Fit the two-layer penalized Cox model.
 
@@ -376,12 +378,23 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
             Standard survival data (see ``PenalizedCoxPH``).
         provider : array-like, shape ``(n,)``
             Provider identifier per observation.  Must have >= 2
-            distinct values.
+            distinct values.  Alias: ``provider_id``.
+        provider_id : array-like or None
+            Alias for *provider* (cross-family consistency with
+            ``ProviderPenalizedLogistic``).
 
         Returns
         -------
         self
         """
+        # ISSUE-014: accept provider_id as alias for provider.
+        if provider is None and provider_id is not None:
+            provider = provider_id
+        elif provider is not None and provider_id is not None:
+            raise ValueError(
+                "Cannot specify both 'provider' and 'provider_id'; "
+                "they are aliases for the same argument."
+            )
         if provider is None:
             raise ValueError(
                 "provider must be provided (per-observation provider "
@@ -621,9 +634,11 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
     def predict_linear_with_provider(
         self,
         X,
-        provider,
+        provider=None,
         offset=None,
         lambda_value: Optional[float] = None,
+        *,
+        provider_id=None,
     ) -> np.ndarray:
         """Linear predictor including provider effects.
 
@@ -634,6 +649,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         X : array-like, shape ``(n, p)``
         provider : array-like, shape ``(n,)``
             Provider labels (must be among those seen during ``fit``).
+            Alias: ``provider_id``.
         offset : array-like or None
         lambda_value : float or None
 
@@ -642,6 +658,15 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         ndarray, shape ``(n,)``
         """
         self._check_is_fitted()
+        # ISSUE-014: accept provider_id as alias for provider.
+        if provider is None and provider_id is not None:
+            provider = provider_id
+        elif provider is not None and provider_id is not None:
+            raise ValueError(
+                "Cannot specify both 'provider' and 'provider_id'."
+            )
+        if provider is None:
+            raise ValueError("provider (or provider_id=) is required.")
         coef = self._resolve_coef(lambda_value)
         gamma = self._resolve_gamma(lambda_value)
         X_arr, _ = validate_X(X)
@@ -677,6 +702,8 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         self,
         provider=None,
         lambda_value: Optional[float] = None,
+        *,
+        provider_id=None,
     ) -> np.ndarray:
         """Estimated provider effect γ_i.
 
@@ -684,7 +711,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         ----------
         provider : array-like or None
             Provider labels to query.  ``None`` returns all providers
-            in ``provider_labels_`` order.
+            in ``provider_labels_`` order.  Alias: ``provider_id``.
         lambda_value : float or None
 
         Returns
@@ -692,6 +719,13 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         ndarray, shape ``(n_query,)``
         """
         self._check_is_fitted()
+        # ISSUE-014: accept provider_id as alias for provider.
+        if provider is None and provider_id is not None:
+            provider = provider_id
+        elif provider is not None and provider_id is not None:
+            raise ValueError(
+                "Cannot specify both 'provider' and 'provider_id'."
+            )
         gamma = self._resolve_gamma(lambda_value)
         if provider is None:
             return gamma

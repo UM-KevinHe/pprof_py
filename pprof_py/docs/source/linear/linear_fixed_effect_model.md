@@ -1,6 +1,6 @@
 (linear_fixed_effect_model_stats)=
+
 # Linear Fixed Effect Modeling
-   
 
 ## 1. Introduction
 
@@ -10,12 +10,12 @@ Linear regression models are frequently used for risk adjustment when the outcom
 
 Fitting FE models, especially linear ones, can be computationally streamlined compared to their logistic counterparts, but still requires careful implementation. This paper details the statistical methodology implemented in our software for fitting linear fixed effect models. We focus on:
 
-  * The linear fixed effects model formulation.
-  * Estimation via Ordinary Least Squares (OLS) using within-group transformations.
-  * Calculation of standardized measures (Indirect and Direct Standardized Differences) for performance comparison.
-  * Hypothesis testing procedures (t-tests) for identifying providers with performance significantly different from a benchmark.
-  * Construction of corresponding confidence intervals for provider effects and standardized measures.
-  * Visualization tools for interpreting results.
+- The linear fixed effects model formulation.
+- Estimation via Ordinary Least Squares (OLS) using within-group transformations.
+- Calculation of standardized measures (Indirect and Direct Standardized Differences) for performance comparison.
+- Hypothesis testing procedures (t-tests) for identifying providers with performance significantly different from a benchmark.
+- Construction of corresponding confidence intervals for provider effects and standardized measures.
+- Visualization tools for interpreting results.
 
 ## 2. Methods
 
@@ -29,9 +29,9 @@ $$
 
 where:
 
-* $\gamma_i$ is the fixed effect (intercept) for provider $i$. It represents the expected outcome for provider $i$ when $\mathbf{X}_{ij} = \mathbf{0}$.
-* $\boldsymbol\beta$ is the $p \times 1$ vector of regression coefficients for the covariates. $\beta_k$ represents the change in the expected outcome for a one-unit increase in the $k$-th covariate, holding the provider fixed.
-* $\epsilon_{ij}$ is the random error term for subject $j$ in provider $i$, typically assumed to be independent and identically distributed with $E[\epsilon_{ij}] = 0$ and $\text{Var}(\epsilon_{ij}) = \sigma^2$.
+- $\gamma_i$ is the fixed effect (intercept) for provider $i$. It represents the expected outcome for provider $i$ when $\mathbf{X}_{ij} = \mathbf{0}$.
+- $\boldsymbol\beta$ is the $p \times 1$ vector of regression coefficients for the covariates. $\beta_k$ represents the change in the expected outcome for a one-unit increase in the $k$-th covariate, holding the provider fixed.
+- $\epsilon_{ij}$ is the random error term for subject $j$ in provider $i$, typically assumed to be independent and identically distributed with $E[\epsilon_{ij}] = 0$ and $\text{Var}(\epsilon_{ij}) = \sigma^2$.
 
 The model aims to estimate $\boldsymbol{\gamma} = (\gamma_1, \dots, \gamma_m)^\top$, $\boldsymbol\beta$, and $\sigma^2$.
 
@@ -108,7 +108,6 @@ The implementation (`LinearFixedEffectModel.__init__`) provides two options via 
 1. **`complete`:** Uses the full formula above, $\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i} + \bar{\mathbf{X}}_i^\top \widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE}) \bar{\mathbf{X}}_i$, including the term involving $\widehat{\text{Var}}(\hat{\boldsymbol\beta}_{FE})$.
 2. **`simplified`:** Uses only the first term, $\text{Var}(\hat{\gamma}_i) = \frac{\hat{\sigma}^2}{n_i}$, ignoring the uncertainty in $\hat{\boldsymbol\beta}_{FE}$. This may be appropriate if $p$ is small relative to $N$ or if primary interest is in ranking rather than precise inference.
 
-
 ### 2.3. Standardized Measures for Performance Comparison
 
 For linear models, standardized measures typically represent differences rather than ratios. They quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix.
@@ -153,7 +152,7 @@ where $\bar{\mathbf{X}}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} \mathbf{X}_{ij}$ is th
 
 #### 2.3.2. Direct Standardization
 
-Direct standardization compares the expected total outcome if the *entire population* experienced provider $k$'s effect ($\hat{\gamma}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\gamma_0$).
+Direct standardization compares the expected total outcome if the _entire population_ experienced provider $k$'s effect ($\hat{\gamma}_k$) to the expected total outcome if the entire population experienced the baseline effect ($\gamma_0$).
 
 Expected Total Outcome under Provider $k$'s Effect ($E^{(k)}$)
 
@@ -242,23 +241,21 @@ The `LinearFixedEffectModel` class in `pprof_py` implements these methods.
 
 ```python
 
-# Assuming data_df is a pandas DataFrame with columns:
-# 'ContinuousY', 'Covariate1', 'Covariate2', 'Covariate3', 'ProviderID'
-# And n_total_samples, linear_pred_true are defined elsewhere for example data generation.
 import numpy as np
 import pandas as pd
 from pprof_py import LinearFixedEffectModel
 
-# Example data generation (conceptual)
-# n_total_samples = 1000
-# data_df = pd.DataFrame({
-#     'Covariate1': np.random.rand(n_total_samples),
-#     'Covariate2': np.random.rand(n_total_samples),
-#     'Covariate3': np.random.rand(n_total_samples),
-#     'ProviderID': np.random.choice(range(10), n_total_samples)
-# })
-# linear_pred_true = data_df[['Covariate1', 'Covariate2', 'Covariate3']].sum(axis=1) # Example
-# data_df['ContinuousY'] = linear_pred_true + np.random.normal(0, 1.0, n_total_samples)
+# Example data (row order does not matter).
+rng = np.random.default_rng(42)
+n_total_samples = 1000
+data_df = pd.DataFrame({
+    'Covariate1': rng.random(n_total_samples),
+    'Covariate2': rng.random(n_total_samples),
+    'Covariate3': rng.random(n_total_samples),
+    'ProviderID': rng.choice(range(10), n_total_samples),
+})
+linear_pred_true = data_df[['Covariate1', 'Covariate2', 'Covariate3']].sum(axis=1)
+data_df['ContinuousY'] = linear_pred_true + rng.normal(0, 1.0, n_total_samples)
 
 # Initialize and fit the model
 lin_model = LinearFixedEffectModel(gamma_var_option='complete')
@@ -334,6 +331,7 @@ print(sm_results_lin['indirect'].head()) # Access the DataFrame for 'indirect' r
 ```
 
 ### 3.5. Hypothesis Testing (`test`)
+
 Test provider effects ($\gamma_i$) using t-tests.
 
 ```python
@@ -350,6 +348,7 @@ print(test_results_lin.head())
 ```
 
 ### 3.6. Confidence Interval Calculation (`calculate_confidence_intervals`)
+
 Compute CIs for $\gamma_i$ or standardized differences.
 
 ```python
@@ -378,6 +377,7 @@ print(isd_cis_lin_results['indirect_ci'].head())
 ```
 
 ### 3.7. Visualization
+
 Use plotting methods from the `LinearFixedEffectModel` instance.
 
 ```python
@@ -423,10 +423,10 @@ Standardized differences (both indirect and direct) simplify to $\hat{\gamma}_i 
 
 The linear fixed effects model, as implemented in the `LinearFixedEffectModel`` class, offers a valuable tool for provider profiling with quantitative outcomes. It provides robust risk adjustment through provider-specific intercepts and facilitates performance comparisons using standardized differences. The implementation includes efficient estimation, standard inference procedures based on t-tests, and methods for calculating confidence intervals. When combined with appropriate visualization tools, it enables researchers and analysts to effectively evaluate and compare provider performance while accounting for patient case mix.
 
-References
-----------
+## References
+
 ```{bibliography} ../references.bib
-:list: enumerate
+:list: enumerated
 :filter: docname in docnames
 :keyprefix: linfe-
 ```

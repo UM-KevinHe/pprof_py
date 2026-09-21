@@ -517,6 +517,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
         select: str = "lambda_min",
+        use_1se: bool = None,
     ):
         """Cross-validated group lasso Cox."""
         self.groups = groups
@@ -541,7 +542,12 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        self.select = select
+        # Unify select= / use_1se= (ISSUE-011).
+        if use_1se is not None:
+            self.select = "lambda_1se" if use_1se else "lambda_min"
+        else:
+            self.select = select
+        self.use_1se = (self.select == "lambda_1se")
 
     def _base_kwargs(self) -> dict:
         """Constructor kwargs forwarded to ``GroupLassoCoxPH``."""

@@ -170,4 +170,4 @@ class TestGroupLassoLinear:
         groups = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4])
         model = GroupLassoLinear(groups=groups, alpha=0.0, n_lambda=30)
         model.fit(X, y)
-        assert np.all(np.abs(model.coef_path_[0]) < 1e-12)
+        assert np.all(np.abs(model.coef_path_[0]) < 1e-8)

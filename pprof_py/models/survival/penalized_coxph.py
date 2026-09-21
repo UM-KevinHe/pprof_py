@@ -49,12 +49,9 @@ from ...algorithms.survival.ties import TieMethod
 from ...statistics.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio, bootstrap_cv_se
 from ...utils.numerical import safe_exp
 from .coxph import CoxPH, NotFittedError
+from ...exceptions import DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
-
-
-class DegenerateFeatureWarning(UserWarning):
-    """Warning emitted when a predictor has numerically zero weighted variance."""
 
 
 def _validate_common_parameters(
@@ -1037,6 +1034,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
         select: str = "lambda_min",
+        use_1se: bool = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
@@ -1056,7 +1054,13 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        self.select = select
+        # Unify select= / use_1se= (ISSUE-011).  use_1se takes
+        # precedence when both are supplied.
+        if use_1se is not None:
+            self.select = "lambda_1se" if use_1se else "lambda_min"
+        else:
+            self.select = select
+        self.use_1se = (self.select == "lambda_1se")
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter

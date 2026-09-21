@@ -31,14 +31,9 @@ from ...algorithms.logistic.likelihood import (
     logistic_deviance,
     logistic_null_deviance,
 )
-from ...data.validation import validate_and_convert_inputs
-from ...exceptions import NotFittedError
+from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
-
-
-class DegenerateFeatureWarning(UserWarning):
-    """Warning emitted when a predictor has zero weighted variance."""
 
 
 def _resolve_lambda_path(
@@ -141,9 +136,39 @@ class PenalizedLogistic(BaseEstimator):
     lambda_path_ : ndarray, shape (n_lambda,)
         Lambda values used.
     lambda_max_ : float
+        Computed lambda_max.
+    lambda_min_ratio_ : float
+        Lambda min ratio used.
+    deviance_path_ : ndarray, shape (n_lambda,)
+        Deviance (-2 * log-likelihood) at each lambda.
     deviance_ratio_path_ : ndarray, shape (n_lambda,)
+        Fraction of null deviance explained.
+    null_deviance_ : float
+        Null model deviance.
+    log_likelihood_path_ : ndarray, shape (n_lambda,)
+        Log-likelihood at each lambda.
+    converged_path_ : ndarray of bool, shape (n_lambda,)
+        Whether the outer loop converged at each lambda.
+    n_iter_path_ : ndarray of int, shape (n_lambda,)
+        Number of outer iterations used at each lambda.
+    n_nonzero_path_ : ndarray of int, shape (n_lambda,)
+        Number of nonzero coefficients at each lambda.
     n_obs_ : int
+        Number of observations.
     n_features_in_ : int
+        Number of features.
+    feature_names_in_ : ndarray of str
+        Feature names.
+    column_scale_ : ndarray, shape (p,)
+        Column standard deviations used for standardization.
+    penalty_factor_ : ndarray, shape (p,)
+        Penalty factors used.
+    coef_ : ndarray, shape (p,)
+        Coefficients (only set when a single lambda is fitted).
+    intercept_ : float
+        Intercept (only set when a single lambda is fitted).
+    lambda_ : float
+        Lambda value (only set when a single lambda is fitted).
     """
 
     def __init__(
@@ -510,13 +535,33 @@ class PenalizedLogisticCV(BaseEstimator):
     Attributes (after fit)
     ----------------------
     lambda_min_ : float
+        Lambda that minimizes CV deviance.
     lambda_1se_ : float
+        Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda.1se if use_1se, else lambda.min).
+        Selected lambda (lambda_1se_ if use_1se, else lambda_min_).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
+        Mean cross-validated deviance at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)
+        Standard deviation of CV deviance across folds.
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
+        Standard error of CV deviance.
+    lambda_min_idx_ : int
+        Index of lambda_min_ in lambda_path_.
+    lambda_1se_idx_ : int
+        Index of lambda_1se_ in lambda_path_.
     model_ : PenalizedLogistic
-        Full-data model fitted at the selected lambda.
+        Full-data model fitted at the selected lambda path.
+    coef_ : ndarray, shape (p,)
+        Coefficients at the selected lambda.
+    intercept_ : float
+        Intercept at the selected lambda.
+    coef_path_ : ndarray, shape (n_lambda, p)
+        Full coefficient path from the full-data model.
+    intercept_path_ : ndarray, shape (n_lambda,)
+        Full intercept path from the full-data model.
+    lambda_path_ : ndarray, shape (n_lambda,)
+        Lambda values used.
     """
 
     def __init__(
@@ -536,6 +581,7 @@ class PenalizedLogisticCV(BaseEstimator):
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
         inner_tol: float = 1e-10,
+        use_active_set: bool = False,
     ):
         """Cross-validated penalized logistic (R: ``cv.glmnet(family='binomial')``)."""
         self.alpha = alpha
@@ -553,6 +599,7 @@ class PenalizedLogisticCV(BaseEstimator):
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
+        self.use_active_set = use_active_set
 
     def fit(
         self,
@@ -575,6 +622,7 @@ class PenalizedLogisticCV(BaseEstimator):
             outer_tol=self.outer_tol,
             max_inner_iter=self.max_inner_iter,
             inner_tol=self.inner_tol,
+            use_active_set=self.use_active_set,
         )
         full_model.fit(X, y, sample_weight=sample_weight, offset=offset)
         lambda_path = full_model.lambda_path_
@@ -613,6 +661,7 @@ class PenalizedLogisticCV(BaseEstimator):
                 outer_tol=self.outer_tol,
                 max_inner_iter=self.max_inner_iter,
                 inner_tol=self.inner_tol,
+                use_active_set=self.use_active_set,
             )
             fold_model.fit(
                 X_arr[train_mask], y_arr[train_mask],
@@ -664,6 +713,13 @@ class PenalizedLogisticCV(BaseEstimator):
 
         return self
 
+    def _check_is_fitted(self):
+        if not hasattr(self, "model_"):
+            raise NotFittedError(
+                f"This {type(self).__name__} is not fitted yet. "
+                f"Call 'fit' before using this estimator."
+            )
+
     def predict_proba(
         self,
         X: Union[np.ndarray, pd.DataFrame],
@@ -682,6 +738,7 @@ class PenalizedLogisticCV(BaseEstimator):
         ndarray, shape (n_samples,)
             Predicted probabilities in [0, 1].
         """
+        self._check_is_fitted()
         if lambda_value is None:
             lambda_value = self.lambda_
         return self.model_.predict_proba(X, lambda_value)
@@ -706,4 +763,5 @@ class PenalizedLogisticCV(BaseEstimator):
         -------
         ndarray of int, shape (n_samples,)
         """
+        self._check_is_fitted()
         return (self.predict_proba(X, lambda_value) >= threshold).astype(int)

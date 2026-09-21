@@ -34,6 +34,7 @@ Requires `numpy`, `pandas`, `scipy`, `scikit-learn`, and `numba`
 
 introduction
 Model Architecture <model_architecture>
+changelog
 ```
 
 ```{toctree}
@@ -50,6 +51,8 @@ fixed_vs_random_effects
 
 linear/linear_fixed_effect_model
 linear/linear_random_effect_model
+linear/penalized_linear
+linear/group_lasso_linear
 ```
 
 ```{toctree}
@@ -58,6 +61,10 @@ linear/linear_random_effect_model
 
 logistic/logistic_fixed_effect_model
 logistic/logistic_random_effect_model
+logistic/penalized_logistic
+logistic/group_lasso_logistic
+logistic/provider_penalized_logistic
+logistic/logistic_mixed_effect_model
 ```
 
 ```{toctree}
@@ -75,6 +82,10 @@ survival/07_competing_risks
 survival/08_penalized_regression
 survival/09_variable_selection
 survival/10_complete_case_study
+survival/11_group_lasso_cox
+survival/12_provider_penalized_cox
+survival/13_discrete_survival
+survival/14_provider_discrete_survival
 ```
 
 ```{toctree}
@@ -84,6 +95,27 @@ survival/10_complete_case_study
 survival/R_COMPATIBILITY
 survival/VALIDATION_REPORT
 survival/ARCHITECTURE
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Reference
+
+reference/linear_models
+reference/logistic_models
+reference/penalized_models
+reference/coxph
+reference/penalized
+reference/competing_risks_and_selection
+reference/inference_utilities
+reference/measures_tests_plots
+reference/data_and_iur
+reference/empirical_null
+reference/plotting_guide
+reference/data_preparation
+reference/deviance_statistics
+reference/diagnostics_guide
+reference/inter_unit_reliability
 ```
 
 ```{toctree}

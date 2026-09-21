@@ -15,10 +15,10 @@ Resampling inference (He et al. 2013):
 - assign_flags(): Directional flags from p-values
 
 Usage:
-    from pprof_py.empirical_null import huber_location_scale, estimate_empirical_null
-    from pprof_py.empirical_null import resample_pvalue, poibin_exact_pvalue
-    from pprof_py.empirical_null import pvalues_to_zscores
-    from pprof_py.empirical_null import calibrate_empirical_null, assign_flags
+    from pprof_py.inference.empirical_null import huber_location_scale, estimate_empirical_null
+    from pprof_py.inference.empirical_null import resample_pvalue, poibin_exact_pvalue
+    from pprof_py.inference.empirical_null import pvalues_to_zscores
+    from pprof_py.inference.empirical_null import calibrate_empirical_null, assign_flags
 """
 
 import numpy as np

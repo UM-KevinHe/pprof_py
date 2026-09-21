@@ -405,28 +405,47 @@ class DiscreteSurvival(BaseEstimator):
     def predict(
         self,
         X,
+        time=None,
         lambda_val=None,
         which: Optional[int] = None,
         type: str = 'link',
     ):
-        """Predict linear predictor or survival probability.
+        """Predict linear predictor, hazard, or survival.
 
         Parameters
         ----------
         X : DataFrame or ndarray
+        time : array-like or None
+            Required when *type* is ``'hazard'`` or ``'survival'``.
+            Per-subject follow-up time (same scale as training).
         lambda_val : float or None
             Query at a specific lambda.
         which : int or None
             Index into ``lambda_path_``.
         type : str
-            ``'link'`` (linear predictor), ``'hazard'`` (predicted
-            hazard at last timepoint), or ``'survival'``.
+            ``'link'`` (linear predictor X @ beta), ``'hazard'``
+            (person-period hazard, requires *time*), or
+            ``'survival'`` (cumulative survival, requires *time*).
 
         Returns
         -------
         ndarray
         """
         self._check_is_fitted()
+        if type in ('hazard', 'survival') and time is None:
+            raise ValueError(
+                f"type={type!r} requires a 'time' array; pass "
+                f"time= or use predict_hazard()/predict_survival()."
+            )
+        if type == 'hazard':
+            return self.predict_hazard(
+                X, time, lambda_val=lambda_val, which=which,
+            )
+        if type == 'survival':
+            return self.predict_survival(
+                X, time, lambda_val=lambda_val, which=which,
+            )
+
         if isinstance(X, pd.DataFrame):
             X_np = X.values.astype(np.float64)
         else:
@@ -443,9 +462,9 @@ class DiscreteSurvival(BaseEstimator):
         if type == 'link':
             return eta
         else:
-            raise NotImplementedError(
-                f"type={type!r} requires time_int; use predict_hazard() or "
-                f"predict_survival() with time information."
+            raise ValueError(
+                f"type={type!r} not recognised; expected "
+                f"'link', 'hazard', or 'survival'."
             )
 
     def predict_hazard(
@@ -455,7 +474,27 @@ class DiscreteSurvival(BaseEstimator):
         lambda_val=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
-        """Predicted hazard probabilities in person-period format."""
+        """Predicted hazard probabilities in person-period (long) format.
+
+        Returns a 1-D array whose length equals ``sum(time_int)`` after
+        discretizing each subject's *time* into integer codes via
+        ``timepoint_map_``.  This is distinct from
+        ``ProviderPenalizedDiscreteSurvival.predict_hazard()``, which
+        returns a 2-D ``(n, K)`` wide-format array instead (see
+        ISSUE-023 in ``CODE_ISSUES.md``).
+
+        Parameters
+        ----------
+        X : DataFrame or ndarray, shape ``(n, p)``
+        time : array-like, shape ``(n,)``
+            Follow-up time for each subject.
+        lambda_val : float or None
+        which : int or None
+
+        Returns
+        -------
+        ndarray, shape ``(sum(time_int),)``
+        """
         self._check_is_fitted()
         if isinstance(X, pd.DataFrame):
             X_np = X.values.astype(np.float64)
@@ -463,7 +502,12 @@ class DiscreteSurvival(BaseEstimator):
             X_np = np.asarray(X, dtype=np.float64)
         time_np = np.asarray(time, dtype=np.float64)
 
-        time_int, _, _ = discretize_times(time_np, np.ones_like(time_np))
+        # ISSUE-019 fix: look up query times against the fitted
+        # timepoint mapping rather than re-discretizing locally.
+        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
+        # Clip to valid range [1, K].
+        K = len(self.timepoint_map_)
+        time_int = np.clip(time_int, 1, K)
 
         if lambda_val is not None:
             coef = self.coef_at(lambda_val)
@@ -487,7 +531,12 @@ class DiscreteSurvival(BaseEstimator):
         lambda_val=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
-        """Predicted survival probabilities S(T_i | Z_i)."""
+        """Predicted survival probabilities S(T_i | Z_i).
+
+        Returns a 1-D person-period array (same convention as
+        ``predict_hazard``; see ISSUE-023 for the shape difference
+        vs. the provider-aware class).
+        """
         self._check_is_fitted()
         if isinstance(X, pd.DataFrame):
             X_np = X.values.astype(np.float64)
@@ -495,7 +544,10 @@ class DiscreteSurvival(BaseEstimator):
             X_np = np.asarray(X, dtype=np.float64)
         time_np = np.asarray(time, dtype=np.float64)
 
-        time_int, _, _ = discretize_times(time_np, np.ones_like(time_np))
+        # ISSUE-019 fix: same as predict_hazard — use fitted mapping.
+        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
+        K = len(self.timepoint_map_)
+        time_int = np.clip(time_int, 1, K)
 
         if lambda_val is not None:
             coef = self.coef_at(lambda_val)
@@ -540,6 +592,8 @@ class DiscreteSurvivalCV(BaseEstimator):
     se_rule : str, default '1se'
         Lambda selection rule: ``'min'`` (minimum CV error) or
         ``'1se'`` (largest lambda within 1 SE of minimum).
+        Alias: ``use_1se`` (``True`` → ``'1se'``, ``False`` →
+        ``'min'``), accepted for cross-family consistency.
     random_state : int or None, default None
         Random seed for fold assignment.
     max_fold_retries : int, default 100
@@ -569,11 +623,16 @@ class DiscreteSurvivalCV(BaseEstimator):
         se_rule: str = '1se',
         random_state=None,
         max_fold_retries: int = 100,
+        use_1se=None,
         **kwargs,
     ):
         """Cross-validated discrete-time survival."""
         self.n_folds = n_folds
-        self.se_rule = se_rule
+        # ISSUE-021: accept use_1se (bool) as alias for se_rule (str).
+        if use_1se is not None:
+            self.se_rule = '1se' if use_1se else 'min'
+        else:
+            self.se_rule = se_rule
         self.random_state = random_state
         self.max_fold_retries = max_fold_retries
         self._model_kwargs = kwargs
@@ -620,6 +679,8 @@ class DiscreteSurvivalCV(BaseEstimator):
         full_model = DiscreteSurvival(**self._model_kwargs)
         full_model.fit(X, time, event, sample_weight=sample_weight)
         self.best_model_ = full_model
+        # ISSUE-024: alias for consistency with every other CV class.
+        self.model_ = full_model
         lambda_seq = full_model.lambda_path_
         n_lambda = len(lambda_seq)
 
@@ -658,7 +719,12 @@ class DiscreteSurvivalCV(BaseEstimator):
 
             # Predict on test: for each lambda, compute loss
             n_fold_lam = len(fold_model.lambda_path_)
-            time_int_test, _, _ = discretize_times(time_test, event_test)
+            # ISSUE-019 (CV path): use fold_model's fitted mapping.
+            time_int_test = np.searchsorted(
+                fold_model.timepoint_map_, time_test,
+            ) + 1
+            K_fold = len(fold_model.timepoint_map_)
+            time_int_test = np.clip(time_int_test, 1, K_fold)
             pp = person_period_expand(time_int_test, event_test)
             y_pp = pp['y']
             N_pp = len(y_pp)

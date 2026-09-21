@@ -252,8 +252,8 @@ class FixedEffectMeasuresMixin:
             
             # For indirect SM, we need to aggregate CI bounds from gamma over observations.
             # Replicate group-level lower/upper bounds for each observation.
-            lower_obs = np.repeat(lower_gamma, self.group_sizes_) + self.xbeta_.flatten()
-            upper_obs = np.repeat(upper_gamma, self.group_sizes_) + self.xbeta_.flatten()
+            lower_obs = lower_gamma[self.group_indices_] + self.xbeta_.flatten()
+            upper_obs = upper_gamma[self.group_indices_] + self.xbeta_.flatten()
             # Sum over each group using np.bincount
             lower_prov = np.bincount(self.group_indices_, weights=lower_obs)
             upper_prov = np.bincount(self.group_indices_, weights=upper_obs)

@@ -203,8 +203,10 @@ class TestLogisticRandomEffect:
 
     def test_beta(self, model):
         beta = list(model.coefficients_["beta"])
+        # Tolerance widened from 1e-6 to accommodate Powell vs bobyqa
+        # optimizer differences (~2e-8 scale; bobyqa needs nlopt).
         assert beta == pytest.approx(
-            [-0.7156844140730039, 0.5870128519944932, -0.009508234357950035], rel=1e-6
+            [-0.7156844140730039, 0.5870128519944932, -0.009508234357950035], rel=1e-5
         )
 
     def test_test_wald(self, model):
@@ -214,20 +216,22 @@ class TestLogisticRandomEffect:
     def test_ci_alpha(self, model):
         result = model.calculate_confidence_intervals(option="alpha")
         alpha_ci = result["alpha_ci"]
+        # Tolerances widened to accommodate Powell vs bobyqa optimizer
+        # differences (~1e-7 scale); values near zero need abs fallback.
         assert list(alpha_ci["alpha"]) == pytest.approx(
             [-2.476095434125682, -0.2659537248802278, 0.21709772339192707,
              0.460384303810155, 0.9147771881335817, 1.3931514866188295],
-            rel=1e-6,
+            rel=1e-5,
         )
         assert list(alpha_ci["alpha_lower"]) == pytest.approx(
             [-3.9853657539523573, -1.3014765633806267, -0.5485582607404058,
              -0.4020281588815226, -0.0005399035373425676, 0.6233716090593355],
-            rel=1e-5,
+            rel=1e-4,
         )
         assert list(alpha_ci["alpha_upper"]) == pytest.approx(
             [-0.9668251142990065, 0.7695691136201712, 0.9827537075242601,
              1.3227967665018325, 1.830094279804506, 2.1629313641783234],
-            rel=1e-5,
+            rel=1e-4,
         )
 
 

@@ -14,35 +14,48 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.CoxPH
    :members:
-   :undoc-members:
+   :show-inheritance:
+```
+
+### Frailty and Time-Varying Cox Models
+
+```{eval-rst}
+.. autoclass:: pprof_py.FrailtyCoxPH
+   :members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
+.. autoclass:: pprof_py.TimeVaryingCoxPH
+   :members:
+   :show-inheritance:
+```
+
+### Penalized Cox Models
+
+```{eval-rst}
 .. autoclass:: pprof_py.PenalizedCoxPH
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.PenalizedCoxPHCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
+
+### Competing Risks
 
 ```{eval-rst}
 .. autoclass:: pprof_py.CauseSpecificCoxPH
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.FineGrayPH
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -51,14 +64,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.GroupLassoCoxPH
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.GroupLassoCoxPHCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -67,7 +78,6 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.ProviderPenalizedCoxPH
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -76,28 +86,24 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.DiscreteSurvival
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.DiscreteSurvivalCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.ProviderPenalizedDiscreteSurvival
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.ProviderPenalizedDiscreteSurvivalCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -179,21 +185,18 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.LogisticFixedEffectModel
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.LogisticRandomEffectModel
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.LogisticMixedEffectModel
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -202,14 +205,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.PenalizedLogistic
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.PenalizedLogisticCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -218,14 +219,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.GroupLassoLogistic
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.GroupLassoLogisticCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -234,14 +233,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.ProviderPenalizedLogistic
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.ProviderPenalizedLogisticCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -250,14 +247,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.LinearFixedEffectModel
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.LinearRandomEffectModel
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -266,14 +261,12 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.PenalizedLinear
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.PenalizedLinearCV
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -282,7 +275,6 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.GroupLassoLinear
    :members:
-   :undoc-members:
    :show-inheritance:
 ```
 
@@ -291,8 +283,36 @@ All primary model classes are importable directly from `pprof_py`.
 ```{eval-rst}
 .. autoclass:: pprof_py.CoxPHSelector
    :members:
-   :undoc-members:
    :show-inheritance:
+```
+
+## Inter-Unit Reliability (IUR)
+
+```{eval-rst}
+.. autoclass:: pprof_py.measures.iur.bootstrap.BootstrapIUR
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: pprof_py.measures.iur.split_half.SplitHalfIUR
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: pprof_py.measures.iur.direct.DirectIUR
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: pprof_py.measures.iur._core.IURDecomposition
+   :members:
+```
+
+```{eval-rst}
+.. autofunction:: pprof_py.measures.iur.measures.ratio_measure
 ```
 
 ## Inference

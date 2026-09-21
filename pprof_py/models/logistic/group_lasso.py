@@ -276,8 +276,11 @@ class GroupLassoLogistic(BaseEstimator):
         )
         self.converged_path_ = np.array([r.converged for r in results])
         self.n_iter_path_ = np.array([r.n_outer_iter for r in results])
+        # Snap solver noise to exact zero before counting nonzeros
+        # (ISSUE-013: FP noise ~1e-10 at lambda_max from IRLS/intercept).
+        _snap = max(getattr(self, 'inner_tol', 1e-10) * 100, 1e-8)
         self.n_nonzero_path_ = np.array(
-            [int(np.sum(row != 0.0)) for row in coef_path]
+            [int(np.sum(np.abs(row) > _snap)) for row in coef_path]
         )
         self.active_groups_path_ = np.array(
             [r.active_groups for r in results]

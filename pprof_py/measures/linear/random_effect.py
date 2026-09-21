@@ -265,8 +265,8 @@ class RandomEffectMeasuresMixin:
             sm_results = self.calculate_standardized_measures(stdz=stdz, null=null)
             
             if "indirect" in stdz:
-                lower_obs = np.repeat(lower_alpha, n_prov) + self.xbeta_.flatten()
-                upper_obs = np.repeat(upper_alpha, n_prov) + self.xbeta_.flatten()
+                lower_obs = lower_alpha[self.group_indices_] + self.xbeta_.flatten()
+                upper_obs = upper_alpha[self.group_indices_] + self.xbeta_.flatten()
 
                 lower_prov = np.bincount(self.group_indices_, weights=lower_obs)
                 upper_prov = np.bincount(self.group_indices_, weights=upper_obs)
@@ -323,7 +323,7 @@ class RandomEffectMeasuresMixin:
         self,
         providers: Optional[Union[list, np.ndarray]] = None,
         level: float = 0.95,
-        null: float = 0,
+        null: Union[str, float] = 0,
         alternative: str = "two_sided"
     ) -> pd.DataFrame:
         """Conduct hypothesis tests on provider (random) effects to identify outliers.
@@ -335,8 +335,10 @@ class RandomEffectMeasuresMixin:
             If None, tests are conducted for all provider IDs.
         level : float, default=0.95
             Confidence level for the hypothesis tests.
-        null : float, default=0
-            Null hypothesis value for provider effects.
+        null : Union[str, float], default=0
+            Null hypothesis value for provider effects.  Can be a number,
+            ``"median"`` (the median of the BLUPs) or ``"mean"`` (the
+            group-size-weighted mean of the BLUPs).
         alternative : str, default="two_sided"
             Alternative hypothesis: Must be one of "two_sided", "greater", or "less".
 
@@ -358,6 +360,18 @@ class RandomEffectMeasuresMixin:
         sigma_sq = self.sigma_ ** 2
 
         n_prov = self.group_sizes_  # array with sample sizes per provider
+
+        # Resolve the null hypothesis value
+        if isinstance(null, str):
+            if null == "median":
+                null = float(np.median(random_effects))
+            elif null == "mean":
+                null = float(np.average(random_effects, weights=n_prov))
+            else:
+                raise ValueError(
+                    f"null must be 'median', 'mean', or a number, got {null!r}"
+                )
+        null = float(null)
 
         # Calculate the shrinkage (or reliability) factor for each provider
         shrinkage_factor = var_alpha / (var_alpha + sigma_sq / n_prov)

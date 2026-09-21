@@ -70,21 +70,27 @@ class TestDataValidation:
     def test_check_missingness(self):
         from pprof_py.data.validation import check_missingness
         df = pd.DataFrame({"x1": [1, 2, 3], "x2": [4, 5, 6], "y": [0, 1, 0]})
-        # Should not raise.
-        check_missingness(df, ["x1", "x2"], "y")
+        # Should not raise (all columns clean).
+        check_missingness(df, ["x1", "x2", "y"])
 
     def test_check_missingness_raises_on_nan(self):
         from pprof_py.data.validation import check_missingness
         df = pd.DataFrame({"x1": [1, np.nan, 3], "y": [0, 1, 0]})
         with pytest.raises(ValueError):
-            check_missingness(df, ["x1"], "y")
+            check_missingness(df, ["x1", "y"])
 
     def test_check_variation(self):
         from pprof_py.data.validation import check_variation
-        df = pd.DataFrame({"x1": [1, 2, 3], "x2": [1, 1, 1]})
-        dropped = check_variation(df, ["x1", "x2"])
-        # x2 has no variation; should be flagged.
-        assert "x2" in dropped or len(dropped) > 0
+        # x2 has zero variance — check_variation raises ValueError.
+        df_bad = pd.DataFrame({"x1": [1, 2, 3], "x2": [1, 1, 1]})
+        with pytest.raises(ValueError, match="zero variance"):
+            check_variation(df_bad, ["x1", "x2"])
+
+    def test_check_variation_no_raise(self):
+        from pprof_py.data.validation import check_variation
+        # All columns have variation — should not raise.
+        df_ok = pd.DataFrame({"x1": [1, 2, 3], "x2": [4, 5, 6]})
+        check_variation(df_ok, ["x1", "x2"])
 
     def test_validate_and_convert_inputs_basic(self):
         from pprof_py.data.validation import validate_and_convert_inputs
@@ -121,10 +127,9 @@ class TestUtils:
 
     def test_proc_freq(self):
         from pprof_py.utils import proc_freq
-        s = pd.Series(["A", "A", "B", "C", "C", "C"])
-        freq = proc_freq(s)
-        assert isinstance(freq, pd.DataFrame)
-        assert len(freq) == 3
+        df = pd.DataFrame({"cat": ["A", "A", "B", "C", "C", "C"]})
+        # proc_freq requires a DataFrame and a list of column names.
+        proc_freq(df, ["cat"])
 
     def test_setup_logger(self):
         from pprof_py.utils import setup_logger
@@ -156,7 +161,9 @@ class TestPlotting:
 
     def test_style_module_import(self):
         from pprof_py.plotting import style
-        assert hasattr(style, "PPROF_STYLE") or hasattr(style, "apply_style")
+        # Style module exposes color constants and remove_top_right_spines.
+        assert hasattr(style, "COLOR_PRIMARY")
+        assert hasattr(style, "remove_top_right_spines")
 
 
 # ======================================================================

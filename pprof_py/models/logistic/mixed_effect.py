@@ -54,12 +54,21 @@ def gauss_hermite_normal(n_nodes: int, sigma: float):
 class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
     """Logistic model with fixed provider effects and random cluster effects.
 
+    **Stage 3** of a three-stage estimation pipeline (He et al., 2013):
+
+    * Stage 1 (``LogisticFixedEffectModel``): estimate β (covariate effects).
+    * Stage 2 (``LogisticRandomEffectModel``): estimate σ² (random-effect
+      variance), holding β fixed from Stage 1.
+    * **Stage 3 (this class):** estimate γ (provider effects), holding
+      β and σ fixed from Stages 1–2, integrating the cluster random
+      effect out via Gauss-Hermite quadrature.
+
     Estimates the model:
         logit(P(Y=1)) = gamma_j + alpha_h + X @ beta
     where:
         gamma_j = fixed effect for provider j (estimated via Newton-Raphson)
         alpha_h ~ N(0, sigma^2) = random effect for cluster h (integrated out)
-        beta = fixed covariate effects
+        beta = fixed covariate effects (from Stage 1, held fixed)
 
     The algorithm iterates:
     1. GH quadrature to compute posterior moments E[alpha|Y], Var[alpha|Y]
@@ -92,9 +101,13 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
     gamma_ : np.ndarray
         Estimated provider fixed effects.
     beta_ : np.ndarray
-        Estimated covariate fixed effects.
+        Covariate fixed effects.  Held fixed from Stage 1
+        (``LogisticFixedEffectModel``); this class (Stage 3) does
+        not re-estimate β.
     sigma_ : float
-        Cluster random effect standard deviation.
+        Cluster random effect standard deviation.  Held fixed from
+        Stage 2 (``LogisticRandomEffectModel``) unless
+        ``update_sigma=True`` (not recommended; see ISSUE-026).
     alpha_mean_ : np.ndarray
         Posterior mean of cluster effects (observation-level).
     alpha_var_ : np.ndarray
@@ -194,9 +207,14 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         gamma_init : np.ndarray
             Initial provider effects, shape (n_providers,).
         beta_init : np.ndarray
-            Initial covariate effects, shape (n_covariates,).
+            Covariate effects from Stage 1
+            (``LogisticFixedEffectModel``), shape (n_covariates,).
+            Held fixed throughout Stage 3 iteration; this class
+            estimates only γ (and optionally σ).
         sigma_init : float
-            Initial cluster random effect standard deviation.
+            Cluster random effect std dev from Stage 2
+            (``LogisticRandomEffectModel``).  Held fixed unless
+            ``update_sigma=True``.
         obs_var : str, optional
             Column name for the actual observed outcome, used for
             computing SRR observed counts and resampling p-values.
@@ -339,12 +357,18 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
             if verbose and (iter_count % 10 == 0 or crit < self.tol):
                 logger.info(f"  Iter {iter_count}: crit = {crit:.8e}")
 
-            # Update sigma if requested
+            # Update sigma if requested (ISSUE-026: add damping + bounds
+            # to prevent feedback-loop instability).
             if self.update_sigma:
-                sigma = np.sqrt(
+                sigma_new = np.sqrt(
                     np.sum(alpha_mean_cluster**2 + alpha_var_cluster)
                     / self.n_clusters_
                 )
+                # Damped step: move only halfway toward the raw MLE.
+                sigma_new = 0.5 * sigma + 0.5 * sigma_new
+                # Bound: prevent collapse to zero or divergence.
+                sigma_new = np.clip(sigma_new, 1e-4, 50.0)
+                sigma = float(sigma_new)
                 nodes, weights = gauss_hermite_normal(self.n_nodes, sigma)
 
         if verbose:

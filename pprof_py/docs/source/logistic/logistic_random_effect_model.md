@@ -349,7 +349,7 @@ The `LogisticRandomEffectModel` offers a valuable tool for provider profiling wi
 ## References
 
 ```{bibliography} ../references.bib
-:list: enumerate
+:list: enumerated
 :filter: docname in docnames
 :keyprefix: logre-
 ```

@@ -14,7 +14,12 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 
-from ...data.survival_validation import validate_fit_inputs, validate_X
+from ...data.survival_validation import (
+    validate_fit_inputs,
+    validate_X,
+    validate_X_predict,
+    validate_predict_offset,
+)
 from ...data.survival_data import SurvivalData
 from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.optimization import newton_raphson
@@ -355,20 +360,34 @@ class CoxPH(BaseEstimator):
         Parameters
         ----------
         X : DataFrame or ndarray, shape (n_new, n_features)
+            If a DataFrame, columns are matched against the names seen
+            at fit time and silently reordered when they are the same
+            set but in a different order.  Missing, extra, renamed, or
+            duplicate columns raise ``ValueError``.
         offset : ndarray or None
+            Must be 1-dimensional with length ``n_new``, or a scalar.
+            A scalar is broadcast to all rows.  ``None`` is treated as
+            zero.  Non-finite values raise ``ValueError``.
 
         Returns
         -------
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        X_arr, _ = validate_X(X)
+        n_fit = self.n_features_in_
+        if self.fit_intercept:
+            # The intercept column is appended internally; the user
+            # should supply the original feature set, not the augmented
+            # one, so validate against the original count.
+            n_fit = self.n_features_in_ - 1
+        X_arr = validate_X_predict(
+            X,
+            feature_names_in=list(self.feature_names_in_[:n_fit]),
+            n_features_in=n_fit,
+        )
         if self.fit_intercept:
             X_arr = np.column_stack([X_arr, np.ones(X_arr.shape[0])])
-        if offset is None:
-            offset_arr = np.zeros(X_arr.shape[0])
-        else:
-            offset_arr = np.asarray(offset, dtype=np.float64)
+        offset_arr = validate_predict_offset(offset, X_arr.shape[0])
         return X_arr @ self.coef_ + offset_arr
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:

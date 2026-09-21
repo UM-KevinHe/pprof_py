@@ -212,6 +212,12 @@ class GroupLassoLinear(BaseEstimator):
         self.lambda_path_ = np.asarray(lambda_sequence, dtype=np.float64)
         self.lambda_max_ = float(lam_max)
         self.converged_path_ = np.array([r.converged for r in results])
+        # Snap solver noise to exact zero before counting nonzeros
+        # (ISSUE-013: FP noise ~1e-10 at lambda_max from IRLS/intercept).
+        _snap = max(getattr(self, 'inner_tol', 1e-10) * 100, 1e-8)
+        self.n_nonzero_path_ = np.array(
+            [int(np.sum(np.abs(row) > _snap)) for row in coef_path]
+        )
         self.active_groups_path_ = np.array(
             [r.active_groups for r in results]
         )
@@ -262,6 +268,24 @@ class GroupLassoLinear(BaseEstimator):
         frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
         return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
 
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation)."""
+        self._check_is_fitted()
+        lam_path = self.lambda_path_
+        if lambda_value >= lam_path[0]:
+            return float(self.intercept_path_[0])
+        if lambda_value <= lam_path[-1]:
+            return float(self.intercept_path_[-1])
+        log_lam = np.log(lam_path)
+        log_val = np.log(lambda_value)
+        idx = np.searchsorted(-log_lam, -log_val) - 1
+        idx = max(0, min(idx, len(lam_path) - 2))
+        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
+        return float(
+            (1.0 - frac) * self.intercept_path_[idx]
+            + frac * self.intercept_path_[idx + 1]
+        )
+
     def predict(self, X, lambda_value=None):
         """Predict responses at a given lambda.
 
@@ -279,7 +303,8 @@ class GroupLassoLinear(BaseEstimator):
         if lambda_value is None:
             lambda_value = self.lambda_path_[-1]
         coef = self.coef_at(lambda_value)
-        return X @ coef + self.intercept_path_[-1]
+        intercept = self.intercept_at(lambda_value) if self.fit_intercept else 0.0
+        return X @ coef + intercept
 
     def active_group_labels(self, which=-1):
         """1-indexed labels of active (nonzero) groups at path step *which*.

@@ -105,12 +105,21 @@ class TestDiscreteSurvival:
             model._check_is_fitted()
 
     def test_predict_hazard_shape(self, synth_data):
-        """Predicted hazard should have correct shape."""
+        """Predicted hazard is person-period (long) format.
+
+        After the ISSUE-019 fix, predict_hazard uses the fitted
+        timepoint_map_ to discretize query times, so the output
+        length is sum(time_int) — one entry per person-period row.
+        """
         X, time, event, _ = synth_data
         model = DiscreteSurvival(penalty_type="lasso", n_lambda=10)
         model.fit(X, time=time, event=event)
         hazard = model.predict_hazard(X, time=time)
-        assert hazard.shape[0] == X.shape[0]
+        # time_int: each subject's discretized follow-up length.
+        time_int = np.searchsorted(model.timepoint_map_, time) + 1
+        K = len(model.timepoint_map_)
+        time_int = np.clip(time_int, 1, K)
+        assert hazard.shape[0] == int(time_int.sum())
 
     def test_predict_survival_range(self, synth_data):
         """Predicted survival probabilities should be in [0, 1]."""

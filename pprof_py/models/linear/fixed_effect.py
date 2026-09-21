@@ -46,7 +46,7 @@ class LinearFixedEffectModel(
 
     Examples:
     ---------
-    >>> from pprof_test.linear_fixed_effect import LinearFixedEffectModel
+    >>> from pprof_py import LinearFixedEffectModel
     >>> import pandas as pd
     >>> data = pd.DataFrame({
     ...     'y': [1, 2, 3, 4, 5, 6],
@@ -173,7 +173,15 @@ class LinearFixedEffectModel(
         validated = validate_and_convert_inputs(X, None, groups, x_vars, None, group_var)
         X, groups = validated.X, validated.groups
 
-        # Align groups with fitted model's groups, need to fix this one
+        # Align groups with fitted model's groups — validate membership
+        unseen = np.setdiff1d(groups, self.groups_)
+        if unseen.size > 0:
+            raise ValueError(
+                f"predict() received group ids not seen during fit: "
+                f"{unseen.tolist()}.  LinearFixedEffectModel cannot "
+                f"extrapolate to unseen providers."
+            )
+        # np.searchsorted is safe now — every id is in self.groups_
         group_indices = np.searchsorted(self.groups_, groups)
 
         # Retrieve regression coefficients

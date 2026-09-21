@@ -10,6 +10,18 @@ every estimator in the package.
 """
 
 
+class DegenerateFeatureWarning(UserWarning):
+    """Warning emitted when a predictor has numerically zero weighted variance.
+
+    Raised by every penalized model family (linear, logistic, survival)
+    during the coordinate-descent fit.  This is the single, canonical
+    definition — the per-module copies that existed before 0.4.1 are
+    re-exported from here so that downstream code can write one
+    ``warnings.filterwarnings("ignore", category=DegenerateFeatureWarning)``
+    clause that covers every estimator.
+    """
+
+
 class NotFittedError(RuntimeError):
     """Raised when a fitted-only attribute or method is accessed before ``fit()``.
 

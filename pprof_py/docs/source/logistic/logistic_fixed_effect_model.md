@@ -189,7 +189,7 @@ $$
   - $H_1: \gamma_i < \gamma_0$: $P(S \le O_i | H_0)$
   - $H_1: \gamma_i \neq \gamma_0$: $2 \times \min(P(S \ge O_i | H_0), P(S \le O_i | H_0))$ (or similar definition for two-sided exact tests).
 
-  The implementation uses efficient algorithms (e.g., FFT-based methods available in libraries like `poibin`) to compute the Poisson-Binomial PMF/CDF. This test is preferred when asymptotic approximations may be poor.
+  The implementation uses efficient algorithms (e.g., FFT-based methods available in libraries like `fast_poibin`) to compute the Poisson-Binomial PMF/CDF. This test is preferred when asymptotic approximations may be poor.
 
 - **Exact Bootstrap Test:** This provides an alternative exact test by simulating the null distribution.
 
@@ -255,8 +255,23 @@ The methods described above are implemented in the `LogisticFixedEffectModel` cl
 Instantiate the model and fit it to the data using the `.fit()` method.
 
 ```python
-# Assuming data_df is prepared as in Section 2.1 example
+import numpy as np
+import pandas as pd
 from pprof_py import LogisticFixedEffectModel
+
+# Example data (binary outcome; row order does not matter for the logistic fixed-effect model)
+rng = np.random.default_rng(42)
+n_total_samples = 2000
+data_df = pd.DataFrame({
+    'Covariate1': rng.normal(size=n_total_samples),
+    'Covariate2': rng.normal(size=n_total_samples),
+    'Covariate3': rng.normal(size=n_total_samples),
+    'ProviderID': rng.choice(range(15), n_total_samples),
+})
+provider_effect = rng.normal(0, 0.4, 15)
+eta = (-1 + 0.5 * data_df['Covariate1'] - 0.4 * data_df['Covariate2'] + 0.2 * data_df['Covariate3']
+       + provider_effect[data_df['ProviderID']])
+data_df['Outcome'] = (rng.random(n_total_samples) < 1 / (1 + np.exp(-eta))).astype(int)
 
 model = LogisticFixedEffectModel(algorithm='Serbin', cutoff=5)
 
@@ -382,7 +397,7 @@ Use the plotting methods to visualize results.
 
 ```python
 # Ensure matplotlib is installed: pip install matplotlib
-# Ensure poibin is installed for exact methods: pip install poibin
+# The exact methods use the fast_poibin package, which is installed with pprof_py
 
 # Funnel plot using score test limits
 # model.plot_funnel(test_method='score', alpha=0.05, target=1.0)
@@ -431,7 +446,7 @@ The `LogisticFixedEffectModel` provides a robust and computationally efficient t
 ## References
 
 ```{bibliography} ../references.bib
-:list: enumerate
+:list: enumerated
 :filter: docname in docnames
 :keyprefix: logfe-
 ```

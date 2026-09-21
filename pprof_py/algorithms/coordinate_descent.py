@@ -457,6 +457,16 @@ def fit_single_lambda(
             message = "converged"
             break
 
+        # Supplementary convergence: if both beta and the objective are
+        # stable, declare converged even when the KKT residual does not
+        # settle.  This can occur when fit_intercept=True because the
+        # intercept Newton update is folded into objective_fn as a side
+        # effect, perturbing the score the KKT check evaluates.
+        if relative_beta_change < outer_tol and rel_obj_change < outer_tol:
+            converged = True
+            message = "converged (relative change)"
+            break
+
         if active is not None:
             # After convergence check, update active set for next iter.
             active = (beta != 0.0) | (pf == 0.0)
@@ -1227,6 +1237,31 @@ def fit_group_regularization_path(
     gw = np.asarray(group_weights, dtype=np.float64)
     pf = np.asarray(penalty_factor, dtype=np.float64)
     gs_arr, ge_arr = compute_group_indices(groups_arr, n_groups)
+
+    # ISSUE-010: include unpenalized (group=0) columns as a pseudo-group
+    # with zero weight and zero penalty factor so the block-CD kernel
+    # updates them with no shrinkage instead of silently skipping them.
+    unpen_mask = groups_arr == 0
+    _has_unpen = np.any(unpen_mask)
+    if _has_unpen:
+        unpen_cols = np.where(unpen_mask)[0]
+        if not np.array_equal(
+            unpen_cols, np.arange(unpen_cols[0], unpen_cols[0] + len(unpen_cols))
+        ):
+            raise ValueError(
+                "Unpenalized (group=0) features must be contiguous "
+                f"in column ordering (got columns {unpen_cols.tolist()})"
+            )
+        pseudo_label = n_groups + 1
+        groups_arr = groups_arr.copy()
+        groups_arr[unpen_mask] = pseudo_label
+        gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
+        ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
+        gw = np.append(gw, 0.0)
+        pf = pf.copy()
+        pf[unpen_mask] = 0.0
+        n_groups += 1
+
     beta = (
         np.zeros(p, dtype=np.float64)
         if beta_warm_start is None
@@ -1243,6 +1278,22 @@ def fit_group_regularization_path(
             inner_max_iter=inner_max_iter, inner_tol=inner_tol,
             use_active_set=use_active_set,
         )
+        # Strip the pseudo-group from the result so callers see the
+        # original n_groups-sized arrays.
+        if _has_unpen:
+            result = GroupPenalizedFitResult(
+                beta=result.beta,
+                log_likelihood=result.log_likelihood,
+                objective_value=result.objective_value,
+                n_outer_iter=result.n_outer_iter,
+                n_inner_iter_total=result.n_inner_iter_total,
+                converged=result.converged,
+                message=result.message,
+                information=result.information,
+                active_groups=result.active_groups[:-1],
+                group_norms=result.group_norms[:-1],
+                df=result.df,
+            )
         results.append(result)
         beta = result.beta
     return results

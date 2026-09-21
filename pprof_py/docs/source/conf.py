@@ -14,7 +14,7 @@ project = 'pprof_py'
 copyright = '2025, Kevin He'
 author = 'Kevin He'
 
-release = '0.4.0'
+release = '0.4.1'
 version = '0.4'
 
 # -- General configuration ---------------------------------------------------
@@ -77,6 +77,9 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 
 autodoc_member_order = 'bysource'
+autodoc_default_options = {
+    'exclude-members': '__weakref__, __sklearn_tags__, set_output, get_params, set_params',
+}
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

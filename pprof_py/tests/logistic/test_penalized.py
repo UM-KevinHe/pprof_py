@@ -191,7 +191,8 @@ class TestGroupLassoLogistic:
         match is not expected because they use different CD solvers
         (block CD vs element-wise CD)."""
         X, y, _ = synth_data
-        groups = np.arange(X.shape[1])  # each variable is its own group
+        # Start from 1 — group 0 is reserved for unpenalized columns.
+        groups = np.arange(1, X.shape[1] + 1)
         gl = GroupLassoLogistic(groups=groups, alpha=1.0, n_lambda=20)
         gl.fit(X, y)
         pl = PenalizedLogistic(alpha=1.0, n_lambda=20)

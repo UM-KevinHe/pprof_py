@@ -478,6 +478,19 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
 
     def _optimize_stage1(self, fun, x0: Array) -> Dict:
         """Stage-1 optimizer matching glmer's default BOBYQA role."""
+        if self.optimizer_stage1 == "bobyqa" and nlopt is None:
+            import warnings
+            warnings.warn(
+                "optimizer_stage1='bobyqa' requires the nlopt package, "
+                "which is not installed.  Falling back to scipy Powell.  "
+                "Install nlopt (pip install pprof_py[random-effect]) or "
+                "pass optimizer_stage1='powell' explicitly to silence "
+                "this warning.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            # Update the attribute so it reflects the optimizer actually used
+            self.optimizer_stage1 = "powell"
         if self.optimizer_stage1 == "bobyqa" and nlopt is not None:
             opt = nlopt.opt(nlopt.LN_BOBYQA, len(x0))
             lo = np.zeros(len(x0), dtype=float)

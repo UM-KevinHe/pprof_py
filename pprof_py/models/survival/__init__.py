@@ -1,5 +1,6 @@
-"""Survival model family: Cox PH, penalized Cox, group lasso Cox,
-provider-effect Cox, discrete-time survival, and competing risks.
+"""Survival model family: Cox PH, frailty Cox, time-varying Cox,
+penalized Cox, group lasso Cox, provider-effect Cox, discrete-time
+survival, and competing risks.
 """
 from .coxph import CoxPH, NotFittedError
 from .penalized_coxph import PenalizedCoxPH, PenalizedCoxPHCV
@@ -10,6 +11,8 @@ from .provider_discrete_survival import (
     ProviderPenalizedDiscreteSurvival,
     ProviderPenalizedDiscreteSurvivalCV,
 )
+from .frailty_coxph import FrailtyCoxPH
+from .time_varying_coxph import TimeVaryingCoxPH
 from .competing_risks import CauseSpecificCoxPH, FineGrayPH
 
 __all__ = [
@@ -24,6 +27,8 @@ __all__ = [
     "DiscreteSurvivalCV",
     "ProviderPenalizedDiscreteSurvival",
     "ProviderPenalizedDiscreteSurvivalCV",
+    "FrailtyCoxPH",
+    "TimeVaryingCoxPH",
     "CauseSpecificCoxPH",
     "FineGrayPH",
 ]

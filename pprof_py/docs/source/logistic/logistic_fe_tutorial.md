@@ -19,7 +19,7 @@ By the end you will know how to:
   at a glance.
 
 The model we are fitting is the one described in detail on the
-[Logistic Fixed Effect Modeling](logistic_fixed_effect_model) reference
+[Logistic Fixed Effect Modeling](logistic_fixed_effect_model.md) reference
 page. Here we focus on *using* it rather than deriving it.
 
 ---
@@ -100,7 +100,7 @@ intercept of $-2.5$.
 `LogisticFixedEffectModel` estimates a separate intercept $\gamma_i$
 for every clinic while sharing the covariate coefficients $\beta$ across
 the entire population — see Section 2.1 of the
-[methodology page](logistic_fixed_effect_model) for the full formulation.
+[methodology page](logistic_fixed_effect_model.md) for the full formulation.
 
 ```python
 model = LogisticFixedEffectModel(
@@ -205,7 +205,7 @@ clinic at $-2.37$ has much higher baseline risk than one at $-5.73$.
 
 Standard errors for the gammas come from the inverse Fisher information
 matrix (see Section 2.2 of the
-[methodology page](logistic_fixed_effect_model)):
+[methodology page](logistic_fixed_effect_model.md)):
 
 ```python
 se_gamma = np.sqrt(model.variances_['gamma'])
@@ -300,7 +300,7 @@ sampling noise.
 ## 7. Hypothesis testing: which providers are outliers?
 
 The exact Poisson-Binomial test (Section 2.4 of the
-[methodology page](logistic_fixed_effect_model)) is the recommended
+[methodology page](logistic_fixed_effect_model.md)) is the recommended
 default. Under the null $H_0: \gamma_i = \gamma_0$ (the median gamma),
 each patient's readmission is an independent Bernoulli trial with a
 known probability, so the total observed count $O_i$ follows a
@@ -393,7 +393,7 @@ consistent with its flag = $-1$.
 
 Score and exact Poisson-Binomial CIs are also available via
 `test_method='score'` and `test_method='exact'`; see the
-[methodology page](logistic_fixed_effect_model) Section 2.5 for the
+[methodology page](logistic_fixed_effect_model.md) Section 2.5 for the
 theory behind each.
 
 ### CIs for standardized measures

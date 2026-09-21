@@ -36,6 +36,28 @@ def construct_block_diag_matrix(group_sizes: np.ndarray) -> np.ndarray:
     return block_diag(*Q_blocks)
 
 
+class GroupDemeaner:
+    """Within-group demeaning operator Q = I - P_groups, applied via group indices.
+
+    Row-order independent and O(n) memory (replaces the dense block-diagonal matrix,
+    which is only correct when rows are sorted by group)."""
+
+    def __init__(self, group_indices: np.ndarray):
+        self.gi = np.asarray(group_indices)
+        self.m = int(self.gi.max()) + 1 if self.gi.size else 0
+        self.sizes = np.bincount(self.gi, minlength=self.m).astype(float)
+
+    def __matmul__(self, A):
+        A = np.asarray(A, dtype=float)
+        one_d = A.ndim == 1
+        A2 = A[:, None] if one_d else A
+        out = np.empty_like(A2)
+        for j in range(A2.shape[1]):
+            means = np.bincount(self.gi, weights=A2[:, j], minlength=self.m) / self.sizes
+            out[:, j] = A2[:, j] - means[self.gi]
+        return out[:, 0] if one_d else out
+
+
 def preprocess_groups(
     X: np.ndarray, y: np.ndarray, group_indices: np.ndarray, n_groups: int
 ) -> tuple:
@@ -63,7 +85,7 @@ def preprocess_groups(
             Mean of predictors for each group.
     """
     group_sizes = np.bincount(group_indices)
-    Q = construct_block_diag_matrix(group_sizes)
+    Q = GroupDemeaner(group_indices)
     # Compute group means for y and X:
     y_means = np.array([np.mean(y[group_indices == g]) for g in range(n_groups)])
     X_means = np.array([np.mean(X[group_indices == g], axis=0) for g in range(n_groups)])

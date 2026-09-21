@@ -9,6 +9,7 @@ Public API
     from pprof_py import GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH
     from pprof_py import DiscreteSurvival, DiscreteSurvivalCV
     from pprof_py import ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV
+    from pprof_py import FrailtyCoxPH, TimeVaryingCoxPH
     from pprof_py import CauseSpecificCoxPH, FineGrayPH
     from pprof_py import CoxPHSelector
 
@@ -49,6 +50,8 @@ from .models.survival import (
     DiscreteSurvivalCV,
     ProviderPenalizedDiscreteSurvival,
     ProviderPenalizedDiscreteSurvivalCV,
+    FrailtyCoxPH,
+    TimeVaryingCoxPH,
     CauseSpecificCoxPH,
     FineGrayPH,
 )
@@ -58,7 +61,7 @@ from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
 from .inference import huber_location_scale, estimate_empirical_null
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 __all__ = [
     # Linear
@@ -88,6 +91,8 @@ __all__ = [
     "DiscreteSurvivalCV",
     "ProviderPenalizedDiscreteSurvival",
     "ProviderPenalizedDiscreteSurvivalCV",
+    "FrailtyCoxPH",
+    "TimeVaryingCoxPH",
     "CauseSpecificCoxPH",
     "FineGrayPH",
     # Selection

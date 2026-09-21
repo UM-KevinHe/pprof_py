@@ -30,13 +30,9 @@ from ...algorithms.linear.likelihood import (
     linear_null_deviance,
     linear_intercept_update,
 )
-from ...exceptions import NotFittedError
+from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
-
-
-class DegenerateFeatureWarning(UserWarning):
-    pass
 
 
 def _resolve_lambda_path(
@@ -76,16 +72,71 @@ class PenalizedLinear(BaseEstimator):
     Parameters
     ----------
     alpha : float, default=1.0
+        Elastic net mixing: 1.0 = lasso, 0.0 = ridge.
     n_lambda : int, default=100
+        Number of lambda values on the path.
     lambda_min_ratio : float or None
+        Ratio of smallest to largest lambda.  Default: 1e-2 if
+        n < p, 1e-4 otherwise.
     lambda_path : array-like or None
+        User-supplied lambda sequence (overrides n_lambda).
     penalty_factor : array-like or None
+        Per-feature penalty multipliers, shape (p,).
     standardize : bool, default=True
+        Standardize features before fitting.
     fit_intercept : bool, default=True
+        Fit an intercept term.
     max_outer_iter : int, default=100
+        Maximum outer (Newton) iterations per lambda.
     outer_tol : float, default=1e-9
+        Outer convergence tolerance.
     max_inner_iter : int, default=1000
+        Maximum inner (CD) iterations per outer step.
     inner_tol : float, default=1e-10
+        Inner convergence tolerance.
+    use_active_set : bool, default=False
+        Use the active-set strategy to accelerate coordinate descent.
+
+    Attributes (after fit)
+    ----------------------
+    coef_path_ : ndarray, shape (n_lambda, p)
+        Coefficient path.
+    intercept_path_ : ndarray, shape (n_lambda,)
+        Intercept path.
+    lambda_path_ : ndarray, shape (n_lambda,)
+        Lambda values used.
+    lambda_max_ : float
+        Computed lambda_max.
+    lambda_min_ratio_ : float
+        Lambda min ratio used.
+    deviance_path_ : ndarray, shape (n_lambda,)
+        Weighted RSS (Gaussian deviance) at each lambda.
+    deviance_ratio_path_ : ndarray, shape (n_lambda,)
+        Fraction of null deviance explained.
+    null_deviance_ : float
+        Null model deviance.
+    log_likelihood_path_ : ndarray, shape (n_lambda,)
+        Log-likelihood at each lambda.
+    converged_path_ : ndarray of bool, shape (n_lambda,)
+        Whether the outer loop converged at each lambda.
+    n_iter_path_ : ndarray of int, shape (n_lambda,)
+        Number of outer iterations used at each lambda.
+    n_nonzero_path_ : ndarray of int, shape (n_lambda,)
+        Number of nonzero coefficients at each lambda.
+    n_obs_ : int
+        Number of observations.
+    n_features_in_ : int
+        Number of features.
+    feature_names_in_ : ndarray of str
+        Feature names.
+    column_scale_ : ndarray, shape (p,)
+        Column standard deviations used for standardization.
+    penalty_factor_ : ndarray, shape (p,)
+        Penalty factors used.
+    coef_ : ndarray, shape (p,)
+        Coefficients (only set when a single lambda is fitted).
+    intercept_ : float
+        Intercept (only set when a single lambda is fitted).
     """
 
     def __init__(
@@ -101,6 +152,7 @@ class PenalizedLinear(BaseEstimator):
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
         inner_tol: float = 1e-10,
+        use_active_set: bool = False,
     ):
         """Penalized linear regression path (R: ``glmnet(family='gaussian')``)."""
         self.alpha = alpha
@@ -114,6 +166,7 @@ class PenalizedLinear(BaseEstimator):
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
+        self.use_active_set = use_active_set
 
     def fit(
         self,
@@ -169,6 +222,8 @@ class PenalizedLinear(BaseEstimator):
                 category=DegenerateFeatureWarning, stacklevel=2,
             )
         fit_cols = ~degenerate
+        if not np.any(fit_cols):
+            raise ValueError("All predictors have zero weighted variance")
         X_fit = X[:, fit_cols] / xs_full[fit_cols]
         p_fit = X_fit.shape[1]
 
@@ -226,6 +281,7 @@ class PenalizedLinear(BaseEstimator):
                 outer_tol=self.outer_tol,
                 inner_max_iter=self.max_inner_iter,
                 inner_tol=self.inner_tol,
+                use_active_set=self.use_active_set,
             )[0]
             results.append(result)
             beta = result.beta
@@ -248,6 +304,7 @@ class PenalizedLinear(BaseEstimator):
             [r.log_likelihood for r in results]
         )
         self.converged_path_ = np.array([r.converged for r in results])
+        self.n_iter_path_ = np.array([r.n_outer_iter for r in results])
         self.n_nonzero_path_ = np.array(
             [int(np.sum(row != 0.0)) for row in coef_path]
         )
@@ -292,6 +349,24 @@ class PenalizedLinear(BaseEstimator):
         frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
         return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
 
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation)."""
+        self._check_is_fitted()
+        lam_path = self.lambda_path_
+        if lambda_value >= lam_path[0]:
+            return float(self.intercept_path_[0])
+        if lambda_value <= lam_path[-1]:
+            return float(self.intercept_path_[-1])
+        log_lam = np.log(lam_path)
+        log_val = np.log(lambda_value)
+        idx = np.searchsorted(-log_lam, -log_val) - 1
+        idx = max(0, min(idx, len(lam_path) - 2))
+        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
+        return float(
+            (1.0 - frac) * self.intercept_path_[idx]
+            + frac * self.intercept_path_[idx + 1]
+        )
+
     def predict(self, X, lambda_value=None):
         """Predicted values."""
         self._check_is_fitted()
@@ -299,7 +374,7 @@ class PenalizedLinear(BaseEstimator):
         if lambda_value is None:
             lambda_value = self.lambda_path_[-1]
         coef = self.coef_at(lambda_value)
-        intercept = self.intercept_path_[-1]  # simplified
+        intercept = self.intercept_at(lambda_value) if self.fit_intercept else 0.0
         return X @ coef + intercept
 
     def summary(self, which=-1):
@@ -326,16 +401,61 @@ class PenalizedLinear(BaseEstimator):
 class PenalizedLinearCV(BaseEstimator):
     """Cross-validated penalized linear regression.
 
+    Analogous to ``cv.glmnet(family="gaussian")``.
+
     Parameters
     ----------
     alpha : float, default=1.0
-    n_lambda, lambda_min_ratio, lambda_path, penalty_factor,
-    standardize, fit_intercept
+        Elastic net mixing: 1.0 = lasso, 0.0 = ridge.
+    n_lambda : int, default=100
+        Number of lambda values.
+    lambda_min_ratio : float or None
+        Ratio of smallest to largest lambda.
+    lambda_path : array-like or None
+        User-supplied lambda sequence.
+    penalty_factor : array-like or None
+        Per-feature penalty multipliers.
+    standardize : bool, default=True
+    fit_intercept : bool, default=True
     n_folds : int, default=10
     fold_id : array-like or None
+        User-supplied fold assignments (overrides n_folds).
     use_1se : bool, default=True
+        If True, use lambda.1se; else lambda.min.
     random_state : int or None
-    max_outer_iter, outer_tol, max_inner_iter, inner_tol
+    max_outer_iter : int, default=100
+    outer_tol : float, default=1e-9
+    max_inner_iter : int, default=1000
+    inner_tol : float, default=1e-10
+    use_active_set : bool, default=False
+        Use the active-set strategy to accelerate coordinate descent.
+
+    Attributes (after fit)
+    ----------------------
+    lambda_min_ : float
+        Lambda that minimizes CV deviance.
+    lambda_1se_ : float
+        Largest lambda within 1 SE of the minimum.
+    lambda_ : float
+        Selected lambda (lambda_1se_ if use_1se, else lambda_min_).
+    cv_mean_deviance_ : ndarray, shape (n_lambda,)
+        Mean cross-validated deviance (weighted RSS) at each lambda.
+    cv_std_deviance_ : ndarray, shape (n_lambda,)
+        Standard deviation of CV deviance across folds.
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
+        Standard error of CV deviance.
+    model_ : PenalizedLinear
+        Full-data model fitted at the selected lambda path.
+    coef_ : ndarray, shape (p,)
+        Coefficients at the selected lambda.
+    intercept_ : float
+        Intercept at the selected lambda.
+    coef_path_ : ndarray, shape (n_lambda, p)
+        Full coefficient path from the full-data model.
+    intercept_path_ : ndarray, shape (n_lambda,)
+        Full intercept path from the full-data model.
+    lambda_path_ : ndarray, shape (n_lambda,)
+        Lambda values used.
     """
 
     def __init__(
@@ -355,6 +475,7 @@ class PenalizedLinearCV(BaseEstimator):
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
         inner_tol: float = 1e-10,
+        use_active_set: bool = False,
     ):
         """Cross-validated penalized linear (R: ``cv.glmnet(family='gaussian')``)."""
         self.alpha = alpha
@@ -372,6 +493,7 @@ class PenalizedLinearCV(BaseEstimator):
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
+        self.use_active_set = use_active_set
 
     def fit(self, X, y, sample_weight=None, offset=None):
         """Fit CV to select lambda."""
@@ -386,6 +508,7 @@ class PenalizedLinearCV(BaseEstimator):
             outer_tol=self.outer_tol,
             max_inner_iter=self.max_inner_iter,
             inner_tol=self.inner_tol,
+            use_active_set=self.use_active_set,
         )
         full_model.fit(X, y, sample_weight=sample_weight, offset=offset)
         lambda_path = full_model.lambda_path_
@@ -406,7 +529,7 @@ class PenalizedLinearCV(BaseEstimator):
             fold_id = rng.randint(0, self.n_folds, size=n)
         n_folds = int(fold_id.max()) + 1
 
-        cv_mse = np.full((n_folds, n_lambda), np.nan)
+        cv_deviance = np.full((n_folds, n_lambda), np.nan)
         for k in range(n_folds):
             train = fold_id != k
             val = fold_id == k
@@ -419,28 +542,34 @@ class PenalizedLinearCV(BaseEstimator):
                 outer_tol=self.outer_tol,
                 max_inner_iter=self.max_inner_iter,
                 inner_tol=self.inner_tol,
+                use_active_set=self.use_active_set,
             )
-            fold_model.fit(X_arr[train], y_arr[train],
-                           sample_weight=weight[train])
+            fold_model.fit(
+                X_arr[train], y_arr[train],
+                sample_weight=weight[train],
+                offset=offset[train] if offset is not None else None,
+            )
             for j in range(n_lambda):
                 coef_j = fold_model.coef_path_[j]
                 intercept_j = fold_model.intercept_path_[j]
                 pred = X_arr[val] @ coef_j + intercept_j
-                cv_mse[k, j] = float(
+                if offset is not None:
+                    pred = pred + offset[val]
+                cv_deviance[k, j] = float(
                     np.sum(weight[val] * (y_arr[val] - pred)**2)
                 )
 
-        cv_mean = np.nanmean(cv_mse, axis=0)
-        cv_std = np.nanstd(cv_mse, axis=0, ddof=1)
+        cv_mean = np.nanmean(cv_deviance, axis=0)
+        cv_std = np.nanstd(cv_deviance, axis=0, ddof=1)
         cv_se = cv_std / np.sqrt(n_folds)
         idx_min = int(np.nanargmin(cv_mean))
         threshold = cv_mean[idx_min] + cv_se[idx_min]
         candidates = np.where(cv_mean <= threshold)[0]
         idx_1se = int(candidates[0])
 
-        self.cv_mean_mse_ = cv_mean
-        self.cv_std_mse_ = cv_std
-        self.cv_se_mse_ = cv_se
+        self.cv_mean_deviance_ = cv_mean
+        self.cv_std_deviance_ = cv_std
+        self.cv_se_deviance_ = cv_se
         self.lambda_min_ = float(lambda_path[idx_min])
         self.lambda_1se_ = float(lambda_path[idx_1se])
         self.lambda_ = float(
@@ -448,9 +577,18 @@ class PenalizedLinearCV(BaseEstimator):
         )
         self.model_ = full_model
         self.coef_ = full_model.coef_at(self.lambda_)
+        self.intercept_ = full_model.intercept_at(self.lambda_)
         self.coef_path_ = full_model.coef_path_
+        self.intercept_path_ = full_model.intercept_path_
         self.lambda_path_ = full_model.lambda_path_
         return self
+
+    def _check_is_fitted(self):
+        if not hasattr(self, "model_"):
+            raise NotFittedError(
+                f"This {type(self).__name__} is not fitted yet. "
+                f"Call 'fit' before using this estimator."
+            )
 
     def predict(self, X, lambda_value=None):
         """Predict at the selected lambda.
@@ -464,6 +602,7 @@ class PenalizedLinearCV(BaseEstimator):
         -------
         ndarray, shape (n_new,)
         """
+        self._check_is_fitted()
         if lambda_value is None:
             lambda_value = self.lambda_
         return self.model_.predict(X, lambda_value)

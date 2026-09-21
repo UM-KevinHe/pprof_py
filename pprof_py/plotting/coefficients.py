@@ -1,9 +1,8 @@
-"""Coefficient-path and lambda-path visualization for penalized models.
+"""Provider-effect caterpillar plot.
 
-Plots regularization paths (coefficients vs. log-lambda), CV error
-curves, and related diagnostics for ``PenalizedLogistic``,
-``PenalizedLinear``, ``PenalizedCoxPH``, and their group-lasso
-variants.
+Provides :func:`plot_caterpillar`, a sorted point-and-interval display
+of provider effects (gamma or alpha) used by the linear and logistic
+fixed-effect and random-effect plotting mixins.
 """
 import numpy as np
 import pandas as pd
