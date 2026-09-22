@@ -15,6 +15,7 @@ from sklearn.base import BaseEstimator
 
 from ...algorithms.penalty import (
     weighted_column_scale,
+    weighted_column_center_scale,
     rescale_penalty_factors,
     validate_groups,
     rescale_group_multipliers,
@@ -38,6 +39,7 @@ from ...algorithms.logistic.likelihood import (
     logistic_deviance,
     logistic_null_deviance,
     logistic_null_score,
+    logistic_unpenalized_null_fit,
     logistic_intercept_update,
     _safe_expit,
 )
@@ -236,16 +238,24 @@ class ProviderPenalizedLogistic(BaseEstimator):
         self.n_providers_ = n_providers
 
         # Column standardization.
-        xs_full, degenerate = weighted_column_scale(
+        # Center as well as scale when an intercept is fitted: with a free
+        # intercept this is an exact reparameterization (lambda_max and the
+        # coefficient path are invariant) that removes the information-
+        # diagonal inflation an uncentered large-mean/sd column causes.
+        # The correction goes to the scalar intercept only, leaving the
+        # provider effects gamma -- the model's actual deliverable -- alone.
+        xm_full, xs_full, degenerate = weighted_column_center_scale(
             X, weight, standardize=self.standardize,
         )
+        if not self.fit_intercept:
+            xm_full = np.zeros_like(xm_full)
         if np.any(degenerate):
             warnings.warn(
                 f"{int(np.sum(degenerate))} degenerate feature(s) excluded.",
                 category=DegenerateFeatureWarning, stacklevel=2,
             )
         fit_cols = ~degenerate
-        X_fit = X[:, fit_cols] / xs_full[fit_cols]
+        X_fit = (X[:, fit_cols] - xm_full[fit_cols]) / xs_full[fit_cols]
         p_fit = X_fit.shape[1]
 
         # Penalty factors.
@@ -280,9 +290,16 @@ class ProviderPenalizedLogistic(BaseEstimator):
 
         c = 1.0 / float(np.sum(weight))
 
-        # Null-point score for lambda_max.
-        score_null, intercept_null = logistic_null_score(
-            X_fit, y, weight, offset=offset,
+        # REV-001: the null point for lambda_max is not beta=0 everywhere --
+        # it is "penalized coefficients at 0, unpenalized ones at their own
+        # MLE".  Fitting them here corrects lambda_max and gives the path a
+        # warm start whose unpenalized coefficients are already right at the
+        # top of the path (mirrors the R reference's SerBIN.residuals).
+        unpen_mask = (pf_fit == 0.0)
+        if use_groups:
+            unpen_mask = unpen_mask | (groups_fit == 0)
+        beta_null, score_null, intercept_null = logistic_unpenalized_null_fit(
+            X_fit, y, weight, unpenalized=unpen_mask, offset=offset,
             fit_intercept=self.fit_intercept,
         )
 
@@ -302,7 +319,7 @@ class ProviderPenalizedLogistic(BaseEstimator):
 
         # --- Two-layer path fitting ---
         intercept = intercept_null if self.fit_intercept else 0.0
-        beta = np.zeros(p_fit, dtype=np.float64)
+        beta = beta_null.copy()
         gamma = np.zeros(n_providers, dtype=np.float64)
 
         coef_results = []
@@ -402,8 +419,15 @@ class ProviderPenalizedLogistic(BaseEstimator):
         for i, coef_fit in enumerate(coef_results):
             coef_path[i, fit_cols] = coef_fit
 
+        # Intercept back-transform into the original units of X.  gamma is
+        # untouched: the whole shift is absorbed by the scalar intercept.
+        intercept_path = np.array(intercept_results, dtype=np.float64) - (
+            coef_path @ xm_full
+        )
+        intercept_results = list(intercept_path)
+
         self.coef_path_ = coef_path
-        self.intercept_path_ = np.array(intercept_results)
+        self.intercept_path_ = intercept_path
         self.gamma_path_ = np.array(gamma_results)
         self.lambda_path_ = np.asarray(lambda_sequence, dtype=np.float64)
         self.lambda_max_ = float(lam_max)
@@ -415,6 +439,7 @@ class ProviderPenalizedLogistic(BaseEstimator):
             [int(np.sum(row != 0.0)) for row in coef_path]
         )
         self.column_scale_ = xs_full
+        self.column_center_ = xm_full
         self.penalty_factor_ = pf_full
         self._excluded_features_ = degenerate
         self._provider_idx_ = prov_idx

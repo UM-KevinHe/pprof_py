@@ -54,6 +54,13 @@ class PenalizedFitResult(NamedTuple):
     converged: bool
     message: str
     information: np.ndarray
+    kkt_violation: float = float("nan")
+    """Relative KKT stationarity residual at the returned ``beta``.
+
+    ``converged`` is True when this falls below the solver's threshold.
+    When it does not, this value says *how far* from stationary the
+    returned point is, which ``converged=False`` alone cannot.
+    """
 
 
 class GroupPenalizedFitResult(NamedTuple):
@@ -69,6 +76,14 @@ class GroupPenalizedFitResult(NamedTuple):
     active_groups: np.ndarray
     group_norms: np.ndarray
     df: float
+    kkt_violation: float = float("nan")
+    """Relative KKT stationarity residual at the returned ``beta``.
+
+    ``converged`` is True when this falls below the solver's threshold.
+    When it does not, this value says *how far* from stationary the
+    returned point is, which ``converged=False`` alone cannot.
+    """
+
 
 
 # ======================================================================
@@ -443,6 +458,12 @@ def fit_single_lambda(
             kkt_violation = 0.0
 
         kkt_threshold = max(10.0 * outer_tol, 1e-12)
+        # Tolerance for the supplementary stall test below.  Looser than
+        # ``kkt_threshold`` (the real stationarity test) so it can still
+        # absorb intercept jitter, but floored at an absolute 1e-6 and never
+        # looser than the KKT test itself -- so it cannot become a loophole
+        # that accepts a materially non-stationary point at loose outer_tol.
+        stall_kkt_tol = max(kkt_threshold, 1e-6)
 
         if active is not None:
             # Active-set: check if any inactive variable violates KKT.
@@ -457,12 +478,23 @@ def fit_single_lambda(
             message = "converged"
             break
 
-        # Supplementary convergence: if both beta and the objective are
+        # Supplementary convergence: if beta and the objective are both
         # stable, declare converged even when the KKT residual does not
-        # settle.  This can occur when fit_intercept=True because the
-        # intercept Newton update is folded into objective_fn as a side
-        # effect, perturbing the score the KKT check evaluates.
-        if relative_beta_change < outer_tol and rel_obj_change < outer_tol:
+        # fully settle.  This can happen when fit_intercept=True, because
+        # the intercept Newton update is folded into objective_fn as a side
+        # effect and keeps perturbing the score the KKT check evaluates.
+        #
+        # REV-001: on its own this test cannot tell "converged" apart from
+        # "the step has collapsed to zero at a non-stationary point", and it
+        # was firing in the latter state.  Require the KKT residual to be
+        # small in absolute terms as well -- loose enough to still catch the
+        # intercept-jitter case, tight enough that a genuinely non-stationary
+        # point is reported as non-converged instead of silently accepted.
+        if (
+            relative_beta_change < outer_tol
+            and rel_obj_change < outer_tol
+            and kkt_violation < stall_kkt_tol
+        ):
             converged = True
             message = "converged (relative change)"
             break
@@ -477,6 +509,7 @@ def fit_single_lambda(
         beta=beta, log_likelihood=loglik, objective_value=obj_val,
         n_outer_iter=n_outer_iter, n_inner_iter_total=n_inner_iter_total,
         converged=converged, message=message, information=info,
+        kkt_violation=float(kkt_violation),
     )
 
 
@@ -1164,14 +1197,24 @@ def fit_single_lambda_group(
         kkt_violation = _compute_group_kkt_violation(
             g_exact, beta, lam, alpha, groups, gw, pf, n_groups,
         )
-        if kkt_violation < max(10.0 * outer_tol, 1e-12):
+        kkt_threshold = max(10.0 * outer_tol, 1e-12)
+        # See the matching comment in ``fit_single_lambda``.
+        stall_kkt_tol = max(kkt_threshold, 1e-6)
+        if kkt_violation < kkt_threshold:
             if use_active_set and not np.all(active_groups):
                 active_groups[:] = True
                 continue
             converged = True
             message = "converged (KKT)"
             break
-        if relative_beta_change < outer_tol and rel_obj_change < outer_tol:
+        # REV-001: guard the supplementary test with the KKT residual, so a
+        # collapsed step at a non-stationary point is no longer reported as
+        # convergence.  See the matching comment in ``fit_single_lambda``.
+        if (
+            relative_beta_change < outer_tol
+            and rel_obj_change < outer_tol
+            and kkt_violation < stall_kkt_tol
+        ):
             if use_active_set and not np.all(active_groups):
                 active_groups[:] = True
                 continue
@@ -1186,6 +1229,7 @@ def fit_single_lambda_group(
         n_outer_iter=n_outer_iter, n_inner_iter_total=n_inner_iter_total,
         converged=converged, message=message, information=info,
         active_groups=gnorms > 0, group_norms=gnorms, df=df,
+        kkt_violation=float(kkt_violation),
     )
 
 
@@ -1293,6 +1337,7 @@ def fit_group_regularization_path(
                 active_groups=result.active_groups[:-1],
                 group_norms=result.group_norms[:-1],
                 df=result.df,
+                kkt_violation=result.kkt_violation,
             )
         results.append(result)
         beta = result.beta

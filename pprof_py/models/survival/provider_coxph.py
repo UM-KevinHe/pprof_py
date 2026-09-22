@@ -329,6 +329,66 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _compute_provider_null_point(self, prep, provider_idx, n_providers):
+        """Null point for ``lambda_max``: penalized β at 0, γ (and any
+        unpenalized β) at their joint MLE.
+
+        Returns ``(beta_null, gamma_null)``.  Alternates the provider
+        Newton layer with the restricted unpenalized β fit, which reduces
+        to a pure γ fit when every column is penalized (the common case).
+        """
+        beta_null = np.zeros(prep.p_fit, dtype=np.float64)
+        gamma_null = np.zeros(n_providers, dtype=np.float64)
+        always_unpen = prep.pf_fit == 0.0
+        has_unpen = bool(np.any(always_unpen)) and not bool(
+            np.all(always_unpen)
+        )
+
+        n_rounds = self.max_provider_iter if not has_unpen else max(
+            2, min(self.max_provider_iter, 25)
+        )
+        for _round in range(n_rounds):
+            # γ layer, given current β.
+            eta = (
+                gamma_null[provider_idx]
+                + prep.X_fit @ beta_null
+                + prep.data.offset
+            )
+            score_gamma, info_gamma = compute_provider_scores(
+                eta, prep.data.event, prep.data.weight,
+                prep.data.start, prep.data.stop,
+                provider_idx, n_providers,
+                strata_codes=prep.data.strata_codes,
+                stratum_indices=prep.stratum_idx,
+            )
+            gamma_result = provider_newton_step(
+                gamma_null.copy(), score_gamma, info_gamma,
+                bound=self.provider_bound,
+                tol=self.provider_tol,
+            )
+            gamma_null = gamma_result.gamma
+            if not has_unpen:
+                if gamma_result.converged:
+                    break
+                continue
+
+            # Unpenalized β layer, given current γ.
+            obj = self._build_beta_objective(prep, gamma_null, provider_idx)
+            _ll, score, info = obj(beta_null)
+            idx = np.flatnonzero(always_unpen)
+            H = info[np.ix_(idx, idx)]
+            g = score[idx]
+            try:
+                step = np.linalg.solve(H, g)
+            except np.linalg.LinAlgError:
+                step = np.linalg.lstsq(H, g, rcond=None)[0]
+            beta_null[idx] += step
+            if (gamma_result.converged
+                    and float(np.max(np.abs(step))) < self.outer_tol):
+                break
+
+        return beta_null, gamma_null
+
     def _build_beta_objective(self, prep, gamma, provider_idx):
         """Build β objective closure with current γ as offset.
 
@@ -457,8 +517,23 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
                 groups_fit, n_groups_fit,
             )
 
-        # --- Null point (γ=0, β_null) ---
-        beta_null, score_null = self._compute_null_point(prep)
+        # --- Null point (β_null, γ=γ̂) ---
+        # REV-003: the inherited PenalizedCoxPH null point evaluates the
+        # score at γ=0, which is not the null point of *this* model.  With
+        # the provider effects at zero the score is too small and the
+        # resulting lambda_max does not zero the penalized coefficients, so
+        # the first path point is not actually null.  Fit γ (alternating
+        # with the unpenalized β when there are any) before taking the
+        # score.  The R reference does the same thing via stratification:
+        # its set.lambda.cox builds the null residual from per-provider risk
+        # sets rather than pooled ones.
+        beta_null, gamma_null = self._compute_provider_null_point(
+            prep, provider_idx, n_providers,
+        )
+        objective_null = self._build_beta_objective(
+            prep, gamma_null, provider_idx,
+        )
+        _ll_null, score_null, _info_null = objective_null(beta_null)
 
         # --- Lambda max ---
         if self.penalty_type == "elastic_net":
@@ -487,7 +562,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         # ============================================================
         # Two-layer path fitting
         # ============================================================
-        gamma = np.zeros(n_providers)
+        gamma = gamma_null.copy()
         beta = beta_null.copy()
 
         results = []

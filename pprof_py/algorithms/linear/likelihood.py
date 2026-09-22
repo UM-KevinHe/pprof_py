@@ -190,3 +190,51 @@ def linear_intercept_update(
     if denom < 1e-12:
         return 0.0
     return float(np.sum(resid) / denom)
+
+
+def linear_unpenalized_null_fit(
+    X: np.ndarray,
+    y: np.ndarray,
+    weight: np.ndarray,
+    unpenalized: np.ndarray,
+    offset: Optional[np.ndarray] = None,
+    fit_intercept: bool = True,
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """Null point for ``lambda_max``: unpenalized columns fitted, rest at 0.
+
+    Gaussian counterpart of
+    :func:`~pprof_py.algorithms.logistic.likelihood.logistic_unpenalized_null_fit`.
+    The restricted fit is a weighted least squares solve, so no iteration
+    is needed.  See that function for why the null point is not ``beta=0``.
+
+    Returns
+    -------
+    beta_null : ndarray, shape (p,)
+    score : ndarray, shape (p,)
+    intercept : float
+    """
+    n, p = X.shape
+    off = (np.zeros(n, dtype=np.float64) if offset is None
+           else np.asarray(offset, dtype=np.float64))
+    unpen = np.asarray(unpenalized, dtype=bool)
+    idx = np.flatnonzero(unpen)
+
+    beta_null = np.zeros(p, dtype=np.float64)
+    if idx.size:
+        # Weighted LS of (y - offset) on the unpenalized columns, with an
+        # intercept column appended when one is being fitted.
+        Xu = X[:, idx]
+        design = np.column_stack([Xu, np.ones(n)]) if fit_intercept else Xu
+        sw = np.sqrt(weight)
+        sol, *_ = np.linalg.lstsq(design * sw[:, None], (y - off) * sw,
+                                  rcond=None)
+        beta_null[idx] = sol[:idx.size]
+        intercept = float(sol[-1]) if fit_intercept else 0.0
+    else:
+        _score0, intercept = linear_null_score(
+            X, y, weight, offset=offset, fit_intercept=fit_intercept,
+        )
+
+    eta = X @ beta_null + intercept + off
+    score = linear_score(X, y, eta, weight)
+    return beta_null, score, float(intercept)

@@ -12,6 +12,7 @@ from sklearn.base import BaseEstimator
 
 from ...algorithms.penalty import (
     weighted_column_scale,
+    weighted_column_center_scale,
     rescale_penalty_factors,
     validate_groups,
     rescale_group_multipliers,
@@ -24,6 +25,7 @@ from ...algorithms.coordinate_descent import (
 from ...algorithms.linear.likelihood import (
     build_linear_objective,
     linear_null_score,
+    linear_unpenalized_null_fit,
     linear_deviance,
     linear_null_deviance,
     linear_intercept_update,
@@ -53,6 +55,12 @@ class GroupLassoLinear(BaseEstimator):
     max_outer_iter : int, default=100
         Maximum outer (proximal Newton) iterations per lambda.
     outer_tol : float, default=1e-9
+        Outer-loop convergence tolerance.  Note that the group block
+        solver frequently fails to reach stationarity at this tolerance
+        on correlated within-group designs; ``converged_path_`` reports
+        that honestly rather than declaring success.  Inspect
+        ``kkt_violation_path_`` for the actual distance from
+        stationarity at each path point.
         Outer convergence tolerance.
     max_inner_iter : int, default=1000
         Maximum inner (CD) iterations per outer step.
@@ -122,16 +130,22 @@ class GroupLassoLinear(BaseEstimator):
             self.group_multiplier, group_sizes, n_groups,
         )
 
-        xs_full, degenerate = weighted_column_scale(
+        # Center as well as scale when an intercept is fitted: with a free
+        # intercept this is an exact reparameterization (lambda_max and the
+        # coefficient path are invariant) that removes the information-
+        # diagonal inflation an uncentered large-mean/sd column causes.
+        xm_full, xs_full, degenerate = weighted_column_center_scale(
             X, weight, standardize=self.standardize,
         )
+        if not self.fit_intercept:
+            xm_full = np.zeros_like(xm_full)
         if np.any(degenerate):
             warnings.warn(
                 f"{int(np.sum(degenerate))} degenerate feature(s) excluded.",
                 category=DegenerateFeatureWarning, stacklevel=2,
             )
         fit_cols = ~degenerate
-        X_fit = X[:, fit_cols] / xs_full[fit_cols]
+        X_fit = (X[:, fit_cols] - xm_full[fit_cols]) / xs_full[fit_cols]
         p_fit = X_fit.shape[1]
         groups_fit = groups_full[fit_cols]
         groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
@@ -148,9 +162,16 @@ class GroupLassoLinear(BaseEstimator):
         pf_fit = rescale_penalty_factors(pf_full[fit_cols], p_fit)
 
         c = 1.0 / float(np.sum(weight))
-        score_null, intercept_null = linear_null_score(
-            X_fit, y, weight, offset=offset,
-            fit_intercept=self.fit_intercept,
+        # REV-001: the null point for lambda_max is not beta=0 everywhere --
+        # it is "penalized coefficients at 0, unpenalized ones at their own
+        # MLE".  For the group lasso the unpenalized set is the group==0
+        # pseudo-group.  Fitting it here corrects lambda_max and gives the
+        # path a warm start whose unpenalized coefficients are already right
+        # at the top of the path (mirrors the R reference's SerBIN.residuals).
+        beta_null, score_null, intercept_null = linear_unpenalized_null_fit(
+            X_fit, y, weight,
+            unpenalized=((groups_fit == 0) | (pf_fit == 0.0)),
+            offset=offset, fit_intercept=self.fit_intercept,
         )
         lam_max = compute_group_lambda_max(
             score_null, c, groups_fit, gw_fit, pf_fit, self.alpha,
@@ -182,7 +203,7 @@ class GroupLassoLinear(BaseEstimator):
             info = linear_information(X_fit, weight)
             return ll, sc, info
 
-        beta = np.zeros(p_fit)
+        beta = beta_null.copy()
         results = []
         for lam_val in lambda_sequence:
             result = fit_group_regularization_path(
@@ -207,11 +228,25 @@ class GroupLassoLinear(BaseEstimator):
         coef_path = np.zeros((n_lam, p_full))
         coef_path[:, fit_cols] = coef_path_fit
 
+        # Intercept back-transform into the original units of X.  This must
+        # happen before the deviance block below, which rebuilds eta from the
+        # *uncentered* X and so needs an intercept in matching units.
+        intercept_path = np.array(intercepts, dtype=np.float64) - (
+            coef_path @ xm_full
+        )
+        intercepts = list(intercept_path)
+
         self.coef_path_ = coef_path
-        self.intercept_path_ = np.array(intercepts)
+        self.intercept_path_ = intercept_path
         self.lambda_path_ = np.asarray(lambda_sequence, dtype=np.float64)
         self.lambda_max_ = float(lam_max)
         self.converged_path_ = np.array([r.converged for r in results])
+        # Distance from stationarity at each path point.  When
+        # ``converged_path_`` is False this says how far off the point is,
+        # which the boolean alone cannot.
+        self.kkt_violation_path_ = np.array(
+            [getattr(r, "kkt_violation", float("nan")) for r in results]
+        )
         # Snap solver noise to exact zero before counting nonzeros
         # (ISSUE-013: FP noise ~1e-10 at lambda_max from IRLS/intercept).
         _snap = max(getattr(self, 'inner_tol', 1e-10) * 100, 1e-8)
@@ -222,6 +257,7 @@ class GroupLassoLinear(BaseEstimator):
             [r.active_groups for r in results]
         )
         self.column_scale_ = xs_full
+        self.column_center_ = xm_full
 
         null_dev = linear_null_deviance(y, weight)
         deviances = np.array([linear_deviance(

@@ -364,3 +364,81 @@ def logistic_null_score(
     eta = np.full(n, intercept) + off
     score = logistic_score(X, y, eta, weight)
     return score, intercept
+
+
+def logistic_unpenalized_null_fit(
+    X: np.ndarray,
+    y: np.ndarray,
+    weight: np.ndarray,
+    unpenalized: np.ndarray,
+    offset: Optional[np.ndarray] = None,
+    fit_intercept: bool = True,
+    max_iter: int = 50,
+    tol: float = 1e-11,
+) -> Tuple[np.ndarray, np.ndarray, float]:
+    """Null point for ``lambda_max``: unpenalized columns fitted, rest at 0.
+
+    The correct null point for a regularization path is not ``beta=0``
+    everywhere -- it is the point where every *penalized* coefficient is
+    zero and every *unpenalized* one (plus the intercept) sits at its own
+    MLE.  Evaluating the score there gives a ``lambda_max`` that genuinely
+    zeroes the penalized coefficients, and gives the path a warm start
+    that already has the unpenalized coefficients right at the top of the
+    path instead of leaving them near zero for the first several lambdas.
+
+    Mirrors the reference R implementation's ``SerBIN.residuals``, which
+    fits the ``group == 0`` columns before taking the null residual.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n, p)
+        Design matrix (already standardized).
+    y : ndarray, shape (n,)
+    weight : ndarray, shape (n,)
+    unpenalized : ndarray of bool, shape (p,)
+        True for columns that carry no penalty at any lambda.
+    offset : ndarray or None, shape (n,)
+    fit_intercept : bool
+    max_iter, tol : int, float
+        Newton iteration controls for the restricted fit.
+
+    Returns
+    -------
+    beta_null : ndarray, shape (p,)
+        Zero except at ``unpenalized``, where it holds the restricted MLE.
+    score : ndarray, shape (p,)
+        Score of the full coefficient vector evaluated at the null point.
+    intercept : float
+        Intercept at the null point (0.0 if ``fit_intercept`` is False).
+    """
+    n, p = X.shape
+    off = (np.zeros(n, dtype=np.float64) if offset is None
+           else np.asarray(offset, dtype=np.float64))
+    unpen = np.asarray(unpenalized, dtype=bool)
+    idx = np.flatnonzero(unpen)
+
+    _score0, intercept = logistic_null_score(
+        X, y, weight, offset=offset, fit_intercept=fit_intercept,
+    )
+    beta_null = np.zeros(p, dtype=np.float64)
+
+    if idx.size:
+        Xu = X[:, idx]
+        for _ in range(max_iter):
+            eta = Xu @ beta_null[idx] + intercept + off
+            if fit_intercept:
+                intercept += logistic_intercept_update(y, eta, weight)
+                eta = Xu @ beta_null[idx] + intercept + off
+            g = logistic_score(Xu, y, eta, weight)
+            H = logistic_information(Xu, eta, weight)
+            try:
+                step = np.linalg.solve(H, g)
+            except np.linalg.LinAlgError:
+                step = np.linalg.lstsq(H, g, rcond=None)[0]
+            beta_null[idx] += step
+            if float(np.max(np.abs(step))) < tol:
+                break
+
+    eta = X @ beta_null + intercept + off
+    score = logistic_score(X, y, eta, weight)
+    return beta_null, score, float(intercept)

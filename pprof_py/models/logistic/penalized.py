@@ -17,6 +17,7 @@ from sklearn.base import BaseEstimator
 
 from ...algorithms.penalty import (
     weighted_column_scale,
+    weighted_column_center_scale,
     rescale_penalty_factors,
 )
 from ...algorithms.coordinate_descent import (
@@ -27,6 +28,7 @@ from ...algorithms.coordinate_descent import (
 from ...algorithms.logistic.likelihood import (
     build_logistic_objective,
     logistic_null_score,
+    logistic_unpenalized_null_fit,
     logistic_loglik,
     logistic_deviance,
     logistic_null_deviance,
@@ -251,9 +253,17 @@ class PenalizedLogistic(BaseEstimator):
             raise ValueError("y must contain only 0 and 1 for logistic regression")
 
         # --- Column standardization ---
-        xs_full, degenerate = weighted_column_scale(
+        # Center as well as scale when an intercept is fitted: with a free
+        # intercept this is an exact reparameterization (lambda_max and the
+        # coefficient path are invariant) that removes the information-
+        # diagonal inflation an uncentered large-mean/sd column causes.
+        # Without an intercept there is nothing to absorb the shift, so the
+        # uncentered path is kept -- see weighted_column_center_scale.
+        xm_full, xs_full, degenerate = weighted_column_center_scale(
             X, weight, standardize=self.standardize
         )
+        if not self.fit_intercept:
+            xm_full = np.zeros_like(xm_full)
         if np.any(degenerate):
             warnings.warn(
                 f"{int(np.sum(degenerate))} feature(s) have ~zero weighted "
@@ -263,7 +273,7 @@ class PenalizedLogistic(BaseEstimator):
         fit_cols = ~degenerate
         if not np.any(fit_cols):
             raise ValueError("All predictors have zero weighted variance")
-        X_fit = X[:, fit_cols] / xs_full[fit_cols]
+        X_fit = (X[:, fit_cols] - xm_full[fit_cols]) / xs_full[fit_cols]
         p_fit = X_fit.shape[1]
 
         # --- Penalty factors ---
@@ -281,17 +291,15 @@ class PenalizedLogistic(BaseEstimator):
         # --- Build objective ---
         c = 1.0 / float(np.sum(weight))
 
-        # Null-point score for lambda_max.
-        score_null, intercept_null = logistic_null_score(
-            X_fit, y, weight, offset=offset,
+        # REV-001: the null point for lambda_max is not beta=0 everywhere --
+        # it is "penalized coefficients at 0, unpenalized ones at their own
+        # MLE".  Fitting them here both corrects lambda_max and gives the
+        # path a warm start whose unpenalized coefficients are already right
+        # at the top of the path (mirrors the R reference's SerBIN.residuals).
+        beta_null, score_null, intercept_null = logistic_unpenalized_null_fit(
+            X_fit, y, weight, unpenalized=(pf_fit == 0.0), offset=offset,
             fit_intercept=self.fit_intercept,
         )
-
-        # Handle unpenalized variables: fit them at beta=0 null point.
-        beta_null = np.zeros(p_fit)
-        always_unpenalized = pf_fit == 0.0
-        # For simplicity, if some variables are always unpenalized,
-        # we still start from score at beta=0 (conservative lambda_max).
 
         lam_max = compute_lambda_max(
             score_null, c, pf_fit, self.alpha,
@@ -349,7 +357,7 @@ class PenalizedLogistic(BaseEstimator):
             )
 
         # Warm-start path with intercept tracking.
-        beta = np.zeros(p_fit)
+        beta = beta_null.copy()
         results = []
         for lam_val in lambda_sequence:
             result = fit_regularization_path(
@@ -375,8 +383,15 @@ class PenalizedLogistic(BaseEstimator):
         coef_path = np.zeros((n_lam, p_full))
         coef_path[:, fit_cols] = coef_path_fit
 
+        # Intercept back-transform: the fitted intercept is in centered
+        # coordinates, so shift it back into the original units of X.
+        # (No-op when fit_intercept=False, where xm_full is all zeros.)
+        intercept_path = np.array(intercepts, dtype=np.float64) - (
+            coef_path @ xm_full
+        )
+
         self.coef_path_ = coef_path
-        self.intercept_path_ = np.array(intercepts)
+        self.intercept_path_ = intercept_path
         self.lambda_path_ = np.asarray(lambda_sequence, dtype=np.float64)
         self.lambda_max_ = float(lam_max)
         self.lambda_min_ratio_ = float(lam_min_ratio)
@@ -384,11 +399,18 @@ class PenalizedLogistic(BaseEstimator):
             [r.log_likelihood for r in results]
         )
         self.converged_path_ = np.array([r.converged for r in results])
+        # Distance from stationarity at each path point.  When
+        # ``converged_path_`` is False this says how far off the point is,
+        # which the boolean alone cannot.
+        self.kkt_violation_path_ = np.array(
+            [getattr(r, "kkt_violation", float("nan")) for r in results]
+        )
         self.n_iter_path_ = np.array([r.n_outer_iter for r in results])
         self.n_nonzero_path_ = np.array(
             [int(np.sum(row != 0.0)) for row in coef_path]
         )
         self.column_scale_ = xs_full
+        self.column_center_ = xm_full
         self.penalty_factor_ = pf_full
         self._excluded_features_ = degenerate
 
@@ -405,7 +427,7 @@ class PenalizedLogistic(BaseEstimator):
 
         if n_lam == 1:
             self.coef_ = coef_path[0]
-            self.intercept_ = intercepts[0]
+            self.intercept_ = float(intercept_path[0])
             self.lambda_ = float(lambda_sequence[0])
 
         return self

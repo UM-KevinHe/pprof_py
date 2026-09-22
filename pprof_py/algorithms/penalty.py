@@ -112,15 +112,92 @@ def elastic_net_penalty_value(
 # Column standardization
 # -----------------------------------------------------------------------
 
+def weighted_column_center_scale(
+    X: np.ndarray, weight: np.ndarray, standardize: bool = True
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Per-column weighted means and scale factors for penalized fitting.
+
+    Returns the weighted column means alongside the scale divisors, so a
+    caller fitting a model **with an intercept** can center the design
+    before fitting and back-transform the intercept afterwards (glmnet's
+    convention; see Notes).
+
+    Parameters
+    ----------
+    X : ndarray, shape (n, p)
+        Design matrix.
+    weight : ndarray, shape (n,)
+        Per-observation weights (positive).
+    standardize : bool
+        If False, returns all-ones scale (no standardization).  Centering
+        is independent of this flag: it is the caller's ``fit_intercept``
+        that decides whether ``xm`` is used, matching glmnet, where
+        ``standardize`` controls only the divisor.
+
+    Returns
+    -------
+    xm : ndarray, shape (p,)
+        Weighted column means.  Degenerate columns still report their
+        true mean; the caller excludes them from the fit regardless.
+    xs : ndarray, shape (p,)
+        Scale divisor per column (weighted population std if
+        ``standardize``, else 1.0).  Degenerate columns get xs=1.
+    degenerate : ndarray of bool, shape (p,)
+        True for columns with numerically zero weighted variance.
+
+    Notes
+    -----
+    With ``X_fit = (X - xm) / xs`` the fitted linear predictor is
+
+        eta = X_fit @ b + a
+            = sum_j (b_j / xs_j) * X_j + (a - sum_j (b_j / xs_j) * xm_j)
+
+    so the *coefficient* back-transform is unchanged (``coef = b / xs``)
+    and only the intercept picks up a correction::
+
+        intercept = a - xm @ coef
+
+    When an intercept is fitted this is an exact reparameterization: the
+    penalty sees the same ``b``, so ``lambda_max`` and the whole
+    coefficient path are invariant, and only the conditioning of the
+    information matrix changes.  Without an intercept it is *not* a
+    reparameterization -- there is nothing to absorb the shift -- which
+    is why callers must gate centering on ``fit_intercept=True``.
+
+    This is the same convention already used by the discrete-survival
+    models (``alpha - centers @ beta_orig``).
+    """
+    w = np.asarray(weight, dtype=np.float64)
+    w_sum = w.sum()
+    w_norm = w / w_sum
+    xm = w_norm @ X
+    centered = X - xm
+    xv = w_norm @ (centered**2)
+    degenerate = xv < 10.0 * np.finfo(np.float64).eps
+    xv = np.where(degenerate, 0.0, xv)
+    if standardize:
+        xs = np.sqrt(xv)
+    else:
+        xs = np.ones(X.shape[1])
+    xs = np.where(degenerate, 1.0, xs)
+    return xm, xs, degenerate
+
+
 def weighted_column_scale(
     X: np.ndarray, weight: np.ndarray, standardize: bool = True
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Per-column scale factors for penalized fitting.
 
     Computes weighted population standard deviation per column.  Does
-    NOT center -- for Cox (no intercept) this matches glmnet exactly;
-    for GLMs with intercept the centering is handled by the intercept
-    update, not by X standardization.
+    NOT center.  This is correct for models with no intercept-like term
+    to absorb the shift -- notably Cox, whose partial-likelihood
+    information is already a risk-set-centered variance, so centering X
+    is a numerical no-op there.
+
+    Callers that *do* fit an intercept should use
+    :func:`weighted_column_center_scale` instead and back-transform the
+    intercept, which removes the information-diagonal inflation that an
+    uncentered column with a large mean/sd ratio otherwise causes.
 
     Parameters
     ----------
@@ -139,19 +216,9 @@ def weighted_column_scale(
     degenerate : ndarray of bool, shape (p,)
         True for columns with numerically zero weighted variance.
     """
-    w = np.asarray(weight, dtype=np.float64)
-    w_sum = w.sum()
-    w_norm = w / w_sum
-    xm = w_norm @ X
-    centered = X - xm
-    xv = w_norm @ (centered**2)
-    degenerate = xv < 10.0 * np.finfo(np.float64).eps
-    xv = np.where(degenerate, 0.0, xv)
-    if standardize:
-        xs = np.sqrt(xv)
-    else:
-        xs = np.ones(X.shape[1])
-    xs = np.where(degenerate, 1.0, xs)
+    _xm, xs, degenerate = weighted_column_center_scale(
+        X, weight, standardize=standardize
+    )
     return xs, degenerate
 
 
