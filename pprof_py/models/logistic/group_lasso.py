@@ -15,6 +15,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 
 from ...algorithms.penalty import (
+    within_group_orthogonalize,
+    unorthogonalize_coefs,
     weighted_column_scale,
     weighted_column_center_scale,
     rescale_penalty_factors,
@@ -95,6 +97,7 @@ class GroupLassoLogistic(BaseEstimator):
         penalty_factor: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         fit_intercept: bool = True,
         use_active_set: bool = True,
         max_outer_iter: int = 100,
@@ -111,6 +114,7 @@ class GroupLassoLogistic(BaseEstimator):
         self.penalty_factor = penalty_factor
         self.group_multiplier = group_multiplier
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.fit_intercept = fit_intercept
         self.use_active_set = use_active_set
         self.max_outer_iter = max_outer_iter
@@ -187,6 +191,8 @@ class GroupLassoLogistic(BaseEstimator):
             )
         fit_cols = ~degenerate
         X_fit = (X[:, fit_cols] - xm_full[fit_cols]) / xs_full[fit_cols]
+
+
         p_fit = X_fit.shape[1]
         groups_fit = groups_full[fit_cols]
 
@@ -214,6 +220,24 @@ class GroupLassoLogistic(BaseEstimator):
 
         c = 1.0 / float(np.sum(weight))
 
+        # C2: within-group orthogonalization (R/grplasso convention).
+        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I,
+        # which is what makes the block coordinate update exact -- see the
+        # scale-correction note in the group CD kernel.  The unpenalized
+        # pseudo-group (label 0) is left untouched, as in R.
+        #
+        # NOTE: this changes the ESTIMATOR, not just the algorithm.  In the
+        # original coordinates the penalty becomes
+        #     lam * sqrt(K_g) * sqrt( beta_g' (X_g' W X_g / sum w) beta_g )
+        # i.e. the standardized group lasso (Simon & Tibshirani 2012), which
+        # is what R/grplasso fits.  Set orthogonalize=False only to reproduce
+        # pre-change results; that path is NOT a validated alternative.
+        QL_blocks = None
+        if self.orthogonalize:
+            X_fit, QL_blocks = within_group_orthogonalize(
+                X_fit, groups_fit, weight,
+            )
+
         # REV-001: the null point for lambda_max is not beta=0 everywhere --
         # it is "penalized coefficients at 0, unpenalized ones at their own
         # MLE".  For the group lasso the unpenalized set is the group==0
@@ -233,6 +257,9 @@ class GroupLassoLogistic(BaseEstimator):
             self.lambda_path, lam_max, self.lambda_min_ratio,
             self.n_lambda, p_fit, n,
         )
+
+        # C3 is only well-posed once C2 has made A_gg proportional to I.
+        majorize = bool(self.orthogonalize)
 
         # Objective with intercept tracking.
         intercept = intercept_null if self.fit_intercept else 0.0
@@ -256,7 +283,17 @@ class GroupLassoLogistic(BaseEstimator):
             )
             ll = ll_fn(y, eta, weight)
             sc = sc_fn(X_fit, y, eta, weight)
-            info = info_fn(X_fit, eta, weight)
+            if majorize:
+                # C3: fixed v = 1/4 majorizer (R/grplasso convention).
+                # p(1-p) <= 1/4, so this is a quadratic upper bound on the
+                # negative log-likelihood: block CD on it descends
+                # monotonically and needs no step-halving.  Combined with
+                # C2 it makes A_gg = v*I exactly and constant across IRLS
+                # iterations, which is what the kernel's scale correction
+                # needs in order to be exact.
+                info = 0.25 * (X_fit.T * weight) @ X_fit
+            else:
+                info = info_fn(X_fit, eta, weight)
             return ll, sc, info
 
         # Fit path lambda by lambda for intercept tracking.
@@ -281,7 +318,11 @@ class GroupLassoLogistic(BaseEstimator):
         # Store results.
         n_lam = len(results)
         coef_path_fit = np.array(
-            [r.beta / xs_full[fit_cols] for r in results]
+            [
+                (unorthogonalize_coefs(r.beta, groups_fit, QL_blocks)
+                 if QL_blocks is not None else r.beta) / xs_full[fit_cols]
+                for r in results
+            ]
         )
         coef_path = np.zeros((n_lam, p_full))
         coef_path[:, fit_cols] = coef_path_fit
@@ -434,6 +475,7 @@ class GroupLassoLogisticCV(BaseEstimator):
         penalty_factor: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         fit_intercept: bool = True,
         use_active_set: bool = True,
         n_folds: int = 10,
@@ -454,6 +496,7 @@ class GroupLassoLogisticCV(BaseEstimator):
         self.penalty_factor = penalty_factor
         self.group_multiplier = group_multiplier
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.fit_intercept = fit_intercept
         self.use_active_set = use_active_set
         self.n_folds = n_folds
@@ -475,6 +518,7 @@ class GroupLassoLogisticCV(BaseEstimator):
             penalty_factor=self.penalty_factor,
             group_multiplier=self.group_multiplier,
             standardize=self.standardize,
+            orthogonalize=self.orthogonalize,
             fit_intercept=self.fit_intercept,
             use_active_set=self.use_active_set,
             max_outer_iter=self.max_outer_iter,
@@ -512,6 +556,7 @@ class GroupLassoLogisticCV(BaseEstimator):
                 penalty_factor=self.penalty_factor,
                 group_multiplier=self.group_multiplier,
                 standardize=self.standardize,
+            orthogonalize=self.orthogonalize,
                 fit_intercept=self.fit_intercept,
                 use_active_set=self.use_active_set,
                 max_outer_iter=self.max_outer_iter,

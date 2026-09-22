@@ -11,6 +11,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 
 from ...algorithms.penalty import (
+    within_group_orthogonalize,
+    unorthogonalize_coefs,
     weighted_column_scale,
     weighted_column_center_scale,
     rescale_penalty_factors,
@@ -78,6 +80,7 @@ class GroupLassoLinear(BaseEstimator):
         penalty_factor: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         fit_intercept: bool = True,
         use_active_set: bool = True,
         max_outer_iter: int = 100,
@@ -94,6 +97,7 @@ class GroupLassoLinear(BaseEstimator):
         self.penalty_factor = penalty_factor
         self.group_multiplier = group_multiplier
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.fit_intercept = fit_intercept
         self.use_active_set = use_active_set
         self.max_outer_iter = max_outer_iter
@@ -146,6 +150,8 @@ class GroupLassoLinear(BaseEstimator):
             )
         fit_cols = ~degenerate
         X_fit = (X[:, fit_cols] - xm_full[fit_cols]) / xs_full[fit_cols]
+
+
         p_fit = X_fit.shape[1]
         groups_fit = groups_full[fit_cols]
         groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
@@ -162,6 +168,24 @@ class GroupLassoLinear(BaseEstimator):
         pf_fit = rescale_penalty_factors(pf_full[fit_cols], p_fit)
 
         c = 1.0 / float(np.sum(weight))
+        # C2: within-group orthogonalization (R/grplasso convention).
+        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I,
+        # which is what makes the block coordinate update exact -- see the
+        # scale-correction note in the group CD kernel.  The unpenalized
+        # pseudo-group (label 0) is left untouched, as in R.
+        #
+        # NOTE: this changes the ESTIMATOR, not just the algorithm.  In the
+        # original coordinates the penalty becomes
+        #     lam * sqrt(K_g) * sqrt( beta_g' (X_g' W X_g / sum w) beta_g )
+        # i.e. the standardized group lasso (Simon & Tibshirani 2012), which
+        # is what R/grplasso fits.  Set orthogonalize=False only to reproduce
+        # pre-change results; that path is NOT a validated alternative.
+        QL_blocks = None
+        if self.orthogonalize:
+            X_fit, QL_blocks = within_group_orthogonalize(
+                X_fit, groups_fit, weight,
+            )
+
         # REV-001: the null point for lambda_max is not beta=0 everywhere --
         # it is "penalized coefficients at 0, unpenalized ones at their own
         # MLE".  For the group lasso the unpenalized set is the group==0
@@ -223,7 +247,11 @@ class GroupLassoLinear(BaseEstimator):
 
         n_lam = len(results)
         coef_path_fit = np.array(
-            [r.beta / xs_full[fit_cols] for r in results]
+            [
+                (unorthogonalize_coefs(r.beta, groups_fit, QL_blocks)
+                 if QL_blocks is not None else r.beta) / xs_full[fit_cols]
+                for r in results
+            ]
         )
         coef_path = np.zeros((n_lam, p_full))
         coef_path[:, fit_cols] = coef_path_fit
@@ -260,8 +288,11 @@ class GroupLassoLinear(BaseEstimator):
         self.column_center_ = xm_full
 
         null_dev = linear_null_deviance(y, weight)
+        # Use the back-transformed coefficients: r.beta lives in the
+        # orthogonalized space when C2 is active, so it cannot be paired
+        # with the original X here.
         deviances = np.array([linear_deviance(
-            y, X[:, fit_cols] @ (r.beta / xs_full[fit_cols]) + intercepts[i]
+            y, X[:, fit_cols] @ coef_path_fit[i] + intercepts[i]
             + (offset if offset is not None else 0.0), weight,
         ) for i, r in enumerate(results)])
         self.deviance_path_ = deviances

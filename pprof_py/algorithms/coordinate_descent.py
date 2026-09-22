@@ -687,7 +687,20 @@ def _sparse_group_coordinate_descent_numba(
                     for i in range(p):
                         A_beta[i] += A[i, j] * delta_j
             # Step 2: group L2 shrinkage.
-            group_thresh = lam * (1.0 - alpha) * mw
+            # Scale correction: the block proximal operator thresholds the
+            # GRADIENT-scale partial residual against lam*(1-alpha)*mw, but
+            # step 1 already divided by the block curvature, so beta_g is on
+            # the COEFFICIENT scale.  Divide the threshold by the same
+            # curvature.  Exact iff A_gg = v_g * I, which within-group
+            # orthogonalization guarantees.  Mirrors the reference R kernel's
+            # Soft_thres(norm, lambda / v).
+            v_g = 0.0
+            for jj in range(K):
+                v_g += diagA[gs + jj]
+            v_g = v_g / K if K > 0 else 1.0
+            if v_g < 1e-12:
+                v_g = 1e-12
+            group_thresh = lam * (1.0 - alpha) * mw / v_g
             if group_thresh > 0.0:
                 s_norm_sq = 0.0
                 for jj in range(K):
@@ -758,7 +771,16 @@ def _sparse_group_coordinate_descent_python(
                 if delta_j != 0.0:
                     beta[j] = beta_j_new
                     A_beta += A[:, j] * delta_j
-            group_thresh = lam * (1.0 - alpha) * mw
+            # Scale correction: the block proximal operator thresholds the
+            # GRADIENT-scale partial residual against lam*(1-alpha)*mw, but
+            # step 1 already divided by the block curvature, so beta_g is on
+            # the COEFFICIENT scale.  Divide the threshold by the same
+            # curvature.  Exact iff A_gg = v_g * I, which within-group
+            # orthogonalization guarantees.  Mirrors the reference R kernel's
+            # Soft_thres(norm, lambda / v).
+            v_g = float(np.mean(diagA[gs:ge])) if ge > gs else 1.0
+            v_g = max(v_g, 1e-12)
+            group_thresh = lam * (1.0 - alpha) * mw / v_g
             if group_thresh > 0.0:
                 s_g = beta[gs:ge]
                 s_norm = np.sqrt(np.dot(s_g, s_g))
