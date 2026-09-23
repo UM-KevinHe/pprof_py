@@ -777,14 +777,18 @@ class DiscreteSurvivalCV(BaseEstimator):
         min_idx = valid_idx[np.argmin(cv_mean[valid])]
         self.lambda_min_ = lambda_seq[min_idx]
 
-        if self.se_rule == '1se':
-            threshold = cv_mean[min_idx] + cv_se[min_idx]
-            # Largest lambda (earliest index) whose mean CV error
-            # is within 1 SE of the minimum
-            candidates = valid_idx[cv_mean[valid_idx] <= threshold]
-            self.lambda_1se_ = lambda_seq[candidates[0]]
-        else:
-            self.lambda_1se_ = self.lambda_min_
+        # REV-012: lambda_min_ and lambda_1se_ are both properties of the CV
+        # curve and are reported regardless of se_rule; se_rule only decides
+        # which of them the reported model is evaluated at (see the
+        # ``rule == '1se'`` branches below).  Previously lambda_1se_ was
+        # overwritten with lambda_min_ whenever se_rule='min', so a single fit
+        # could not compare the two rules and the attribute contradicted its
+        # own docstring.  This matches PenalizedCoxPHCV / PenalizedLogisticCV.
+        threshold = cv_mean[min_idx] + cv_se[min_idx]
+        # Largest lambda (earliest index) whose mean CV error
+        # is within 1 SE of the minimum
+        candidates = valid_idx[cv_mean[valid_idx] <= threshold]
+        self.lambda_1se_ = lambda_seq[candidates[0]]
 
         return self
 
@@ -850,24 +854,31 @@ class DiscreteSurvivalCV(BaseEstimator):
         self._check_is_fitted()
         return self.best_model_.coef_at(lambda_val)
 
-    def predict(self, X, rule: str = '1se', type: str = 'link'):
+    def predict(self, X, rule: Optional[str] = None, type: str = 'link'):
         """Predict using the selected lambda.
 
         Parameters
         ----------
         X : DataFrame or ndarray
-        rule : str
-            ``'min'`` or ``'1se'``.
+        rule : {'min', '1se'} or None, default None
+            Which CV lambda to evaluate at.  ``None`` uses the estimator's
+            own ``se_rule``, so ``se_rule`` alone decides the reported
+            model (REV-012).
         type : str
             ``'link'``.
         """
         self._check_is_fitted()
+        rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
         return self.best_model_.predict(X, lambda_val=lam, type=type)
 
-    def summary(self, rule: str = '1se') -> pd.DataFrame:
-        """Summary at the selected lambda."""
+    def summary(self, rule: Optional[str] = None) -> pd.DataFrame:
+        """Summary at the selected lambda.
+
+        ``rule=None`` (default) uses the estimator's ``se_rule``.
+        """
         self._check_is_fitted()
+        rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
         idx = np.argmin(np.abs(self.best_model_.lambda_path_ - lam))
         result = self.best_model_.summary(which=idx)

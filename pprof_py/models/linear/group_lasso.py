@@ -269,6 +269,9 @@ class GroupLassoLinear(BaseEstimator):
         self.lambda_path_ = np.asarray(lambda_sequence, dtype=np.float64)
         self.lambda_max_ = float(lam_max)
         self.converged_path_ = np.array([r.converged for r in results])
+        # REV-005 (also noted): parity with GroupLassoLogistic and
+        # PenalizedLinear, which the ISSUE-003 fix did not reach here.
+        self.n_iter_path_ = np.array([r.n_outer_iter for r in results])
         # Distance from stationarity at each path point.  When
         # ``converged_path_`` is False this says how far off the point is,
         # which the boolean alone cannot.

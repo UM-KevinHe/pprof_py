@@ -965,6 +965,25 @@ def compute_group_lambda_max(
 # Group-level helpers
 # ======================================================================
 
+
+def _snapped_support(beta, groups, n_groups, inner_tol):
+    """Active-group mask and degrees of freedom with solver noise removed.
+
+    REV-005: comparing against exact zero reports coefficients of order
+    1e-10 (inner-solver residue) as "active", which contradicts
+    ``n_nonzero_path_``, already snapped for ISSUE-013.  Use the same
+    tolerance the model classes use, ``max(100 * inner_tol, 1e-8)``, and
+    define a group as active iff it holds at least one coefficient above
+    that tolerance -- which makes ``active_groups``, ``df`` and
+    ``n_nonzero_path_`` agree by construction.
+    """
+    snap = max(100.0 * float(inner_tol), 1e-8)
+    big = np.abs(beta) > snap
+    active = np.zeros(n_groups, dtype=bool)
+    for g in range(1, n_groups + 1):
+        active[g - 1] = bool(np.any(big[groups == g]))
+    return active, float(np.sum(big))
+
 def _compute_group_norms(
     beta: np.ndarray, groups: np.ndarray, n_groups: int,
 ) -> np.ndarray:
@@ -1160,14 +1179,15 @@ def fit_single_lambda_group(
         obj_cand = exact_objective(beta_candidate, loglik_cand)
         if not (np.isfinite(obj_cand) and np.all(np.isfinite(beta_candidate))):
             gnorms = _compute_group_norms(beta, groups, n_groups)
-            df = float(np.sum(beta != 0))
+            active_snap, df = _snapped_support(
+                beta, groups, n_groups, inner_tol)
             return GroupPenalizedFitResult(
                 beta=beta, log_likelihood=loglik, objective_value=obj_val,
                 n_outer_iter=n_outer_iter,
                 n_inner_iter_total=n_inner_iter_total,
                 converged=False,
                 message="non-finite objective or coefficients",
-                information=info, active_groups=gnorms > 0,
+                information=info, active_groups=active_snap,
                 group_norms=gnorms, df=df,
             )
 
@@ -1185,14 +1205,15 @@ def fit_single_lambda_group(
 
         if obj_cand > obj_val + objective_tol:
             gnorms = _compute_group_norms(beta, groups, n_groups)
-            df = float(np.sum(beta != 0))
+            active_snap, df = _snapped_support(
+                beta, groups, n_groups, inner_tol)
             return GroupPenalizedFitResult(
                 beta=beta, log_likelihood=loglik, objective_value=obj_val,
                 n_outer_iter=n_outer_iter,
                 n_inner_iter_total=n_inner_iter_total,
                 converged=False,
                 message="step-halving failed",
-                information=info, active_groups=gnorms > 0,
+                information=info, active_groups=active_snap,
                 group_norms=gnorms, df=df,
             )
 
@@ -1245,12 +1266,12 @@ def fit_single_lambda_group(
             break
 
     gnorms = _compute_group_norms(beta, groups, n_groups)
-    df = float(np.sum(beta != 0))
+    active_snap, df = _snapped_support(beta, groups, n_groups, inner_tol)
     return GroupPenalizedFitResult(
         beta=beta, log_likelihood=loglik, objective_value=obj_val,
         n_outer_iter=n_outer_iter, n_inner_iter_total=n_inner_iter_total,
         converged=converged, message=message, information=info,
-        active_groups=gnorms > 0, group_norms=gnorms, df=df,
+        active_groups=active_snap, group_norms=gnorms, df=df,
         kkt_violation=float(kkt_violation),
     )
 
