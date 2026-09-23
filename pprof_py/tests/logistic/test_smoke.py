@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from pprof_py.inference import PROVIDER_TEST_COLUMNS
 import pytest
 
 from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
@@ -84,7 +85,7 @@ class TestLogisticFixedEffectSerbin:
     def test_test_poibin_exact(self, model):
         result = model.test(test_method="poibin_exact")
         assert list(result["p_value"]) == pytest.approx(
-            [1e-07, 0.2512632, 0.7388648, 0.7599295, 0.1907258, 0.0049056],
+            [1.3726501736e-07, 0.2512632, 0.7388648, 0.7599295, 0.1907258, 0.0049056],
             rel=1e-4, abs=1e-10,
         )
 
@@ -165,9 +166,7 @@ class TestLogisticMixedEffect:
 
     def test_test_poibin_exact(self, model):
         result = model.test(test_method="poibin_exact")
-        assert list(result.columns) == [
-            "provider_id", "gamma", "srr", "obs", "exp", "p_theo", "z_score", "p_empi", "flag"
-        ]
+        assert list(result.columns) == list(PROVIDER_TEST_COLUMNS)
 
 
 class TestLogisticFixedEffectDataPrep:
@@ -211,7 +210,7 @@ class TestLogisticRandomEffect:
 
     def test_test_wald(self, model):
         result = model.test(test_method="wald")
-        assert list(result.columns) == ["flag", "p_value", "stat", "std_error"]
+        assert list(result.columns) == list(PROVIDER_TEST_COLUMNS)
 
     def test_ci_alpha(self, model):
         result = model.calculate_confidence_intervals(option="alpha")

@@ -6,6 +6,8 @@ testing. Mixed into the model class so that
 fitting, and prediction.
 """
 from __future__ import annotations
+from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
+from ...inference.zstat import t_to_z
 
 from typing import Any, Dict, List, Optional, Protocol, Union
 
@@ -298,90 +300,49 @@ class FixedEffectMeasuresMixin:
 
     def test(
         self,
-        providers: Optional[Union[list, np.ndarray]] = None,
+        providers=None,
+        *,
+        reference="median",
+        null_model=None,
+        alternative: str = "two_sided",
         level: float = 0.95,
-        null: Union[str, float] = "median",
-        alternative: str = "two_sided"
+        critical: Optional[float] = None,
+        interval: str = "inversion",
     ) -> pd.DataFrame:
-        """Conduct hypothesis tests on provider effects and identify outlying providers.
+        """Wald test of each provider's effect against the reference effect gamma_0.
+
+        ``(gamma_j - gamma_0) / SE(gamma_j)`` with a Student-t reference on
+        ``n - p - m`` degrees of freedom; p-values, flags, and intervals follow
+        the t distribution.
 
         Parameters
         ----------
-        providers : Optional[Union[list, np.ndarray]]
-            A subset of provider IDs for which tests are conducted. If None, tests are conducted for all providers.
-        level : float, default=0.95
-            Confidence level for the hypothesis tests.
-        null : Union[str, float], default="median"
-            Null hypothesis value for provider effects; options are "median", "mean", or a numeric value.
-        alternative : str, default="two_sided"
-            Alternative hypothesis: "two_sided", "greater", or "less".
+        providers : array-like, optional
+            Report only these providers; gamma_0 and any empirical null use all.
+        reference : "median", "mean", or float
+            The reference effect gamma_0: the median of the estimated effects,
+            their size-weighted mean, or a value on the effect scale.
+        null_model : NullModel or callable, optional
+            Null for the z-statistics: :class:`~pprof_py.inference.TheoreticalNull`
+            by default, or an instance such as ``FixedNull(sd=...)``, or a callable
+            that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
+        alternative, level, critical, interval
+            As in :func:`~pprof_py.inference.provider_test`.
 
         Returns
         -------
-        pd.DataFrame
-            A DataFrame with columns "flag", "p_value", "stat", and "std_error" for each provider.
+        pandas.DataFrame
+            Indexed by provider with columns
+            :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
+            above gamma_0, -1 below, 0 not significant, NA not tested.
         """
         if self.coefficients_ is None or self.variances_ is None:
             raise ValueError("The model must be fitted before testing.")
-        
-        alpha = 1 - level
-        gamma = self.coefficients_["gamma"].flatten()   # shape (m,)
-        se_gamma = np.sqrt(self.variances_["gamma"].flatten())
-        n_prov = len(gamma)
-        total_samples = self.fitted_.size
-        p = len(self.coefficients_["beta"])
-        df = total_samples - p - n_prov
-
-        # Compute gamma_null using the actual group sizes (self.group_sizes_) if needed
-        if null == "median":
-            gamma_null = np.median(gamma)
-        elif null == "mean":
-            if self.group_sizes_ is None:
-                raise ValueError("Group sizes are not available for computing a weighted mean.")
-            gamma_null = np.average(gamma, weights=self.group_sizes_)
-        elif isinstance(null, (int, float)):
-            gamma_null = null
-        else:
-            raise ValueError("Argument 'null' must be 'median', 'mean', or a numeric value.")
-
-        # Compute test statistics.
-        stat = (gamma - gamma_null) / se_gamma
-
-        # Use the survival function so that a high test statistic yields a small probability,
-        # consistent with R's pt(..., lower.tail = F)
-        prob = t.sf(stat, df=df)  # equivalent to 1 - t.cdf(stat, df=df)
-
-        # Determine flags and p-values based on the alternative hypothesis.
-        if alternative == "two_sided":
-            # Flag: 1 if probability < alpha/2, -1 if probability > 1 - alpha/2, else 0.
-            flag = np.where(prob < alpha / 2, 1,
-                            np.where(prob > 1 - alpha / 2, -1, 0))
-            p_value = 2 * np.minimum(prob, 1 - prob)
-        elif alternative == "greater":
-            flag = np.where(prob < alpha, 1, 0)
-            p_value = prob
-        elif alternative == "less":
-            flag = np.where(1 - prob < alpha, -1, 0)
-            p_value = 1 - prob
-        else:
-            raise ValueError("Argument 'alternative' should be 'two_sided', 'greater', or 'less'.")
-
-        # Build the result DataFrame, using self.groups_ as the index.
-        result = pd.DataFrame({
-            "flag": pd.Categorical(flag),
-            "p_value": np.round(p_value, 7),
-            "stat": stat,
-            "std_error": se_gamma
-        }, index=self.groups_)
-
-        # Filter results if a subset of providers is specified.
-        if providers is not None:
-            if isinstance(providers, (list, np.ndarray)):
-                result = result.loc[result.index.isin(providers)]
-            else:
-                raise ValueError("Argument 'providers' should be a list or ndarray matching provider IDs.")
-
-        # Optionally, attach the provider sizes as an attribute.
-        result.attrs["provider_size"] = dict(zip(self.groups_, self.group_sizes_))
-        
-        return result
+        gamma = np.asarray(self.coefficients_["gamma"], dtype=np.float64).ravel()
+        se = np.sqrt(np.asarray(self.variances_["gamma"], dtype=np.float64).ravel())
+        df = self.fitted_.size - len(self.coefficients_["beta"]) - gamma.size
+        g0 = reference_effect(gamma, self.group_sizes_, reference)
+        z = t_to_z((gamma - g0) / se, df)
+        return effect_test(self.groups_, gamma, z, g0, se=se, df=df, null_model=null_model,
+                           alternative=normalize_alternative(alternative), level=level, critical=critical,
+                           interval=interval, providers=providers, test_method="wald")

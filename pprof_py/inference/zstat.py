@@ -17,8 +17,11 @@ from typing import Callable, Optional, Union
 import numpy as np
 import pandas as pd
 from scipy.special import expit
+from scipy.stats import norm, t as t_dist
 
 __all__ = [
+    "t_to_z",
+    "z_to_t",
     "Transform",
     "IDENTITY",
     "LOGIT",
@@ -27,6 +30,24 @@ __all__ = [
     "ZFrame",
     "z_statistic",
 ]
+
+
+def t_to_z(t, df):
+    """Normal equivalent of a Student-t statistic, ``Phi^-1(F_t(t))``, computed in the smaller tail."""
+    t = np.asarray(t, dtype=np.float64)
+    df = np.broadcast_to(np.asarray(np.inf if df is None else df, dtype=np.float64), t.shape)
+    with np.errstate(invalid="ignore"):
+        z = np.sign(t) * norm.isf(t_dist.sf(np.abs(t), df))
+    return np.where(np.isfinite(df), z, t)
+
+
+def z_to_t(z, df):
+    """Inverse of :func:`t_to_z`."""
+    z = np.asarray(z, dtype=np.float64)
+    df = np.broadcast_to(np.asarray(np.inf if df is None else df, dtype=np.float64), z.shape)
+    with np.errstate(invalid="ignore"):
+        t = np.sign(z) * t_dist.isf(norm.sf(np.abs(z)), df)
+    return np.where(np.isfinite(df), t, z)
 
 
 @dataclass(frozen=True)
@@ -141,6 +162,7 @@ class ZFrame:
     null_transformed: Optional[float] = None
     transform: Transform = IDENTITY
     measure: Optional[str] = None
+    df: Optional[Union[float, np.ndarray]] = None
 
     @classmethod
     def from_arrays(cls, z, provider=None) -> "ZFrame":
@@ -188,6 +210,7 @@ def z_statistic(
     *,
     null_value: Union[str, float, Callable[[np.ndarray], float]] = "reference",
     transform: Union[str, Transform] = "auto",
+    df: Optional[Union[float, np.ndarray]] = None,
 ) -> ZFrame:
     """Standardise provider measures against a null value.
 
@@ -209,6 +232,11 @@ def z_statistic(
         Working scale. ``"auto"`` uses logit for direct rates, log for direct
         ratios, and identity for indirect measures and provider effects. On the
         logit and log scales the delta method is evaluated at the estimate.
+
+    df : float or array-like, optional
+        Degrees of freedom for a Student-t reference. The t-statistic enters
+        as its normal equivalent ``Phi^-1(F_t(t))``, so p-values follow the t
+        distribution and intervals are inverted through it.
 
     Returns
     -------
@@ -244,9 +272,11 @@ def z_statistic(
         se_t = np.asarray(tr.se_forward(est, se), dtype=np.float64)
         nt = float(tr.forward(np.float64(nv)))
         z = (t - nt) / se_t
+        if df is not None:
+            z = t_to_z(z, df)
     if not np.isfinite(nt):
         raise ValueError(f"null_value {nv!r} is outside the domain of the {tr.name} transform.")
     untestable = ~np.isfinite(t) | ~np.isfinite(se_t) | ~(se_t > 0) | ~np.isfinite(z)
     z = np.where(untestable, np.nan, z)
     return ZFrame(z=z, index=m.index, estimate=est, se=se, transformed=t, se_transformed=se_t,
-                  null_value=nv, null_transformed=nt, transform=tr, measure=m.measure)
+                  null_value=nv, null_transformed=nt, transform=tr, measure=m.measure, df=df)

@@ -19,9 +19,10 @@ import pandas as pd
 from scipy.stats import norm
 
 from .empirical_null.models import NullModel, TheoreticalNull, _as_z
-from .zstat import ZFrame
+from .zstat import ZFrame, z_to_t
 
-__all__ = ["calibrate", "p_values", "flags", "intervals", "provider_test", "PROVIDER_TEST_COLUMNS"]
+__all__ = ["calibrate", "p_values", "flags", "intervals", "provider_test", "resolve_null_model",
+           "PROVIDER_TEST_COLUMNS"]
 
 PROVIDER_TEST_COLUMNS = (
     "estimate", "se", "null_value", "transformed", "se_transformed", "null_transformed", "z_raw",
@@ -42,6 +43,17 @@ def _check_level(level: float) -> float:
     if not 0.0 < level < 1.0:
         raise ValueError("level must be strictly between 0 and 1.")
     return 1.0 - level
+
+
+def resolve_null_model(null_model, z) -> NullModel:
+    """``None`` -> :class:`TheoreticalNull`; a NullModel as is; a callable is fitted on ``z``."""
+    if null_model is None:
+        return TheoreticalNull()
+    if isinstance(null_model, NullModel):
+        return null_model
+    if callable(null_model):
+        return null_model(z)
+    raise TypeError("null_model must be a NullModel or a callable returning one.")
 
 
 def calibrate(z, null: NullModel = TheoreticalNull()) -> np.ndarray:
@@ -117,11 +129,15 @@ def intervals(z: ZFrame, null: NullModel = TheoreticalNull(), *, alternative: st
     c = float(critical) if critical is not None else float(norm.ppf(1.0 - (alpha / 2.0 if alt == "two_sided" else alpha)))
     loc, scl, _ = null.parameters(z)
     t, s = z.transformed, z.se_transformed
+    df = z.df
     with np.errstate(invalid="ignore", over="ignore"):   # untestable providers (inf or NaN) are set to NaN below
         if form == "inversion":
-            lo_t, hi_t = t - (loc + c * scl) * s, t - (loc - c * scl) * s
+            upper_z, lower_z = loc + c * scl, loc - c * scl
         else:
-            lo_t, hi_t = t - c * scl * s, t + c * scl * s
+            upper_z, lower_z = c * scl, -c * scl
+        if df is not None:                              # Student-t reference: invert through t, not by scaling
+            upper_z, lower_z = z_to_t(upper_z, df), z_to_t(lower_z, df)
+        lo_t, hi_t = t - upper_z * s, t - lower_z * s
     if alt == "greater":
         hi_t = np.full_like(hi_t, np.inf)
     elif alt == "less":

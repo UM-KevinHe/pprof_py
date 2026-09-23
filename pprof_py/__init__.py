@@ -59,7 +59,6 @@ from .selection import CoxPHSelector
 from .exceptions import NotFittedError
 from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
-from .inference import huber_location_scale, estimate_empirical_null
 
 __version__ = "0.4.1"
 
@@ -103,7 +102,5 @@ __all__ = [
     "proc_freq",
     "sigmoid",
     "plot_caterpillar",
-    "huber_location_scale",
-    "estimate_empirical_null",
     "__version__",
 ]

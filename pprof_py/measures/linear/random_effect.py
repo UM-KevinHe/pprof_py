@@ -6,6 +6,7 @@ testing. Mixed into the model class so that
 fitting, and prediction.
 """
 from __future__ import annotations
+from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
 
 from typing import Any, Dict, Optional, Protocol, Union
 
@@ -321,90 +322,50 @@ class RandomEffectMeasuresMixin:
 
     def test(
         self,
-        providers: Optional[Union[list, np.ndarray]] = None,
+        providers=None,
+        *,
+        reference=0.0,
+        null_model=None,
+        alternative: str = "two_sided",
         level: float = 0.95,
-        null: Union[str, float] = 0,
-        alternative: str = "two_sided"
+        critical: Optional[float] = None,
+        interval: str = "inversion",
     ) -> pd.DataFrame:
-        """Conduct hypothesis tests on provider (random) effects to identify outliers.
+        """Wald test of each provider's random effect against the reference effect gamma_0.
+
+        ``(alpha_j - gamma_0) / SE(alpha_j)`` with the shrinkage-adjusted SE
+        and a normal reference.
 
         Parameters
         ----------
-        providers : Optional[Union[list, np.ndarray]]
-            A subset of provider IDs for which tests are conducted.
-            If None, tests are conducted for all provider IDs.
-        level : float, default=0.95
-            Confidence level for the hypothesis tests.
-        null : Union[str, float], default=0
-            Null hypothesis value for provider effects.  Can be a number,
-            ``"median"`` (the median of the BLUPs) or ``"mean"`` (the
-            group-size-weighted mean of the BLUPs).
-        alternative : str, default="two_sided"
-            Alternative hypothesis: Must be one of "two_sided", "greater", or "less".
+        providers : array-like, optional
+            Report only these providers; gamma_0 and any empirical null use all.
+        reference : "median", "mean", or float
+            The reference effect gamma_0 (default 0, the random-effect mean): the median of the estimated effects,
+            their size-weighted mean, or a value on the effect scale.
+        null_model : NullModel or callable, optional
+            Null for the z-statistics: :class:`~pprof_py.inference.TheoreticalNull`
+            by default, or an instance such as ``FixedNull(sd=...)``, or a callable
+            that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
+        alternative, level, critical, interval
+            As in :func:`~pprof_py.inference.provider_test`.
 
         Returns
         -------
-        pd.DataFrame
-            A DataFrame with columns "flag", "p_value", "stat", and "std_error" for each provider.
-            - "flag": Indicates whether a provider is an outlier with respect to the null hypothesis. 
-            Values are 1 (outlier above), -1 (outlier below), or 0 (not an outlier).
-            - "p_value": P-value of the hypothesis test for each provider.
-            - "stat": Test statistic (Z-score) calculated for each provider.
-            - "std_error": Standard error of the estimated provider effect.
+        pandas.DataFrame
+            Indexed by provider with columns
+            :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
+            above gamma_0, -1 below, 0 not significant, NA not tested.
         """
         self._check_is_fitted()
-
-        alpha = 1 - level
-        random_effects = self.coefficients_["alpha"]
+        effects = self.coefficients_["alpha"]
+        values = np.asarray(effects, dtype=np.float64).ravel()
         var_alpha = self.variances_["alpha"].values[0, 0]
         sigma_sq = self.sigma_ ** 2
-
-        n_prov = self.group_sizes_  # array with sample sizes per provider
-
-        # Resolve the null hypothesis value
-        if isinstance(null, str):
-            if null == "median":
-                null = float(np.median(random_effects))
-            elif null == "mean":
-                null = float(np.average(random_effects, weights=n_prov))
-            else:
-                raise ValueError(
-                    f"null must be 'median', 'mean', or a number, got {null!r}"
-                )
-        null = float(null)
-
-        # Calculate the shrinkage (or reliability) factor for each provider
-        shrinkage_factor = var_alpha / (var_alpha + sigma_sq / n_prov)
-        se_alpha = np.sqrt(shrinkage_factor * sigma_sq / n_prov)
-        # Compute test statistic (Z-score)
-        Z_score = (random_effects - null) / se_alpha
-
-        # use the upper-tail probability to mimic R's pnorm(..., lower.tail=F)
-        p = 1 - norm.cdf(Z_score)
-
-        if alternative == "two_sided":
-            p_value = 2 * np.minimum(p, 1 - p)
-            flag = np.where(p < alpha / 2, 1, np.where(p > 1 - alpha / 2, -1, 0))
-        elif alternative == "greater":
-            p_value = p
-            flag = np.where(p < alpha, 1, 0)
-        elif alternative == "less":
-            p_value = 1 - p
-            flag = np.where(1 - p < alpha, -1, 0)
-        else:
-            raise ValueError("Argument 'alternative' should be 'two_sided', 'greater', or 'less'.")
-
-        result = pd.DataFrame({
-            "flag": pd.Categorical(flag),
-            "p_value": np.round(p_value, 7),
-            "stat": Z_score,
-            "std_error": se_alpha
-        }, index=random_effects.index)
-
-        if providers is not None:
-            if isinstance(providers, (list, np.ndarray)):
-                result = result.loc[providers]
-            else:
-                raise ValueError("Argument 'providers' should be a list or array of provider IDs.")
-
-        return result
+        n_prov = np.asarray(self.group_sizes_, dtype=np.float64)
+        g0 = reference_effect(values, n_prov, reference)
+        se = np.sqrt(var_alpha / (var_alpha + sigma_sq / n_prov) * sigma_sq / n_prov)
+        index = effects.index if hasattr(effects, "index") else np.arange(values.size)
+        return effect_test(index, values, (values - g0) / se, g0, se=se, null_model=null_model,
+                           alternative=normalize_alternative(alternative), level=level, critical=critical,
+                           interval=interval, providers=providers, test_method="wald")

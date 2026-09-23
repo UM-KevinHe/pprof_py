@@ -13,13 +13,8 @@ import numpy as np
 import pandas as pd
 from scipy.special import expit as plogis
 
-from ...inference.empirical_null import (
-    poibin_exact_pvalue,
-    resample_pvalue,
-    pvalues_to_zscores,
-    calibrate_empirical_null,
-    assign_flags,
-)
+from ...inference.effect_tests import (EXACT_P_FLOOR, effect_test, normalize_alternative, poibin_tails,
+                                       reference_effect, resample_tails, z_from_tails)
 
 
 class MixedEffectMeasuresMixin:
@@ -159,130 +154,71 @@ class MixedEffectMeasuresMixin:
 
     def test(
         self,
-        test_method: str = 'resampling',
-        n_resample: int = 10000,
-        empirical_null: bool = True,
-        n_strata: int = 4,
-        strata_var: Optional[np.ndarray] = None,
+        providers=None,
+        *,
+        test_method: str = "resampling",
+        reference="median",
+        null_model=None,
+        alternative: str = "two_sided",
         level: float = 0.95,
-        seed: int = 1,
+        critical: Optional[float] = None,
+        n_resample: int = 10000,
+        seed=None,
     ) -> pd.DataFrame:
-        """Significance test for provider effects.
-
-        Supported test methods:
-        - "resampling": Parametric bootstrap (He et al. 2013) incorporating
-          posterior uncertainty of cluster random effects.
-        - "poibin_exact": Exact Poisson-binomial test using point estimates
-          (posterior mean) for cluster effects.  Deterministic — no Monte
-          Carlo error or seed dependence.
-
-        Both methods share the same post-processing pipeline:
-        1. Compute two-sided p-value per provider.
-        2. Convert p-values to z-scores.
-        3. (Optional) Apply empirical null calibration via Huber M-estimator,
-           stratified by provider size or a user-supplied grouping variable.
+        """Test each provider's Stage 3 effect against the reference effect gamma_0.
 
         Parameters
         ----------
-        test_method : {'resampling', 'poibin_exact'}, default='resampling'
-            Inference method.  ``'poibin_exact'`` requires the ``fast_poibin``
-            package.  ``n_resample`` and ``seed`` are ignored when using
-            ``'poibin_exact'``.
-        n_resample : int, default=10000
-            Number of Monte Carlo resamples per provider (resampling only).
-        empirical_null : bool, default=True
-            Whether to apply empirical null calibration.
-        n_strata : int, default=4
-            Number of strata (quantiles) for empirical null grouping.
-        strata_var : np.ndarray, optional
-            Provider-level variable for stratification (e.g., facility size).
-            If None, uses provider sample size (number of observations).
-        level : float, default=0.95
-            Confidence level for flagging (significance level = 1 - level).
-        seed : int, default=1
-            Random seed for reproducibility (resampling only).
+        providers : array-like, optional
+            Report only these providers; gamma_0 and any empirical null use all.
+        test_method : {"resampling", "poibin_exact"}
+            ``"resampling"``: the provider's event count against simulated
+            counts with its effect at gamma_0 and the cluster effects drawn
+            from their posterior (He et al. 2013, Section 3.3).
+            ``"poibin_exact"``: exact Poisson-binomial test with the cluster
+            effects at their posterior means.
+        reference : "median", "mean", or float
+            The reference effect gamma_0: the median of the estimated effects,
+            their size-weighted mean, or a value on the effect scale.
+        null_model : NullModel or callable, optional
+            Null for the z-statistics: :class:`~pprof_py.inference.TheoreticalNull`
+            by default, or an instance such as ``FixedNull(sd=...)``, or a callable
+            that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
+        alternative, level, critical
+            As in :func:`~pprof_py.inference.provider_test`.
+            He et al.'s empirical-null step is
+            ``null_model=EmpiricalNull.fitter(size=sizes, n_groups=4, grouping="rank",
+            estimator=HUBER_RLM, small_group="theoretical")``.
+        n_resample, seed : int, optional
+            Monte Carlo draws and seed for ``"resampling"``.
 
         Returns
         -------
-        pd.DataFrame with columns:
-            provider_id, gamma, srr, obs, exp, p_theo, z_score,
-            p_empi (if empirical_null), flag
+        pandas.DataFrame
+            Indexed by provider with columns
+            :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
+            above gamma_0, -1 below, 0 not significant, NA not tested.
         """
         self._check_is_fitted()
-
-        if test_method not in ('resampling', 'poibin_exact'):
-            raise ValueError(
-                f"test_method='{test_method}' is not supported. "
-                "Use 'resampling' or 'poibin_exact'."
-            )
-
-        prov_idx = self._provider_idx
-        gamma_median = np.median(self.gamma_)
-        sm = self.calculate_standardized_measures()
-        indirect = sm['indirect']
-        srr = indirect['indirect_ratio'].values
-
-        # Build per-observation arrays sorted by provider
-        sort_order = np.argsort(prov_idx)
-        y_sorted = self._obs[sort_order]
-        xbeta_sorted = self.xbeta_[sort_order]
-        alpha_mean_sorted = self.alpha_mean_[sort_order]
-        alpha_var_sorted = self.alpha_var_[sort_order]
-
-        # Provider boundaries
-        prov_sizes = np.bincount(prov_idx, minlength=self.n_providers_)
-        prov_starts = np.concatenate([[0], np.cumsum(prov_sizes[:-1])])
-
-        # Compute p-values per provider
-        p_theo = np.zeros(self.n_providers_)
-
+        alt = normalize_alternative(alternative)
+        if test_method not in ("resampling", "poibin_exact"):
+            raise ValueError(f"test_method={test_method!r} is not supported; use 'resampling' or 'poibin_exact'.")
+        idx = np.asarray(self._provider_idx).ravel()
+        g0 = reference_effect(self.gamma_, np.bincount(idx, minlength=self.n_providers_), reference)
+        order = np.argsort(idx, kind="stable")
+        edges = np.r_[0, np.cumsum(np.bincount(idx, minlength=self.n_providers_))]
+        rng = np.random.default_rng(seed) if test_method == "resampling" else None
+        tails = np.empty((self.n_providers_, 4))
         for j in range(self.n_providers_):
-            start = prov_starts[j]
-            end = start + prov_sizes[j]
-            obs_j = y_sorted[start:end].sum()
-
-            if test_method == 'poibin_exact':
-                null_probs = plogis(
-                    gamma_median
-                    + alpha_mean_sorted[start:end]
-                    + xbeta_sorted[start:end]
-                )
-                p_theo[j] = poibin_exact_pvalue(obs_j, null_probs)
-            else:  # resampling
-                p_theo[j] = resample_pvalue(
-                    obs_sum=obs_j,
-                    eta_fixed=xbeta_sorted[start:end],
-                    re_mean=alpha_mean_sorted[start:end],
-                    re_var=alpha_var_sorted[start:end],
-                    null_effect=gamma_median,
-                    n_resample=n_resample,
-                    seed=seed,
-                )
-
-        # Convert to z-scores
-        z_score = pvalues_to_zscores(p_theo, srr)
-
-        # Empirical null calibration
-        if empirical_null:
-            strata = strata_var if strata_var is not None else prov_sizes.astype(float)
-            p_empi, _ = calibrate_empirical_null(z_score, strata, n_strata)
-        else:
-            p_empi = p_theo
-
-        # Flag assignment
-        flag = assign_flags(p_empi, srr, 1 - level)
-
-        # Build results
-        results = pd.DataFrame({
-            'provider_id': self.provider_ids_,
-            'gamma': self.gamma_,
-            'srr': srr,
-            'obs': indirect['observed'].values,
-            'exp': indirect['expected'].values,
-            'p_theo': p_theo,
-            'z_score': z_score,
-            'p_empi': p_empi,
-            'flag': flag,
-        })
-
-        return results
+            rows = order[edges[j]:edges[j + 1]]
+            obs = self._obs[rows].sum()
+            if test_method == "poibin_exact":
+                tails[j] = poibin_tails(obs, plogis(g0 + self.alpha_mean_[rows] + self.xbeta_[rows]))
+            else:
+                tails[j] = resample_tails(obs, self.xbeta_[rows], self.alpha_mean_[rows], self.alpha_var_[rows],
+                                          g0, n_resample, rng)
+        two = alt == "two_sided"
+        z = z_from_tails(tails[:, 0] if two else tails[:, 2], tails[:, 1] if two else tails[:, 3], alt,
+                         EXACT_P_FLOOR if test_method == "poibin_exact" else 0.5 / n_resample)
+        return effect_test(self.provider_ids_, self.gamma_, z, g0, null_model=null_model, alternative=alt,
+                           level=level, critical=critical, providers=providers, test_method=test_method)

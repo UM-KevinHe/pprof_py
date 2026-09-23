@@ -54,22 +54,16 @@ class TestMixin(Protocol):
     Protocol, whether or not it inherits from ``TestMixin`` explicitly.
     """
 
-    def test(self, *args: Any, **kwargs: Any) -> Any:
-        """Conduct hypothesis tests on model parameters.
+    def test(self, providers: Any = None, *, reference: Any = ..., null_model: Any = None,
+             alternative: str = "two_sided", level: float = 0.95, critical: Any = None, **kwargs: Any) -> Any:
+        """Test each provider's effect against a reference effect.
 
-        Parameters
-        ----------
-        *args : Any
-            Positional arguments specific to the testing procedure.
-        **kwargs : Any
-            Keyword arguments specific to the testing procedure.
-
-        Returns
-        -------
-        Any
-            An object (or dictionary) containing the results of the
-            hypothesis tests, such as p-values, test statistics, and
-            degrees of freedom.
+        The shared contract: family-specific statistics (selected with
+        ``test_method`` where a family offers several), a reference effect
+        ``reference`` (``"median"``, ``"mean"``, or a number), an optional null
+        model, and a ``pandas.DataFrame`` indexed by provider with columns
+        :data:`pprof_py.inference.PROVIDER_TEST_COLUMNS`, where ``flag`` is +1
+        above the reference, -1 below, 0 not significant, and NA not tested.
         """
         ...
 

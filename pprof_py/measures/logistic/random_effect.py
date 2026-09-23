@@ -6,6 +6,8 @@ testing. Mixed into the model class so that
 fitting, and prediction.
 """
 from __future__ import annotations
+from ...inference.effect_tests import (EXACT_P_FLOOR, effect_test, normalize_alternative, poibin_tails,
+                                       reference_effect, resample_tails, z_from_tails)
 
 from typing import List, Optional, Union
 
@@ -164,219 +166,97 @@ class RandomEffectMeasuresMixin:
 
     def test(
         self,
+        providers=None,
+        *,
         group_var: Optional[str] = None,
-        providers: Optional[Union[List, Array]] = None,
-        level: float = 0.95,
         test_method: str = "wald",
-        null: Union[str, float] = "median",
+        reference=0.0,
+        null_model=None,
         alternative: str = "two_sided",
+        level: float = 0.95,
+        critical: Optional[float] = None,
+        interval: str = "inversion",
         n_resample: int = 10000,
-        empirical_null: bool = False,
-        n_strata: int = 4,
-        strata_var: Optional[Array] = None,
-        seed: int = 1,
+        seed=None,
     ) -> pd.DataFrame:
-        """Test random effects (BLUPs) for significance.
-
-        Supported test methods:
-        - "wald": Z-test using posterior standard errors from condVar.
-        - "resampling": Parametric bootstrap (He et al. 2013) with
-          optional empirical null calibration.
-        - "poibin_exact": Exact Poisson-binomial test (deterministic,
-          no Monte Carlo error). Uses point estimates for other REs.
+        """Test each group's random effect against the reference effect gamma_0.
 
         Parameters
         ----------
+        providers : array-like, optional
+            Report only these groups; gamma_0 and any empirical null use all.
         group_var : str, optional
-            Grouping variable to test. If None and only one exists, uses that.
-        providers : list or np.ndarray, optional
-            Subset of provider/group IDs to test. If None, all are tested.
-        level : float, default 0.95
-            Confidence level => alpha = 1 - level is significance threshold.
-        test_method : {'wald', 'resampling', 'poibin_exact'}, default='wald'
-            Testing approach.
-        null : {'median', 'mean'} or float, default='median'
-            Null hypothesis value for the random effect.
-        alternative : {'two_sided', 'greater', 'less'}, default='two_sided'
-            Direction of the test (only for 'wald' method).
-        n_resample : int, default=10000
-            Number of bootstrap resamples (only for 'resampling' method).
-        empirical_null : bool, default=False
-            Apply empirical null calibration (only for 'resampling' method).
-        n_strata : int, default=4
-            Number of strata for empirical null grouping.
-        strata_var : np.ndarray, optional
-            Provider-level variable for stratification. If None, uses
-            provider sample size.
-        seed : int, default=1
-            Random seed for reproducibility.
+            Grouping factor to test (required with crossed random effects).
+        test_method : {"wald", "resampling", "poibin_exact"}
+            ``"wald"``: ``(b_j - gamma_0) / SE(b_j)`` with the BLUP's posterior
+            SE. ``"poibin_exact"``: exact Poisson-binomial test of the group's
+            event count with its effect set to gamma_0 and other random effects
+            at their posterior means. ``"resampling"``: the same test drawing
+            the other random effects from their posterior (He et al. 2013).
+        reference : "median", "mean", or float
+            The reference effect gamma_0 (default 0, the random-effect mean, as R pprof): the median of the estimated effects,
+            their size-weighted mean, or a value on the effect scale.
+        null_model : NullModel or callable, optional
+            Null for the z-statistics: :class:`~pprof_py.inference.TheoreticalNull`
+            by default, or an instance such as ``FixedNull(sd=...)``, or a callable
+            that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
+        alternative, level, critical, interval
+            As in :func:`~pprof_py.inference.provider_test`.
+            Intervals are available for the Wald test.
+        n_resample, seed : int, optional
+            Monte Carlo draws and seed for ``"resampling"``.
 
         Returns
         -------
-        pd.DataFrame
-            Indexed by group_id, with columns depending on test_method.
+        pandas.DataFrame
+            Indexed by provider with columns
+            :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
+            above gamma_0, -1 below, 0 not significant, NA not tested.
         """
-        from ...inference.empirical_null import (
-            resample_pvalue,
-            poibin_exact_pvalue,
-            pvalues_to_zscores,
-            calibrate_empirical_null,
-            assign_flags,
-        )
-
         self._check_is_fitted()
+        alt = normalize_alternative(alternative)
         if test_method not in ("wald", "resampling", "poibin_exact"):
-            raise ValueError(
-                f"test_method='{test_method}' is not supported. "
-                "Use 'wald', 'resampling', or 'poibin_exact'."
-            )
-
+            raise ValueError(f"test_method={test_method!r} is not supported; use 'wald', 'resampling', or 'poibin_exact'.")
         if group_var is None:
             if len(self._group_vars) == 1:
                 group_var = self._group_vars[0]
             else:
                 raise ValueError(f"Specify group_var; available: {self._group_vars}")
-
         blups = self.get_random_effects(group_var)
-        se = self._get_posterior_se(group_var)
-
-        # Determine null value
-        if null == "median":
-            gamma_null = float(np.median(blups.values))
-        elif null == "mean":
-            gamma_null = float(np.mean(blups.values))
-        elif isinstance(null, (int, float)):
-            gamma_null = float(null)
-        else:
-            raise ValueError("null must be 'median', 'mean', or a numeric value.")
-
-        alpha = 1.0 - level
-
-        # ---- Wald test ----
+        post_se = self._get_posterior_se(group_var)
+        k = self._group_vars.index(group_var)
+        idx = np.asarray(self._group_indices[k]).ravel()
+        n_levels = self._n_groups[k]
+        g0 = reference_effect(blups.values, np.bincount(idx, minlength=n_levels), reference)
+        se = None
         if test_method == "wald":
-            if alternative not in ("two_sided", "greater", "less"):
-                raise ValueError("alternative must be 'two_sided', 'greater', or 'less'")
-
-            z = (blups.values - gamma_null) / np.maximum(se.values, 1e-15)
-            flags = np.zeros(len(z), dtype=int)
-
-            if alternative == "two_sided":
-                pvals = 2.0 * norm.sf(np.abs(z))
-                flags[pvals < alpha] = np.where(z[pvals < alpha] > 0, 1, -1)
-            elif alternative == "greater":
-                pvals = norm.sf(z)
-                flags[pvals < alpha] = 1
-            else:
-                pvals = norm.cdf(z)
-                flags[pvals < alpha] = -1
-
-            result = pd.DataFrame({
-                "flag": pd.Categorical(flags, categories=[-1, 0, 1]),
-                "p_value": pvals,
-                "stat": z,
-                "std_error": se.values,
-            }, index=blups.index)
-            result.index.name = "group_id"
-
-        # ---- Resampling test ----
-        else:  # test_method in ("resampling", "poibin_exact")
-            k = self._group_vars.index(group_var)
-            idx = self._group_indices[k]
-            n_levels = self._n_groups[k]
-
-            # Compute SRR (for direction)
-            sm = self.calculate_standardized_measures(
-                group_var=group_var, stdz="indirect", null=null
-            )
-            srr = sm["indirect"]["indirect_ratio"].values
-
-            # Per-observation quantities for bootstrap:
-            # eta_fixed = offset + xbeta (everything EXCEPT target group BLUP)
-            # For other REs, use their BLUPs as the mean to sample around
-            xbeta = self.xbeta_  # offset + X @ beta
-
-            # Build per-obs RE mean/var for other group(s)
-            # (If target group is the only group, use zeros)
-            other_re_mean = np.zeros(self._n, dtype=float)
-            other_re_var = np.zeros(self._n, dtype=float)
+            se = np.asarray(post_se.values, dtype=np.float64)
+            z = (blups.values - g0) / np.maximum(se, 1e-15)
+        else:
+            re_mean = np.zeros(self._n)
+            re_var = np.zeros(self._n)
             for j, gv in enumerate(self._group_vars):
                 if gv == group_var:
                     continue
-                # Add other groups' BLUPs as fixed contribution to eta
-                other_blups = self.get_random_effects(gv).values
-                other_se = self._get_posterior_se(gv).values
-                other_re_mean += other_blups[self._group_indices[j]]
-                other_re_var += (other_se[self._group_indices[j]]) ** 2
-
-            # Sort by target group for provider-wise iteration
-            sort_order = np.argsort(idx)
-            y_sorted = self._y[sort_order]
-            eta_sorted = xbeta[sort_order]
-            re_mean_sorted = other_re_mean[sort_order]
-            re_var_sorted = other_re_var[sort_order]
-            idx_sorted = idx[sort_order]
-
-            # Provider boundaries
-            prov_sizes = np.bincount(idx, minlength=n_levels)
-            prov_starts = np.concatenate([[0], np.cumsum(prov_sizes[:-1])])
-
-            # Compute p-values per provider
-            p_theo = np.zeros(n_levels)
+                re_mean += self.get_random_effects(gv).values[self._group_indices[j]]
+                re_var += self._get_posterior_se(gv).values[self._group_indices[j]] ** 2
+            order = np.argsort(idx, kind="stable")
+            edges = np.r_[0, np.cumsum(np.bincount(idx, minlength=n_levels))]
+            rng = np.random.default_rng(seed) if test_method == "resampling" else None
+            tails = np.empty((n_levels, 4))
             for j in range(n_levels):
-                start = prov_starts[j]
-                end = start + prov_sizes[j]
-                obs_j = y_sorted[start:end].sum()
-
+                rows = order[edges[j]:edges[j + 1]]
+                obs = self._y[rows].sum()
                 if test_method == "poibin_exact":
-                    null_probs = expit(
-                        gamma_null
-                        + re_mean_sorted[start:end]
-                        + eta_sorted[start:end]
-                    )
-                    p_theo[j] = poibin_exact_pvalue(obs_j, null_probs)
-                else:  # resampling
-                    p_theo[j] = resample_pvalue(
-                        obs_sum=obs_j,
-                        eta_fixed=eta_sorted[start:end],
-                        re_mean=re_mean_sorted[start:end],
-                        re_var=re_var_sorted[start:end],
-                        null_effect=gamma_null,
-                        n_resample=n_resample,
-                        seed=seed,
-                    )
-
-            # Convert to z-scores
-            z_score = pvalues_to_zscores(p_theo, srr)
-
-            # Empirical null calibration
-            if empirical_null:
-                strata = strata_var if strata_var is not None else prov_sizes.astype(float)
-                p_final, _ = calibrate_empirical_null(z_score, strata, n_strata)
-            else:
-                p_final = p_theo
-
-            # Flags
-            flags = assign_flags(p_final, srr, alpha)
-
-            result = pd.DataFrame({
-                "flag": pd.Categorical(flags, categories=[-1, 0, 1]),
-                "p_value": p_final,
-                "p_theo": p_theo,
-                "z_score": z_score,
-                "srr": srr,
-            }, index=blups.index)
-            result.index.name = "group_id"
-
-        # Filter to requested providers
-        if providers is not None:
-            providers_set = set(np.asarray(providers))
-            result = result[result.index.isin(providers_set)]
-
-        return result
-
-    # ------------------------------------------------------------------
-    # Confidence intervals (aligned with LogisticFixedEffectModel API)
-    # ------------------------------------------------------------------
+                    tails[j] = poibin_tails(obs, expit(g0 + re_mean[rows] + self.xbeta_[rows]))
+                else:
+                    tails[j] = resample_tails(obs, self.xbeta_[rows], re_mean[rows], re_var[rows], g0, n_resample, rng)
+            two = alt == "two_sided"
+            z = z_from_tails(tails[:, 0] if two else tails[:, 2], tails[:, 1] if two else tails[:, 3], alt,
+                             EXACT_P_FLOOR if test_method == "poibin_exact" else 0.5 / n_resample)
+        return effect_test(blups.index, blups.values, z, g0, se=se, null_model=null_model, alternative=alt,
+                           level=level, critical=critical, interval=interval, providers=providers,
+                           test_method=test_method)
 
     def calculate_confidence_intervals(
         self,

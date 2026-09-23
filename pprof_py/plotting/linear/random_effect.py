@@ -171,7 +171,7 @@ class RandomEffectPlottingMixin:
         df["precision"] = df.index.map(precision_map)
         df.dropna(subset=['precision'], inplace=True)
 
-        test_df = self.test(null=null, level=1.0 - alpha_test, alternative="two_sided")
+        test_df = self.test(reference=null, level=1.0 - alpha_test, alternative="two_sided")
         df = df.merge(test_df[['flag']], left_index=True, right_index=True, how='left')
         df["flag"] = df["flag"].fillna(0).astype(int)
 
@@ -291,7 +291,7 @@ class RandomEffectPlottingMixin:
                 test_df = self.test(
                     providers=df_plot['group_id'].unique().tolist(),
                     level=level,
-                    null=null,
+                    reference=null,
                     alternative='two_sided'
                 )
 
@@ -414,7 +414,7 @@ class RandomEffectPlottingMixin:
                 test_df = self.test(
                     providers=df_plot['group_id'].unique().tolist(),
                     level=level,
-                    null=null,
+                    reference=null,
                     alternative='two_sided'
                 )
 

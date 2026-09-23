@@ -114,8 +114,8 @@ def test_agrees_with_the_reporting_function(fit):
 def test_indirect_default_is_the_score_test(fit):
     score = fit.test(test_method="score")
     res = fit.test_standardized("indirect_ratio").loc[score.index]
-    assert np.allclose(res.z_raw, score.stat, rtol=0, atol=1e-12)
-    assert (res.flag.to_numpy(dtype=float) == score.flag.astype(int).to_numpy()).all()
+    assert np.allclose(res.z_raw, score.z_raw, rtol=0, atol=1e-12)
+    assert (res.flag.to_numpy(dtype=float) == score.flag.to_numpy(dtype=float)).all()
     assert res.z_raw.notna().all()                                    # zero-event providers are tested
 
 

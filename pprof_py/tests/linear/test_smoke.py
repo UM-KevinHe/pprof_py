@@ -119,7 +119,7 @@ class TestLinearRandomEffect:
     def test_test(self, model):
         result = model.test()
         assert list(result["p_value"]) == pytest.approx(
-            [0.0, 0.0003505, 0.2525637, 0.0651199, 0.0031193, 0.0], rel=1e-4, abs=1e-8,
+            [0.0, 0.00035045412, 0.2525637, 0.0651199, 0.0031193, 0.0], rel=1e-4, abs=1e-8,
         )
 
     def test_ci_alpha(self, model):

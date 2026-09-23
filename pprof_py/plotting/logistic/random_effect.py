@@ -174,7 +174,7 @@ class RandomEffectPlottingMixin:
         test_df = self.test(
             group_var=group_var,
             test_method=test_method,
-            null=gamma_null,
+            reference=gamma_null,
             level=1.0 - alpha_test,
             alternative="two_sided",
         )
@@ -303,7 +303,7 @@ class RandomEffectPlottingMixin:
                     ),
                     level=level,
                     test_method=test_method,
-                    null=null_val,
+                    reference=null_val,
                     alternative="two_sided",
                 )
                 df_plot = df_plot.merge(
@@ -430,7 +430,7 @@ class RandomEffectPlottingMixin:
                     ),
                     level=level,
                     test_method=test_method,
-                    null=null_val,
+                    reference=null_val,
                     alternative="two_sided",
                 )
                 df_plot = df_plot.merge(

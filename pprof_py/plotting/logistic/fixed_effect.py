@@ -209,8 +209,8 @@ class FixedEffectPlottingMixin:
         df["precision"].replace(np.inf, max_finite_precision * 1.1, inplace=True)
 
         # 4. Get Flags
-        test_df = self.test(null=null, level=1.0 - alpha_test, test_method=test_method)
-        df["flag"] = test_df.loc[df.index, "flag"].astype(int)
+        test_df = self.test(reference=null, level=1.0 - alpha_test, test_method=test_method)
+        df["flag"] = test_df.loc[df.index, "flag"].fillna(0).astype(int)
 
         # --- Calculate Control Limits ---
         limits_list = []
@@ -328,7 +328,7 @@ class FixedEffectPlottingMixin:
                 providers=group_ids,
                 level=level,
                 test_method=test_method,
-                null=null
+                reference=null
             )
             df = df.merge(
                 test_df[['flag']],
@@ -448,7 +448,7 @@ class FixedEffectPlottingMixin:
                 providers=group_ids,
                 level=level,
                 test_method=test_method,
-                null=null
+                reference=null
             )
             df = df.merge(test_df[['flag']],
                         left_on='group_id',
