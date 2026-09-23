@@ -1,0 +1,163 @@
+{
+  "n8": {
+    "huber": {
+      "location": 0.144616097326887,
+      "scale": 1.23663403297665,
+      "converged": true,
+      "n_iter": 6,
+      "n_used": 8
+    },
+    "bisquare": {
+      "location": 0.175772337518005,
+      "scale": 1.28292534175716,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 8
+    },
+    "mm": {
+      "location": 0.184090706737457,
+      "scale": 1.42531386019241,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 8
+    }
+  },
+  "n60": {
+    "huber": {
+      "location": 0.321947274298282,
+      "scale": 1.8381608120057,
+      "converged": true,
+      "n_iter": 4,
+      "n_used": 60
+    },
+    "bisquare": {
+      "location": 0.318358161168787,
+      "scale": 1.84358964526396,
+      "converged": true,
+      "n_iter": 4,
+      "n_used": 60
+    },
+    "mm": {
+      "location": 0.319646548543431,
+      "scale": 1.80337110256602,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 60
+    }
+  },
+  "n500": {
+    "huber": {
+      "location": 0.15322352084193,
+      "scale": 1.44937418971379,
+      "converged": true,
+      "n_iter": 4,
+      "n_used": 500
+    },
+    "bisquare": {
+      "location": 0.155318003548087,
+      "scale": 1.4514949212558,
+      "converged": true,
+      "n_iter": 3,
+      "n_used": 500
+    },
+    "mm": {
+      "location": 0.155296471897179,
+      "scale": 1.44891373779554,
+      "converged": true,
+      "n_iter": 4,
+      "n_used": 500
+    }
+  },
+  "n2000": {
+    "huber": {
+      "location": -0.0674748552441281,
+      "scale": 1.77838687977972,
+      "converged": true,
+      "n_iter": 3,
+      "n_used": 2000
+    },
+    "bisquare": {
+      "location": -0.066344936555115,
+      "scale": 1.77838687977972,
+      "converged": true,
+      "n_iter": 3,
+      "n_used": 2000
+    },
+    "mm": {
+      "location": -0.0662068005639923,
+      "scale": 1.80724631508264,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 2000
+    }
+  },
+  "heavy": {
+    "huber": {
+      "location": 0.00852463680132101,
+      "scale": 1.27882136587699,
+      "converged": true,
+      "n_iter": 4,
+      "n_used": 300
+    },
+    "bisquare": {
+      "location": 0.0540601091891849,
+      "scale": 1.25865321338311,
+      "converged": true,
+      "n_iter": 7,
+      "n_used": 300
+    },
+    "mm": {
+      "location": 0.0477575982573566,
+      "scale": 1.32622594067863,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 300
+    }
+  },
+  "with_nan": {
+    "huber": {
+      "location": 0.433960265361457,
+      "scale": 1.02523981705073,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 60
+    },
+    "bisquare": {
+      "location": 0.435580174036163,
+      "scale": 1.02523981705073,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 60
+    },
+    "mm": {
+      "location": 0.443369288852803,
+      "scale": 1.08106723901992,
+      "converged": true,
+      "n_iter": 5,
+      "n_used": 60
+    }
+  },
+  "bimodal": {
+    "huber": {
+      "location": 2.30454693232748,
+      "scale": 3.65437252344136,
+      "converged": true,
+      "n_iter": 1,
+      "n_used": 75
+    },
+    "bisquare": {
+      "location": 2.29154826039317,
+      "scale": 3.6735405508671,
+      "converged": true,
+      "n_iter": 3,
+      "n_used": 75
+    },
+    "mm": {
+      "location": 2.27622344191845,
+      "scale": 2.63784597002397,
+      "converged": true,
+      "n_iter": 7,
+      "n_used": 75
+    }
+  }
+}
