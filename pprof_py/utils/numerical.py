@@ -7,6 +7,8 @@ explicitly rather than left to np.exp() to fail silently into inf/nan).
 """
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 
@@ -51,7 +53,21 @@ def safe_exp(eta: np.ndarray, clip: float = 700.0) -> np.ndarray:
 
 
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """Compute the logistic sigmoid function element-wise.
+    """Compute the logistic sigmoid function element-wise, overflow-safe.
+
+    An alias for the package's guarded logistic helper
+    (``algorithms.logistic.likelihood._safe_expit``), so every logistic
+    probability on the SRR / standardized-measure path uses one convention:
+    the linear predictor is clamped to +/-30 (glmnet's bound) and the result
+    to ``[eps, 1 - eps]``.
+
+    REV-010: this was previously ``1 / (1 + exp(-x))`` with no guard.  At
+    extreme linear predictors it overflowed and returned exactly 0 or 1, so
+    ``p * (1 - p)`` became exactly 0 -- which the logit-scale delta method
+    divides by -- and ``log(1 - p)`` became ``-inf``.  For ``|x| <= 30`` the
+    result is bit-identical to the old formula (neither clamp is active
+    there); only saturated inputs change, and only from non-finite /
+    exactly-degenerate values to finite ones.
 
     Parameters
     ----------
@@ -61,6 +77,74 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Sigmoid of x.
+        Sigmoid of x, in ``[eps, 1 - eps]``.
     """
-    return 1 / (1 + np.exp(-x))
+    # Imported lazily: utils is the lower layer, and a module-level import of
+    # algorithms here would create an import cycle at package load.
+    from ..algorithms.logistic.likelihood import _safe_expit
+    return _safe_expit(x)
+
+
+class SingularInformationWarning(RuntimeWarning):
+    """A linear system was singular and a pseudo-inverse fallback was used.
+
+    Results computed through the fallback (standard errors in particular)
+    are numerically defined but should not be trusted: a singular
+    information matrix usually means collinear or aliased covariates, or a
+    fit that has not converged.
+    """
+
+
+_FALLBACK_MSG = (
+    "{what} is singular; falling back to a pseudo-inverse. Treat any "
+    "resulting standard errors as unreliable and check for collinear or "
+    "aliased covariates, or non-convergence."
+)
+
+
+def covariance_from_information(information, warn=False, what="Information matrix"):
+    """Invert an information matrix, falling back to a pseudo-inverse.
+
+    The success path is exactly ``np.linalg.inv``, so results are unchanged
+    whenever the matrix is invertible.  On ``LinAlgError`` it returns
+    ``np.linalg.pinv`` instead of raising, so fitting still returns
+    something inspectable -- but implausibly large variances should be
+    read as a collinearity signal, not as trustworthy standard errors.
+
+    Parameters
+    ----------
+    information : ndarray, shape (p, p)
+    warn : bool, default False
+        Emit :class:`SingularInformationWarning` when the fallback fires.
+        Defaults to False to preserve the historical silent behaviour of
+        existing callers; call sites that previously *raised* on a singular
+        matrix pass True, so that a loud failure does not become a silent
+        one (REV-011).
+    what : str
+        Description used in the warning message.
+    """
+    try:
+        return np.linalg.inv(information)
+    except np.linalg.LinAlgError:
+        if warn:
+            warnings.warn(_FALLBACK_MSG.format(what=what),
+                          SingularInformationWarning, stacklevel=2)
+        return np.linalg.pinv(information)
+
+
+def solve_information(A, b, warn=False, what="Linear system"):
+    """Solve ``A x = b``, falling back to least squares if ``A`` is singular.
+
+    The success path is exactly ``np.linalg.solve`` -- deliberately *not*
+    ``inv(A) @ b``, which is numerically different -- so results are
+    unchanged whenever ``A`` is invertible.  On ``LinAlgError`` it returns
+    the minimum-norm least-squares solution.  See
+    :func:`covariance_from_information` for ``warn``.
+    """
+    try:
+        return np.linalg.solve(A, b)
+    except np.linalg.LinAlgError:
+        if warn:
+            warnings.warn(_FALLBACK_MSG.format(what=what),
+                          SingularInformationWarning, stacklevel=2)
+        return np.linalg.lstsq(A, b, rcond=None)[0]

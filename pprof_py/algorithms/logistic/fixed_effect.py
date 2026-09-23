@@ -15,6 +15,7 @@ log-likelihood evaluation.
 import logging
 
 import numpy as np
+from ...utils.numerical import covariance_from_information, solve_information
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -412,7 +413,7 @@ class BanAlgorithm(BaseAlgorithm):
         score_beta = self.X.T @ residuals
         info_beta = self.X.T @ (q[:, None] * self.X)
 
-        delta_beta = np.linalg.solve(info_beta, score_beta)
+        delta_beta = solve_information(info_beta, score_beta, warn=True, what="Newton beta information")
 
         return score_beta, delta_beta
 

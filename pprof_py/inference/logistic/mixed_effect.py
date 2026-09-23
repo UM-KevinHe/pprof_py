@@ -5,6 +5,7 @@ focused on configuration, fitting, and prediction.
 from __future__ import annotations
 
 import numpy as np
+from ...utils.numerical import covariance_from_information, solve_information
 import pandas as pd
 from scipy.special import expit as plogis
 from scipy.stats import norm
@@ -45,7 +46,7 @@ class MixedEffectInferenceMixin:
 
         # Information matrix
         info_beta = X.T @ (w[:, None] * X)
-        var_beta = np.linalg.inv(info_beta)
+        var_beta = covariance_from_information(info_beta, warn=True, what="Stage 3 beta information")
         se_beta = np.sqrt(np.diag(var_beta))
 
         # Statistics

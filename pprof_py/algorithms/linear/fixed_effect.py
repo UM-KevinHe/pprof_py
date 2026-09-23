@@ -16,6 +16,7 @@ no access to model state.
 from __future__ import annotations
 
 import numpy as np
+from ...utils.numerical import covariance_from_information, solve_information
 from scipy.linalg import block_diag
 
 
@@ -113,7 +114,7 @@ def perform_weighted_least_squares(
     """
     QX = Q @ X
     Qy = Q @ y.reshape(-1, 1)
-    beta = np.linalg.solve(QX.T @ QX, QX.T @ Qy)
+    beta = solve_information(QX.T @ QX, QX.T @ Qy, warn=True, what="Within-provider X'X")
     return beta
 
 

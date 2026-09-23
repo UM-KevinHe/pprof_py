@@ -16,19 +16,11 @@ import numpy as np
 from scipy import stats
 
 
-def covariance_from_information(information: np.ndarray) -> np.ndarray:
-    """Invert the information matrix to get the model-based covariance
-    of beta_hat. Falls back to a pseudo-inverse for a singular or
-    near-singular information matrix (e.g. from collinear or aliased
-    covariates) so that fitting still returns something inspectable
-    rather than raising -- callers should treat implausibly large
-    resulting variances as a signal to investigate collinearity, not as
-    trustworthy standard errors.
-    """
-    try:
-        return np.linalg.inv(information)
-    except np.linalg.LinAlgError:
-        return np.linalg.pinv(information)
+# REV-011: promoted to pprof_py.utils.numerical so the logistic/linear
+# fixed-effect code can share it.  Re-exported here so existing imports
+# keep working; the default (warn=False) preserves the historical
+# silent-fallback behaviour for these callers exactly.
+from ...utils.numerical import covariance_from_information  # noqa: E402,F401
 
 
 def standard_errors(covariance: np.ndarray) -> np.ndarray:

@@ -30,7 +30,8 @@ class _ProviderTestMethods:
         score_modified: bool = True,
         null: Union[str, float] = "median",
         n_bootstrap: int = 10000,
-        alternative: str = "two_sided"
+        alternative: str = "two_sided",
+        random_state=None,
     ) -> pd.DataFrame:
         """Conduct hypothesis tests on provider effects.
 
@@ -59,6 +60,11 @@ class _ProviderTestMethods:
             Resample size for "bootstrap_exact" approach.
         alternative : {"two_sided","greater","less"}, default="two_sided"
             Direction of test. "two_sided" is default.
+        random_state : None, int, numpy.random.Generator or RandomState
+            Seed for ``test_method="bootstrap_exact"``; ignored otherwise.
+            ``None`` (default) keeps the legacy behaviour of drawing from
+            NumPy's global RNG, reproducible only via ``np.random.seed``.
+            Pass an int or ``Generator`` for a self-contained stream.
 
         Returns
         -------
@@ -107,7 +113,7 @@ class _ProviderTestMethods:
         elif test_method == "poibin_exact":
             flags, pvals, stats, se = self._compute_poibin_gamma(indices, gamma_null, alpha, alternative)
         elif test_method == "bootstrap_exact":
-            flags, pvals, stats, se = self._compute_bootstrap_gamma(indices, gamma_null, alpha, alternative, n_bootstrap)
+            flags, pvals, stats, se = self._compute_bootstrap_gamma(indices, gamma_null, alpha, alternative, n_bootstrap, random_state)
         else:
             raise ValueError("test_method must be one of {'poibin_exact','bootstrap_exact','score','wald'}.")
 
@@ -306,7 +312,8 @@ class _ProviderTestMethods:
         gamma_null: float, 
         alpha: float, 
         alternative: str, 
-        n_bootstrap: int
+        n_bootstrap: int,
+        random_state=None,
     ) -> Tuple[List[int], List[float], List[float], List[float]]:
         """Compute Bootstrap exact test for gamma coefficients.
 
@@ -322,12 +329,27 @@ class _ProviderTestMethods:
             Hypothesis type ("two_sided", "greater", or "less").
         n_bootstrap : int
             Number of bootstrap resamples.
+        random_state : None, int, numpy.random.Generator or RandomState
+            See :meth:`test`.
 
         Returns
         -------
         Tuple[List[int], List[float], List[float], List[float]]
             Flags, p-values, test statistics, and standard errors.
         """
+        # REV-016: build the uniform source ONCE, outside the provider loop,
+        # so the stream continues across providers (per-provider seeding
+        # would hand every provider identical draws).  random_state=None
+        # deliberately keeps the legacy global RNG: switching it to
+        # default_rng(None) would silently break callers who currently get
+        # reproducibility from np.random.seed().
+        if random_state is None:
+            _uniform = np.random.rand
+        elif isinstance(random_state, np.random.RandomState):
+            _uniform = random_state.rand
+        else:
+            _uniform = np.random.default_rng(random_state).random
+
         flags, pvals, stats, se = [], [], [], []
         for g_ind in indices:
             mask_g = (self.group_indices_ == g_ind)
@@ -339,7 +361,7 @@ class _ProviderTestMethods:
             draws = np.empty(n_bootstrap, dtype=np.int_)
             group_size = pvec.size
             for i_bs in range(n_bootstrap):
-                r = np.random.rand(group_size)
+                r = _uniform(group_size)
                 draws[i_bs] = np.sum(r < pvec)
 
             if alternative == "two_sided":

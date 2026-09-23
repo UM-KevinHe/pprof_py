@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Protocol
 
 import numpy as np
+from ...utils.numerical import covariance_from_information, solve_information
 import pandas as pd
 from scipy.stats import t
 
@@ -80,11 +81,13 @@ class FixedEffectInferenceMixin:
         """
         sigma_hat_sq = self.sigma_**2
         # Variance of beta:
-        var_beta = sigma_hat_sq * np.linalg.inv((Q @ X).T @ (Q @ X))
+        var_beta = sigma_hat_sq * covariance_from_information(
+            (Q @ X).T @ (Q @ X), warn=True, what="Within-provider X'X")
         
         if self.gamma_var_option == "complete":
             # Remove the sigma factor from var_beta before forming the quadratic term:
-            inv_term = np.linalg.inv((Q @ X).T @ (Q @ X))  # This equals var_beta/sigma_hat_sq.
+            inv_term = covariance_from_information(
+            (Q @ X).T @ (Q @ X), warn=True, what="Within-provider X'X")  # This equals var_beta/sigma_hat_sq.
             # Compute diag(Z_bar %*% inv_term %*% t(Z_bar))
             quad = np.sum((X_means @ inv_term) * X_means, axis=1)  # vector of length n_groups
             var_gamma = sigma_hat_sq * (1 / group_sizes + quad)

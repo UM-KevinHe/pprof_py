@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Protocol
 
 import numpy as np
+from ...utils.numerical import covariance_from_information, solve_information
 import pandas as pd
 from scipy.stats import norm, chi2
 
@@ -89,7 +90,8 @@ class FixedEffectInferenceMixin:
         # Variance for beta
         mat_tmp1 = (info_gamma_inv * info_beta_gamma).T  # Shape: (n_covariates, n_groups)
         schur_complement = info_beta - info_beta_gamma @ mat_tmp1
-        info_beta_inv = np.linalg.inv(schur_complement)
+        info_beta_inv = covariance_from_information(
+            schur_complement, warn=True, what="Schur complement of the information matrix")
         var_beta = info_beta_inv
 
         # Variance for gamma
@@ -392,7 +394,7 @@ class FixedEffectInferenceMixin:
         info_beta = reduced_X.T @ (q[:, None] * reduced_X)          # (p_reduced, p_reduced)
 
         # Inverse of the information matrix for beta
-        schur_inv = np.linalg.inv(info_beta)  # (p_reduced, p_reduced)
+        schur_inv = covariance_from_information(info_beta, warn=True, what="Reduced-model information")  # (p_reduced, p_reduced)
 
         # Variance of the score
         info_full = info_excluded_excluded - info_excluded_beta @ schur_inv @ info_excluded_beta.T
