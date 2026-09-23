@@ -56,8 +56,10 @@ LOG = Transform("log", np.log, lambda x, se: se / x, np.exp)
 
 _BY_NAME = {"identity": IDENTITY, "logit": LOGIT, "log": LOG}
 _AUTO = {
-    "direct_rate": LOGIT, "indirect_rate": LOGIT,
-    "direct_ratio": LOG, "indirect_ratio": LOG,
+    "direct_rate": LOGIT, "direct_ratio": LOG,
+    # Indirect measures: on the identity scale, with the variance of O_j at gamma_0,
+    # the test is the score test of gamma_j = gamma_0 and zero-event providers stay testable.
+    "indirect_rate": IDENTITY, "indirect_ratio": IDENTITY,
     "gamma": IDENTITY,
 }
 
@@ -204,8 +206,9 @@ def z_statistic(
         finite estimates (unweighted); a callable receives the finite
         estimates and returns the null value.
     transform : "auto", "identity", "logit", "log", or Transform
-        Working scale. ``"auto"`` uses logit for rates, log for ratios, and
-        identity for provider effects.
+        Working scale. ``"auto"`` uses logit for direct rates, log for direct
+        ratios, and identity for indirect measures and provider effects. On the
+        logit and log scales the delta method is evaluated at the estimate.
 
     Returns
     -------

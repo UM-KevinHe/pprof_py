@@ -184,7 +184,7 @@ class LogisticFixedEffectModel(
         obs_id_var : Optional[str], default=None
             Column name for observation-level identifiers (e.g., patient ID,
             member ID). Required for cluster-robust variance estimation. If
-            provided, enables the 'robust' variance_type in test_standardized().
+            provided, enables variance='robust' in test_standardized() and standardized_measure().
         use_dataprep : Optional[bool], default=None
             Override default data preparation setting.
         screen_providers : Optional[bool], default=None

@@ -4,7 +4,8 @@ for the CoxPH/IUR-specific inference layer.
 
 Provider testing is organised in layers that can be used separately:
 
-* measures and z-statistics: :class:`MeasureFrame`, :func:`z_statistic`;
+* measures and z-statistics: :func:`standardized_measure` (from a fitted model),
+  :class:`MeasureFrame` (from any estimates), :func:`z_statistic`;
 * null models (:mod:`pprof_py.inference.empirical_null`): :class:`TheoreticalNull`,
   :class:`FixedNull`, :class:`EmpiricalNull`, with :func:`assign_groups` and
   :func:`robust_location_scale`;
@@ -17,6 +18,7 @@ from .empirical_null import (BISQUARE_RLM, DEFAULT_ESTIMATOR, HUBER_RLM, MM_RLM,
                              TheoreticalNull, assign_groups, estimate_empirical_null, huber_location_scale,
                              robust_location_scale)
 from .decision import PROVIDER_TEST_COLUMNS, calibrate, flags, intervals, p_values, provider_test
+from .standardized import MEASURES, StandardPopulation, at_bound, standardized_measure
 
 __all__ = [
     "huber_location_scale", "estimate_empirical_null",
@@ -26,4 +28,5 @@ __all__ = [
     "Transform", "IDENTITY", "LOGIT", "LOG", "MeasureFrame", "ZFrame", "z_statistic",
     "NullModel", "TheoreticalNull", "FixedNull", "EmpiricalNull", "EmpiricalNullWarning",
     "calibrate", "p_values", "flags", "intervals", "provider_test", "PROVIDER_TEST_COLUMNS",
+    "StandardPopulation", "standardized_measure", "at_bound", "MEASURES",
 ]

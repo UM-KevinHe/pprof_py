@@ -15,6 +15,7 @@ grouping, bisquare estimation), so its workflows translate directly.
 """
 from __future__ import annotations
 
+import functools
 import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Tuple, Union
@@ -237,6 +238,15 @@ class EmpiricalNull(NullModel):
             warnings.warn("Empirical null: " + "; ".join(problems) + ".", EmpiricalNullWarning, stacklevel=2)
         return cls(mean=null_mean, sd=null_sd, group=labels.to_numpy(), diagnostics=diagnostics,
                    estimator=estimator, index=index)
+
+    @classmethod
+    def fitter(cls, **options) -> Callable:
+        """A callable that fits this null to z-statistics with the given :meth:`fit` options.
+
+        For methods that build the z-statistics themselves, for example
+        ``model.test_standardized(..., null_model=EmpiricalNull.fitter(size=sizes, n_groups=4))``.
+        """
+        return functools.partial(cls.fit, **options)
 
     @classmethod
     def from_parameters(cls, mean, sd, *, group=None, index=None) -> "EmpiricalNull":
