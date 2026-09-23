@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 
 from pprof_py.inference import assign_groups
-from pprof_py.inference.survival.empirical_null import assign_quantile_groups
 
 
 def test_rank_rule_blocks_are_ceiling_sized():
@@ -26,11 +25,14 @@ def test_rank_rule_missing_sizes_sort_last():
     assert assign_groups(size, 2, rule="rank", order=np.arange(6)).tolist() == [2, 1, 1, 2, 1, 2]
 
 
-def test_quantile_rule_matches_survival_implementation():
+def test_quantile_rule_is_type7_breaks_with_ties_to_the_lower_group():
     rng = np.random.default_rng(0)
     for _ in range(20):
-        size = rng.gamma(2.0, 30.0, int(rng.integers(20, 400)))
-        assert (assign_groups(size, 4) == assign_quantile_groups(size, 4)).all()   # quantile is the default
+        size = np.round(rng.gamma(2.0, 30.0, int(rng.integers(20, 400))))
+        breaks = np.quantile(size, [0.25, 0.5, 0.75], method="linear")
+        if np.unique(breaks).size < 3:
+            continue
+        assert (assign_groups(size, 4) == np.searchsorted(breaks, size, side="left") + 1).all()   # quantile is the default
 
 
 def test_quantile_rule_rejects_ambiguous_input():

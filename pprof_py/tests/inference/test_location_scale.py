@@ -1,6 +1,5 @@
-"""The single robust location-scale core: R parity, equivalence to the survival
-implementation it will replace, and basic properties. (Equivalence to the former
-general implementation was verified bit-for-bit before that implementation was removed.)"""
+"""The single robust location-scale core: R parity and basic properties. (Bit-for-bit
+equivalence to the two implementations it replaced was verified before they were removed.)"""
 import json
 from pathlib import Path
 
@@ -8,7 +7,6 @@ import numpy as np
 import pytest
 
 from pprof_py.inference import BISQUARE_RLM, HUBER_RLM, MM_RLM, MEstimator, robust_location_scale
-from pprof_py.inference.survival.empirical_null import fit_robust_location_scale
 
 DATA = Path(__file__).parent / "data"
 CASES = {k: np.array([np.nan if v is None else v for v in vals], dtype=float)
@@ -36,13 +34,6 @@ def _vectors(seed=0, count=60):
         k = int(rng.integers(0, n // 5 + 1))
         z[:k] += rng.choice([-5, 5], k)
         yield z
-
-
-def test_reproduces_survival_implementation_exactly():
-    survival_settings = MEstimator(psi="bisquare", tuning=4.685, init="median", maxiter=1000, tol=1e-8)
-    for z in _vectors(2):
-        res = survival_settings(z)
-        assert (res.location, res.scale) == fit_robust_location_scale(z)
 
 
 @pytest.mark.parametrize("preset", [HUBER_RLM, BISQUARE_RLM, MM_RLM])
