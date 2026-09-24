@@ -149,13 +149,9 @@ All primary model classes are importable directly from `pprof_py`.
 
 .. autofunction:: pprof_py.inference.survival.log_ratio_zscore
 
-.. autofunction:: pprof_py.inference.survival.fit_robust_location_scale
-
 .. autofunction:: pprof_py.inference.survival.fit_empirical_null
 
 .. autofunction:: pprof_py.inference.survival.fit_grouped_empirical_null
-
-.. autofunction:: pprof_py.inference.survival.assign_quantile_groups
 
 .. autofunction:: pprof_py.inference.survival.adjust_empirical_null
 
@@ -317,12 +313,64 @@ All primary model classes are importable directly from `pprof_py`.
 
 ## Inference
 
-```{eval-rst}
-.. autofunction:: pprof_py.huber_location_scale
-```
+Provider testing: z-statistics, null models and decisions (see {ref}`empirical-null-guide` and {ref}`ll_ref_measures`).
 
 ```{eval-rst}
-.. autofunction:: pprof_py.estimate_empirical_null
+.. autofunction:: pprof_py.inference.provider_test
+
+.. autodata:: pprof_py.inference.PROVIDER_TEST_COLUMNS
+
+.. autofunction:: pprof_py.inference.z_statistic
+
+.. autoclass:: pprof_py.inference.MeasureFrame
+
+.. autoclass:: pprof_py.inference.ZFrame
+
+.. autofunction:: pprof_py.inference.standardized_measure
+
+.. autoclass:: pprof_py.inference.StandardPopulation
+   :members:
+
+.. autofunction:: pprof_py.inference.at_bound
+
+.. autoclass:: pprof_py.inference.TheoreticalNull
+
+.. autoclass:: pprof_py.inference.FixedNull
+
+.. autoclass:: pprof_py.inference.EmpiricalNull
+   :members:
+
+.. autoclass:: pprof_py.inference.EmpiricalNullWarning
+
+.. autofunction:: pprof_py.inference.robust_location_scale
+
+.. autoclass:: pprof_py.inference.MEstimator
+
+.. autofunction:: pprof_py.inference.assign_groups
+
+.. autofunction:: pprof_py.inference.p_values
+
+.. autofunction:: pprof_py.inference.flags
+
+.. autofunction:: pprof_py.inference.intervals
+
+.. autofunction:: pprof_py.inference.calibrate
+
+.. autofunction:: pprof_py.inference.resolve_null_model
+
+.. autofunction:: pprof_py.inference.effect_test
+
+.. autofunction:: pprof_py.inference.poibin_tails
+
+.. autofunction:: pprof_py.inference.bootstrap_tails
+
+.. autofunction:: pprof_py.inference.resample_tails
+
+.. autofunction:: pprof_py.inference.z_from_tails
+
+.. autofunction:: pprof_py.inference.t_to_z
+
+.. autofunction:: pprof_py.inference.z_to_t
 ```
 
 ## Plotting

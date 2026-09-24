@@ -334,13 +334,13 @@ Test provider random effects ($u_i$) against a null value.
 
 ```python
 
-# Test providers vs median random effect
+# Test providers against the random-effect mean
 test_results_lre = lre_model.test(
-    null=0,           # numeric null value for u_i ('median' is accepted by calculate_standardized_measures but not by test())
+    reference=0,      # the default; 'median', 'mean' or a number
     level=0.95,
     alternative='two_sided'
 )
-print("\n--- Linear RE Provider Test (vs Median Random Effect) ---")
+print("\n--- Linear RE Provider Test (vs 0) ---")
 print(test_results_lre.head())
 
 ```

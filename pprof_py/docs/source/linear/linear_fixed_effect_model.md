@@ -338,7 +338,7 @@ Test provider effects ($\gamma_i$) using t-tests.
 
 # Test providers vs median gamma
 test_results_lin = lin_model.test(
-    null='median',    # Can be 'mean' or a float
+    reference='median',    # or 'mean' or a number
     level=0.95,
     alternative='two_sided' # Can be 'less' or 'greater'
 )
@@ -346,6 +346,10 @@ print("\n--- Linear Provider Test (vs Median) ---")
 print(test_results_lin.head())
 
 ```
+
+The result has the columns described in {ref}`ll_ref_measures`. P-values, flags and
+confidence intervals follow the t distribution on $N - m - p$ degrees of freedom; `z_raw`
+holds the normal equivalent of $T_i$, $\Phi^{-1}(F_t(T_i))$.
 
 ### 3.6. Confidence Interval Calculation (`calculate_confidence_intervals`)
 

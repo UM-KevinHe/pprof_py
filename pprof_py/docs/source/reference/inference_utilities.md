@@ -91,13 +91,12 @@ p, lo, hi = poisson_exact_test(obs, exp_)          # classical two-sided test an
 | `poisson_midp_zscore(obs, exp)` | Mid-p Z-scores from Poisson counts (`p` floored at `1e-6`). |
 | `poisson_exact_test(obs, exp, alpha=0.05, normal_threshold=100.0)` | Returns `(p_value, lower_ratio, upper_ratio)`: two-sided (not mid-p) p-value clipped to `[0, 0.999]`; exact chi-square interval when `exp < normal_threshold`, normal approximation above. |
 | `log_ratio_zscore(ratio, stderr, zero_method="score")` | `log(ratio) / stderr`; zero ratios use `-1 / stderr` (`"score"`) or `NaN` (`"exclude"`). `stderr` must be finite and positive. |
-| `fit_robust_location_scale(z, psi="bisquare", method="M", tuning=None, maxiter=1000, tol=1e-8)` | Intercept-only robust location and scale (Huber or Tukey bisquare `psi`). |
-| `fit_empirical_null(z, ...)` | One `{'intercept', 'scale'}` for all providers. |
-| `assign_quantile_groups(size, n_groups=4)` | 1-indexed quantile group of each provider's size. |
-| `fit_grouped_empirical_null(z, size, n_groups=4, ...)` | Group-specific `intercept`, `scale`, `group`. |
+| `fit_empirical_null(z, psi="bisquare", method="M", tuning=None, maxiter=1000, tol=1e-8)` | One `{'intercept', 'scale'}` for all providers: `rlm(z ~ 1)` with R's settings (least-squares start); `method="MM"` is available. |
+| `fit_grouped_empirical_null(z, size, n_groups=4, ...)` | Group-specific `intercept` and `scale` (groups 1..`n_groups`) and each provider's `group`. Groups are quantiles of `size` (a size equal to a break joins the lower group); missing sizes are left ungrouped (`NaN`), as R's `cut()` does. |
 | `adjust_empirical_null(z, size=None, n_groups=4, group_labels=None, common_mean=False, ...)` | Fits the null and returns adjusted Z-scores and p-values; `NaN` inputs stay `NaN`. |
 | `poisson_confidence_bounds(obs, exp, p_value, intercept, scale, alpha, upper_cap)` | Calibrated bounds on expected counts by root-finding. |
 | `log_ratio_confidence_intervals(ratio, log_ratio_z, stderr, intercept, scale, alpha)` | Dict with `test_stat`, `p_value`, `lower`, `upper` (log-normal intervals). |
 
-The generic `pprof_py.inference.estimate_empirical_null` and `huber_location_scale` (exported at the package root) are the
-family-independent versions used by the logistic and linear models.
+These wrappers run on the shared empirical-null layer in `pprof_py.inference` ({ref}`empirical-null-guide`), which the logistic
+and linear provider tests use. Their R names are available as aliases in `pprof_py.inference.survival.empirical_null`:
+`cal_Z_htaz`, `empirical_null_overall`, `empirical_null_groupwise`, `empirical_null_adjust` and `smr_ci_bounds`.

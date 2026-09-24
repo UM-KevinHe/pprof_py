@@ -100,20 +100,17 @@ direct.decile_table()
 ## Utilities
 
 ```python
-from pprof_py import proc_freq, setup_logger, sigmoid, estimate_empirical_null, huber_location_scale
+from pprof_py import proc_freq, setup_logger, sigmoid
 
 proc_freq(df, ["provider"])                        # logs frequency, percent and cumulative percent; returns None
 sigmoid(np.array([-2.0, 0.0, 2.0]))
-loc, scale = huber_location_scale(np.random.default_rng(1).normal(size=200))
 ```
 
 ```text
 setup_logger(name: str, level=20, log_to_file: bool = False, log_dir: str = None, time_zone: str = 'US/Eastern') -> logging.Logger
 proc_freq(df: pandas.DataFrame, columns: list)
 sigmoid(x: 'np.ndarray') -> 'np.ndarray'
-estimate_empirical_null(z_scores: numpy.ndarray, group_sizes: Optional[numpy.ndarray] = None, group_labels: Optional[numpy.ndarray] = None, n_groups: int = 4, outlier_mask: Optional[numpy.ndarray] = None, k: float = 1.345, maxiter: int = 20, tol: float = 0.0001) -> Tuple[numpy.ndarray, numpy.ndarray]
-huber_location_scale(z: numpy.ndarray, k: float = 1.345, maxiter: int = 20, tol: float = 0.0001) -> Tuple[float, float]
 ```
 
-`estimate_empirical_null` and `huber_location_scale` are the family-independent empirical-null helpers used by the logistic and linear provider tests; the survival module has its own
-versions ({ref}`survival_ref_inference`). `pprof_py.inference.empirical_null`'s module docstring still shows the old import path `pprof_py.empirical_null`.
+The empirical-null tools used by every provider test live in `pprof_py.inference` ({ref}`empirical-null-guide`); the survival module keeps
+R-compatible wrappers over them ({ref}`survival_ref_inference`).

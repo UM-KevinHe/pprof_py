@@ -171,7 +171,7 @@ $$
 T_W = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}_i)}
 $$
 
-  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the estimated standard error obtained from the square root of the corresponding diagonal element of the inverse Fisher information matrix $[I(\hat{\boldsymbol{\theta}})]^{-1}$. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution, or often approximated by a t-distribution with $N - m - p$ degrees of freedom ($N = \sum n_i$) in practice.
+  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the estimated standard error obtained from the square root of the corresponding diagonal element of the inverse Fisher information matrix $[I(\hat{\boldsymbol{\theta}})]^{-1}$. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution. `pprof_py` uses this normal reference, as R pprof does.
 
   *Caveat:* This test can be unreliable for providers where $\hat{\gamma}_i$ is poorly estimated (e.g., small $n_i$) or infinite (due to separation), as the standard error estimate may be inaccurate or zero.
 
@@ -187,7 +187,7 @@ $$
 
   - $H_1: \gamma_i > \gamma_0$: $P(S \ge O_i | H_0)$
   - $H_1: \gamma_i < \gamma_0$: $P(S \le O_i | H_0)$
-  - $H_1: \gamma_i \neq \gamma_0$: $2 \times \min(P(S \ge O_i | H_0), P(S \le O_i | H_0))$ (or similar definition for two-sided exact tests).
+  - $H_1: \gamma_i \neq \gamma_0$: the mid-$p$ value $2 \times \min\{P(S > O_i | H_0) + \tfrac{1}{2} P(S = O_i | H_0),\ P(S < O_i | H_0) + \tfrac{1}{2} P(S = O_i | H_0)\}$, as in R pprof.
 
   The implementation uses efficient algorithms (e.g., FFT-based methods available in libraries like `fast_poibin`) to compute the Poisson-Binomial PMF/CDF. This test is preferred when asymptotic approximations may be poor.
 
@@ -196,7 +196,9 @@ $$
   - For a large number of bootstrap replicates $B$ (e.g., 10,000):
     1. For each subject $j$ in provider $i$, simulate an outcome $Y_{ij}^{(b)} \sim \text{Bernoulli}(p_{ij}(\gamma_0, \hat{\boldsymbol{\beta}}))$.
     2. Calculate the simulated sum $O_i^{(b)} = \sum_{j=1}^{n_i} Y_{ij}^{(b)}$.
-  - The p-value is estimated as the proportion of simulated sums $O_i^{(b)}$ that are as extreme or more extreme than the actually observed sum $O_i$, according to the alternative hypothesis. For example, for $H_1: \gamma_i > \gamma_0$, the p-value is estimated by $(\sum_{b=1}^B \mathbb{I}(O_i^{(b)} \ge O_i)) / B$.
+  - The p-value is estimated as the proportion of simulated sums $O_i^{(b)}$ that are as extreme or more extreme than the actually observed sum $O_i$, according to the alternative hypothesis. For example, for $H_1: \gamma_i > \gamma_0$, the p-value is estimated by $(\sum_{b=1}^B \mathbb{I}(O_i^{(b)} \ge O_i)) / B$. Two-sided p-values use the same mid-$p$ convention as the exact test, and a simulated tail probability of zero is replaced by $1/(2B)$ (so a two-sided p-value is at least $1/B$).
+
+- **Binomial outcomes.** For a model fitted with `n_var`, observation $j$ contributes its $N_{ij}$ trials: the score test uses $\sum_j N_{ij} p_{ij}$ and $\sum_j N_{ij} p_{ij}(1 - p_{ij})$, and the exact and bootstrap tests treat each observation as $N_{ij}$ Bernoulli trials.
 
 ### 2.5. Confidence Intervals
 
@@ -349,7 +351,7 @@ Test provider effects ($\gamma_i$) against a null value using various methods.
 ```python
 # Test providers vs median gamma using exact test (default)
 test_results_exact = model.test(
-    null='median',
+    reference='median',
     level=0.95,
     test_method='poibin_exact',
     alternative='two_sided'
@@ -358,7 +360,10 @@ print("\n--- Provider Test (Exact vs Median) ---")
 print(test_results_exact.head())
 ```
 
-The output includes flags indicating significance (-1: lower, 0: expected, 1: higher).
+The result is indexed by provider with the columns described in {ref}`ll_ref_measures`: `z_raw`
+(the test statistic), `p_value`, and `flag` (1: more events than expected, -1: fewer, 0: not
+significant, NA: not tested). `test_method='wald'` also reports `se` and a confidence interval, and
+`null_model=` calibrates the test against an empirical null ({ref}`empirical-null-guide`).
 
 ### 3.6. Confidence Interval Calculation (`.calculate_confidence_intervals()`)
 

@@ -184,23 +184,29 @@ $$
 with $N - m - p = 2478 - 30 - 3 = 2445$ degrees of freedom.
 
 ```python
-test_results = model.test(null='median', level=0.95, alternative='two_sided')
-print(test_results.head(10))
+test_results = model.test(reference='median', level=0.95, alternative='two_sided')
+print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'ci_upper']].head(10))
 ```
 
 ```
-            flag   p_value      stat  std_error
-Hospital_1     1  0.000531  3.469485   0.501330
-Hospital_10    0  0.858073  0.178846   0.542935
-Hospital_11    1  0.010050  2.576099   0.500938
-Hospital_12    1  0.000076  3.963218   0.616738
-Hospital_13    1  0.000006  4.545110   0.542053
-Hospital_14    0  0.381358 -0.875555   0.520659
-Hospital_15   -1  0.000001 -4.899032   0.615566
-Hospital_16   -1  0.000098 -3.902527   0.489548
-Hospital_17    0  0.964450 -0.044575   0.486360
-Hospital_18   -1  0.002875 -2.983855   0.556901
+             estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
+provider
+Hospital_1   6.361710  0.501403  3.469712  0.000521     1  5.378491  7.344929
+Hospital_10  4.715748  0.543014  0.176929  0.859565     0  3.650933  5.780563
+Hospital_11  5.913038  0.501018  2.579475  0.009895     1  4.930575  6.895501
+Hospital_12  7.066020  0.616807  3.959401  0.000075     1  5.856502  8.275538
+Hospital_13  7.088063  0.542135  4.543036  0.000006     1  6.024972  8.151155
+Hospital_14  4.166125  0.520740 -0.870793  0.383867     0  3.144987  5.187262
+Hospital_15  1.606204  0.615631 -4.882482  0.000001    -1  0.398992  2.813417
+Hospital_16  2.710569  0.489648 -3.892473  0.000099    -1  1.750401  3.670737
+Hospital_17  4.598247  0.486445 -0.044022  0.964887     0  3.644361  5.552134
+Hospital_18  2.961162  0.556988 -2.974629  0.002933    -1  1.868946  4.053378
 ```
+
+`z_raw` is the normal equivalent of $T_i$, $\Phi^{-1}(F_t(T_i))$, which
+is slightly smaller in magnitude than $T_i$; the p-value, flag and
+interval follow the t distribution. $T_i$ itself is
+`(estimate - null_value) / se`.
 
 **18 of 30** hospitals are flagged at the 5 % level — 10 high (flag = +1)
 and 8 low (flag = −1). This is expected: with a true provider SD of 2.0

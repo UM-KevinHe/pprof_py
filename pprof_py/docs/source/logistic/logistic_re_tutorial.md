@@ -236,24 +236,29 @@ Z_i = \frac{\hat{u}_i - u_0}{\widehat{\text{se}}(\hat{u}_i)}
 $$
 
 ```python
-test_results = model.test(null='median', level=0.95, alternative='two_sided')
-print(test_results.head(10))
+test_results = model.test(reference='median', level=0.95, alternative='two_sided')
+print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'ci_upper']].head(10))
 ```
 
 ```
-            flag   p_value      stat  std_error
-group_id
-Hospital_1     0  0.328191 -0.977764   0.214148
-Hospital_10    0  0.212003  1.248078   0.231867
-Hospital_11    0  0.658697  0.441713   0.193643
-Hospital_12    0  0.374254 -0.888534   0.200886
-Hospital_13    0  0.259432 -1.127735   0.203617
-Hospital_14    0  1.000000  0.000000   0.230360
-Hospital_15    0  0.132152  1.505670   0.194503
-Hospital_16    1  0.000105  3.879433   0.173290
-Hospital_17    0  0.957394  0.053423   0.255352
-Hospital_18    0  0.948919 -0.064064   0.224577
+             estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
+provider
+Hospital_1  -0.143147  0.214148 -0.977764  0.328191     0 -0.562868  0.276575
+Hospital_10  0.355628  0.231867  1.248078  0.212003     0 -0.098824  0.810079
+Hospital_11  0.151774  0.193643  0.441713  0.658697     0 -0.227760  0.531308
+Hospital_12 -0.112255  0.200886 -0.888534  0.374254     0 -0.505985  0.281475
+Hospital_13 -0.163386  0.203617 -1.127735  0.259432     0 -0.562468  0.235695
+Hospital_14  0.066239  0.230360  0.000000  1.000000     0 -0.385258  0.517736
+Hospital_15  0.359097  0.194503  1.505670  0.132152     0 -0.022122  0.740316
+Hospital_16  0.738506  0.173290  3.879433  0.000105     1  0.398864  1.078148
+Hospital_17  0.079881  0.255352  0.053424  0.957394     0 -0.420600  0.580363
+Hospital_18  0.051852  0.224577 -0.064064  0.948919     0 -0.388310  0.492014
 ```
+
+`reference='median'` compares each BLUP with the median BLUP; without
+it the reference is 0, the random-effect mean. The Wald test also
+reports a 95 % interval for each BLUP (`ci_lower`, `ci_upper`), which
+excludes the reference exactly when the hospital is flagged.
 
 Only **2 of 25** hospitals are flagged at the 5 % level: Hospital 16
 (flag = +1, $p = 0.0001$, $Z = 3.88$) and one flagged low. With

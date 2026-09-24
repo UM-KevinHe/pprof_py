@@ -115,5 +115,5 @@ mixed.test(test_method="resampling", n_resample=200).head()
 - **Attributes:** `gamma_`, `beta_`, `sigma_`, `xbeta_`, `fitted_`, `alpha_mean_`, `alpha_var_`, `alpha_mean_cluster_`, `alpha_var_cluster_`,
   `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `convergence_`, `coefficients_`.
 - **Methods:** `summary(alpha=0.05)`; `calculate_standardized_measures(providers=None, stdz="indirect", null="median")`;
-  `test(test_method="resampling", n_resample=10000, empirical_null=True, n_strata=4, strata_var=None, level=0.95, seed=1)`, whose columns are
-  `provider_id`, `gamma`, `srr`, `obs`, `exp`, `p_theo`, `z_score`, `p_empi`, `flag`.
+  `test(providers=None, *, test_method="resampling", reference="median", null_model=None, alternative="two_sided", level=0.95,
+  critical=None, n_resample=10000, seed=None)`, which returns the shared result table of {ref}`ll_ref_measures`.

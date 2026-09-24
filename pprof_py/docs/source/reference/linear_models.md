@@ -52,7 +52,7 @@ re.random_effect_sd_                          # {"provider": sigma_u}
 re.sigma_                                     # residual SD
 re.coefficients_["alpha"].head()              # BLUPs (random intercepts), Series
 re.fixed_effects_table()                      # Estimate, Std. Error, t value, df, Pr(>|t|)
-re.test(null=0).head()                        # null must be numeric (not 'median')
+re.test().head()                              # reference 0 by default; also 'median', 'mean' or a number
 ```
 
 | Constructor parameter | Default | Meaning |

@@ -39,9 +39,9 @@ plot_caterpillar(
 Sorts providers by `estimate_col` (`sort_by_estimate=True`, the
 default) and draws each with its `ci_lower_col`/`ci_upper_col`
 interval; `flag_col`, if given, color-codes points by significance
-(matching the `-1`/`0`/`1` convention
-[the empirical null guide's](empirical-null-guide) `assign_flags`
-produces and every `.test()` method in this documentation returns).
+(matching the `flag` convention every `.test()` method returns: `1`
+above the reference, `-1` below, `0` not significant, and `NA` for a
+provider the test could not evaluate).
 `refline_value` draws a horizontal reference (default `0.0` — the
 right choice for a log-scale effect like `gamma_`; pass `1.0` instead
 for a ratio measure like an SRR/SMR). Dozens of further keyword

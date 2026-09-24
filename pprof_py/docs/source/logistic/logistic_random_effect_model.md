@@ -265,13 +265,17 @@ Test provider random effects ($u_i$, on log-odds scale) against a null value.
 
 ```python
 test_results = logit_re_model.test(
-    null=0.0,
+    reference=0.0,    # the default: the random-effect mean
     level=0.95,
     alternative='two_sided'
 )
 print("\n--- Logistic RE Provider Test (vs Null RE of 0.0) ---")
 print(test_results.head())
 ```
+
+`test_method='poibin_exact'` and `'resampling'` test each provider's event count instead of its
+BLUP; every method returns the columns described in {ref}`ll_ref_measures`, with `flag` = 1 for
+providers above the reference and -1 below.
 
 ### 3.6. Confidence Interval Calculation (`.calculate_confidence_intervals()`)
 

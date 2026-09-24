@@ -309,36 +309,45 @@ no normal approximation required.
 
 ```python
 test_results = model.test(
-    null='median',
+    reference='median',
     level=0.95,
     test_method='poibin_exact',
     alternative='two_sided',
 )
-print(test_results.head(10))
+print(test_results[['estimate', 'z_raw', 'p_value', 'flag']].head(10))
 ```
 
 ```
-           flag   p_value      stat  std_error
-Clinic_1      0  0.307216  1.021081        NaN
-Clinic_10     0  0.677033 -0.416515        NaN
-Clinic_100   -1  0.036368 -2.092793        NaN
-Clinic_11     0  0.451149  0.753502        NaN
-Clinic_12     0  0.061572 -1.869366        NaN
-Clinic_13     0  0.415567 -0.814136        NaN
-Clinic_14     1  0.000177  3.750076        NaN
-Clinic_15     0  0.576599  0.558359        NaN
-Clinic_16     1  0.022989  2.273616        NaN
-Clinic_17     0  0.063043 -1.858888        NaN
+            estimate     z_raw   p_value  flag
+provider
+Clinic_1   -3.249995  1.021081  0.307216     0
+Clinic_10  -3.656766 -0.416515  0.677033     0
+Clinic_100 -4.153595 -2.092793  0.036368    -1
+Clinic_11  -3.289742  0.753502  0.451149     0
+Clinic_12  -4.428621 -1.869366  0.061572     0
+Clinic_13  -3.765100 -0.814136  0.415567     0
+Clinic_14  -2.531061  3.750076  0.000177     1
+Clinic_15  -3.355796  0.558359  0.576599     0
+Clinic_16  -2.757958  2.273616  0.022989     1
+Clinic_17  -4.113990 -1.858888  0.063043     0
 ```
 
 Reading the output:
 
 - **flag** — `+1` means the provider has significantly *more*
   readmissions than expected; `-1` means significantly *fewer*; `0`
-  means not significantly different from the median at the 5 % level.
-- **p_value** — the exact two-sided Poisson-Binomial p-value.
-- **stat** — a standardized score statistic (for reference; the
-  p-value is the inferential quantity).
+  means not significantly different from the median at the 5 % level
+  (`NA` would mean the provider could not be tested).
+- **p_value** — the exact two-sided (mid-p) Poisson-Binomial p-value.
+- **z_raw** — the test statistic on the z scale; for the exact test it
+  is the normal quantile whose tail reproduces the exact p-value (for
+  reference; the p-value is the inferential quantity).
+- **estimate** — the provider's fitted effect $\hat{\gamma}_i$; the
+  median it is compared with is in the `null_value` column.
+
+The full result has more columns, described in the
+[reference page](../reference/measures_tests_plots); the exact test has
+no standard error or interval, so those columns are `NaN` here.
 
 Clinic 14 (p = 0.0002, flag = +1) is the strongest outlier on the high
 side. Clinic 100 (p = 0.036, flag = -1) is flagged on the low side.

@@ -9,6 +9,93 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased — provider testing rebuilt on one inference layer
+
+Provider tests now share one pipeline in `pprof_py.inference`: a
+z-statistic per provider, a null model, and one decision layer for
+p-values, flags and intervals (see the
+[empirical null guide](reference/empirical_null) and the
+[tests reference](reference/measures_tests_plots)). This changes
+results and breaks the `test()` and `test_standardized()` APIs.
+
+**Corrections**
+
+- `LogisticRandomEffectModel.test()` with `test_method="resampling"` or
+  `"poibin_exact"`, and `LogisticMixedEffectModel.test()`, returned
+  inverted flags (`-1` for providers above expected). Every test now
+  flags `1` above the reference and `-1` below.
+- `test_standardized()` no longer divides every z-statistic by a fixed
+  `scale=1.81` by default, which made it far more conservative than its
+  nominal level; the default null is the theoretical N(0, 1), and
+  `null_model=FixedNull(sd=1.81)` reproduces the old behaviour.
+- `test_standardized(empirical_null=True)` failed on import; empirical
+  nulls are now available to every test through `null_model=`.
+- Indirect standardized measures use the variance of the observed count
+  under the reference effect (a score-type test) on an identity working
+  scale, which keeps the Type I error near nominal when provider sizes
+  differ; `indirect_variance="fitted"` with `transform="log"`
+  reproduces the previous construction.
+- Under an empirical null, intervals are shifted and scaled with the
+  null, so an interval excludes the null value exactly when the provider
+  is flagged.
+- The logistic fixed-effect score, exact and bootstrap tests weight
+  binomial outcomes (`n_var`) by their trials.
+- The logistic fixed-effect Wald test uses the normal reference, as R
+  pprof does, instead of a t distribution.
+- p-values are no longer rounded to 7 decimals.
+
+**API changes**
+
+- `test()` in every family takes `providers` first, then keyword-only
+  `test_method` (where a family offers several), `reference` (was
+  `null`), `null_model`, `alternative`, `level`, `critical`, `interval`,
+  `n_resample` and `seed`. In the logistic fixed-effect model
+  `n_resample` and `seed` replace `n_bootstrap` and `random_state`; in
+  the random- and mixed-effect models `seed` now defaults to `None`
+  (was `1`). `LogisticRandomEffectModel.test()` takes `group_var` as a
+  keyword (it was the first positional parameter). `empirical_null`,
+  `n_strata`, `strata_var` and `score_modified` are removed.
+- Every test returns one table indexed by `provider`, with the columns
+  `pprof_py.inference.PROVIDER_TEST_COLUMNS`; `flag` is a nullable
+  integer, `NA` for providers a test could not evaluate.
+- `test_standardized(measure, providers, null_value, transform,
+  null_model, population, reference, variance, indirect_variance,
+  alternative, level, critical, interval, bounds)` replaces the previous
+  signature; `null`, `variance_type`, `empirical_null`, `groupwise`,
+  `n_groups`, `remove_outliers`, `scale`, `z_scale`,
+  `include_extreme_obs` and `extreme_obs_total_n` are removed.
+- `LogisticRandomEffectModel.test()` compares with `reference=0` (the
+  random-effect mean, as R pprof) by default. `LogisticMixedEffectModel.test()`
+  uses the theoretical null by default; the empirical null it applied
+  before is available through `null_model` (see the guide).
+- `LinearRandomEffectModel.test()` accepts `"median"` and `"mean"`.
+- Removed: `pprof_py.huber_location_scale`, `pprof_py.estimate_empirical_null`,
+  the helpers in `pprof_py.inference.empirical_null`
+  (`calibrate_empirical_null`, `resample_pvalue`, `poibin_exact_pvalue`,
+  `pvalues_to_zscores`, `assign_flags`), and
+  `pprof_py.inference.survival.fit_robust_location_scale` and
+  `assign_quantile_groups`. Use `robust_location_scale`,
+  `EmpiricalNull` and `assign_groups` from `pprof_py.inference`.
+- The Monte Carlo tests (`"bootstrap_exact"`, `"resampling"`) draw
+  independent streams for each provider from one seeded generator.
+
+**New**
+
+- `pprof_py.inference`: null models (`TheoreticalNull`, `FixedNull`,
+  and `EmpiricalNull` with quantile or rank grouping, pooled means,
+  fitting subsets and a small-group policy that warns instead of
+  falling back silently); Huber, bisquare and MM estimators that
+  reproduce `MASS::rlm`; `standardized_measure`, `StandardPopulation`,
+  `z_statistic`, `provider_test` and `at_bound`.
+- Wald tests report confidence intervals (Student-t intervals for
+  `LinearFixedEffectModel`); the `LogisticRandomEffectModel` and
+  `LogisticMixedEffectModel` tests accept one-sided alternatives.
+- The survival empirical-null functions run on the same layer with R's
+  settings (least-squares start; missing sizes left ungrouped).
+
+The test suite checks these against `MASS::rlm`, the EmpiNull R package
+and R pprof's conventions to within 1e-12.
+
 ## 0.4.1 — current (July 2025)
 
 - **Shared Gamma-frailty Cox model** (`FrailtyCoxPH`) and

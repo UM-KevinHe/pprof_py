@@ -275,7 +275,10 @@ A post-model inference layer for provider profiling: given per-provider
 standardized measures (e.g. SMR/SHR z-scores from the two-stage CoxPH
 workflow), `fit_empirical_null` estimates a robust location and scale
 (Huber or Tukey bisquare psi) and `adjust_empirical_null` re-calibrates
-z-scores and p-values accordingly. This sits entirely downstream of
+z-scores and p-values accordingly. Both run on the package's shared
+empirical-null layer (`pprof_py.inference.empirical_null`: one
+`MASS::rlm`-exact estimator and one quantile-grouping rule) with the
+settings of their R counterparts. This sits entirely downstream of
 fitted model outputs — it never touches the likelihood engine.
 
 ## Group lasso, provider-penalized and discrete-time estimators

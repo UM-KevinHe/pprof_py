@@ -230,7 +230,7 @@ model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs
 model.random_effect_sd_           # {group_var: sigma_u}
 model.summary()
-model.test(null=0)               # numeric null for the linear random-effect model
+model.test()                     # reference 0 (the random-effect mean) by default
 model.calculate_standardized_measures(stdz='indirect')
 model.plot_funnel()
 model.plot_provider_effects()
@@ -246,7 +246,7 @@ model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
 
 model.coefficients_['beta']       # fixed effects (log-odds)
 model.get_random_effects()        # BLUPs
-model.test(null='median', test_method='wald')
+model.test(test_method='wald')   # reference 0 by default; reference='median' also works
 model.calculate_standardized_measures(stdz='indirect')
 model.plot_funnel()
 model.plot_provider_effects()

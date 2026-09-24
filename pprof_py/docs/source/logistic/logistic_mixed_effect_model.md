@@ -267,31 +267,51 @@ which is the setting consistent with the three-stage design.
 ## 8. Standardized measures and provider testing
 
 `calculate_standardized_measures()` and `test()` — mixed into this
-class from `MixedEffectMeasuresMixin` — "match the API of
+class from `MixedEffectMeasuresMixin` — follow the same conventions as
 `LogisticFixedEffectModel` and
-[`LogisticRandomEffectModel`](logistic_random_effect_model_stats)'s"
-own equivalents, with the cluster random effect's posterior mean
-folded into each provider's expected count the same way $X\beta$ is:
+[`LogisticRandomEffectModel`](logistic_random_effect_model_stats),
+with the cluster random effect's posterior mean folded into each
+provider's expected count the same way $X\beta$ is:
 
 ```python
 model.calculate_standardized_measures(stdz="indirect")   # {'indirect': <DataFrame>}
-model.test(test_method="poibin_exact", empirical_null=True)
+result = model.test(test_method="poibin_exact")
+print(result[["estimate", "null_value", "z_raw", "p_value", "flag"]].head(3).round(4))
 ```
 ```
-   provider_id   gamma     srr  obs     exp  p_theo  z_score  p_empi  flag
-0            0 -5.8522  0.9908  6.0  6.0556  0.9719  -0.0352  0.6498     0
-1            1 -6.3107  0.6445  4.0  6.2068  0.3713  -0.8941  0.4902     0
-2            2 -6.0450  0.8281  5.0  6.0378  0.7027  -0.3817  0.6644     0
+          estimate  null_value   z_raw  p_value  flag
+provider
+0          -5.8522     -5.8377  0.0352   0.9719     0
+1          -6.3107     -5.8377 -0.8941   0.3713     0
+2          -6.0450     -5.8377 -0.3817   0.7027     0
 ```
 
-`test_method='poibin_exact'` (deterministic, exact Poisson-binomial —
-requires the `fast_poibin` package) and `'resampling'` (parametric
-bootstrap incorporating cluster-effect posterior uncertainty, per He
-et al. 2013) share the same empirical-null-calibration pipeline
-(`empirical_null=True`, stratified by provider size by default) before
-producing the final `flag` column — the same theoretical machinery
-[the empirical null guide](../guides/empirical_null) covers on its own
-terms.
+`test_method="poibin_exact"` (deterministic, exact Poisson-binomial)
+and `"resampling"` (the default: a parametric bootstrap that draws the
+cluster effects from their posterior, per He et al. 2013) both test
+each provider's event count with its effect set to the reference
+$\gamma_0$ (`reference="median"` by default). The result has the
+columns described in {ref}`ll_ref_measures`, with `flag` = 1 for
+providers above the reference and -1 below.
+
+The default null is the theoretical N(0, 1). Earlier versions
+calibrated against an empirical null by default, with a Huber fit in
+four equal-count groups by provider size; pass that configuration, or
+any other null model, through `null_model`:
+
+```python
+from pprof_py.inference import EmpiricalNull, HUBER_RLM
+
+sizes = df.groupby("facility_id", observed=True).size().loc[model.provider_ids_].to_numpy()
+result_en = model.test(
+    test_method="poibin_exact",
+    null_model=EmpiricalNull.fitter(size=sizes, n_groups=4, grouping="rank",
+                                    estimator=HUBER_RLM, small_group="theoretical"),
+)
+```
+
+[The empirical null guide](../reference/empirical_null) covers the
+options.
 
 ## 9. When this three-stage approach is the right tool
 

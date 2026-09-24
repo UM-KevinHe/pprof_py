@@ -33,19 +33,21 @@ log = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, group_var
 
 lin.calculate_standardized_measures(stdz=["indirect", "direct"])["direct"].head()
 log.calculate_confidence_intervals(option="SM", stdz="indirect", measure="ratio", test_method="wald")["indirect_ratio"].head()
-lin.test(null="median").head()
-log.test(test_method="wald", null="median").head()
+lin.test(reference="median").head()
+log.test(test_method="wald").head()
 log.test_standardized(measure="direct_rate").head()
 lin.plot_funnel(); lin.plot_provider_effects(); lin.plot_coefficient_forest()
 log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wald")
 ```
 
-## `null`, `stdz`, `alternative`
+## `null`, `reference`, `stdz`, `alternative`
 
-- `null`: `"median"` (the median provider effect, γ or α), `"mean"` (the group-size-weighted mean effect) or a number on the effect scale.
-  **Exception:** `LinearRandomEffectModel.test` needs a number (K4 in {ref}`ll_ref_conventions`).
+- `null` (standardized measures, confidence intervals and plots): `"median"` (the median provider effect, γ or α), `"mean"` (the
+  group-size-weighted mean effect) or a number on the effect scale.
+- `reference` (`test` and `test_standardized`): the reference effect γ₀ the tests compare against, in the same three forms. The default is
+  `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
 - `stdz`: `"indirect"`, `"direct"` or a list of both.
-- `alternative`: `"two_sided"`, `"less"` or `"greater"`. Confidence intervals for the provider effects themselves (`option="gamma"` / `"alpha"`) are two-sided only.
+- `alternative`: `"two_sided"` (or `"two-sided"`), `"less"` or `"greater"`. Confidence intervals for the provider effects themselves (`option="gamma"` / `"alpha"`) are two-sided only.
 
 ## `calculate_standardized_measures`
 
@@ -102,84 +104,154 @@ intervals are the transformed provider-effect intervals, which must therefore be
 
 ## `test` and `test_standardized`
 
+Every provider test follows one contract: a statistic per provider (chosen with `test_method` where a family offers several), the
+reference effect `reference`, a null model (`null_model`, the theoretical N(0, 1) by default; see {ref}`empirical-null-guide`) and one
+result table.
+
 ```text
 LogisticFixedEffectModel.test(
-    providers: 'Optional[Union[list, np.ndarray]]' = None,
-    level: 'float' = 0.95,
+    providers=None,
+    *,
     test_method: 'str' = 'poibin_exact',
-    score_modified: 'bool' = True,
-    null: 'Union[str, float]' = 'median',
-    n_bootstrap: 'int' = 10000,
+    reference='median',
+    null_model=None,
     alternative: 'str' = 'two_sided',
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    interval: 'str' = 'inversion',
+    n_resample: 'int' = 10000,
+    seed=None,
 )
 ```
 
 ```text
 LogisticFixedEffectModel.test_standardized(
-    providers: 'Optional[Union[list, np.ndarray]]' = None,
     measure: 'str' = 'direct_rate',
-    null: 'Union[str, float]' = 'mean',
-    level: 'float' = 0.95,
-    variance_type: 'str' = 'model',
-    empirical_null: 'bool' = False,
-    groupwise: 'bool' = True,
-    n_groups: 'int' = 4,
-    remove_outliers: 'bool' = True,
-    scale: 'float' = 1.81,
+    *,
+    providers=None,
+    null_value='reference',
+    transform='auto',
+    null_model=None,
+    population=None,
+    reference='median',
+    variance: 'str' = 'model',
+    indirect_variance: 'str' = 'null',
     alternative: 'str' = 'two_sided',
-    z_scale: 'str' = 'auto',
-    include_extreme_obs: 'bool' = False,
-    extreme_obs_total_n: 'Optional[float]' = None,
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    interval: 'str' = 'inversion',
+    bounds='auto',
 )
 ```
 
 ```text
 LogisticRandomEffectModel.test(
+    providers=None,
+    *,
     group_var: 'Optional[str]' = None,
-    providers: 'Optional[Union[List, Array]]' = None,
-    level: 'float' = 0.95,
     test_method: 'str' = 'wald',
-    null: 'Union[str, float]' = 'median',
+    reference=0.0,
+    null_model=None,
     alternative: 'str' = 'two_sided',
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    interval: 'str' = 'inversion',
     n_resample: 'int' = 10000,
-    empirical_null: 'bool' = False,
-    n_strata: 'int' = 4,
-    strata_var: 'Optional[Array]' = None,
-    seed: 'int' = 1,
+    seed=None,
+)
+```
+
+```text
+LogisticMixedEffectModel.test(
+    providers=None,
+    *,
+    test_method: 'str' = 'resampling',
+    reference='median',
+    null_model=None,
+    alternative: 'str' = 'two_sided',
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    n_resample: 'int' = 10000,
+    seed=None,
 )
 ```
 
 ```text
 LinearFixedEffectModel.test(
-    providers: 'Optional[Union[list, np.ndarray]]' = None,
-    level: 'float' = 0.95,
-    null: 'Union[str, float]' = 'median',
+    providers=None,
+    *,
+    reference='median',
+    null_model=None,
     alternative: 'str' = 'two_sided',
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    interval: 'str' = 'inversion',
 )
 ```
 
 ```text
 LinearRandomEffectModel.test(
-    providers: 'Optional[Union[list, np.ndarray]]' = None,
-    level: 'float' = 0.95,
-    null: 'float' = 0,
+    providers=None,
+    *,
+    reference=0.0,
+    null_model=None,
     alternative: 'str' = 'two_sided',
+    level: 'float' = 0.95,
+    critical: 'Optional[float]' = None,
+    interval: 'str' = 'inversion',
 )
 ```
 
-| Estimator | Result |
+| Estimator | `test_method` (default first) | Default `reference` | Intervals |
+|---|---|---|---|
+| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald only |
+| `LogisticRandomEffectModel.test` | `"wald"`, `"poibin_exact"`, `"resampling"` | `0` | Wald only |
+| `LogisticMixedEffectModel.test` | `"resampling"`, `"poibin_exact"` | `"median"` | none |
+| `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
+| `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |
+
+- **Exact and Monte Carlo tests** (`"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event count with its
+  effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof. `"resampling"`
+  draws the other random effects from their posterior (He et al. 2013). The Monte Carlo tests use `n_resample` draws and `seed`; a
+  simulated tail probability of zero is replaced by `0.5 / n_resample`.
+- **Binomial outcomes** (a logistic fixed-effect model fitted with `n_var`) are weighted by their trials in the score, exact and bootstrap
+  tests; the exact test expands trials up to 20,000 per provider.
+- **The logistic Wald test** uses the normal reference, as R pprof does. It is unreliable for providers at the numerical bound of γ
+  (see `pprof_py.inference.at_bound`).
+- **`providers`** restricts the rows reported; γ₀ and any empirical null always use all providers.
+- **`test_standardized`** tests a standardized measure (`measure`: `"direct_rate"`, `"direct_ratio"`, `"indirect_rate"`,
+  `"indirect_ratio"` or `"gamma"`). Its null value defaults to the measure at γ₀ (`null_value="reference"`), so it agrees with a test of
+  γ = γ₀. Indirect measures use the variance of the observed count under γ₀ (`indirect_variance="null"`, a score-type test) and an
+  identity working scale (`transform="auto"`); `indirect_variance="fitted"` with `transform="log"` reproduces earlier versions'
+  construction. `variance="robust"` uses sandwich variances, `population=` sets the standard population for direct measures, and
+  `bounds="auto"` clips identity-scale intervals to the measure's range. There is no fixed scale factor: earlier versions divided every
+  z-statistic by 1.81 by default, which `null_model=FixedNull(sd=1.81)` reproduces.
+
+Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provider` with the columns
+`pprof_py.inference.PROVIDER_TEST_COLUMNS`:
+
+| Column | Meaning |
 |---|---|
-| Linear and logistic fixed / random effect (`test`) | `DataFrame` indexed by provider: `flag`, `p_value`, `stat`, `std_error`. `flag` = 1 above the null, −1 below, 0 not flagged. `LinearFixedEffectModel.test` also stores `result.attrs["provider_size"]`. |
-| `LogisticRandomEffectModel.test(test_method="resampling")` | `flag`, `p_value`, `p_theo`, `z_score`, `srr` |
-| `LogisticMixedEffectModel.test` | `provider_id`, `gamma`, `srr`, `obs`, `exp`, `p_theo`, `z_score`, `p_empi`, `flag` |
-| `LogisticFixedEffectModel.test_standardized` | `estimate`, `se`, `transformed`, `se_transformed`, `null_value`, `z_score`, `intercept`, `scale`, `z_calibrated`, `flag`, `p_value`, `ci_lower`, `ci_upper` (`empirical_null=True` calibrates the z-scores with an empirical null fitted within provider-size groups) |
+| `estimate`, `se` | The provider effect (γ̂ or BLUP) or standardized measure, and its standard error (Wald-type statistics only; otherwise `NaN`) |
+| `null_value` | The value under the null on the estimate's scale (γ₀ for provider-effect tests) |
+| `transformed`, `se_transformed`, `null_transformed` | The same on the test's working scale (identity for provider effects) |
+| `z_raw` | The test statistic as a z-value. Exact and Monte Carlo p-values are converted so that the normal tail reproduces them (the sign follows the smaller tail, so a provider essentially at its expected count can have either sign; flags are unaffected), and a t-statistic enters as Φ⁻¹(F_t(t)) |
+| `null_mean`, `null_sd`, `null_group` | The null each provider is calibrated against (0, 1 and `NaN` under the theoretical null) |
+| `z_adjusted` | `(z_raw - null_mean) / null_sd` |
+| `p_value` | From `z_adjusted` and `alternative` |
+| `flag` | Nullable integer: `1` above the null value, `-1` below, `0` not significant, `NA` not tested |
+| `ci_lower`, `ci_upper` | Interval for `estimate`, inverted from the calibrated test (`NaN` where the method has no interval) |
+
+`result.attrs` records `null_model`, `alternative`, `level`, `critical`, `interval` and, for provider-effect tests, `test_method` and
+`reference`.
 
 `"poibin_exact"` needs the `fast_poibin` package (installed with `pprof_py`; the model documents' `pip install poibin` is outdated).
 
 ## Plotting methods
 
 All plots use Matplotlib and return `None` (they draw on the current figure). Common arguments: `group_ids` (subset of providers), `level`,
-`use_flags` (colour by `flag`), `null`, and `**plot_kwargs` (titles, sizes; see the docstrings).
+`use_flags` (colour by `flag`), `null`, and `**plot_kwargs` (titles, sizes; see the docstrings). The plots pass their `null` to `test()` as
+`reference`; a provider the test could not evaluate (`flag` is `NA`) is drawn as not flagged.
 
 | Estimator | Methods |
 |---|---|

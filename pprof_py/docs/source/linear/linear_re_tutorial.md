@@ -207,26 +207,28 @@ Z_i = \frac{\hat{u}_i - u_0}{\widehat{\text{se}}(\hat{u}_i)}
 $$
 
 ```python
-median_blup = blups.median()  # -0.054184
-test_results = model.test(
-    null=median_blup, level=0.95, alternative='two_sided'
-)
-print(test_results.head(10))
+median_blup = blups.median()  # -0.054184, used again below
+test_results = model.test(reference='median', level=0.95, alternative='two_sided')   # 'median' is median_blup
+print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'ci_upper']].head(10))
 ```
 
 ```
-            flag   p_value      stat  std_error
-Hospital_1     0  0.470663  0.721401   0.371274
-Hospital_10    0  0.119537  1.556721   0.348766
-Hospital_11    0  0.090216 -1.694261   0.345398
-Hospital_12   -1  0.032433 -2.139032   0.443691
-Hospital_13    0  0.228930 -1.203120   0.359492
-Hospital_14   -1  0.004440 -2.845058   0.536928
-Hospital_15   -1  0.001269 -3.222887   0.415061
-Hospital_16    0  0.922675 -0.097065   0.340524
-Hospital_17    0  0.158505  1.410116   0.342126
-Hospital_18   -1  0.000008 -4.466468   0.556668
+             estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
+provider
+Hospital_1   0.213653  0.371274  0.721401  0.470663     0 -0.514031  0.941337
+Hospital_10  0.488747  0.348766  1.556721  0.119537     0 -0.194821  1.172315
+Hospital_11 -0.639378  0.345398 -1.694261  0.090216     0 -1.316346  0.037589
+Hospital_12 -1.003254  0.443691 -2.139032  0.032433    -1 -1.872872 -0.133635
+Hospital_13 -0.486697  0.359493 -1.203120  0.228930     0 -1.191289  0.217896
+Hospital_14 -1.581776  0.536928 -2.845058  0.004440    -1 -2.634135 -0.529416
+Hospital_15 -1.391879  0.415061 -3.222887  0.001269    -1 -2.205383 -0.578374
+Hospital_16 -0.087237  0.340524 -0.097065  0.922675     0 -0.754653  0.580178
+Hospital_17  0.428253  0.342126  1.410116  0.158506     0 -0.242302  1.098807
+Hospital_18 -2.540525  0.556668 -4.466468  0.000008    -1 -3.631575 -1.449476
 ```
+
+`reference='median'` uses the median BLUP directly; without it the
+reference is 0, the random-effect mean.
 
 **11 of 25** hospitals are flagged at the 5 % level (5 high, 6 low).
 Hospital 2 has the strongest positive signal ($Z = 4.93$, $p < 10^{-6}$)
