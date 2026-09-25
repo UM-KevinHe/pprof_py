@@ -12,7 +12,7 @@ from typing import Mapping, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
@@ -24,7 +24,7 @@ from ...inference.survival.inference import covariance_from_information, standar
 from ...exceptions import NotFittedError
 
 
-class TimeVaryingCoxPH(BaseEstimator):
+class TimeVaryingCoxPH(ProviderModel):
     """Cox regression with selected time-varying coefficients.
 
     Parameters

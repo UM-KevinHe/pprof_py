@@ -25,7 +25,7 @@ cd pprof_py
 pip install .
 ```
 
-Requires `numpy`, `pandas`, `scipy`, `scikit-learn`, and `numba`
+Requires `numpy`, `pandas`, `scipy`, and `numba`
 (optional, for JIT-compiled survival kernels).
 
 ```{toctree}

@@ -24,14 +24,14 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import pandas as pd
 
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.survival.finegray import finegray_transform
 from .coxph import CoxPH, NotFittedError
 from ...algorithms.survival.ties import TieMethod
 
 
-class CauseSpecificCoxPH(BaseEstimator):
+class CauseSpecificCoxPH(ProviderModel):
     """Cause-specific-hazards competing-risks regression.
 
     Fits one `CoxPH` per requested cause: modeling cause `k` treats every
@@ -165,7 +165,7 @@ class CauseSpecificCoxPH(BaseEstimator):
         return pd.concat(frames, ignore_index=True)
 
 
-class FineGrayPH(BaseEstimator):
+class FineGrayPH(ProviderModel):
     """Fine-Gray subdistribution-hazard regression for one cause of
     interest, via `finegray_transform` + a weighted, cluster-robust
     `CoxPH` fit (clustered on each pseudo-observation's original

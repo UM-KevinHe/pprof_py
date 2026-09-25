@@ -53,7 +53,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
@@ -79,7 +79,7 @@ from ...algorithms.survival.provider_effects import (
     provider_newton_step,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...statistics.deviance import (
+from ...utils.deviance import (
     saturated_log_likelihood,
     deviance_ratio,
 )
@@ -200,7 +200,7 @@ def _validate_provider_parameters(
 # ProviderPenalizedCoxPH
 # ======================================================================
 
-class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
+class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Penalized Cox PH with explicit provider effects.
 
     Minimizes the penalized negative log-partial-likelihood with

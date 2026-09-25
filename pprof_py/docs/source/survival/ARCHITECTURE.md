@@ -7,7 +7,7 @@
 ## Layering
 
 ```
-CoxPH (models/survival/coxph.py)                              <- user-facing, sklearn-conventioned, pandas in/out
+CoxPH (models/survival/coxph.py)                              <- user-facing, ProviderModel conventions, pandas in/out
     |
 validate_fit_inputs (data/survival_validation.py)             <- pandas/mixed input -> plain numpy, with clear errors
     |

@@ -6,6 +6,8 @@ and provides covariate-level inference, provider-effect measures,
 and diagnostic plots through mixin composition.
 """
 import numpy as np
+
+from ...base import ProviderModel
 from ...data.validation import validate_and_convert_inputs
 from ...exceptions import NotFittedError
 from ...algorithms.linear.fixed_effect import (
@@ -23,6 +25,7 @@ class LinearFixedEffectModel(
     FixedEffectInferenceMixin,
     FixedEffectMeasuresMixin,
     FixedEffectPlottingMixin,
+    ProviderModel,
 ):
     """Linear Fixed Effect model.
 
@@ -227,7 +230,7 @@ class LinearFixedEffectModel(
 
         .. note::
            Renamed from ``get_params`` in 0.4.0 to avoid collision with
-           ``sklearn.base.BaseEstimator.get_params()``, which returns
+           ``ProviderModel.get_params()``, which returns
            constructor arguments.
 
         Returns

@@ -188,7 +188,7 @@ per-fold deviance via `cox_partial_likelihood` and `cox_deviance`:
 ```python
 import numpy as np
 from pprof_py.algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
-from pprof_py.statistics.deviance import saturated_log_likelihood, cox_deviance
+from pprof_py.utils.deviance import saturated_log_likelihood, cox_deviance
 
 rng = np.random.RandomState(0)
 n_folds = 5

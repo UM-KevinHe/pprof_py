@@ -13,7 +13,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     weighted_column_scale,
@@ -91,7 +91,7 @@ def _stratified_fold_assignment(
 # PenalizedLogistic
 # ======================================================================
 
-class PenalizedLogistic(BaseEstimator):
+class PenalizedLogistic(ProviderModel):
     """Elastic-net-penalized logistic regression.
 
     Fits the regularization path over a grid of lambda values using
@@ -530,7 +530,7 @@ class PenalizedLogistic(BaseEstimator):
 # PenalizedLogisticCV
 # ======================================================================
 
-class PenalizedLogisticCV(BaseEstimator):
+class PenalizedLogisticCV(ProviderModel):
     """Cross-validated penalized logistic regression.
 
     Fits the elastic-net regularization path on the full data, then

@@ -5,8 +5,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_is_fitted
+from ...base import ProviderModel
 
 from ._core import (
     ArrayLike,
@@ -17,7 +16,7 @@ from ._sampling import _stratified_bootstrap
 from .measures import ratio_measure
 
 
-class BootstrapIUR(BaseEstimator):
+class BootstrapIUR(ProviderModel):
     """Bootstrap-based Inter-Unit Reliability estimation.
 
     Estimates the fraction of observed variation in a group-level
@@ -183,7 +182,7 @@ class BootstrapIUR(BaseEstimator):
             Rows: Total, then one per subgroup.  Columns: ``Group``,
             ``IUR``, ``Group size``.
         """
-        check_is_fitted(self, "iur_")
+        self._require_fitted("iur_")
 
         if stratify_var is None:
             stratify_var = self.group_sizes_.astype(np.float64)
@@ -275,7 +274,7 @@ class BootstrapIUR(BaseEstimator):
             Single-row frame with columns ``min``, ``decile 1`` …
             ``decile K``, ``max``.
         """
-        check_is_fitted(self, "iur_")
+        self._require_fitted("iur_")
 
         sizes = (
             np.asarray(stratify_var, dtype=np.float64)

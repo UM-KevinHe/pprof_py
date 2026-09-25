@@ -1,6 +1,6 @@
 """User-facing CoxPH estimator, following scikit-learn conventions.
 
-This module is the only place pandas, sklearn's BaseEstimator, and the
+This module is the only place pandas, pprof_py's ProviderModel base, and the
 statistical engine (algorithms/, statistics/) meet -- everything below it
 is plain NumPy so that a future distributed backend only has to replace
 what happens inside `fit`, not the class's public surface.
@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import (
     validate_fit_inputs,
@@ -37,7 +37,7 @@ from ...utils.numerical import col_means, safe_exp
 from ...exceptions import NotFittedError
 
 
-class CoxPH(BaseEstimator):
+class CoxPH(ProviderModel):
     """Cox Proportional Hazards regression, fit by maximizing the
     (Breslow, by default) partial likelihood via Newton-Raphson.
 

@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     within_group_orthogonalize,
@@ -44,7 +44,7 @@ from .penalized import DegenerateFeatureWarning, _resolve_lambda_path, _stratifi
 logger = logging.getLogger(__name__)
 
 
-class GroupLassoLogistic(BaseEstimator):
+class GroupLassoLogistic(ProviderModel):
     """Group lasso / sparse group lasso penalized logistic regression.
 
     Fits the regularization path over a grid of lambda values using
@@ -447,7 +447,7 @@ class GroupLassoLogistic(BaseEstimator):
         return (self.predict_proba(X, lambda_value) >= threshold).astype(int)
 
 
-class GroupLassoLogisticCV(BaseEstimator):
+class GroupLassoLogisticCV(ProviderModel):
     """Cross-validated group lasso logistic regression.
 
     Fits the group lasso path, selects lambda via CV binomial deviance.

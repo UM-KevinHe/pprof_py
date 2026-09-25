@@ -161,7 +161,7 @@ pip install .
 
 Requires Python ≥ 3.9.
 
-**Core dependencies:** `numpy`, `pandas`, `scipy`, `scikit-learn`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
+**Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
 
 **Optional:**
 
@@ -220,7 +220,7 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 | Shared Gamma frailty (EM algorithm)                                  | ✅ implemented (`FrailtyCoxPH`)                   |
 | Time-varying coefficients                                            | ✅ implemented (`TimeVaryingCoxPH`)               |
 | Automated variable selection (forward/backward/both)                 | ✅                                                |
-| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                |
+| One base class (`ProviderModel`: `get_params`, `set_params`, `coef_`-style attributes) | ✅                                                |
 | Exact ties                                                           | ❌ not implemented                                |
 | Robust/sandwich variance, clustering                                 | ✅ validated against R                            |
 | Formula interface                                                    | ❌ not implemented — pass a numeric design matrix |

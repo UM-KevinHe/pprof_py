@@ -6,9 +6,8 @@ from typing import Callable, Optional, Sequence, Union
 import numpy as np
 import pandas as pd
 from scipy.stats import kendalltau, spearmanr
-from sklearn.base import BaseEstimator
-from sklearn.metrics import cohen_kappa_score
-from sklearn.utils.validation import check_is_fitted
+from ...base import ProviderModel
+from ...utils.metrics import cohen_kappa_score
 
 from ._core import ArrayLike
 from ._sampling import _split_half_sample
@@ -32,7 +31,7 @@ def _categorise(values: np.ndarray, probs: np.ndarray) -> np.ndarray:
     return np.digitize(values, full_breaks[1:], right=True) + 1
 
 
-class SplitHalfIUR(BaseEstimator):
+class SplitHalfIUR(ProviderModel):
     """Split-half correlation-based IUR estimation.
 
     Estimates reliability by repeatedly splitting each group's
@@ -244,7 +243,7 @@ class SplitHalfIUR(BaseEstimator):
         df : DataFrame
             Mean IUR for each metric, plus number of groups.
         """
-        check_is_fitted(self, "iur_kappa_")
+        self._require_fitted("iur_kappa_")
         return pd.DataFrame(
             {
                 "iur_kappa": [self.iur_kappa_],

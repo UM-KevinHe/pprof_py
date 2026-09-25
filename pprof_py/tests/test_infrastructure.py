@@ -1,6 +1,6 @@
 """Smoke tests for infrastructure modules with no dedicated test coverage.
 
-Covers: statistics/deviance.py, data/validation.py, utils/, plotting/,
+Covers: utils/deviance.py, data/validation.py, utils/, plotting/,
 exceptions.py.
 
 All tests use synthetic data (Tier 1 per .assistant_instructions.md).
@@ -15,7 +15,7 @@ import pytest
 
 
 # ======================================================================
-# statistics/deviance.py
+# utils/deviance.py
 # ======================================================================
 
 class TestDeviance:
@@ -23,7 +23,7 @@ class TestDeviance:
 
     def test_saturated_log_likelihood_nonnegative_weight(self):
         """saturated_log_likelihood should return a finite float."""
-        from pprof_py.statistics.deviance import saturated_log_likelihood
+        from pprof_py.utils.deviance import saturated_log_likelihood
         stop = np.array([1.0, 2.0, 2.0, 3.0, 4.0])
         event = np.array([1, 1, 1, 0, 1])
         weight = np.ones(5)
@@ -33,7 +33,7 @@ class TestDeviance:
 
     def test_saturated_log_likelihood_no_events(self):
         """With no events, saturated log-lik should be 0."""
-        from pprof_py.statistics.deviance import saturated_log_likelihood
+        from pprof_py.utils.deviance import saturated_log_likelihood
         stop = np.array([1.0, 2.0, 3.0])
         event = np.array([0, 0, 0])
         weight = np.ones(3)
@@ -42,13 +42,13 @@ class TestDeviance:
 
     def test_cox_deviance_positive(self):
         """Deviance = 2*(lsat - ll) should be non-negative when ll <= lsat."""
-        from pprof_py.statistics.deviance import cox_deviance
+        from pprof_py.utils.deviance import cox_deviance
         assert cox_deviance(-10.0, -5.0) == 10.0
         assert cox_deviance(-5.0, -5.0) == 0.0
 
     def test_deviance_ratio_bounds(self):
         """Deviance ratio should be in [0, 1] for reasonable inputs."""
-        from pprof_py.statistics.deviance import deviance_ratio
+        from pprof_py.utils.deviance import deviance_ratio
         # Perfect model: ll == lsat
         assert deviance_ratio(-5.0, -20.0, -5.0) == pytest.approx(1.0)
         # Null model: ll == ll_null
@@ -56,7 +56,7 @@ class TestDeviance:
 
     def test_deviance_ratio_zero_null_deviance(self):
         """When null deviance is 0, deviance_ratio should return 0."""
-        from pprof_py.statistics.deviance import deviance_ratio
+        from pprof_py.utils.deviance import deviance_ratio
         assert deviance_ratio(-5.0, -5.0, -5.0) == 0.0
 
 

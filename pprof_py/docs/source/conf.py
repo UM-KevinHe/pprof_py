@@ -78,7 +78,7 @@ napoleon_use_rtype = True
 
 autodoc_member_order = 'bysource'
 autodoc_default_options = {
-    'exclude-members': '__weakref__, __sklearn_tags__, set_output, get_params, set_params',
+    'exclude-members': '__weakref__, get_params, set_params',
 }
 
 intersphinx_mapping = {

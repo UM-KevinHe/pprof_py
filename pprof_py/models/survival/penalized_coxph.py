@@ -34,7 +34,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
@@ -46,7 +46,7 @@ from ...algorithms.survival.coordinate_descent import (
     build_lambda_sequence,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...statistics.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio, bootstrap_cv_se
+from ...utils.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio, bootstrap_cv_se
 from ...utils.numerical import safe_exp
 from .coxph import CoxPH, NotFittedError
 from ...exceptions import DegenerateFeatureWarning
@@ -552,7 +552,7 @@ class _PenalizedCoxPHBase:
         )
 
 
-class PenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
+class PenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Elastic-net-penalized Cox Proportional Hazards regression, fit
     by proximal Newton + coordinate descent over a lambda path.
 
@@ -957,7 +957,7 @@ class _PenalizedCoxPHCVBase:
         )
 
 
-class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
+class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     """K-fold cross-validated lambda selection for `PenalizedCoxPH`,
     analogous to R's `cv.glmnet(family="cox")`.
 

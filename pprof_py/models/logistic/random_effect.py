@@ -32,6 +32,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.special import expit
@@ -65,7 +67,8 @@ class _FitState:
     iterations: int
 
 
-class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasuresMixin, RandomEffectPlottingMixin):
+class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasuresMixin, RandomEffectPlottingMixin,
+                                ProviderModel):
     """Bernoulli-logit GLMM with random intercepts, lme4-style.
 
     Model:

@@ -4,7 +4,7 @@
 `pprof_py` organizes its models into three families — **logistic**,
 **linear**, and **survival** — each with its own estimator classes.
 Rather than forcing all models through a single abstract base class, the
-package uses a combination of **scikit-learn conventions** and
+package uses a combination of **a small common base class** and
 **structural-typing protocols** to provide a consistent API while
 respecting each model family's distinct statistical requirements.
 
@@ -23,7 +23,7 @@ linear random-effect model, and a Cox proportional hazards model share
 almost no fitting logic. Forcing them into a common inheritance tree
 added complexity without adding value.
 
-**scikit-learn estimator conventions.** Most model classes follow scikit-learn's estimator interface. The exceptions are `LinearFixedEffectModel`, `LinearRandomEffectModel`, `LogisticFixedEffectModel` and `LogisticRandomEffectModel`, which do not inherit `BaseEstimator` and have no `get_params()` / `set_params()`:
+**One base class.** Every model class inherits `pprof_py.base.ProviderModel`, which fixes these conventions:
 
 - Constructor arguments define model *configuration* (e.g., `ties`,
   `confidence_level`).
@@ -31,10 +31,10 @@ added complexity without adding value.
 - Fitted attributes end with a trailing underscore (e.g., `coef_`,
   `standard_errors_`, `log_likelihood_`).
 - `get_params()` / `set_params()` return and modify constructor
-  parameters, not fitted results.
+  parameters, not fitted results, and the `repr` lists the parameters
+  that differ from their defaults.
 
-Survival models (`CoxPH`, `PenalizedCoxPH`, etc.) inherit directly
-from `sklearn.base.BaseEstimator`.
+pprof_py does not depend on scikit-learn.
 
 **Structural-typing protocols.** Common *interface contracts* — methods
 like `summary()`, `test()`, and plotting methods — are defined as

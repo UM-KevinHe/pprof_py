@@ -39,13 +39,13 @@ from typing import List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ..base import ProviderModel
 
 from ..models.survival.coxph import CoxPH
 from .criteria import CRITERIA
 
 
-class CoxPHSelector(BaseEstimator):
+class CoxPHSelector(ProviderModel):
     """Forward, backward, or bidirectional variable selection for CoxPH.
 
     Parameters

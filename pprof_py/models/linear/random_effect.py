@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.sparse import coo_matrix, csr_matrix
@@ -59,6 +61,7 @@ class LinearRandomEffectModel(
     RandomEffectInferenceMixin,
     RandomEffectMeasuresMixin,
     RandomEffectPlottingMixin,
+    ProviderModel,
 ):
     """Gaussian linear mixed-effects model with random intercepts, lme4-style.
 

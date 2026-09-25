@@ -9,8 +9,10 @@ import logging
 from dataclasses import replace
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from ...utils.metrics import roc_auc_score
 from typing import Optional, Union, List
 
 from ...data.validation import validate_and_convert_inputs
@@ -29,6 +31,7 @@ class LogisticFixedEffectModel(
     FixedEffectInferenceMixin,
     FixedEffectMeasuresMixin,
     FixedEffectPlottingMixin,
+    ProviderModel,
 ):
     """Logistic Regression Model with Fixed Effects.
 
@@ -496,7 +499,7 @@ class LogisticFixedEffectModel(
 
         .. note::
            Renamed from ``get_params`` in 0.4.0 to avoid collision with
-           ``sklearn.base.BaseEstimator.get_params()``, which returns
+           ``ProviderModel.get_params()``, which returns
            constructor arguments.
 
         Returns

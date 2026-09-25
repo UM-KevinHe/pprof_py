@@ -8,7 +8,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     within_group_orthogonalize,
@@ -38,7 +38,7 @@ from .penalized import DegenerateFeatureWarning, _resolve_lambda_path
 logger = logging.getLogger(__name__)
 
 
-class GroupLassoLinear(BaseEstimator):
+class GroupLassoLinear(ProviderModel):
     """Group lasso / sparse group lasso penalized linear regression.
 
     Parameters

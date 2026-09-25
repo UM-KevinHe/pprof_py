@@ -21,8 +21,8 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
-from sklearn.exceptions import ConvergenceWarning
+from ...base import ProviderModel
+from ...exceptions import ConvergenceWarning
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
@@ -37,7 +37,7 @@ from ...exceptions import NotFittedError
 from .coxph import CoxPH
 
 
-class FrailtyCoxPH(BaseEstimator):
+class FrailtyCoxPH(ProviderModel):
     """Shared Gamma-frailty Cox Proportional Hazards regression.
 
     The frailty is modeled as a positive, mean-one Gamma random effect shared

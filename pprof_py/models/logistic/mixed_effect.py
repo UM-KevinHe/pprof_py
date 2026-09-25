@@ -20,7 +20,7 @@ from scipy.special import expit as plogis
 from numpy.polynomial.hermite import hermgauss
 from typing import Optional, List
 
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...exceptions import NotFittedError
 from ...inference.logistic import MixedEffectInferenceMixin
@@ -55,7 +55,7 @@ def gauss_hermite_normal(n_nodes: int, sigma: float):
     return nodes, weights
 
 
-class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
+class LogisticMixedEffectModel(ProviderModel, MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
     """Logistic model with fixed provider effects and random cluster effects.
 
     **Stage 3** of a three-stage estimation pipeline (He et al., 2013):

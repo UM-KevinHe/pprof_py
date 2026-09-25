@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     weighted_column_scale,
@@ -65,7 +65,7 @@ def _resolve_lambda_path(
     )
 
 
-class PenalizedLinear(BaseEstimator):
+class PenalizedLinear(ProviderModel):
     """Elastic-net-penalized linear (Gaussian) regression.
 
     Matches ``glmnet(family="gaussian")`` in lambda sequence,
@@ -425,7 +425,7 @@ class PenalizedLinear(BaseEstimator):
         })
 
 
-class PenalizedLinearCV(BaseEstimator):
+class PenalizedLinearCV(ProviderModel):
     """Cross-validated penalized linear regression.
 
     Analogous to ``cv.glmnet(family="gaussian")``.

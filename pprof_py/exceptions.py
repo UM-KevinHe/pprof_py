@@ -22,6 +22,10 @@ class DegenerateFeatureWarning(UserWarning):
     """
 
 
+class ConvergenceWarning(UserWarning):
+    """Warning emitted when an iterative fit stops before converging."""
+
+
 class NotFittedError(RuntimeError):
     """Raised when a fitted-only attribute or method is accessed before ``fit()``.
 

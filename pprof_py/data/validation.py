@@ -30,8 +30,7 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.utils import check_array
+from ..utils.arrays import check_array
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +81,11 @@ def check_variation(
     """
     log = _logger or logger
     log.info("Checking variation in covariates ...")
-    selector = VarianceThreshold()
-    selector.fit(data[x_columns])
+    values = np.asarray(data[x_columns], dtype=np.float64)
+    # variance, or the range where smaller (exact zero for constant columns), as scikit-learn computed it
+    variances = np.nanmin(np.array([np.nanvar(values, axis=0), np.ptp(values, axis=0)]), axis=0)
     zero_var = [
-        col for col, var in zip(x_columns, selector.variances_) if var == 0
+        col for col, var in zip(x_columns, variances) if var == 0
     ]
     if zero_var:
         log.error(f"Covariates with zero variance: {', '.join(zero_var)}")

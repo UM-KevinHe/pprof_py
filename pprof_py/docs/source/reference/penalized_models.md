@@ -2,7 +2,7 @@
 # Reference: penalized, group-lasso and provider-penalized linear and logistic models
 
 Elastic-net (glmnet-style), group-lasso and provider-penalized estimators, fitted along a path of penalty strengths λ by proximal-Newton
-with coordinate descent. All follow the scikit-learn interface (`get_params`, `set_params`, `clone`).
+with coordinate descent. All share pprof_py's `ProviderModel` interface (`get_params`, `set_params`).
 
 | Estimator | Outcome | Penalty | Notes |
 |---|---|---|---|

@@ -46,7 +46,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.survival.discrete_survival import (
     discretize_times,
@@ -112,7 +112,7 @@ def _validate_discrete_params(
 # DiscreteSurvival — Regularization path
 # ======================================================================
 
-class DiscreteSurvival(BaseEstimator):
+class DiscreteSurvival(ProviderModel):
     """Penalized discrete-time survival model.
 
     Fits a regularization path of discrete-time survival models with
@@ -577,7 +577,7 @@ class DiscreteSurvival(BaseEstimator):
 # DiscreteSurvivalCV — Cross-validated lambda selection
 # ======================================================================
 
-class DiscreteSurvivalCV(BaseEstimator):
+class DiscreteSurvivalCV(ProviderModel):
     """Cross-validated discrete-time survival model.
 
     Performs k-fold cross-validation to select the optimal lambda.

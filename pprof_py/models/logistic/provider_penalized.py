@@ -11,7 +11,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     weighted_column_scale,
@@ -71,7 +71,7 @@ def _resolve_provider_alias(provider_id, provider):
     return provider_id if provider_id is not None else provider
 
 
-class ProviderPenalizedLogistic(BaseEstimator):
+class ProviderPenalizedLogistic(ProviderModel):
     """Two-layer provider-penalized logistic regression.
 
     Unpenalized provider effects gamma_k (bounded by median-clamp)
@@ -616,7 +616,7 @@ def _provider_stratified_fold_assignment(
 # ProviderPenalizedLogisticCV
 # ======================================================================
 
-class ProviderPenalizedLogisticCV(BaseEstimator):
+class ProviderPenalizedLogisticCV(ProviderModel):
     """Cross-validated two-layer provider-penalized logistic regression.
 
     Fits the full regularization path on all data, then selects

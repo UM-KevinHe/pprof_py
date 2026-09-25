@@ -27,7 +27,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...algorithms.penalty import (
     weighted_column_scale,
@@ -130,7 +130,7 @@ def _provider_newton_from_loglik(
 # ProviderPenalizedDiscreteSurvival
 # ======================================================================
 
-class ProviderPenalizedDiscreteSurvival(BaseEstimator):
+class ProviderPenalizedDiscreteSurvival(ProviderModel):
     """Provider-penalized discrete-time survival model.
 
     Three-layer architecture matching R ``pp.DiscSurv``:
@@ -648,7 +648,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
 # Cross-validated ProviderPenalizedDiscreteSurvival
 # ======================================================================
 
-class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
+class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     """Cross-validated provider-penalized discrete-time survival model.
 
     Fits the full regularization path on all data, then selects

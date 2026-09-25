@@ -159,13 +159,13 @@ All primary model classes are importable directly from `pprof_py`.
 
 .. autofunction:: pprof_py.inference.survival.log_ratio_confidence_intervals
 
-.. autofunction:: pprof_py.statistics.deviance.saturated_log_likelihood
+.. autofunction:: pprof_py.utils.deviance.saturated_log_likelihood
 
-.. autofunction:: pprof_py.statistics.deviance.cox_deviance
+.. autofunction:: pprof_py.utils.deviance.cox_deviance
 
-.. autofunction:: pprof_py.statistics.deviance.deviance_ratio
+.. autofunction:: pprof_py.utils.deviance.deviance_ratio
 
-.. autofunction:: pprof_py.statistics.deviance.bootstrap_cv_se
+.. autofunction:: pprof_py.utils.deviance.bootstrap_cv_se
 
 .. autofunction:: pprof_py.selection.aic
 

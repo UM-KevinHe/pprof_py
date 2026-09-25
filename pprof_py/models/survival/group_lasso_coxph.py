@@ -30,7 +30,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
@@ -45,7 +45,7 @@ from ...algorithms.survival.coordinate_descent import (
     fit_group_regularization_path,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...statistics.deviance import (
+from ...utils.deviance import (
     saturated_log_likelihood, cox_deviance, deviance_ratio,
 )
 from .coxph import CoxPH, NotFittedError
@@ -55,7 +55,7 @@ from .penalized_coxph import (
     _resolve_lambda_path,
     DegenerateFeatureWarning,
 )
-from ...statistics.deviance import bootstrap_cv_se
+from ...utils.deviance import bootstrap_cv_se
 
 
 # ------------------------------------------------------------------
@@ -109,7 +109,7 @@ def _validate_group_parameters(
 # GroupLassoCoxPH
 # ------------------------------------------------------------------
 
-class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
+class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Group lasso / sparse group lasso penalized Cox regression.
 
     Fits a regularization path for the penalty:
@@ -451,7 +451,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
 # GroupLassoCoxPHCV
 # ------------------------------------------------------------------
 
-class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
+class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     """Cross-validated group lasso Cox regression.
 
     Performs k-fold cross-validation over the lambda path to select
