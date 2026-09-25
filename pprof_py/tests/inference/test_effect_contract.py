@@ -67,7 +67,7 @@ def _run(models, route, **extra):
 @pytest.mark.parametrize("route", sorted(ROUTES))
 def test_schema_and_conventions(models, route):
     res = _run(models, route)
-    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider"
+    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider_id"
     assert str(res.flag.dtype) == "Int8" and res.flag.notna().all()
     assert ((res.flag == 1) <= (res.z_adjusted > 0)).all() and ((res.flag == -1) <= (res.z_adjusted < 0)).all()
     np.testing.assert_allclose(res.p_value, 2 * norm.sf(np.abs(res.z_adjusted)), rtol=1e-12, atol=0)

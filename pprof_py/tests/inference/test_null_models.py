@@ -91,12 +91,12 @@ def test_custom_estimator_and_missing_labels():
 
 
 def test_alignment_is_checked():
-    zf = ZFrame.from_arrays(_z(10), provider=list("abcdefghij"))
+    zf = ZFrame.from_arrays(_z(10), provider_id=list("abcdefghij"))
     en = EmpiricalNull.fit(zf)
     with pytest.raises(ValueError):
         en.parameters(_z(11))
     with pytest.raises(ValueError):
-        en.parameters(ZFrame.from_arrays(_z(10), provider=list("abcdefghiz")))
+        en.parameters(ZFrame.from_arrays(_z(10), provider_id=list("abcdefghiz")))
 
 
 def test_from_parameters():

@@ -275,11 +275,11 @@ result = model.test(test_method="poibin_exact")
 print(result[["estimate", "null_value", "z_raw", "p_value", "flag"]].head(3).round(4))
 ```
 ```
-          estimate  null_value   z_raw  p_value  flag
-provider
-0          -5.8522     -5.8377  0.0352   0.9719     0
-1          -6.3107     -5.8377 -0.8941   0.3713     0
-2          -6.0450     -5.8377 -0.3817   0.7027     0
+             estimate  null_value   z_raw  p_value  flag
+provider_id
+0             -5.8522     -5.8377  0.0352   0.9719     0
+1             -6.3107     -5.8377 -0.8941   0.3713     0
+2             -6.0450     -5.8377 -0.3817   0.7027     0
 ```
 
 All three test methods compare each provider's event count with its

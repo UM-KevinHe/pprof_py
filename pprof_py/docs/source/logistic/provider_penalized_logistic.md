@@ -229,7 +229,7 @@ convergence under their default tolerances.
 ## 6. Provider effects: recovering facility quality
 
 ```python
-gamma_df = cv.predict_provider_effect()   # DataFrame: provider, gamma
+gamma_df = cv.predict_provider_effect()   # DataFrame: provider_id, gamma
 gamma_df.sort_values("gamma").head(3)      # 3 best-estimated facilities
 gamma_df.sort_values("gamma", ascending=False).head(3)   # 3 worst
 ```

@@ -259,7 +259,7 @@ class EmpiricalNull(NullModel):
             raise ValueError("sd values must be positive.")
         grp = np.ones(m.size, dtype=int) if group is None else np.asarray(group).ravel()
         return cls(mean=m, sd=s, group=grp, diagnostics=pd.DataFrame(), estimator="supplied",
-                   index=None if index is None else pd.Index(index, name="provider"))
+                   index=None if index is None else pd.Index(index, name="provider_id"))
 
     def parameters(self, z):
         zz, index = _as_z(z)

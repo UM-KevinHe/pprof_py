@@ -50,7 +50,7 @@ lg = PenalizedLogistic(alpha=1.0, n_lambda=20).fit(Xa, yb)
 lg.predict_proba(Xa[:3], lambda_value=lg.lambda_path_[5])
 
 pp = ProviderPenalizedLogistic(n_lambda=8).fit(Xa, yb, provider_id=provider)
-pp.predict_provider_effect().head()                             # provider, gamma at the last lambda
+pp.predict_provider_effect().head()                             # provider_id, gamma at the last lambda
 ```
 
 ## Conventions shared by all of them
@@ -231,7 +231,7 @@ PenalizedLogisticCV(
 | `PenalizedLogistic` | `coef_at`, `intercept_at`, `predict_proba(X, lambda_value=None)`, `predict(X, lambda_value=None, threshold=0.5)`, `summary(which=-1)` |
 | `PenalizedLogisticCV`, `GroupLassoLogisticCV` | `predict_proba`, `predict` |
 | `GroupLassoLogistic` | `coef_at`, `active_group_labels`, `predict_proba`, `predict` |
-| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)` |
+| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)` |
 | `ProviderPenalizedLogisticCV` | the same, with `which=None` (the selected λ) |
 
 ## Agreement with glmnet

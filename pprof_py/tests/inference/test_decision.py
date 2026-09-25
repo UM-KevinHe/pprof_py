@@ -45,7 +45,7 @@ def test_untestable_providers_get_missing_results():
 # --------------------------------------------------------------------------- schema and conventions
 def test_schema_and_flag_sign():
     res = provider_test(z_statistic(_rates(), null_value="mean"), FixedNull(mean=0.1, sd=1.3))
-    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider"
+    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider_id"
     assert str(res.flag.dtype) == "Int8"
     assert (res.z_adjusted[res.flag == 1] > 0).all() and (res.z_adjusted[res.flag == -1] < 0).all()
     assert {"transform", "alternative", "level", "critical", "interval", "null_model"} <= set(res.attrs)

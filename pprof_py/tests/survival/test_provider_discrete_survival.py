@@ -271,7 +271,7 @@ class TestProviderEffects:
         """predict_provider_effect returns correct DataFrame."""
         pe = fitted_model.predict_provider_effect(which=-1)
         assert isinstance(pe, pd.DataFrame)
-        assert list(pe.columns) == ["provider", "gamma"]
+        assert list(pe.columns) == ["provider_id", "gamma"]
         assert len(pe) == fitted_model.n_providers_
 
 
@@ -621,7 +621,7 @@ class TestProviderPenalizedDiscreteSurvivalCV:
         cv, *_ = fitted_cv_model
         pe = cv.predict_provider_effect()
         assert isinstance(pe, pd.DataFrame)
-        assert list(pe.columns) == ["provider", "gamma"]
+        assert list(pe.columns) == ["provider_id", "gamma"]
         assert len(pe) == cv.n_providers_
 
     def test_full_model_exposed(self, fitted_cv_model):

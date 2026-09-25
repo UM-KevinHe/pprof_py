@@ -190,7 +190,7 @@ print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'c
 
 ```
              estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
-provider
+provider_id
 Hospital_1   6.361710  0.501403  3.469712  0.000521     1  5.378491  7.344929
 Hospital_10  4.715748  0.543014  0.176929  0.859565     0  3.650933  5.780563
 Hospital_11  5.913038  0.501018  2.579475  0.009895     1  4.930575  6.895501

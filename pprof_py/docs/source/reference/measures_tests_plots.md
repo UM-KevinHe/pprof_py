@@ -229,7 +229,7 @@ LinearRandomEffectModel.test(
   `bounds="auto"` clips identity-scale intervals to the measure's range. There is no fixed scale factor: earlier versions divided every
   z-statistic by 1.81 by default, which `null_model=FixedNull(sd=1.81)` reproduces.
 
-Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provider` with the columns
+Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provider_id` with the columns
 `pprof_py.inference.PROVIDER_TEST_COLUMNS`:
 
 | Column | Meaning |

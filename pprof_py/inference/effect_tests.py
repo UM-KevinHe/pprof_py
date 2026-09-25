@@ -119,7 +119,7 @@ def z_from_tails(upper: np.ndarray, lower: np.ndarray, alternative: str, floor: 
     return np.clip(z, -z_max, z_max)
 
 
-def effect_test(provider, estimate, z, reference: float, *, se=None, df=None, null_model=None,
+def effect_test(provider_id, estimate, z, reference: float, *, se=None, df=None, null_model=None,
                 alternative: str = "two_sided", level: float = 0.95, critical: Optional[float] = None,
                 interval: str = "inversion", providers=None, test_method: Optional[str] = None,
                 limits: Optional[Callable[[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]] = None
@@ -141,7 +141,7 @@ def effect_test(provider, estimate, z, reference: float, *, se=None, df=None, nu
     zz = np.asarray(z, dtype=np.float64).ravel().copy()
     zz[~np.isfinite(zz)] = np.nan
     se_arr = None if se is None else np.asarray(se, dtype=np.float64).ravel()
-    zf = ZFrame(z=zz, index=pd.Index(np.asarray(provider).ravel(), name="provider"), estimate=est,
+    zf = ZFrame(z=zz, index=pd.Index(np.asarray(provider_id).ravel(), name="provider_id"), estimate=est,
                 se=np.full(est.size, np.nan) if se_arr is None else se_arr,
                 transformed=None if se_arr is None else est, se_transformed=se_arr,
                 null_value=float(reference), null_transformed=float(reference), transform=IDENTITY,

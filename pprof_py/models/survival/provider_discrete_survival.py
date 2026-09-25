@@ -589,7 +589,7 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
         self._check_is_fitted()
         gamma = self.gamma_path_[which]
         return pd.DataFrame({
-            "provider": self.provider_labels_,
+            "provider_id": self.provider_labels_,
             "gamma": gamma,
         })
 

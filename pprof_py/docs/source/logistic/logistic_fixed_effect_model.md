@@ -360,7 +360,7 @@ print("\n--- Provider Test (Exact vs Median) ---")
 print(test_results_exact.head())
 ```
 
-The result is indexed by provider with the columns described in {ref}`ll_ref_measures`: `z_raw`
+The result is indexed by `provider_id` with the columns described in {ref}`ll_ref_measures`: `z_raw`
 (the test statistic), `p_value`, and `flag` (1: more events than expected, -1: fewer, 0: not
 significant, NA: not tested). `test_method='wald'` also reports `se` and a confidence interval, and
 `null_model=` calibrates the test against an empirical null ({ref}`empirical-null-guide`).
