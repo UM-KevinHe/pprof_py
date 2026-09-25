@@ -549,7 +549,7 @@ class PenalizedLogisticCV(ProviderModel):
     n_folds : int, default=10
     fold_id : array-like or None
         User-supplied fold assignments (overrides n_folds).
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
         If True, use lambda.1se; else lambda.min.
     random_state : int or None
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
@@ -561,7 +561,7 @@ class PenalizedLogisticCV(ProviderModel):
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda_1se_ if use_1se, else lambda_min_).
+        Selected lambda (lambda_1se_ if se_rule == "1se", else lambda_min_).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean cross-validated deviance at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)
@@ -597,7 +597,7 @@ class PenalizedLogisticCV(ProviderModel):
         fit_intercept: bool = True,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
@@ -615,7 +615,7 @@ class PenalizedLogisticCV(ProviderModel):
         self.fit_intercept = fit_intercept
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -631,6 +631,8 @@ class PenalizedLogisticCV(ProviderModel):
         offset: Optional[np.ndarray] = None,
     ) -> "PenalizedLogisticCV":
         """Fit CV to select lambda, then refit on full data."""
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # --- Fit full-data model to get lambda path ---
         full_model = PenalizedLogistic(
             alpha=self.alpha,
@@ -721,7 +723,7 @@ class PenalizedLogisticCV(ProviderModel):
         self.cv_se_deviance_ = cv_se
         self.lambda_min_ = float(lambda_min)
         self.lambda_1se_ = float(lambda_1se)
-        self.lambda_ = float(lambda_1se if self.use_1se else lambda_min)
+        self.lambda_ = float(lambda_1se if (self.se_rule == "1se") else lambda_min)
         self.lambda_min_idx_ = idx_min
         self.lambda_1se_idx_ = idx_1se
 

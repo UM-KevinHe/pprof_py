@@ -82,8 +82,8 @@ def fitted_model(synth_data):
     """Pre-fitted model for tests that only inspect outputs."""
     X, time, event, prov, _, _ = synth_data
     model = ProviderPenalizedDiscreteSurvival(
-        alpha_en=1.0,
-        gamma_bound=5.0,
+        alpha=1.0,
+        provider_bound=5.0,
         n_lambda=20,
         max_outer_iter=50,
         outer_tol=1e-3,
@@ -112,7 +112,7 @@ class TestProviderNewtonStep:
             provider_idx=np.repeat(np.arange(3), [4, 3, 3]),
             n_providers=3,
             gamma=gamma,
-            gamma_bound=10.0,
+            provider_bound=10.0,
         )
         np.testing.assert_allclose(gamma_new, gamma, atol=1e-12)
 
@@ -131,7 +131,7 @@ class TestProviderNewtonStep:
             provider_idx=provider_idx,
             n_providers=3,
             gamma=gamma,
-            gamma_bound=bound,
+            provider_bound=bound,
         )
         median_g = float(np.median(gamma_new))
         assert np.all(gamma_new >= median_g - bound - 1e-10)
@@ -147,7 +147,7 @@ class TestProviderNewtonStep:
         gamma = rng.randn(K) * 0.2
 
         gamma_new = _provider_newton_from_loglik(
-            score_beta, ww, provider_idx, K, gamma, gamma_bound=10.0,
+            score_beta, ww, provider_idx, K, gamma, provider_bound=10.0,
         )
 
         # Manual computation.
@@ -249,7 +249,7 @@ class TestProviderEffects:
 
     def test_gamma_bounded(self, fitted_model):
         """Provider effects should respect the median-clamp bound."""
-        bound = fitted_model.gamma_bound
+        bound = fitted_model.provider_bound
         for i in range(len(fitted_model.lambda_path_)):
             gamma = fitted_model.gamma_path_[i]
             median_g = np.median(gamma)
@@ -408,7 +408,7 @@ class TestSingleProviderEquivalence:
         lam_path = np.array([0.1, 0.05, 0.01, 0.005, 0.001])
 
         pp_model = ProviderPenalizedDiscreteSurvival(
-            lambda_path=lam_path, gamma_bound=10.0,
+            lambda_path=lam_path, provider_bound=10.0,
             max_outer_iter=100, outer_tol=1e-5, standardize=False,
         )
         pp_model.fit(X, time_obs, event_obs, provider)
@@ -439,14 +439,14 @@ class TestActiveSetEquivalence:
         lam_path = np.array([0.1, 0.05, 0.01])
 
         m_active = ProviderPenalizedDiscreteSurvival(
-            lambda_path=lam_path, gamma_bound=5.0,
+            lambda_path=lam_path, provider_bound=5.0,
             max_outer_iter=80, outer_tol=1e-4,
             use_active_set=True,
         )
         m_active.fit(X, time, event, prov)
 
         m_full = ProviderPenalizedDiscreteSurvival(
-            lambda_path=lam_path, gamma_bound=5.0,
+            lambda_path=lam_path, provider_bound=5.0,
             max_outer_iter=80, outer_tol=1e-4,
             use_active_set=False,
         )
@@ -480,13 +480,13 @@ class TestStandardize:
         lam_path = np.array([0.05, 0.01, 0.005])
 
         m_raw = ProviderPenalizedDiscreteSurvival(
-            lambda_path=lam_path, gamma_bound=5.0,
+            lambda_path=lam_path, provider_bound=5.0,
             max_outer_iter=80, outer_tol=1e-4, standardize=False,
         )
         m_raw.fit(X, time, event, prov)
 
         m_std = ProviderPenalizedDiscreteSurvival(
-            lambda_path=lam_path, gamma_bound=5.0,
+            lambda_path=lam_path, provider_bound=5.0,
             max_outer_iter=80, outer_tol=1e-4, standardize=True,
         )
         m_std.fit(X, time, event, prov)
@@ -515,7 +515,7 @@ class TestPenaltyFactor:
         pf[0] = 0.0  # first variable is unpenalized
 
         model = ProviderPenalizedDiscreteSurvival(
-            n_lambda=15, gamma_bound=5.0,
+            n_lambda=15, provider_bound=5.0,
             penalty_factor=pf,
             max_outer_iter=50, outer_tol=1e-3,
         )
@@ -541,10 +541,10 @@ def fitted_cv_model():
     )
     model = ProviderPenalizedDiscreteSurvivalCV(
         n_folds=5,
-        use_1se=True,
+        se_rule="1se",
         random_state=42,
         n_lambda=15,
-        gamma_bound=5.0,
+        provider_bound=5.0,
         max_outer_iter=30,
         outer_tol=1e-3,
     )
@@ -636,17 +636,17 @@ class TestProviderPenalizedDiscreteSurvivalCV:
         with pytest.raises(NotFittedError):
             cv.predict_hazard(np.zeros((1, 3)))
 
-    def test_use_1se_false(self):
-        """With use_1se=False, lambda_ should equal lambda_min."""
+    def test_se_rule_min(self):
+        """With se_rule="min", lambda_ should equal lambda_min."""
         X, time, event, prov, _, _ = _simulate_discrete_survival(
             n=200, p=4, n_providers=10, seed=88,
         )
         cv = ProviderPenalizedDiscreteSurvivalCV(
             n_folds=3,
-            use_1se=False,
+            se_rule="min",
             random_state=42,
             n_lambda=10,
-            gamma_bound=5.0,
+            provider_bound=5.0,
             max_outer_iter=20,
             outer_tol=1e-2,
         )

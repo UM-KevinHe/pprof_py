@@ -476,8 +476,8 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         ``'analytical'`` (glmnet-style weighted CV SE) or
         ``'bootstrap'`` (Breslow ties only).
     random_state : int or None, default None
-    select : str, default 'lambda_min'
-        ``'lambda_min'`` or ``'lambda_1se'``.
+    se_rule : str, default 'min'
+        ``'min'`` or ``'1se'``.
 
     Attributes (set by ``fit``)
     ---------------------------
@@ -516,8 +516,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        select: str = "lambda_min",
-        use_1se: bool = None,
+        se_rule: str = "min",
     ):
         """Cross-validated group lasso Cox."""
         self.groups = groups
@@ -542,12 +541,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        # Unify select= / use_1se= (ISSUE-011).
-        if use_1se is not None:
-            self.select = "lambda_1se" if use_1se else "lambda_min"
-        else:
-            self.select = select
-        self.use_1se = (self.select == "lambda_1se")
+        self.se_rule = se_rule
 
     def _base_kwargs(self) -> dict:
         """Constructor kwargs forwarded to ``GroupLassoCoxPH``."""
@@ -578,10 +572,10 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         sample_weight=None,
     ) -> "GroupLassoCoxPHCV":
         """Fit the full path, then cross-validate to select lambda."""
-        if self.select not in ("lambda_min", "lambda_1se"):
+        if self.se_rule not in ("min", "1se"):
             raise ValueError(
-                f"select must be 'lambda_min' or 'lambda_1se', "
-                f"got {self.select!r}"
+                f"se_rule must be 'min' or '1se', "
+                f"got {self.se_rule!r}"
             )
         if self.se_method not in ("analytical", "bootstrap"):
             raise ValueError(
@@ -775,7 +769,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
 
         # --- Final estimator at selected lambda ---
         chosen_lambda = (
-            self.lambda_min_ if self.select == "lambda_min"
+            self.lambda_min_ if self.se_rule == "min"
             else self.lambda_1se_
         )
         self.final_estimator_ = GroupLassoCoxPH(

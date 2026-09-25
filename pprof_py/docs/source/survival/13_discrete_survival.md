@@ -87,14 +87,8 @@ three, unlike the logistic and linear families, which use separate
 `groups=` when using either group option, exactly as
 [the group lasso chapter](../logistic/group_lasso_logistic) describes.
 
-`coef_at(lambda_val)` interpolates continuously, the same way
-[Chapter 1's](../logistic/penalized_logistic) `coef_at()` does — but
-note the parameter is spelled **`lambda_val`** here, not
-`lambda_value`. This package has two different spellings for
-"the lambda you're querying at" across the model families this
-documentation covers (`lambda_value` almost everywhere,
-`lambda_val` in this one); worth double-checking the signature
-rather than assuming.
+`coef_at(lambda_value)` interpolates continuously, the same way
+[Chapter 1's](../logistic/penalized_logistic) `coef_at()` does.
 
 ## 13.4 Reading the path
 
@@ -168,20 +162,18 @@ timepoint absent from a training fold would be inestimable), retrying
 the random assignment up to `max_fold_retries` (default 100) times
 before raising a clear `RuntimeError` if no valid split is found.
 
-The full-data fit is accessible as either `cv.model_` or
-`cv.best_model_` (the latter for backward compatibility):
+The full-data fit is `cv.model_`:
 
 ```python
 cv.model_.coef_at(cv.lambda_min_)
 # age: 0.0455, sex: 0.0, diabetes: 0.3451, comorbidity_count: 0.2206
-cv.best_model_.coef_at(cv.lambda_1se_)
+cv.model_.coef_at(cv.lambda_1se_)
 # age: 0.0327, sex: 0.0, diabetes: 0.0214, comorbidity_count: 0.0910
 ```
 
 `sex` — which carries no real effect in this cohort's data-generating
 process — is correctly zero at both. `predict()` and `summary()` both default to `rule='1se'`.
-`DiscreteSurvivalCV` also accepts `use_1se=True/False` as an alias
-for cross-family consistency:
+The rule is fixed at construction with `se_rule`, the parameter every CV class takes:
 
 ```python
 cv.summary().attrs

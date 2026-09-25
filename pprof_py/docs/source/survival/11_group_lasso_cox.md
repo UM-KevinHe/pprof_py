@@ -171,7 +171,7 @@ any stratum is entirely missing from a training fold.
 from pprof_py import GroupLassoCoxPHCV
 
 cv = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5, random_state=0)
-cv.fit(X, duration=time, event=death)   # select='lambda_min' by default
+cv.fit(X, duration=time, event=death)   # se_rule='min' by default
 
 cv.lambda_min_   # 0.002365958818367196
 cv.lambda_1se_   # 0.01870537265323917
@@ -197,14 +197,13 @@ correctly.
 
 ## 11.5 Selecting `lambda_1se`
 
-`GroupLassoCoxPHCV` uses `select: str` (`"lambda_min"` or
-`"lambda_1se"`) for the lambda-selection rule, defaulting to
-`"lambda_min"`.  The `use_1se=True/False` form accepted by the
-logistic and linear CV classes also works here as an alias.
+`GroupLassoCoxPHCV` takes the lambda-selection rule as `se_rule`
+(`"min"` or `"1se"`), like every CV class, but defaults to `"min"`
+(the Cox CV classes' default; the others default to `"1se"`).
 
 ```python
 cv_1se = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5,
-                            random_state=0, select="lambda_1se")
+                            random_state=0, se_rule="1se")
 cv_1se.fit(X, duration=time, event=death)
 cv_1se.coef_
 ```
@@ -225,7 +224,7 @@ unpenalized `age` coefficient survives. This is a striking, exact
 echo of what
 [Chapter 8 §8.5](08_penalized_regression) found for plain
 element-wise `PenalizedCoxPHCV` on a similarly-sized cohort:
-*"Switching to the more conservative `select='lambda_1se'` on this
+*"Switching to the more conservative `se_rule='1se'` on this
 same data pushes the penalty hard enough to zero out every covariate
 except age."* With roughly 300 events spread across a 4,000-patient
 cohort, the same event-count scarcity Chapter 8 and this guide's

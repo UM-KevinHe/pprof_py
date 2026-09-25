@@ -20,7 +20,7 @@ Each lambda now alternates three Newton/CD steps instead of two, up to
 `max_outer_iter` times:
 
 1. **Provider step**: Newton update for $\gamma_k$ (median-clamp
-   bounded by `gamma_bound`, same mechanism as
+   bounded by `provider_bound`, same mechanism as
    [the logistic chapter's](../logistic/provider_penalized_logistic)
    Section 3), up to `provider_max_iter` (default 10) rounds.
 2. **Baseline hazard step**: Newton update for $\alpha_t$ via
@@ -38,18 +38,12 @@ outer_tol` — differently from
 [Chapter 12's](12_provider_penalized_cox) Cox model, which requires
 each block's own threshold to pass independently.
 
-## 14.2 `alpha_en`, not `alpha`
+## 14.2 `alpha`: elastic-net mixing
 
-This class's elastic-net mixing parameter is spelled `alpha_en`
-rather than the plain `alpha` used elsewhere in the penalized-
-regression chapters.  Both names are accepted (`alpha=` works as an
-alias), but the distinct spelling exists for a real reason: `alpha`
-already means something *different* elsewhere in this family —
-[`DiscreteSurvival.alpha`](13_discrete_survival) is group-vs-lasso
-mixing, meaningful only for `penalty_type='sparse_group_lasso'`, not
-elastic-net mixing at all.  There is no `penalty_type=` or `groups=`
-on this class — unlike `DiscreteSurvival`, it is elastic-net only,
-matching R `pp.DiscSurv`.
+`alpha` is the elastic-net mixing parameter (1 = lasso, 0 = ridge),
+as in the other penalized classes. In
+[`DiscreteSurvival`](13_discrete_survival), `alpha` plays the
+analogous role for the group penalty, mixing group and lasso terms.
 
 ## 14.3 `standardize=False` by default — deliberately
 
@@ -78,7 +72,7 @@ X = cohort[["age", "sex", "diabetes", "comorbidity_count"]]
 time, event = cohort["time_year"], cohort["death"]
 provider_id = cohort["facility_id"]
 
-model = ProviderPenalizedDiscreteSurvival(alpha_en=1.0)
+model = ProviderPenalizedDiscreteSurvival(alpha=1.0)
 model.fit(X, time, event, provider_id)
 
 model.n_providers_          # 40
@@ -117,12 +111,12 @@ Cox survival curve, one row per subject, cumulative down the columns.
 ## 14.6 Provider effects and cross-validation
 
 ```python
-cv = ProviderPenalizedDiscreteSurvivalCV(n_folds=5, random_state=0, alpha_en=1.0)
+cv = ProviderPenalizedDiscreteSurvivalCV(n_folds=5, random_state=0, alpha=1.0)
 cv.fit(X, time, event, provider_id)
 
 cv.lambda_min_   # 0.00011302037861218591
 cv.lambda_1se_   # 0.03968401238419185
-cv.coef_          # at the selected lambda (use_1se=True default)
+cv.coef_          # at the selected lambda (se_rule="1se" default)
 ```
 ```
 age                  0.0445
@@ -136,16 +130,8 @@ Only `age` survives at the default `lambda_1se_` — the same pattern
 [Chapter 12](12_provider_penalized_cox) both found: with a modest
 event count spread across many facilities and four discrete
 timepoints, the one-standard-error margin comfortably prefers the
-simplest model. This class's CV parameter is the ordinary `use_1se:
-bool = True`, matching
-[the logistic provider chapter](../logistic/provider_penalized_logistic)
-and every non-Cox CV class in this documentation.
-`DiscreteSurvivalCV` also accepts `use_1se` as an alias for its
-native `se_rule` parameter.
-
-The full-data fit is accessible as `cv.model_` (consistent with
-every other CV class in the package).  `DiscreteSurvivalCV` also
-exposes it as `cv.best_model_` for backward compatibility.
+simplest model. This class's CV parameter is `se_rule` (default `"1se"`), as in
+every CV class in the package, and the full-data fit is `cv.model_`.
 
 ## 14.7 What's next
 

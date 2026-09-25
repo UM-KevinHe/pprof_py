@@ -57,20 +57,6 @@ from .penalized import (
 logger = logging.getLogger(__name__)
 
 
-def _resolve_provider_alias(provider_id, provider):
-    """Resolve ``provider_id`` / ``provider`` alias pair.
-
-    Both names refer to the same concept (per-observation provider
-    identifiers).  Accepts either one; raises if both are supplied.
-    """
-    if provider_id is not None and provider is not None:
-        raise ValueError(
-            "Cannot specify both 'provider_id' and 'provider'; they "
-            "are aliases for the same argument."
-        )
-    return provider_id if provider_id is not None else provider
-
-
 class ProviderPenalizedLogistic(ProviderModel):
     """Two-layer provider-penalized logistic regression.
 
@@ -89,10 +75,8 @@ class ProviderPenalizedLogistic(ProviderModel):
     groups : array-like or None
         Group labels (required for group_lasso/sparse_group_lasso).
     group_multiplier : array-like or None
-    gamma_bound : float, default=10.0
-        Maximum provider-effect deviation from median.  Alias:
-        ``provider_bound`` (accepted for cross-family consistency
-        with ``ProviderPenalizedCoxPH``).
+    provider_bound : float, default=10.0
+        Maximum provider-effect deviation from median.
     n_lambda : int, default=100
     lambda_min_ratio : float or None
     lambda_path : array-like or None
@@ -109,7 +93,6 @@ class ProviderPenalizedLogistic(ProviderModel):
     inner_tol : float, default=1e-10
     provider_max_iter : int, default=10
         Maximum provider-effect Newton steps per outer iteration.
-        Alias: ``max_provider_iter``.
     provider_tol : float or None, default=None
         Convergence tolerance for the provider-effect Newton loop.
         When *None*, falls back to ``outer_tol``.  Matches the
@@ -131,7 +114,7 @@ class ProviderPenalizedLogistic(ProviderModel):
         alpha: float = 1.0,
         groups: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
-        gamma_bound: float = 10.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
@@ -143,9 +126,6 @@ class ProviderPenalizedLogistic(ProviderModel):
         max_inner_iter: int = 1000,
         inner_tol: float = 1e-10,
         provider_max_iter: int = 10,
-        # --- Cross-family aliases (ISSUE-016, -017, -018) ---
-        provider_bound: Optional[float] = None,
-        max_provider_iter: Optional[int] = None,
         provider_tol: Optional[float] = None,
     ):
         """Two-layer provider + penalized-covariate logistic."""
@@ -153,10 +133,7 @@ class ProviderPenalizedLogistic(ProviderModel):
         self.alpha = alpha
         self.groups = groups
         self.group_multiplier = group_multiplier
-        # ISSUE-016: accept provider_bound as alias for gamma_bound
-        self.gamma_bound = (
-            provider_bound if provider_bound is not None else gamma_bound
-        )
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
@@ -167,11 +144,7 @@ class ProviderPenalizedLogistic(ProviderModel):
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
-        # ISSUE-017: accept max_provider_iter as alias for provider_max_iter
-        self.provider_max_iter = (
-            max_provider_iter if max_provider_iter is not None
-            else provider_max_iter
-        )
+        self.provider_max_iter = provider_max_iter
         # ISSUE-018: dedicated provider-effect convergence tolerance
         self.provider_tol = provider_tol
 
@@ -182,8 +155,6 @@ class ProviderPenalizedLogistic(ProviderModel):
         provider_id: np.ndarray = None,
         sample_weight: Optional[np.ndarray] = None,
         offset: Optional[np.ndarray] = None,
-        *,
-        provider: Optional[np.ndarray] = None,
     ) -> "ProviderPenalizedLogistic":
         """Fit the two-layer provider-penalized logistic model.
 
@@ -192,17 +163,13 @@ class ProviderPenalizedLogistic(ProviderModel):
         X : ndarray or DataFrame, shape (n, p)
         y : ndarray, shape (n,)
         provider_id : ndarray, shape (n,)
-            Provider identifiers.  Alias: ``provider``.
+            Provider identifiers.
         sample_weight, offset : ndarray or None
-        provider : ndarray or None
-            Alias for *provider_id* (cross-family consistency with
-            ``ProviderPenalizedCoxPH``).
 
         Returns
         -------
         self
         """
-        provider_id = _resolve_provider_alias(provider_id, provider)
         if provider_id is None:
             raise ValueError(
                 "provider_id (or provider=) must be provided "
@@ -342,7 +309,7 @@ class ProviderPenalizedLogistic(ProviderModel):
                     eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
                     gamma_new = logistic_provider_newton_step(
                         y, eta, weight, prov_idx, n_providers,
-                        gamma, gamma_bound=self.gamma_bound,
+                        gamma, gamma_bound=self.provider_bound,
                     )
                     gamma_change = float(np.max(np.abs(gamma_new - gamma)))
                     gamma = gamma_new
@@ -485,7 +452,6 @@ class ProviderPenalizedLogistic(ProviderModel):
 
     def predict_proba(
         self, X, provider_id=None, lambda_value=None, which: int = -1,
-        *, provider=None,
     ):
         """Predicted probabilities.
 
@@ -493,7 +459,6 @@ class ProviderPenalizedLogistic(ProviderModel):
         ----------
         X : ndarray, shape (n_new, p)
         provider_id : ndarray or None, shape (n_new,)
-            Alias: ``provider``.
         lambda_value : float or None
             If given, selects the nearest ``lambda_path_`` entry
             (overrides *which* when *which* is at its default).
@@ -505,7 +470,6 @@ class ProviderPenalizedLogistic(ProviderModel):
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        provider_id = _resolve_provider_alias(provider_id, provider)
         # ISSUE-015: wire lambda_value to a which index.
         if lambda_value is not None and which == -1:
             which = int(
@@ -632,7 +596,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
     alpha : float, default=1.0
     groups : array-like or None
     group_multiplier : array-like or None
-    gamma_bound : float, default=10.0
+    provider_bound : float, default=10.0
     n_lambda : int, default=100
     lambda_min_ratio : float or None
     lambda_path : array-like or None
@@ -648,7 +612,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
     n_folds : int, default=10
     fold_id : array-like or None
         User-supplied fold assignments (overrides n_folds).
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
         If True, select lambda.1se; else lambda.min.
     random_state : int or None
 
@@ -675,7 +639,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         alpha: float = 1.0,
         groups: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
-        gamma_bound: float = 10.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
@@ -689,11 +653,8 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         provider_max_iter: int = 10,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
-        # --- Cross-family aliases (ISSUE-016, -017, -018) ---
-        provider_bound: Optional[float] = None,
-        max_provider_iter: Optional[int] = None,
         provider_tol: Optional[float] = None,
     ):
         """Cross-validated provider-penalized logistic."""
@@ -701,9 +662,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         self.alpha = alpha
         self.groups = groups
         self.group_multiplier = group_multiplier
-        self.gamma_bound = (
-            provider_bound if provider_bound is not None else gamma_bound
-        )
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
@@ -714,13 +673,10 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
-        self.provider_max_iter = (
-            max_provider_iter if max_provider_iter is not None
-            else provider_max_iter
-        )
+        self.provider_max_iter = provider_max_iter
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.provider_tol = provider_tol
 
@@ -731,7 +687,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
             alpha=self.alpha,
             groups=self.groups,
             group_multiplier=self.group_multiplier,
-            gamma_bound=self.gamma_bound,
+            provider_bound=self.provider_bound,
             penalty_factor=self.penalty_factor,
             standardize=self.standardize,
             fit_intercept=self.fit_intercept,
@@ -750,8 +706,6 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         provider_id: np.ndarray = None,
         sample_weight: Optional[np.ndarray] = None,
         offset: Optional[np.ndarray] = None,
-        *,
-        provider: Optional[np.ndarray] = None,
     ) -> "ProviderPenalizedLogisticCV":
         """Fit CV to select lambda, then refit on full data.
 
@@ -766,7 +720,8 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         -------
         self
         """
-        provider_id = _resolve_provider_alias(provider_id, provider)
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         if provider_id is None:
             raise ValueError(
                 "provider_id (or provider=) must be provided "
@@ -886,9 +841,9 @@ class ProviderPenalizedLogisticCV(ProviderModel):
         self.lambda_1se_ = float(lambda_1se)
         self.lambda_min_idx_ = idx_min
         self.lambda_1se_idx_ = idx_1se
-        self.lambda_ = float(lambda_1se if self.use_1se else lambda_min)
+        self.lambda_ = float(lambda_1se if (self.se_rule == "1se") else lambda_min)
 
-        idx_selected = idx_1se if self.use_1se else idx_min
+        idx_selected = idx_1se if (self.se_rule == "1se") else idx_min
         self.model_ = full_model
         self.coef_ = full_model.coef_path_[idx_selected]
         self.intercept_ = full_model.intercept_path_[idx_selected]
@@ -903,10 +858,8 @@ class ProviderPenalizedLogisticCV(ProviderModel):
 
     def predict_proba(
         self, X, provider_id=None, lambda_value=None, which=None,
-        *, provider=None,
     ):
         """Predicted probabilities at the selected lambda."""
-        provider_id = _resolve_provider_alias(provider_id, provider)
         if which is None:
             # ISSUE-015: honour lambda_value when which is unset.
             if lambda_value is not None:
@@ -915,17 +868,16 @@ class ProviderPenalizedLogisticCV(ProviderModel):
                 )
             else:
                 which = (
-                    self.lambda_1se_idx_ if self.use_1se
+                    self.lambda_1se_idx_ if (self.se_rule == "1se")
                     else self.lambda_min_idx_
                 )
         return self.model_.predict_proba(X, provider_id, which=which)
 
     def predict(
         self, X, provider_id=None, lambda_value=None,
-        which=None, threshold=0.5, *, provider=None,
+        which=None, threshold=0.5,
     ):
         """Binary predictions at the selected lambda."""
-        provider_id = _resolve_provider_alias(provider_id, provider)
         return (
             self.predict_proba(X, provider_id, lambda_value, which)
             >= threshold
@@ -934,5 +886,5 @@ class ProviderPenalizedLogisticCV(ProviderModel):
     def predict_provider_effect(self, which=None) -> pd.DataFrame:
         """Provider effects at the selected lambda."""
         if which is None:
-            which = self.lambda_1se_idx_ if self.use_1se else self.lambda_min_idx_
+            which = self.lambda_1se_idx_ if (self.se_rule == "1se") else self.lambda_min_idx_
         return self.model_.predict_provider_effect(which=which)

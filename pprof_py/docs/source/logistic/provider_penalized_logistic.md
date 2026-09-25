@@ -100,16 +100,15 @@ not a keyword, and not `provider`. Keep that in mind if you've just
 come from survival Chapter 4, which never names this argument at all
 (it works with `strata=`), or if you go on to read the
 [provider-penalized Cox chapter](../survival/12_provider_penalized_cox)
-next, which uses `provider=` throughout — both provider-aware families now accept either name (`provider=` or
-`provider_id=`) in every method that takes it.
+next, which takes the same `provider_id=` argument.
 
-## 3. Bounding, not shrinking: `gamma_bound`
+## 3. Bounding, not shrinking: `provider_bound`
 
 A provider with very few patients has a poorly identified $\gamma_k$
 — in the extreme, a provider with zero deaths in a small sample would
 otherwise drive its Newton update toward $-\infty$, chasing a perfect
-fit to a tiny amount of data. `gamma_bound` (default `10.0`) prevents
-this by clamping every provider effect to within `gamma_bound` of the
+fit to a tiny amount of data. `provider_bound` (default `10.0`) prevents
+this by clamping every provider effect to within `provider_bound` of the
 *median* provider effect after each Newton step, rather than shrinking
 provider effects toward each other (which would bias exactly the
 quantity you're trying to estimate fairly). This is the same

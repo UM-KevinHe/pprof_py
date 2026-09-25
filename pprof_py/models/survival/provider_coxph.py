@@ -101,7 +101,7 @@ _VALID_PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
 # ======================================================================
 
 def _validate_provider_parameters(
-    penalty_type, alpha, provider_bound, max_provider_iter,
+    penalty_type, alpha, provider_bound, provider_max_iter,
     provider_tol, groups, n_lambda, lambda_min_ratio, lambda_path,
     standardize, max_outer_iter, outer_tol, max_inner_iter, inner_tol,
     fit_intercept,
@@ -123,13 +123,13 @@ def _validate_provider_parameters(
             f"provider_bound must be finite and > 0, got {provider_bound!r}"
         )
     if (
-        isinstance(max_provider_iter, (bool, np.bool_))
-        or int(max_provider_iter) != max_provider_iter
-        or int(max_provider_iter) < 1
+        isinstance(provider_max_iter, (bool, np.bool_))
+        or int(provider_max_iter) != provider_max_iter
+        or int(provider_max_iter) < 1
     ):
         raise ValueError(
-            f"max_provider_iter must be a positive integer, "
-            f"got {max_provider_iter!r}"
+            f"provider_max_iter must be a positive integer, "
+            f"got {provider_max_iter!r}"
         )
     if not np.isfinite(provider_tol) or float(provider_tol) <= 0:
         raise ValueError(
@@ -249,7 +249,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         Clamp γ to ``median(γ) ± bound``.
     provider_backtrack : bool, default False
         Placeholder for backtracking line search on γ.
-    max_provider_iter : int, default 20
+    provider_max_iter : int, default 20
         Maximum two-layer (γ–β) alternation iterations per λ.
     provider_tol : float, default 1e-6
         Convergence tolerance on ``max|Δγ|``.
@@ -298,7 +298,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         fit_intercept: bool = False,
         provider_bound: float = 10.0,
         provider_backtrack: bool = False,
-        max_provider_iter: int = 20,
+        provider_max_iter: int = 20,
         provider_tol: float = 1e-6,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-7,
@@ -319,7 +319,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         self.fit_intercept = fit_intercept
         self.provider_bound = provider_bound
         self.provider_backtrack = provider_backtrack
-        self.max_provider_iter = max_provider_iter
+        self.provider_max_iter = provider_max_iter
         self.provider_tol = provider_tol
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -344,8 +344,8 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
             np.all(always_unpen)
         )
 
-        n_rounds = self.max_provider_iter if not has_unpen else max(
-            2, min(self.max_provider_iter, 25)
+        n_rounds = self.provider_max_iter if not has_unpen else max(
+            2, min(self.provider_max_iter, 25)
         )
         for _round in range(n_rounds):
             # γ layer, given current β.
@@ -425,7 +425,6 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         strata=None,
         offset=None,
         sample_weight=None,
-        provider=None,
         *,
         provider_id=None,
     ) -> "ProviderPenalizedCoxPH":
@@ -436,34 +435,24 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         X : DataFrame or ndarray, shape ``(n, p)``
         duration, event, start, stop, strata, offset, sample_weight :
             Standard survival data (see ``PenalizedCoxPH``).
-        provider : array-like, shape ``(n,)``
+        provider_id : array-like, shape ``(n,)``
             Provider identifier per observation.  Must have >= 2
-            distinct values.  Alias: ``provider_id``.
-        provider_id : array-like or None
-            Alias for *provider* (cross-family consistency with
-            ``ProviderPenalizedLogistic``).
+            distinct values.
 
         Returns
         -------
         self
         """
-        # ISSUE-014: accept provider_id as alias for provider.
-        if provider is None and provider_id is not None:
-            provider = provider_id
-        elif provider is not None and provider_id is not None:
-            raise ValueError(
-                "Cannot specify both 'provider' and 'provider_id'; "
-                "they are aliases for the same argument."
-            )
+        provider = provider_id
         if provider is None:
             raise ValueError(
-                "provider must be provided (per-observation provider "
+                "provider_id must be provided (per-observation provider "
                 "identifier array)"
             )
 
         _validate_provider_parameters(
             self.penalty_type, self.alpha,
-            self.provider_bound, self.max_provider_iter,
+            self.provider_bound, self.provider_max_iter,
             self.provider_tol, self.groups,
             self.n_lambda, self.lambda_min_ratio, self.lambda_path,
             self.standardize, self.max_outer_iter, self.outer_tol,
@@ -575,7 +564,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
             converged_two_layer = False
             prov_iters = 0
 
-            for prov_iter in range(1, self.max_provider_iter + 1):
+            for prov_iter in range(1, self.provider_max_iter + 1):
                 prov_iters = prov_iter
 
                 # --- Step 1: update γ given current β ---
@@ -709,11 +698,9 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     def predict_linear_with_provider(
         self,
         X,
-        provider=None,
+        provider_id=None,
         offset=None,
         lambda_value: Optional[float] = None,
-        *,
-        provider_id=None,
     ) -> np.ndarray:
         """Linear predictor including provider effects.
 
@@ -722,9 +709,9 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         Parameters
         ----------
         X : array-like, shape ``(n, p)``
-        provider : array-like, shape ``(n,)``
+        provider_id : array-like, shape ``(n,)``
             Provider labels (must be among those seen during ``fit``).
-            Alias: ``provider_id``.
+
         offset : array-like or None
         lambda_value : float or None
 
@@ -733,13 +720,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         ndarray, shape ``(n,)``
         """
         self._check_is_fitted()
-        # ISSUE-014: accept provider_id as alias for provider.
-        if provider is None and provider_id is not None:
-            provider = provider_id
-        elif provider is not None and provider_id is not None:
-            raise ValueError(
-                "Cannot specify both 'provider' and 'provider_id'."
-            )
+        provider = provider_id
         if provider is None:
             raise ValueError("provider (or provider_id=) is required.")
         coef = self._resolve_coef(lambda_value)
@@ -775,18 +756,16 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
 
     def predict_provider_effect(
         self,
-        provider=None,
-        lambda_value: Optional[float] = None,
-        *,
         provider_id=None,
+        lambda_value: Optional[float] = None,
     ) -> np.ndarray:
         """Estimated provider effect γ_i.
 
         Parameters
         ----------
-        provider : array-like or None
+        provider_id : array-like or None
             Provider labels to query.  ``None`` returns all providers
-            in ``provider_labels_`` order.  Alias: ``provider_id``.
+            in ``provider_labels_`` order.
         lambda_value : float or None
 
         Returns
@@ -794,13 +773,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         ndarray, shape ``(n_query,)``
         """
         self._check_is_fitted()
-        # ISSUE-014: accept provider_id as alias for provider.
-        if provider is None and provider_id is not None:
-            provider = provider_id
-        elif provider is not None and provider_id is not None:
-            raise ValueError(
-                "Cannot specify both 'provider' and 'provider_id'."
-            )
+        provider = provider_id
         gamma = self._resolve_gamma(lambda_value)
         if provider is None:
             return gamma

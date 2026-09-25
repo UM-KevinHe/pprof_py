@@ -460,7 +460,7 @@ class GroupLassoLogisticCV(ProviderModel):
     group_multiplier, standardize, fit_intercept, use_active_set
     n_folds : int, default=10
     fold_id : array-like or None
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
     random_state : int or None
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
     """
@@ -480,7 +480,7 @@ class GroupLassoLogisticCV(ProviderModel):
         use_active_set: bool = True,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
@@ -501,7 +501,7 @@ class GroupLassoLogisticCV(ProviderModel):
         self.use_active_set = use_active_set
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -510,6 +510,8 @@ class GroupLassoLogisticCV(ProviderModel):
 
     def fit(self, X, y, sample_weight=None, offset=None):
         """Fit CV to select lambda, then refit on full data."""
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         full_model = GroupLassoLogistic(
             groups=self.groups, alpha=self.alpha,
             n_lambda=self.n_lambda,
@@ -590,7 +592,7 @@ class GroupLassoLogisticCV(ProviderModel):
         self.lambda_min_ = float(lambda_path[idx_min])
         self.lambda_1se_ = float(lambda_path[idx_1se])
         self.lambda_ = float(
-            lambda_path[idx_1se] if self.use_1se else lambda_path[idx_min]
+            lambda_path[idx_1se] if (self.se_rule == "1se") else lambda_path[idx_min]
         )
         self.model_ = full_model
         self.coef_ = full_model.coef_at(self.lambda_)

@@ -384,12 +384,12 @@ class DiscreteSurvival(ProviderModel):
                 "DiscreteSurvival is not fitted. Call `fit` first."
             )
 
-    def coef_at(self, lambda_val: float) -> np.ndarray:
+    def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda via linear interpolation."""
         self._check_is_fitted()
         lam = self.lambda_path_
         idx = np.interp(
-            lambda_val,
+            lambda_value,
             lam[::-1],
             np.arange(len(lam), dtype=np.float64)[::-1],
         )
@@ -406,7 +406,7 @@ class DiscreteSurvival(ProviderModel):
         self,
         X,
         time=None,
-        lambda_val=None,
+        lambda_value=None,
         which: Optional[int] = None,
         type: str = 'link',
     ):
@@ -418,7 +418,7 @@ class DiscreteSurvival(ProviderModel):
         time : array-like or None
             Required when *type* is ``'hazard'`` or ``'survival'``.
             Per-subject follow-up time (same scale as training).
-        lambda_val : float or None
+        lambda_value : float or None
             Query at a specific lambda.
         which : int or None
             Index into ``lambda_path_``.
@@ -439,11 +439,11 @@ class DiscreteSurvival(ProviderModel):
             )
         if type == 'hazard':
             return self.predict_hazard(
-                X, time, lambda_val=lambda_val, which=which,
+                X, time, lambda_value=lambda_value, which=which,
             )
         if type == 'survival':
             return self.predict_survival(
-                X, time, lambda_val=lambda_val, which=which,
+                X, time, lambda_value=lambda_value, which=which,
             )
 
         if isinstance(X, pd.DataFrame):
@@ -451,8 +451,8 @@ class DiscreteSurvival(ProviderModel):
         else:
             X_np = np.asarray(X, dtype=np.float64)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
         elif which is not None:
             coef = self.coef_path_[which]
         else:
@@ -471,7 +471,7 @@ class DiscreteSurvival(ProviderModel):
         self,
         X,
         time,
-        lambda_val=None,
+        lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
         """Predicted hazard probabilities in person-period (long) format.
@@ -488,7 +488,7 @@ class DiscreteSurvival(ProviderModel):
         X : DataFrame or ndarray, shape ``(n, p)``
         time : array-like, shape ``(n,)``
             Follow-up time for each subject.
-        lambda_val : float or None
+        lambda_value : float or None
         which : int or None
 
         Returns
@@ -509,10 +509,10 @@ class DiscreteSurvival(ProviderModel):
         K = len(self.timepoint_map_)
         time_int = np.clip(time_int, 1, K)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
             # Find nearest alpha
-            idx = np.argmin(np.abs(self.lambda_path_ - lambda_val))
+            idx = np.argmin(np.abs(self.lambda_path_ - lambda_value))
             alpha = self.alpha_path_[idx]
         elif which is not None:
             coef = self.coef_path_[which]
@@ -528,7 +528,7 @@ class DiscreteSurvival(ProviderModel):
         self,
         X,
         time,
-        lambda_val=None,
+        lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
         """Predicted survival probabilities S(T_i | Z_i).
@@ -549,9 +549,9 @@ class DiscreteSurvival(ProviderModel):
         K = len(self.timepoint_map_)
         time_int = np.clip(time_int, 1, K)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
-            idx = np.argmin(np.abs(self.lambda_path_ - lambda_val))
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
+            idx = np.argmin(np.abs(self.lambda_path_ - lambda_value))
             alpha = self.alpha_path_[idx]
         elif which is not None:
             coef = self.coef_path_[which]
@@ -592,8 +592,6 @@ class DiscreteSurvivalCV(ProviderModel):
     se_rule : str, default '1se'
         Lambda selection rule: ``'min'`` (minimum CV error) or
         ``'1se'`` (largest lambda within 1 SE of minimum).
-        Alias: ``use_1se`` (``True`` → ``'1se'``, ``False`` →
-        ``'min'``), accepted for cross-family consistency.
     random_state : int or None, default None
         Random seed for fold assignment.
     max_fold_retries : int, default 100
@@ -612,7 +610,7 @@ class DiscreteSurvivalCV(ProviderModel):
         Mean CV error per lambda.
     cv_se_ : ndarray, shape (n_lambda,)
         Standard error of CV error per lambda.
-    best_model_ : DiscreteSurvival
+    model_ : DiscreteSurvival
         Full-data fit.
     fold_assignment_ : ndarray of int, shape (n,)
     """
@@ -623,16 +621,11 @@ class DiscreteSurvivalCV(ProviderModel):
         se_rule: str = '1se',
         random_state=None,
         max_fold_retries: int = 100,
-        use_1se=None,
         **kwargs,
     ):
         """Cross-validated discrete-time survival."""
         self.n_folds = n_folds
-        # ISSUE-021: accept use_1se (bool) as alias for se_rule (str).
-        if use_1se is not None:
-            self.se_rule = '1se' if use_1se else 'min'
-        else:
-            self.se_rule = se_rule
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_fold_retries = max_fold_retries
         self._model_kwargs = kwargs
@@ -655,6 +648,8 @@ class DiscreteSurvivalCV(ProviderModel):
         -------
         self
         """
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # Coerce
         if isinstance(X, pd.DataFrame):
             X_np = X.values.astype(np.float64)
@@ -678,8 +673,6 @@ class DiscreteSurvivalCV(ProviderModel):
         # --- Fit full model ---
         full_model = DiscreteSurvival(**self._model_kwargs)
         full_model.fit(X, time, event, sample_weight=sample_weight)
-        self.best_model_ = full_model
-        # ISSUE-024: alias for consistency with every other CV class.
         self.model_ = full_model
         lambda_seq = full_model.lambda_path_
         n_lambda = len(lambda_seq)
@@ -844,15 +837,15 @@ class DiscreteSurvivalCV(ProviderModel):
         )
 
     def _check_is_fitted(self):
-        if not hasattr(self, 'best_model_'):
+        if not hasattr(self, 'model_'):
             raise NotFittedError(
                 "DiscreteSurvivalCV is not fitted. Call `fit` first."
             )
 
-    def coef_at(self, lambda_val: float) -> np.ndarray:
+    def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        return self.best_model_.coef_at(lambda_val)
+        return self.model_.coef_at(lambda_value)
 
     def predict(self, X, rule: Optional[str] = None, type: str = 'link'):
         """Predict using the selected lambda.
@@ -870,7 +863,7 @@ class DiscreteSurvivalCV(ProviderModel):
         self._check_is_fitted()
         rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
-        return self.best_model_.predict(X, lambda_val=lam, type=type)
+        return self.model_.predict(X, lambda_value=lam, type=type)
 
     def summary(self, rule: Optional[str] = None) -> pd.DataFrame:
         """Summary at the selected lambda.
@@ -880,8 +873,8 @@ class DiscreteSurvivalCV(ProviderModel):
         self._check_is_fitted()
         rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
-        idx = np.argmin(np.abs(self.best_model_.lambda_path_ - lam))
-        result = self.best_model_.summary(which=idx)
+        idx = np.argmin(np.abs(self.model_.lambda_path_ - lam))
+        result = self.model_.summary(which=idx)
         result.attrs['lambda'] = lam
         result.attrs['rule'] = rule
         result.attrs['cv_mean'] = self.cv_mean_[idx]

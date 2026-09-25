@@ -263,10 +263,10 @@ cv.fit(X, y)
 
 cv.lambda_min_   # 0.00035194667528199477
 cv.lambda_1se_   # 0.005735853877827921
-cv.lambda_        # 0.005735853877827921 -- lambda_1se_, use_1se=True default
+cv.lambda_        # 0.005735853877827921 -- lambda_1se_, se_rule="1se" default
 ```
 
-Same parameter (`use_1se`), same default, same `cv_mean_deviance_` /
+Same parameter (`se_rule`), same default, same `cv_mean_deviance_` /
 `cv_se_deviance_` naming as `PenalizedLogisticCV` — group lasso's CV
 class was built consistently with its element-wise sibling here, even
 though (as the [next chapter](../linear/group_lasso_linear) and the

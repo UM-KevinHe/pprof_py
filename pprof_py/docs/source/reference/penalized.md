@@ -123,19 +123,19 @@ proximal-Newton update of β, warm-starting both along the λ path.
 ```python
 from pprof_py import ProviderPenalizedCoxPH
 
-pp = ProviderPenalizedCoxPH(n_lambda=15).fit(X, duration=time, event=event, provider=provider)
+pp = ProviderPenalizedCoxPH(n_lambda=15).fit(X, duration=time, event=event, provider_id=provider)
 lam = pp.lambda_path_[5]
 pp.predict_provider_effect(lambda_value=lam)                        # gamma for every provider
-pp.predict_provider_effect(provider=[0, 1], lambda_value=lam)       # selected providers
+pp.predict_provider_effect(provider_id=[0, 1], lambda_value=lam)       # selected providers
 pp.predict_linear_with_provider(X.iloc[:4], provider[:4], lambda_value=lam)
 ```
 
 Parameters: `penalty_type` (`"elastic_net"` default, `"group_lasso"`, `"sparse_group_lasso"`), `alpha=1.0`, `groups`,
 `group_multiplier`, `penalty_factor`, the λ-path parameters, `standardize`, `ties`, `provider_bound=10.0`,
-`provider_backtrack=False` (placeholder), `max_provider_iter=20`, `provider_tol=1e-6`, and solver tolerances
+`provider_backtrack=False` (placeholder), `provider_max_iter=20`, `provider_tol=1e-6`, and solver tolerances
 (`outer_tol` defaults to `1e-7` here, looser than the `1e-9` of the non-provider models).
 
-`fit(..., provider=...)` **requires** `provider` (a `ValueError` is raised otherwise). Extra attributes:
+`fit(..., provider_id=...)` **requires** `provider_id` (a `ValueError` is raised otherwise). Extra attributes:
 `gamma_path_` `(n_lambda_, n_providers_)`, `provider_labels_`, `n_providers_`, `n_provider_iter_path_`,
 `provider_converged_path_`. `summary()` adds `n_provider_iter` and `provider_converged` columns. For a multi-λ fit,
 `predict_provider_effect` and `predict_linear_with_provider` **require** `lambda_value`; a single-λ fit

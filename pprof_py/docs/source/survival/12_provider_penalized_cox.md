@@ -38,7 +38,7 @@ $$
 \text{(offset } = \gamma_{k(ij)} \text{, solved exactly as Chapter 6's time-dependent offsets are)}
 $$
 
-Each lambda alternates, up to `max_provider_iter` times (default
+Each lambda alternates, up to `provider_max_iter` times (default
 **20**):
 
 1. **Update $\gamma$** given the current $\beta$: a per-facility
@@ -79,17 +79,16 @@ from pprof_py import ProviderPenalizedCoxPH
 X = cohort[["age", "sex", "diabetes", "comorbidity_count", "vintage_years"]]
 
 model = ProviderPenalizedCoxPH(alpha=1.0)
-model.fit(X, duration=cohort["time"], event=cohort["death"], provider=cohort["facility_id"])
+model.fit(X, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"])
 ```
 
-`fit()`'s provider argument is keyword-only.  Both `provider=` and
-`provider_id=` are accepted (the logistic chapter's class historically
-used only `provider_id`; both names now work on both classes).
+`fit()`'s `provider_id` argument is keyword-only, as in the logistic
+chapter's class.
 Omitting it raises a clear, explicit error:
 
 ```python
 ProviderPenalizedCoxPH(alpha=1.0).fit(X, duration=cohort["time"], event=cohort["death"])
-# ValueError: provider must be provided (per-observation provider identifier array)
+# ValueError: provider_id must be provided (per-observation provider identifier array)
 ```
 
 Unlike the logistic class, `coef_at()` is inherited and works exactly
@@ -198,7 +197,7 @@ prov_fold = {p: rng.randint(0, n_folds) for p in unique_provs}   # whole facilit
 fold_id = np.array([prov_fold[p] for p in provider_arr])
 
 full = ProviderPenalizedCoxPH(alpha=1.0, n_lambda=30).fit(
-    X, duration=cohort["time"], event=cohort["death"], provider=provider_arr,
+    X, duration=cohort["time"], event=cohort["death"], provider_id=provider_arr,
 )
 lambda_path = full.lambda_path_
 # ... fit one ProviderPenalizedCoxPH per fold at lambda_path, score each

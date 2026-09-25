@@ -67,7 +67,7 @@ def _provider_newton_from_loglik(
     provider_idx: np.ndarray,
     n_providers: int,
     gamma: np.ndarray,
-    gamma_bound: float = 10.0,
+    provider_bound: float = 10.0,
 ) -> np.ndarray:
     """One Newton step for provider effects using discrete_loglik outputs.
 
@@ -97,7 +97,7 @@ def _provider_newton_from_loglik(
     n_providers : int
     gamma : ndarray, shape (n_providers,)
         Current provider effects.
-    gamma_bound : float
+    provider_bound : float
         Maximum deviation from median.
 
     Returns
@@ -120,8 +120,8 @@ def _provider_newton_from_loglik(
     median_gamma = float(np.median(gamma_new))
     gamma_new = np.clip(
         gamma_new,
-        median_gamma - gamma_bound,
-        median_gamma + gamma_bound,
+        median_gamma - provider_bound,
+        median_gamma + provider_bound,
     )
     return gamma_new
 
@@ -144,10 +144,9 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
 
     Parameters
     ----------
-    alpha_en : float, default=1.0
-        Elastic net mixing (1 = lasso, 0 = ridge).  Alias:
-        ``alpha`` (accepted for cross-family consistency).
-    gamma_bound : float, default=10.0
+    alpha : float, default=1.0
+        Elastic net mixing (1 = lasso, 0 = ridge).
+    provider_bound : float, default=10.0
         Maximum provider effect deviation from median.
     n_lambda : int, default=100
     lambda_min_ratio : float or None
@@ -184,9 +183,8 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
 
     def __init__(
         self,
-        alpha_en: float = 1.0,
-        gamma_bound: float = 10.0,
-        alpha: Optional[float] = None,
+        alpha: float = 1.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
@@ -201,9 +199,8 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
         use_active_set: bool = True,
     ):
         """Two-layer provider + penalized discrete survival."""
-        # ISSUE-022: accept alpha as alias for alpha_en.
-        self.alpha_en = alpha if alpha is not None else alpha_en
-        self.gamma_bound = gamma_bound
+        self.alpha = alpha
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
@@ -354,7 +351,7 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
             )
             gamma_new = _provider_newton_from_loglik(
                 ll_null.score_beta, ll_null.working_weights,
-                provider_idx, n_providers, gamma, self.gamma_bound,
+                provider_idx, n_providers, gamma, self.provider_bound,
             )
             eta += (gamma_new - gamma)[provider_idx]
             gamma_change = np.max(np.abs(gamma_new - gamma))
@@ -363,7 +360,7 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
             # Alpha update
             alpha_new = baseline_hazard_update(
                 alpha, time_int, event_np, eta,
-                n_events, bound=self.gamma_bound,
+                n_events, bound=self.provider_bound,
             )
             alpha_change = np.max(np.abs(alpha_new - alpha))
             alpha = alpha_new
@@ -430,7 +427,7 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
                 )
                 gamma_new = _provider_newton_from_loglik(
                     ll_res.score_beta, ll_res.working_weights,
-                    provider_idx, n_providers, gamma, self.gamma_bound,
+                    provider_idx, n_providers, gamma, self.provider_bound,
                 )
                 # Update eta for gamma change.
                 eta += (gamma_new - gamma)[provider_idx]
@@ -439,7 +436,7 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
                 # --- Layer 2: Baseline hazard alpha update ---
                 alpha = baseline_hazard_update(
                     alpha, time_int, event_np, eta,
-                    n_events, bound=self.gamma_bound,
+                    n_events, bound=self.provider_bound,
                 )
 
                 # --- Layer 3: Penalized beta update (IRLS + CD) ---
@@ -679,8 +676,8 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     Parameters
     ----------
     n_folds : int, default=10
-    use_1se : bool, default=True
-        If True, select lambda_1se; else lambda_min.
+    se_rule : {"1se", "min"}, default="1se"
+        ``"1se"`` selects ``lambda_1se_``; ``"min"`` selects ``lambda_min_``.
     random_state : int or None
     max_fold_retries : int, default=100
         Maximum retries for event-stratified fold assignment with
@@ -690,7 +687,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         ``n_folds`` and the internal assignment logic.
     **kwargs
         Forwarded to ``ProviderPenalizedDiscreteSurvival``
-        (e.g., ``alpha_en``, ``gamma_bound``, ``n_lambda``,
+        (e.g., ``alpha``, ``provider_bound``, ``n_lambda``,
         ``penalty_factor``, ``standardize``, ``outer_tol``, etc.).
         ``lambda_path``, ``n_lambda``, ``lambda_min_ratio`` are only
         used for the full-data fit; fold models inherit the full-data
@@ -703,7 +700,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (``lambda_1se_`` if ``use_1se`` else
+        Selected lambda (``lambda_1se_`` if ``se_rule="1se"`` else
         ``lambda_min_``).
     lambda_min_idx_ : int
     lambda_1se_idx_ : int
@@ -730,7 +727,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     def __init__(
         self,
         n_folds: int = 10,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_fold_retries: int = 100,
         fold_id: Optional[np.ndarray] = None,
@@ -738,7 +735,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     ):
         """Cross-validated provider-penalized discrete survival."""
         self.n_folds = n_folds
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_fold_retries = max_fold_retries
         self.fold_id = fold_id
@@ -838,6 +835,8 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         -------
         self
         """
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # =============================================================
         # 1. Fit full-data model to get the lambda path
         # =============================================================
@@ -1007,7 +1006,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         self.lambda_1se_ = float(lambda_1se)
         self.lambda_min_idx_ = int(idx_min)
         self.lambda_1se_idx_ = int(idx_1se)
-        idx_selected = idx_1se if self.use_1se else idx_min
+        idx_selected = idx_1se if (self.se_rule == "1se") else idx_min
         self.lambda_ = float(lambda_path[idx_selected])
 
         # Full-data model and convenience accessors.
@@ -1055,7 +1054,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         if which is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
         return self.model_.predict_hazard(X, provider_id, which=which)
@@ -1073,7 +1072,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         if which is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
         return self.model_.predict_survival(
@@ -1086,7 +1085,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         if which is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
         return self.model_.predict_provider_effect(which=which)

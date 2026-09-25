@@ -256,7 +256,7 @@ cv.fit(X, y)
 
 cv.lambda_min_   # 0.03216013277245188
 cv.lambda_1se_   # 0.29992647459797356
-cv.lambda_       # 0.29992647459797356 -- lambda_1se_, use_1se=True default
+cv.lambda_       # 0.29992647459797356 -- lambda_1se_, se_rule="1se" default
 ```
 
 `cv.coef_` (at `lambda_1se_`):

@@ -115,11 +115,11 @@ standard error of the best observed performance — is the standard,
 deliberately more conservative choice when you want a **simpler**
 model that's statistically indistinguishable from the best one found,
 favoring interpretability and stability over chasing the single best
-cross-validated point estimate. Use `select="lambda_1se"` in the
+cross-validated point estimate. Use `se_rule="1se"` in the
 constructor to make that the default `.coef_` instead:
 
 ```python
-cv_parsimonious = PenalizedCoxPHCV(alpha=1.0, select="lambda_1se", random_state=0).fit(
+cv_parsimonious = PenalizedCoxPHCV(alpha=1.0, se_rule="1se", random_state=0).fit(
     X, duration=time, event=death,
 )
 ```
@@ -179,7 +179,7 @@ selection is a statistical procedure with its own sampling variability,
 not a deterministic oracle — it will occasionally keep a coefficient
 that isn't real, and occasionally shrink one that is (`vintage_years`
 here ends up smaller than the unpenalized fit from Chapter 4 would
-suggest). Switching to the more conservative `select="lambda_1se"` on
+suggest). Switching to the more conservative `se_rule="1se"` on
 this same data pushes the penalty hard enough to zero out *every*
 covariate except age — illustrating the real tension Section 8.4
 described: `lambda_1se_` buys simplicity and stability at a real risk

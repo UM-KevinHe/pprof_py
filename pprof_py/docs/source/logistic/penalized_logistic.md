@@ -145,7 +145,7 @@ y = cohort["death_30d"].values
 
 6,000 patients, 60 facilities, 363 deaths (6.05%). `facility_id` is
 included for realism and for later chapters — this chapter's models
-don't take a `provider=` argument at all; provider effects and
+don't take a `provider_id=` argument at all; provider effects and
 penalization meet in a later chapter ({ref}`penalized-vs-unpenalized`
 below says more about that division of labor).
 
@@ -345,7 +345,7 @@ cv.fit(X, y)
 
 cv.lambda_min_   # 2.961845624722433e-05
 cv.lambda_1se_   # 0.007866921978799356
-cv.lambda_       # 0.007866921978799356  -- lambda_1se_, since use_1se=True by default
+cv.lambda_       # 0.007866921978799356  -- lambda_1se_, since se_rule="1se" by default
 ```
 
 Folds are assigned by `_stratified_fold_assignment`, which splits the
@@ -404,7 +404,7 @@ couple of irrelevant covariates sneak through. `lambda_1se_` — the
 largest $\lambda$ within one standard error of the best observed
 deviance — trades a small amount of that point-estimate performance
 for a model that's actively sparse, which is why it's this class's
-default (`use_1se=True`):
+default (`se_rule="1se"`):
 
 ```python
 cv.cv_mean_deviance_[cv.lambda_min_idx_], cv.cv_mean_deviance_[cv.lambda_1se_idx_]

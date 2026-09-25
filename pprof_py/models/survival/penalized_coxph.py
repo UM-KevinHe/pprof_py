@@ -994,8 +994,10 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     random_state : int, optional
         Used to randomly assign folds when `fold_id` is not given,
         and as the seed for bootstrap resampling.
-    select : {"lambda_min", "lambda_1se"}, default "lambda_min"
-        Which cross-validated lambda `final_estimator_`/`coef_` uses.
+    se_rule : {"min", "1se"}, default "min"
+        Which cross-validated lambda `final_estimator_`/`coef_` uses: the
+        minimum CV error (``"min"``) or the largest lambda within one SE of it
+        (``"1se"``).
     Remaining parameters are passed through to the underlying
     `PenalizedCoxPH` fits -- see that class.
 
@@ -1033,8 +1035,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        select: str = "lambda_min",
-        use_1se: bool = None,
+        se_rule: str = "min",
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
@@ -1054,13 +1055,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        # Unify select= / use_1se= (ISSUE-011).  use_1se takes
-        # precedence when both are supplied.
-        if use_1se is not None:
-            self.select = "lambda_1se" if use_1se else "lambda_min"
-        else:
-            self.select = select
-        self.use_1se = (self.select == "lambda_1se")
+        self.se_rule = se_rule
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
@@ -1103,10 +1098,10 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
             self.max_outer_iter, self.outer_tol,
             self.max_inner_iter, self.inner_tol, self.fit_intercept,
         )
-        if self.select not in ("lambda_min", "lambda_1se"):
+        if self.se_rule not in ("min", "1se"):
             raise ValueError(
-                f"select must be 'lambda_min' or 'lambda_1se', "
-                f"got {self.select!r}"
+                f"se_rule must be 'min' or '1se', "
+                f"got {self.se_rule!r}"
             )
         if self.se_method not in ("analytical", "bootstrap"):
             raise ValueError(
@@ -1313,7 +1308,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         # Final estimator at the selected lambda.
         chosen_lambda = (
             self.lambda_min_
-            if self.select == "lambda_min"
+            if self.se_rule == "min"
             else self.lambda_1se_
         )
         self.final_estimator_ = PenalizedCoxPH(

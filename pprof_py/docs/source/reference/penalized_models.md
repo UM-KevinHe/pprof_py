@@ -40,7 +40,7 @@ path.coef_at(path.lambda_path_[5])                              # coefficients a
 path.summary(which=-1)                                          # feature, coef, nonzero at one path step
 
 cv = PenalizedLinearCV(n_lambda=20, n_folds=5, random_state=0).fit(Xa, y)
-cv.lambda_min_, cv.lambda_1se_, cv.coef_                        # coef_ is the 1-SE solution (use_1se=True by default)
+cv.lambda_min_, cv.lambda_1se_, cv.coef_                        # coef_ is the 1-SE solution (se_rule="1se" by default)
 
 groups = np.array([1, 1, 2])                                    # one label per column; 0 = unpenalized
 gl = GroupLassoLinear(groups=groups, n_lambda=10).fit(Xa, y)
@@ -59,7 +59,7 @@ pp.predict_provider_effect().head()                             # provider, gamm
   `coef_path_` (`n_lambda × p`), `intercept_path_`, `lambda_path_` (descending) and further `*_path_` arrays. They have **no `coef_`**;
   use `coef_at(lambda_value)` (interpolated), `intercept_at` (logistic), or index the path.
 - **`*CV` estimators** refit on all data and expose `coef_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `cv_mean_*_`, `cv_se_*_`, `cv_std_*_`, and `model_`
-  (the refit path estimator). With the default `use_1se=True`, `lambda_` is `lambda_1se_`. The error attributes are named for the loss:
+  (the refit path estimator). With the default `se_rule="1se"`, `lambda_` is `lambda_1se_`. The error attributes are named for the loss:
   `cv_*_mse_` (linear) and `cv_*_deviance_` (logistic).
 - `lambda_path` may be `None` (automatic path of `n_lambda` values from `lambda_max_`), or explicit values. The automatic path always returns
   `n_lambda` points; glmnet may stop earlier.
@@ -98,7 +98,7 @@ PenalizedLinearCV(
     fit_intercept: 'bool' = True,
     n_folds: 'int' = 10,
     fold_id: 'Optional[np.ndarray]' = None,
-    use_1se: 'bool' = True,
+    se_rule: 'str' = '1se',
     random_state: 'Optional[int]' = None,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-09,
@@ -168,7 +168,7 @@ ProviderPenalizedLogistic(
     alpha: 'float' = 1.0,
     groups: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
-    gamma_bound: 'float' = 10.0,
+    provider_bound: 'float' = 10.0,
     n_lambda: 'int' = 100,
     lambda_min_ratio: 'Optional[float]' = None,
     lambda_path: 'Optional[np.ndarray]' = None,
@@ -196,7 +196,7 @@ PenalizedLogisticCV(
     fit_intercept: 'bool' = True,
     n_folds: 'int' = 10,
     fold_id: 'Optional[np.ndarray]' = None,
-    use_1se: 'bool' = True,
+    se_rule: 'str' = '1se',
     random_state: 'Optional[int]' = None,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-09,
