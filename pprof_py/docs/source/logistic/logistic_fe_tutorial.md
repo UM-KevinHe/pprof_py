@@ -122,7 +122,7 @@ model.fit(
 `algorithm='Serbin'` uses the block-diagonal Schur-complement trick
 described in {cite}`logfe-Wu2022Improving`, which keeps the per-iteration
 cost at $O(mp^2)$ instead of $O((m+p)^3)$. `cutoff=10` drops any
-clinic with fewer than 10 patients — none are dropped here because the
+clinic with 10 or fewer patients — none are dropped here because the
 smallest clinic has 50. All 100 providers are retained.
 
 ## 3. Reading the covariate coefficients

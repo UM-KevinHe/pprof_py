@@ -56,9 +56,37 @@ from pprof_py.data import DataPrep, DataPrepOptions
 clean = DataPrep(df, "event", X_COLS, "provider", options=DataPrepOptions(), check=True).data_prep()   # cleaned DataFrame
 ```
 
-`DataPrep(data, Y_char, X_char, prov_char, options=None, check=True, logging=logging)` runs `check_missingness`, `check_variation`, `check_correlation`, `check_vif`,
+`DataPrep(data, Y_char, X_char, prov_char, options=None, n_char=None, check=True, logging=logging)` runs `check_missingness`, `check_variation`, `check_correlation`, `check_vif`,
 `provider_screening`, `filter_small_providers` and `log_no_all_event_providers` in turn; `data_prep()` returns the cleaned frame. `DataPrepOptions` defaults:
 `cutoff=10`, `screen_providers=False`, `log_event_providers=False`, `threshold_cor=0.9`, `threshold_vif=10`, `binary_response=False`. `LogisticFixedEffectModel` builds these options from its own constructor arguments (`cutoff`, `screen_providers`, `log_event_providers`, `threshold_cor`, `threshold_vif`).
+Screening keeps providers with **more than** `cutoff` records, as R's `glmm.data.prep` does. `n_char` names a column of binomial trials:
+the response is then an event count between 0 and the trials, and screening still counts records. `LogisticFixedEffectModel.fit(..., n_var=...)`
+passes it, so binomial fits can use `DataPrep`.
+
+## `glmm_data_prep`: data for the three-stage model
+
+```python
+from pprof_py.data import glmm_data_prep
+
+prep = glmm_data_prep(df, y_var="readmit", provider_var="facility", cluster_var="hospital", cutoff=10)
+prep.data           # screened records with provider_size, y_adj, cell_id, included
+prep.cell_sizes     # records in every provider x cluster combination, cluster-major
+```
+
+`glmm_data_prep(data, y_var, provider_var, cluster_var, cutoff=10)` reproduces R's `glmm.data.prep` row for row. It keeps providers
+with more than `cutoff` records; sets `y_adj` to the binary outcome raised by `0.01 / provider_size` for providers with no events and
+lowered by that amount for providers with all events; sorts by cluster, then provider, keeping the data order within each cell; and
+numbers the provider x cluster cells in that order (`cell_id`), with `included = 1` for cells with more than `cutoff` records. It
+returns a `GLMMPreparedData` with `data`, `cell_sizes`, `n_providers` and `n_clusters`.
+
+| R (`glmm.data.prep`) | pprof_py |
+|---|---|
+| `fac.size` | `provider_size` |
+| `Y.adj` | `y_adj` |
+| `prov_ID` | `cell_id` |
+| `included` | `included` |
+| `n.fac.hosp` | `cell_sizes` |
+| `fac`, `hosp` | `n_providers`, `n_clusters` |
 
 ## Inter-unit reliability (IUR)
 

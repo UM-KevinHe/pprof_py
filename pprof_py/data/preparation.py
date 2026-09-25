@@ -10,7 +10,7 @@ import logging
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .validation import (
     check_missingness as _check_missingness,
@@ -27,7 +27,8 @@ class DataPrepOptions:
     Parameters
     ----------
     cutoff : int, default=10
-        Minimum number of records per provider.
+        Providers are kept when they have more than ``cutoff`` records, as in R's
+        ``glmm.data.prep``.
     screen_providers : bool, default=False
         Whether to screen and filter small providers.
     log_event_providers : bool, default=False
@@ -71,6 +72,7 @@ class DataPrep:
         X_char: List[str],
         prov_char: str,
         options: DataPrepOptions = None,
+        n_char: Optional[str] = None,
         check: bool = True,
         logging=logging
     ) -> None:
@@ -83,6 +85,8 @@ class DataPrep:
             prov_char (str): The provider variable name.
             options (DataPrepOptions, optional): Screening/threshold knobs. Defaults
                 to `DataPrepOptions()` if not provided.
+            n_char (str, optional): Column of binomial trials. With it, the response is
+                an event count between 0 and the trials; screening still counts records.
             check (bool, optional): Whether to perform data checks (default is True).
             logging: The logging module to use.
 
@@ -98,19 +102,27 @@ class DataPrep:
         missing_X_char = [char for char in X_char if char not in data.columns]
         assert not missing_X_char, f"Covariate(s) '{', '.join(missing_X_char)}' NOT found!"
         assert prov_char in data.columns, f"Provider '{prov_char}' NOT found!"
+        assert n_char is None or n_char in data.columns, f"Trials '{n_char}' NOT found!"
 
         # Check dimensions
         if len(data[Y_char]) != len(data[prov_char]) or any(len(data[prov_char]) != len(data[x]) for x in X_char):
             raise ValueError("Dimensions of the input data do not match!")
 
-        # Optional: Enforce binary response if binary_response=True
-        if options.binary_response and not set(data[Y_char].unique()).issubset({0, 1}):
-            raise ValueError("Response variable must be binary (0 or 1) when binary_response=True.")
+        # Optional: enforce a binary response (or binomial counts with n_char) if binary_response=True
+        if options.binary_response:
+            if n_char is None:
+                if not set(data[Y_char].unique()).issubset({0, 1}):
+                    raise ValueError("Response variable must be binary (0 or 1) when binary_response=True.")
+            else:
+                y_val, n_val = data[Y_char].to_numpy(float), data[n_char].to_numpy(float)
+                if not ((n_val > 0) & (y_val >= 0) & (y_val <= n_val)).all():
+                    raise ValueError("Binomial responses need 0 <= y <= n and n > 0 in every row.")
 
         self.data = data.sort_values(by=prov_char)
         self.Y_char = Y_char
         self.X_char = X_char
         self.prov_char = prov_char
+        self.n_char = n_char
         self.cutoff = options.cutoff
         self.check = check
         self.screen_providers = options.screen_providers
@@ -162,10 +174,10 @@ class DataPrep:
         Adds 'prov_size' and 'included' columns to the data.
         """
         self.data["prov_size"] = self.data.groupby(self.prov_char)[self.prov_char].transform("count")
-        self.data["included"] = np.where(self.data["prov_size"] >= self.cutoff, 1, 0)
+        self.data["included"] = np.where(self.data["prov_size"] > self.cutoff, 1, 0)
 
     def filter_small_providers(self) -> None:
-        """Filter out providers with fewer than 'cutoff' records.
+        """Filter out providers with 'cutoff' or fewer records.
 
         Drops 'prov_size' and 'included' columns after filtering.
         """
@@ -182,10 +194,12 @@ class DataPrep:
         """
         self.n_prov = self.data[self.prov_char].nunique()
         prov_no_event = self.data.groupby(self.prov_char).filter(lambda x: x[self.Y_char].sum() == 0)[self.prov_char].unique()
-        prov_all_event = self.data.groupby(self.prov_char).filter(lambda x: x[self.Y_char].sum() == len(x))[self.prov_char].unique()
+        size = (lambda x: len(x)) if self.n_char is None else (lambda x: x[self.n_char].sum())
+        prov_all_event = self.data.groupby(self.prov_char).filter(lambda x: x[self.Y_char].sum() == size(x))[self.prov_char].unique()
         self.logging.info(f"{len(prov_no_event)} out of {self.n_prov} providers have no events.")
         self.logging.info(f"{len(prov_all_event)} out of {self.n_prov} providers have all events.")
-        event_rate = self.data[self.Y_char].mean() * 100
+        event_rate = (self.data[self.Y_char].mean() if self.n_char is None
+                      else self.data[self.Y_char].sum() / self.data[self.n_char].sum()) * 100
         self.logging.info(f"After screening, {round(event_rate, 2)}% of records have events (Y == 1).")
 
     def data_prep(self) -> pd.DataFrame:

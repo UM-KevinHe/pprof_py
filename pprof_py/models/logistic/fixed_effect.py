@@ -59,7 +59,7 @@ class LogisticFixedEffectModel(
     log_event_providers : bool, default=True
         Whether to log event providers during data preparation.
     cutoff : int, default=10
-        Minimum group size for screening.
+        Screening keeps groups with more than ``cutoff`` records.
     threshold_cor : float, default=0.9
         Correlation threshold for multicollinearity checks.
     threshold_vif : int, default=10

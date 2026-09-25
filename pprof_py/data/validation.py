@@ -354,6 +354,7 @@ def validate_and_convert_inputs(
             X_char = covariate_names
             prov_char = "groups"
 
+        n_char = n_var if (isinstance(X, pd.DataFrame) and n_var is not None and n_var in data_for_prep.columns) else None
         dataprep = DataPrep(
             data=data_for_prep,
             Y_char=Y_char,
@@ -361,12 +362,15 @@ def validate_and_convert_inputs(
             prov_char=prov_char,
             check=True,
             options=dataprep_options,
+            n_char=n_char,
         )
         prepared_data = dataprep.data_prep()
 
         X_array = prepared_data[X_char].to_numpy()
         y_array = prepared_data[Y_char].to_numpy()
         groups_array = prepared_data[prov_char].to_numpy()
+        if n_char is not None:      # the trials follow the prepared (sorted, screened) rows
+            N_ = prepared_data[n_char].to_numpy().astype(float)
         if obs_id_var is not None and obs_id_var in prepared_data.columns:
             obs_ids = prepared_data[obs_id_var].to_numpy()
 

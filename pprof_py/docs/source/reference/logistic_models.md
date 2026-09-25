@@ -38,7 +38,7 @@ fe.calculate_standardized_measures()["indirect"].head()
 | `algorithm` | `"Serbin"` | `"Serbin"` or `"Ban"`; on test data the two agree to 4e-9. |
 | `use_dataprep` | `True` | Run `DataPrep` first: missing-value and zero-variance checks (errors), correlation and VIF checks (logged warnings), provider screening. |
 | `screen_providers` | `True` | Exclude small providers. In a test, a provider with 5 rows was dropped at the default cutoff while a provider with no events was kept. |
-| `cutoff` | `10` | Minimum provider size for screening. |
+| `cutoff` | `10` | Screening keeps providers with more than `cutoff` records. |
 | `log_event_providers` | `True` | Log providers with no or all events. |
 | `threshold_cor`, `threshold_vif` | `0.9`, `10` | Multicollinearity thresholds. |
 
