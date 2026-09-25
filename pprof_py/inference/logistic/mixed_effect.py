@@ -1,71 +1,60 @@
 """Covariate-effect inference for ``LogisticMixedEffectModel``.  Mixed
 into the model class so that ``models/logistic/mixed_effect.py`` stays
 focused on configuration, fitting, and prediction.
+
+Stage 3 holds beta fixed at its Stage 1 estimate, so covariate inference
+belongs to Stage 1: ``summary()`` returns the Stage 1 model's Wald table, as
+R's ``summary.glmm.covar`` does.
 """
 from __future__ import annotations
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
 import pandas as pd
-from scipy.special import expit as plogis
-from scipy.stats import norm
 
 
 class MixedEffectInferenceMixin:
-    """Covariate (beta) statistical inference for
-    `LogisticMixedEffectModel`."""
+    """Covariate (beta) inference for `LogisticMixedEffectModel`, taken from Stage 1."""
 
-    def summary(self, alpha: float = 0.05) -> pd.DataFrame:
-        """Covariate effect inference (asymptotic normal approximation).
+    def summary(self, stage1_model=None, covariates=None, level: float = 0.95, null: float = 0.0,
+                alternative: str = "two_sided") -> pd.DataFrame:
+        """Wald inference for the covariate effects, from the Stage 1 model.
 
-        Uses the adjusted Fisher information that accounts for
-        posterior variance of cluster random effects.
+        Beta is estimated in Stage 1 (``LogisticFixedEffectModel``) and held
+        fixed here, so its standard errors are Stage 1's, whose Wald variance
+        accounts for the estimated provider effects. (Earlier versions computed
+        an information matrix from the Stage 3 fit at fixed beta and gamma,
+        which understated the standard errors.)
 
         Parameters
         ----------
-        alpha : float, default=0.05
-            Significance level for confidence intervals.
+        stage1_model : LogisticFixedEffectModel, optional
+            The fitted Stage 1 model whose beta was passed as ``beta_init``.
+            Defaults to the one given to ``fit(stage1_model=...)``.
+        covariates, level, null, alternative
+            Passed to the Stage 1 model's ``summary(test_method="wald")``.
 
         Returns
         -------
-        pd.DataFrame with columns: covariate, beta, se, z_stat,
-            p_value, ci_lower, ci_upper, odds_ratio, odds_ratio_lower,
-            odds_ratio_upper
+        pandas.DataFrame
+            The Stage 1 Wald table.
+
+        Raises
+        ------
+        ValueError
+            If no Stage 1 model is available, or its beta differs from the beta
+            this model was fit with.
         """
         self._check_is_fitted()
-
-        X = self._X
-        gamma_obs = self.gamma_[self._provider_idx]
-        linear_pred = gamma_obs + self.alpha_mean_ + self.xbeta_
-        p = plogis(linear_pred)
-        q = 1 - p
-        pq = p * q
-
-        # Adjusted weights (He et al. 2013)
-        w = pq + 0.5 * self.alpha_var_ * pq * (p**2 + q**2 - 4 * pq)
-
-        # Information matrix
-        info_beta = X.T @ (w[:, None] * X)
-        var_beta = covariance_from_information(info_beta, warn=True, what="Stage 3 beta information")
-        se_beta = np.sqrt(np.diag(var_beta))
-
-        # Statistics
-        z_stat = self.beta_ / se_beta
-        p_values = 2 * norm.sf(np.abs(z_stat))
-
-        z_crit = norm.ppf(1 - alpha / 2)
-        ci_lower = self.beta_ - z_crit * se_beta
-        ci_upper = self.beta_ + z_crit * se_beta
-
-        return pd.DataFrame({
-            'covariate': self._x_vars,
-            'beta': self.beta_,
-            'se': se_beta,
-            'z_stat': z_stat,
-            'p_value': p_values,
-            'ci_lower': ci_lower,
-            'ci_upper': ci_upper,
-            'odds_ratio': np.exp(self.beta_),
-            'odds_ratio_lower': np.exp(ci_lower),
-            'odds_ratio_upper': np.exp(ci_upper),
-        })
+        stage1 = stage1_model if stage1_model is not None else getattr(self, "stage1_model_", None)
+        if stage1 is None:
+            raise ValueError("summary() requires the Stage 1 model for covariate inference. "
+                             "Pass it via stage1_model= at fit() or summary() time.")
+        coefs = getattr(stage1, "coefficients_", None)
+        if not isinstance(coefs, dict) or "beta" not in coefs:
+            raise ValueError("stage1_model must be a fitted LogisticFixedEffectModel (it has no coefficients_['beta']).")
+        beta1 = np.asarray(coefs["beta"], dtype=np.float64).ravel()
+        if beta1.shape != np.shape(self.beta_) or not np.allclose(beta1, self.beta_, rtol=1e-10, atol=1e-12):
+            raise ValueError("stage1_model's beta differs from the beta this model was fit with (beta_init); "
+                             "pass the Stage 1 model whose beta was used.")
+        return stage1.summary(covariates=covariates, level=level, null=null, alternative=alternative,
+                              test_method="wald")

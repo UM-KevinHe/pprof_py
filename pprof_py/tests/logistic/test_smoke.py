@@ -142,7 +142,7 @@ class TestLogisticMixedEffect:
     def model(self, data):
         x_vars = ["x1", "x2"]
         gamma_init, beta_init, sigma_init = _mixed_effect_inits(data, x_vars)
-        m = LogisticMixedEffectModel(update_sigma=False)
+        m = LogisticMixedEffectModel()
         m.fit(
             data,
             y_var="y",

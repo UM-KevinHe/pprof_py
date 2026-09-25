@@ -206,14 +206,16 @@ LinearRandomEffectModel.test(
 |---|---|---|---|
 | `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald only |
 | `LogisticRandomEffectModel.test` | `"wald"`, `"poibin_exact"`, `"resampling"` | `0` | Wald only |
-| `LogisticMixedEffectModel.test` | `"resampling"`, `"poibin_exact"` | `"median"` | none |
+| `LogisticMixedEffectModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
 | `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
 | `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |
 
 - **Exact and Monte Carlo tests** (`"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event count with its
   effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof. `"resampling"`
   draws the other random effects from their posterior (He et al. 2013). The Monte Carlo tests use `n_resample` draws and `seed`; a
-  simulated tail probability of zero is replaced by `0.5 / n_resample`.
+  simulated tail probability of zero is replaced by `0.5 / n_resample`, except in `LogisticMixedEffectModel.test`, which uses the
+  exact tails of the same null for those providers. The mixed-effect model's default `"exact"` draws each cluster's effect once for
+  all of a provider's patients in that cluster and computes the count's distribution exactly.
 - **Binomial outcomes** (a logistic fixed-effect model fitted with `n_var`) are weighted by their trials in the score, exact and bootstrap
   tests; the exact test expands trials up to 20,000 per provider.
 - **The logistic Wald test** uses the normal reference, as R pprof does. It is unreliable for providers at the numerical bound of γ

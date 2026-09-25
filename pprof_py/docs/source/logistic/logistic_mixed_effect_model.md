@@ -153,17 +153,18 @@ from pprof_py import LogisticMixedEffectModel
 df["facility_id"] = df["facility_id"].astype("category")
 n_providers = df["facility_id"].nunique()
 
-model = LogisticMixedEffectModel(n_nodes=15, max_iter=200, tol=1e-6)  # update_sigma=False default
+model = LogisticMixedEffectModel(n_nodes=15, max_iter=200, tol=1e-6)
 model.fit(
     df, y_var="death_30d", x_vars=candidates,
     provider_var="facility_id", cluster_var="cluster_id",
     gamma_init=np.zeros(n_providers),
     beta_init=beta_stage1,        # from Stage 1 -- held fixed throughout fit()
-    sigma_init=sigma_stage2,      # from Stage 2 -- held fixed by default
+    sigma_init=sigma_stage2,      # from Stage 2 -- held fixed
+    stage1_model=fe,              # the Stage 1 model, for summary()
     verbose=False,
 )
-model.iterations_    # 14
-model.convergence_   # 6.85e-07
+model.converged_     # True
+model.iterations_    # well below max_iter
 ```
 
 $\beta$ and $\sigma$ enter through `beta_init`/`sigma_init` — names
@@ -211,31 +212,26 @@ in the same range as the
 own recovery numbers on comparably-sized synthetic data, for the same
 reason: dozens of patients per facility says something, not enough to
 say it with great precision. At least one facility's `gamma_` sits
-exactly at `-bound` (`-10.0`, the default) — an ordinary, expected
-occurrence for a small or extreme facility, the same median-clamp
-mechanism [the logistic provider chapter's](../logistic/provider_penalized_logistic)
+exactly at the lower bound, `median(gamma_) - bound` with the default
+`bound_mode="relative"` (`-bound` with `bound_mode="absolute"`, as in
+R's `glmm.fac.hosp`) — an ordinary, expected occurrence for a small or
+extreme facility, the same median-clamp mechanism
+[the logistic provider chapter's](../logistic/provider_penalized_logistic)
 Section 3 describes, not a sign anything is wrong.
 
-`summary()` reports inference for $\beta$ using an *adjusted* Fisher
-information that accounts for the posterior variance of the cluster
-effects (`alpha_var_`) — a real methodological refinement over a naive
-fixed-effect-only information matrix. This is inference on the
-$\beta$ Stage 1 already produced, carried through Stage 3's adjustment
-for cluster uncertainty — not a new estimate Stage 3 computed from
-scratch:
+`summary()` reports inference for $\beta$ from Stage 1: $\beta$ is
+estimated there and held fixed here, so its standard errors are Stage 1's,
+whose Wald variance accounts for the estimated provider effects. It returns
+the Stage 1 model's Wald table, the same as `fe.summary(test_method="wald")`
+from Section 3, and needs that model, given to `fit(stage1_model=...)` or to
+`summary(stage1_model=...)`; it raises if the model's $\beta$ is not the one
+passed as `beta_init`. (R's `summary.glmm.covar` also reports the Stage 1 fit.
+Earlier versions computed an information matrix from the Stage 3 fit at fixed
+$\beta$ and $\gamma$, which understated the standard errors.)
 
 ```python
-model.summary()
+model.summary()    # the Stage 1 Wald table: estimate, std_error, stat, p_value, ci_lower, ci_upper
 ```
-```
-           covariate    beta      se   z_stat  p_value  odds_ratio
-0                age  0.0348  0.0013  25.954   0.0000      1.0354
-1           diabetes  0.4053  0.0960   4.220   0.0000      1.4998
-2                chf  0.3633  0.1020   3.563   0.0004      1.4380
-3  comorbidity_count  0.2304  0.0355   6.489   0.0000      1.2591
-```
-(`summary()` also returns `ci_lower`/`ci_upper` and
-`odds_ratio_lower`/`odds_ratio_upper`, omitted here for width.)
 
 ## 7. Two things worth checking before trusting Stage 3's output
 
@@ -244,9 +240,8 @@ matters more than its default suggests — check convergence, not just
 the final numbers.** At `n_nodes=5` on this cohort, `fit()` never
 converges: `iterations_` runs out the full `max_iter` (201, one past
 the 200 cap) rather than stopping early, and `gamma_` collapses to the
-lower bound for most facilities (`[-10, -10, -10, -10, -10, ...]` for
-the first five, rather than the spread-out values a converged fit
-gives). `n_nodes=10` also exhausts `max_iter` without formally
+lower bound for most facilities rather than taking the spread-out
+values a converged fit gives. `n_nodes=10` also exhausts `max_iter` without formally
 converging, though its final iterate happens to already resemble the
 converged answer. `n_nodes=15` and `n_nodes=20` (the default) both
 converge cleanly in well under `max_iter` (14 and 10 iterations here)
@@ -256,13 +251,14 @@ isn't, the fit didn't converge, and dropping straight to `n_nodes=5`
 or similar to save time is a real way to get confidently wrong,
 bound-saturated `gamma_` values rather than merely noisier ones.
 
-`update_sigma=True` re-estimates $\sigma$ from the posterior
-cluster moments each iteration instead of holding it at `sigma_init`.
-This is a deliberate departure from the three-stage design (Stage 3 is
-meant to take Stage 2's $\sigma$ as given), and in practice the
-updated $\sigma$ tends to drift from Stage 2's well-calibrated value.
-Every example in this chapter uses the default `update_sigma=False`,
-which is the setting consistent with the three-stage design.
+$\sigma$ stays at Stage 2's value. Earlier versions offered
+`update_sigma=True`, which re-estimated $\sigma$ from the posterior cluster
+moments each iteration; that update drove $\sigma$ toward zero (R's
+`glmm.fac.hosp` does the same), so it was removed. The convergence rule is
+also a choice: `convergence_criterion="relative"` (the default, as in R)
+stops on the change in the objective relative to its change since the first
+iteration, which can stop well short of the solution on some data sets;
+`"max_delta_gamma"` stops when no $\gamma$ moves by more than `tol`.
 
 ## 8. Standardized measures and provider testing
 
@@ -286,29 +282,47 @@ provider
 2          -6.0450     -5.8377 -0.3817   0.7027     0
 ```
 
-`test_method="poibin_exact"` (deterministic, exact Poisson-binomial)
-and `"resampling"` (the default: a parametric bootstrap that draws the
-cluster effects from their posterior, per He et al. 2013) both test
-each provider's event count with its effect set to the reference
-$\gamma_0$ (`reference="median"` by default). The result has the
-columns described in {ref}`ll_ref_measures`, with `flag` = 1 for
-providers above the reference and -1 below.
+All three test methods compare each provider's event count with its
+distribution when its effect is the reference $\gamma_0$
+(`reference="median"` by default) and the cluster effects follow their
+posterior; they differ in how the cluster effects enter:
 
-The default null is the theoretical N(0, 1). Earlier versions
-calibrated against an empirical null by default, with a Huber fit in
-four equal-count groups by provider size; pass that configuration, or
-any other null model, through `null_model`:
+- `"exact"` (the default): each hospital's effect is drawn once and shared by
+  the facility's patients there (He et al. 2013, Section 3.3, step (ii)), and
+  the count's distribution is computed exactly.
+- `"poibin_exact"`: exact Poisson-binomial test with the cluster effects fixed
+  at their posterior means.
+- `"resampling"`: Monte Carlo with a separate cluster-effect draw for every
+  patient, as in R's `summary.glmm.fac`. Providers whose simulated tail falls
+  to the resolution floor (`0.5 / n_resample`) get the exact tails of the same
+  null, with a warning.
+
+The result has the columns described in {ref}`ll_ref_measures`, with `flag` =
+1 for providers above the reference and -1 below. For `"exact"` and
+`"poibin_exact"`, `ci_lower`/`ci_upper` invert the (calibrated) test, so a
+limit excludes $\gamma_0$ exactly when the provider is flagged; a facility
+with no events has lower limit $-\infty$. `calculate_confidence_intervals()`
+returns the same limits (`option="gamma"`) or maps them to standardized
+ratios and rates (`option="SM"`), as for the fixed-effect model.
+
+The default null is the theoretical N(0, 1). R's `summary.glmm.fac`
+calibrates against an empirical null fitted with `MASS::rlm` defaults within
+quartiles of a facility-size variable (R sets missing sizes to 0); pass that,
+or any other null model, through `null_model`:
 
 ```python
 from pprof_py.inference import EmpiricalNull, HUBER_RLM
 
-sizes = df.groupby("facility_id", observed=True).size().loc[model.provider_ids_].to_numpy()
+facility_size = ...   # one size per provider, in model.provider_ids_ order, no missing values
 result_en = model.test(
-    test_method="poibin_exact",
-    null_model=EmpiricalNull.fitter(size=sizes, n_groups=4, grouping="rank",
-                                    estimator=HUBER_RLM, small_group="theoretical"),
+    null_model=EmpiricalNull.fitter(size=facility_size, n_groups=4, grouping="quantile",
+                                    estimator=HUBER_RLM),
 )
 ```
+
+Earlier versions of pprof_py calibrated by default with equal-count groups of
+discharge counts (`grouping="rank"`, `size` = each facility's number of
+patients, `small_group="theoretical"`), which is not R's configuration.
 
 [The empirical null guide](../reference/empirical_null) covers the
 options.

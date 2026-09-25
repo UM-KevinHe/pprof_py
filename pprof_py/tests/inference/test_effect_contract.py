@@ -32,7 +32,7 @@ def models():
     df = pd.DataFrame(X, columns=["x1", "x2"]); df["y"] = y; df["provider"] = prov
     fe = LogisticFixedEffectModel(); _quiet(fe.fit, X, y, prov)
     re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], group_var="provider", verbose=False)
-    me = LogisticMixedEffectModel(update_sigma=False)
+    me = LogisticMixedEffectModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="provider",
            gamma_init=np.full(m, -1.4), beta_init=fe.coefficients_["beta"].ravel(), sigma_init=0.35, verbose=False)
     yl = 5.0 + X @ [1.0, -0.5] + rng.normal(0, 0.6, m)[prov] + rng.normal(0, 2.0, prov.size)
@@ -50,6 +50,7 @@ ROUTES = {
     "logistic_re/wald": ("re", dict(test_method="wald")),
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
+    "logistic_me/exact": ("me", dict(test_method="exact")),
     "logistic_me/poibin_exact": ("me", dict(test_method="poibin_exact")),
     "logistic_me/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),
     "linear_fe/wald": ("lfe", {}),

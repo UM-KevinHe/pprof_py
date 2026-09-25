@@ -12,6 +12,7 @@ Dialysis Facilities; Adjusting for Hospital Effects", Lifetime Data Analysis.
 """
 
 import logging
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,9 @@ from ...inference.logistic import MixedEffectInferenceMixin
 from ...measures.logistic import MixedEffectMeasuresMixin
 
 logger = logging.getLogger(__name__)
+
+#: Floor for a provider's Newton information (it can reach <= 0 once alpha_var > 4).
+_INFO_FLOOR = 1e-8
 
 
 def gauss_hermite_normal(n_nodes: int, sigma: float):
@@ -73,7 +77,8 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
     The algorithm iterates:
     1. GH quadrature to compute posterior moments E[alpha|Y], Var[alpha|Y]
     2. Newton-Raphson updates for gamma (provider) given posterior moments
-    3. Convergence via relative change in marginal log-likelihood
+    3. Convergence via the relative change in the objective (default) or the
+       largest change in gamma
 
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
@@ -90,11 +95,27 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
     max_iter : int, default=10000
         Maximum Newton-Raphson iterations.
     tol : float, default=1e-5
-        Convergence tolerance (relative change in log-likelihood).
+        Convergence tolerance for ``convergence_criterion``.
     bound : float, default=10.0
-        Bound for provider effects (clipped to [-bound, bound]).
-    update_sigma : bool, default=False
-        Whether to update sigma during iteration.
+        Bound for provider effects; see ``bound_mode``.
+    bound_mode : {"relative", "absolute"}, default="relative"
+        ``"relative"`` clips gamma to ``median(gamma) +/- bound`` at every
+        iteration, which is symmetric around the typical provider whatever the
+        baseline log-odds. ``"absolute"`` clips to ``[-bound, bound]``, as R's
+        ``glmm.fac.hosp`` does; only providers at the bound differ.
+    convergence_criterion : {"relative", "max_delta_gamma"}, default="relative"
+        ``"relative"``: ``|obj_t - obj_{t-1}| / |obj_t - obj_1|`` for the
+        objective below, as in R (a zero denominator counts as converged when
+        the numerator is also zero, and otherwise does not stop the fit).
+        ``"max_delta_gamma"``: the largest absolute change in gamma, which does
+        not depend on the starting value.
+
+    Notes
+    -----
+    sigma is held at its Stage 2 value. Earlier versions offered
+    ``update_sigma=True``, which re-estimated sigma from the posterior moments;
+    that update drove sigma toward zero (as it does in R's ``glmm.fac.hosp``)
+    and was removed.
 
     Attributes
     ----------
@@ -105,9 +126,8 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         (``LogisticFixedEffectModel``); this class (Stage 3) does
         not re-estimate β.
     sigma_ : float
-        Cluster random effect standard deviation.  Held fixed from
-        Stage 2 (``LogisticRandomEffectModel``) unless
-        ``update_sigma=True`` (not recommended; see ISSUE-026).
+        Cluster random effect standard deviation, held fixed from
+        Stage 2 (``LogisticRandomEffectModel``).
     alpha_mean_ : np.ndarray
         Posterior mean of cluster effects (observation-level).
     alpha_var_ : np.ndarray
@@ -129,9 +149,14 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
     n_clusters_ : int
         Number of clusters.
     iterations_ : int
-        Number of iterations at convergence.
+        Number of iterations run.
     convergence_ : float
-        Final convergence criterion value.
+        Final value of the convergence criterion (``inf`` if it could not be
+        evaluated).
+    converged_ : bool
+        Whether the criterion fell below ``tol`` within ``max_iter``.
+    stage1_model_ : LogisticFixedEffectModel or None
+        The Stage 1 model passed to ``fit``; ``summary()`` reports its Wald table.
     """
 
     def __init__(
@@ -140,14 +165,16 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         max_iter: int = 10000,
         tol: float = 1e-5,
         bound: float = 10.0,
-        update_sigma: bool = False,
+        bound_mode: str = "relative",
+        convergence_criterion: str = "relative",
     ):
         """Logistic mixed-effect provider model."""
         self.n_nodes = n_nodes
         self.max_iter = max_iter
         self.tol = tol
         self.bound = bound
-        self.update_sigma = update_sigma
+        self.bound_mode = bound_mode
+        self.convergence_criterion = convergence_criterion
 
         # Results (populated after fit)
         self.gamma_: Optional[np.ndarray] = None
@@ -166,6 +193,8 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         self.n_clusters_: Optional[int] = None
         self.iterations_: Optional[int] = None
         self.convergence_: Optional[float] = None
+        self.converged_: Optional[bool] = None
+        self.stage1_model_ = None
 
         # Internal indices
         self._provider_idx: Optional[np.ndarray] = None
@@ -187,6 +216,7 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         sigma_init: float,
         obs_var: Optional[str] = None,
         verbose: bool = True,
+        stage1_model=None,
     ) -> "LogisticMixedEffectModel":
         """Fit the mixed effect model via Newton-Raphson + GH quadrature.
 
@@ -210,11 +240,10 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
             Covariate effects from Stage 1
             (``LogisticFixedEffectModel``), shape (n_covariates,).
             Held fixed throughout Stage 3 iteration; this class
-            estimates only γ (and optionally σ).
+            estimates only γ.
         sigma_init : float
             Cluster random effect std dev from Stage 2
-            (``LogisticRandomEffectModel``).  Held fixed unless
-            ``update_sigma=True``.
+            (``LogisticRandomEffectModel``), held fixed.
         obs_var : str, optional
             Column name for the actual observed outcome, used for
             computing SRR observed counts and resampling p-values.
@@ -224,11 +253,18 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
             outcome (e.g., 'readmit30_flag').
         verbose : bool, default=True
             Print iteration progress.
+        stage1_model : LogisticFixedEffectModel, optional
+            The fitted Stage 1 model that produced ``beta_init``; stored as
+            ``stage1_model_`` for ``summary()``.
 
         Returns
         -------
         self
         """
+        if self.bound_mode not in ("relative", "absolute"):
+            raise ValueError("bound_mode must be 'relative' or 'absolute'.")
+        if self.convergence_criterion not in ("relative", "max_delta_gamma"):
+            raise ValueError("convergence_criterion must be 'relative' or 'max_delta_gamma'.")
         self._x_vars = list(x_vars)
 
         # Extract arrays
@@ -288,6 +324,8 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         obj = 0.0
         obj_new = 1.0
         obj_init = None
+        n_floored = 0               # provider-iterations whose Newton information was floored
+        zero_denominator = False    # relative criterion met 0 in its denominator with a nonzero numerator
 
         while iter_count <= self.max_iter and crit >= self.tol:
             obj = obj_new
@@ -332,8 +370,17 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
                                         minlength=self.n_providers_)
             info_by_prov = np.bincount(prov_idx, weights=gamma_info,
                                        minlength=self.n_providers_)
+            low_info = info_by_prov <= _INFO_FLOOR
+            if low_info.any():      # the step would divide by ~0 or reverse the score's sign
+                n_floored += int(low_info.sum())
+                info_by_prov = np.maximum(info_by_prov, _INFO_FLOOR)
+            gamma_prev = gamma
             gamma = gamma + score_by_prov / info_by_prov
-            gamma = np.clip(gamma, -self.bound, self.bound)
+            if self.bound_mode == "absolute":
+                gamma = np.clip(gamma, -self.bound, self.bound)
+            else:
+                gamma_median = np.median(gamma)
+                gamma = np.clip(gamma, gamma_median - self.bound, gamma_median + self.bound)
             gamma_obs = gamma[prov_idx]
 
             # === Convergence criterion (offset approach) ===
@@ -344,35 +391,44 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
             obj_new = np.sum(
                 (alpha_mean + gamma_obs + xbeta) * y
                 + np.log(q_new)
-                - 0.5 * alpha_var**2 * pq_new
+                - 0.5 * alpha_var * pq_new        # second-order term: Var(alpha) * pq / 2
                 - (alpha_mean**2 + alpha_var) / (2 * sigma**2)
             )
 
-            if iter_count == 1:
+            if self.convergence_criterion == "max_delta_gamma":
+                crit = float(np.max(np.abs(gamma - gamma_prev)))
+            elif iter_count == 1:
                 obj_init = obj_new
                 crit = 1.0
             else:
-                crit = abs((obj_new - obj) / (obj_new - obj_init))
+                numerator, denominator = obj_new - obj, obj_new - obj_init
+                if denominator == 0:
+                    # 0/0: the objective has not moved since the first iteration (the start was
+                    # already the solution); x/0 cannot be scaled, so keep iterating.
+                    crit = 0.0 if numerator == 0 else np.inf
+                    zero_denominator = zero_denominator or numerator != 0
+                else:
+                    crit = abs(numerator / denominator)
+            if not np.isfinite(obj_new):
+                crit = np.inf       # the fit has broken down (e.g. overflow); stop and report non-convergence
+                break
 
             if verbose and (iter_count % 10 == 0 or crit < self.tol):
                 logger.info(f"  Iter {iter_count}: crit = {crit:.8e}")
 
-            # Update sigma if requested (ISSUE-026: add damping + bounds
-            # to prevent feedback-loop instability).
-            if self.update_sigma:
-                sigma_new = np.sqrt(
-                    np.sum(alpha_mean_cluster**2 + alpha_var_cluster)
-                    / self.n_clusters_
-                )
-                # Damped step: move only halfway toward the raw MLE.
-                sigma_new = 0.5 * sigma + 0.5 * sigma_new
-                # Bound: prevent collapse to zero or divergence.
-                sigma_new = np.clip(sigma_new, 1e-4, 50.0)
-                sigma = float(sigma_new)
-                nodes, weights = gauss_hermite_normal(self.n_nodes, sigma)
-
+        converged = bool(crit < self.tol)
         if verbose:
-            logger.info(f"Converged after {iter_count} iterations (crit={crit:.2e}).")
+            logger.info(f"Stopped after {iter_count} iterations (crit={crit:.2e}, converged={converged}).")
+        if n_floored:
+            warnings.warn(f"Newton information was <= {_INFO_FLOOR:g} for {n_floored} provider-iteration(s) and was "
+                          "floored; those steps follow the score's sign and can reach the bound.", RuntimeWarning,
+                          stacklevel=2)
+        if zero_denominator:
+            warnings.warn("The relative convergence criterion met a zero denominator with a nonzero numerator; "
+                          "consider convergence_criterion='max_delta_gamma'.", RuntimeWarning, stacklevel=2)
+        if not converged:
+            warnings.warn(f"Did not converge within max_iter={self.max_iter} iterations "
+                          f"(criterion {crit:.3g} >= tol {self.tol:g}).", RuntimeWarning, stacklevel=2)
 
         # Store results
         self.gamma_ = gamma
@@ -386,7 +442,9 @@ class LogisticMixedEffectModel(BaseEstimator, MixedEffectInferenceMixin, MixedEf
         self.xbeta_ = xbeta
         self.fitted_ = plogis(gamma_obs + alpha_mean + xbeta)
         self.iterations_ = iter_count
-        self.convergence_ = crit
+        self.convergence_ = float(crit)
+        self.converged_ = converged
+        self.stage1_model_ = stage1_model
 
         return self
 

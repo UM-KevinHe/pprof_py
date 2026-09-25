@@ -104,12 +104,13 @@ from pprof_py import LogisticMixedEffectModel
 mixed = LogisticMixedEffectModel(n_nodes=10, max_iter=200)
 mixed.fit(df, y_var="event", x_vars=X_COLS, provider_var="provider", cluster_var="cluster",
           gamma_init=np.zeros(m), beta_init=np.zeros(3), sigma_init=0.5, verbose=False)
-mixed.summary()
+# mixed.summary(stage1_model=fe) reports the Stage 1 Wald table for beta
 mixed.test(test_method="resampling", n_resample=200).head()
 ```
 
-- **Constructor:** `n_nodes=20`, `max_iter=10000`, `tol=1e-5` (relative change in log-likelihood), `bound=10.0`, `update_sigma=False`.
-- **`fit(data, y_var, x_vars, provider_var, cluster_var, gamma_init, beta_init, sigma_init, obs_var=None, verbose=True)`:** `gamma_init`
+- **Constructor:** `n_nodes=20`, `max_iter=10000`, `tol=1e-5`, `bound=10.0`, `bound_mode="relative"` (γ clipped to
+  `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="relative"` (or `"max_delta_gamma"`).
+- **`fit(data, y_var, x_vars, provider_var, cluster_var, gamma_init, beta_init, sigma_init, obs_var=None, verbose=True, stage1_model=None)`:** `gamma_init`
   has one entry per provider, `beta_init` one per covariate. `y_var` is normally a boundary-adjusted outcome (`Y_adj`) that keeps γ finite;
   `obs_var` names the true 0/1 outcome used for observed counts and resampling p-values (defaults to `y_var`).
 - **Attributes:** `gamma_`, `beta_`, `sigma_`, `xbeta_`, `fitted_`, `alpha_mean_`, `alpha_var_`, `alpha_mean_cluster_`, `alpha_var_cluster_`,

@@ -185,13 +185,22 @@ interval excludes the null value exactly when the provider is flagged;
 `interval="scale_only"` widens them without shifting. The result's
 `attrs["null_model"]` records the fitted null.
 
-Earlier versions of `LogisticMixedEffectModel.test` applied an empirical
-null by default, with a Huber fit in four equal-count groups by provider
-size. That configuration is:
+R's `summary.glmm.fac` (the reference for `LogisticMixedEffectModel.test`)
+fits `MASS::rlm` with its defaults within quartiles of a facility-size
+variable, setting missing sizes to 0:
 
 ```python
 from pprof_py.inference import HUBER_RLM
 
+model.test(null_model=EmpiricalNull.fitter(size=facility_size, n_groups=4, grouping="quantile",
+                                           estimator=HUBER_RLM))
+```
+
+Earlier versions of pprof_py instead applied an empirical null by default
+with a Huber fit in four equal-count groups of discharge counts. That
+configuration, which is not R's, is:
+
+```python
 sizes = df.groupby("facility_id", observed=True).size().loc[model.provider_ids_].to_numpy()
 model.test(null_model=EmpiricalNull.fitter(size=sizes, n_groups=4, grouping="rank",
                                            estimator=HUBER_RLM, small_group="theoretical"))

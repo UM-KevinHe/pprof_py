@@ -9,6 +9,42 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased — mixed-effect model inference
+
+Reviewed against R's `glmm.fac.hosp`, `summary.glmm.fac` and
+`summary.glmm.covar`. This changes results and breaks parts of the
+`LogisticMixedEffectModel` API.
+
+- `test()` defaults to `test_method="exact"`: each cluster's effect is drawn
+  once for all of a provider's patients in that cluster (He et al. 2013,
+  step (ii)) and the count's distribution is computed exactly, with no Monte
+  Carlo error. `"poibin_exact"` is unchanged.
+- `test()` returns confidence limits (`ci_lower`/`ci_upper`) for `"exact"`
+  and `"poibin_exact"` by inverting the calibrated test; new
+  `calculate_confidence_intervals()` maps them to standardized ratios and
+  rates, as in the fixed-effect model.
+- `test_method="resampling"` (unchanged draws, one per patient) gives
+  providers whose simulated tail reaches the resolution floor the exact tails
+  of the same null, with a warning. The floor capped |z| at 3.89 (at
+  `n_resample=10000`), which under an empirical null could make the most
+  extreme providers impossible to flag.
+- `summary()` returns the Stage 1 model's Wald table, as R does; it needs the
+  Stage 1 model (`fit(stage1_model=...)` or `summary(stage1_model=...)`). It
+  previously understated the standard errors.
+- `update_sigma` is removed: the update drove σ toward zero.
+- New `bound_mode` (default `"relative"`: γ clipped to `median ± bound`;
+  `"absolute"` reproduces the old `±bound` and R) and
+  `convergence_criterion` (`"relative"` as before, or `"max_delta_gamma"`).
+  The relative criterion's 0/0 case, which ended the fit silently with a NaN
+  criterion, now counts as converged; a non-finite objective now ends the fit
+  as not converged; new `converged_` attribute. The Newton step floors a
+  provider's information at 1e-8, with a warning.
+- The convergence objective uses the posterior variance unsquared, matching
+  the score and information (no effect on the fits checked).
+- Documentation: R's empirical-null configuration for this model is quantile
+  groups of a facility-size variable; the rank configuration shown earlier was
+  pprof_py's previous default.
+
 ## Unreleased — provider testing rebuilt on one inference layer
 
 Provider tests now share one pipeline in `pprof_py.inference`: a
