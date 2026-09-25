@@ -25,9 +25,9 @@ class _LogisticFEPlottingHost(Protocol):
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
     fitted_: Optional[np.ndarray]
-    groups_: Optional[np.ndarray]
-    group_indices_: Optional[np.ndarray]
-    group_sizes_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_indices_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
     outcome_: Optional[np.ndarray]
     xbeta_: Optional[np.ndarray]
     covariate_names_: list
@@ -45,7 +45,7 @@ class FixedEffectPlottingMixin:
     def plot_funnel(
         self,
         test_method: str = "score", # "score" or "poibin_exact"
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         target: float = 1.0,
         alpha: Union[float, List[float]] = 0.05,
         labels: List[str] = _style.FLAG_LABELS,
@@ -83,7 +83,7 @@ class FixedEffectPlottingMixin:
         test_method : str, default="score"
             Method for flagging and control limits: "score" or "poibin_exact".
             "poibin_exact" requires the 'poibin' library.
-        null : str or float, default="median"
+        reference : str or float, default="median"
             Baseline for provider effects (gamma) used in null hypothesis calculations.
             Can be "median" or a specific float value.
         target : float, default=1.0
@@ -150,10 +150,10 @@ class FixedEffectPlottingMixin:
         """
 
         # --- Input Validation ---
-        if self.coefficients_ is None or self.groups_ is None or self.group_sizes_ is None:
+        if self.coefficients_ is None or self.provider_ids_ is None or self.provider_sizes_ is None:
             raise ValueError("Model must be fitted with coefficients, groups, and group sizes.")
-        if self.outcome_ is None or self.xbeta_ is None or self.group_indices_ is None:
-             raise ValueError("Model requires 'outcome_', 'xbeta_', and 'group_indices_' attributes for funnel plot calculations.")
+        if self.outcome_ is None or self.xbeta_ is None or self.provider_indices_ is None:
+             raise ValueError("Model requires 'outcome_', 'xbeta_', and 'provider_indices_' attributes for funnel plot calculations.")
         allowed_tests = ["score", "poibin_exact"]
         if test_method not in allowed_tests:
             raise ValueError(f"Argument 'test_method' must be one of {allowed_tests}.")
@@ -172,12 +172,12 @@ class FixedEffectPlottingMixin:
         # --- Data Preparation ---
         # 1. Get Standardized Measures & Set Index
         try:
-            sm_results = self.calculate_standardized_measures(stdz="indirect", null=null)
+            sm_results = self.calculate_standardized_measures(stdz="indirect", reference=reference)
             df = sm_results["indirect"].copy()
-            if len(df) == len(self.groups_):
-                 df.index = self.groups_
+            if len(df) == len(self.provider_ids_):
+                 df.index = self.provider_ids_
             else: 
-                raise ValueError(f"Length mismatch: std measures ({len(df)}) vs groups ({len(self.groups_)}).")
+                raise ValueError(f"Length mismatch: std measures ({len(df)}) vs groups ({len(self.provider_ids_)}).")
             required_cols = ["indirect_ratio", "observed", "expected"]
             if not all(col in df.columns for col in required_cols): 
                 raise ValueError(f"Missing required columns: {required_cols}")
@@ -186,16 +186,16 @@ class FixedEffectPlottingMixin:
 
         # 2. Calculate Probabilities under Null
         gamma_vals = self.coefficients_["gamma"].flatten()
-        if null == "median": 
+        if reference == "median": 
             gamma_null = np.median(gamma_vals)
-        elif isinstance(null, (int, float)): 
-            gamma_null = float(null)
+        elif isinstance(reference, (int, float)): 
+            gamma_null = float(reference)
         else: 
             raise ValueError("Argument 'null' must be 'median' or a numeric value.")
 
         pvec_null_all = 1.0 / (1.0 + np.exp(-(gamma_null + self.xbeta_)))
         pvec_null_all = np.clip(pvec_null_all, 1e-10, 1 - 1e-10)
-        probs_by_group_idx = [pvec_null_all[self.group_indices_ == i] for i in range(len(self.groups_))]
+        probs_by_group_idx = [pvec_null_all[self.provider_indices_ == i] for i in range(len(self.provider_ids_))]
 
         # 3. Calculate Variance and Precision
         group_vars_null = np.array([np.sum(p * (1 - p)) for p in probs_by_group_idx])
@@ -209,7 +209,7 @@ class FixedEffectPlottingMixin:
         df["precision"].replace(np.inf, max_finite_precision * 1.1, inplace=True)
 
         # 4. Get Flags
-        test_df = self.test(reference=null, level=1.0 - alpha_test, test_method=test_method)
+        test_df = self.test(reference=reference, level=1.0 - alpha_test, test_method=test_method)
         df["flag"] = test_df.loc[df.index, "flag"].fillna(0).astype(int)
 
         # --- Calculate Control Limits ---
@@ -290,7 +290,7 @@ class FixedEffectPlottingMixin:
         level: float = 0.95,
         test_method: str = 'wald',
         use_flags: bool = True,
-        null: Union[str, float] = 'median',
+        reference: Union[str, float] = 'median',
         **plot_kwargs
     ) -> None:
         """Plot provider-specific effects (gamma) with confidence intervals in a caterpillar plot.
@@ -305,7 +305,7 @@ class FixedEffectPlottingMixin:
             Method for computing intervals: 'wald', 'score', or 'exact'.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the test method.
-        null : str or float, default='median'
+        reference : str or float, default='median'
             Null hypothesis for gamma in the test method.
         **plot_kwargs
             Additional arguments passed to plot_caterpillar (e.g., title, point_color).
@@ -328,23 +328,23 @@ class FixedEffectPlottingMixin:
                 providers=group_ids,
                 level=level,
                 test_method=test_method,
-                reference=null
+                reference=reference
             )
             df = df.merge(
                 test_df[['flag']],
-                left_on='group_id',
+                left_on='provider_id',
                 right_index=True,
                 how='left'
             )
 
         # 3) Figure out what “null” really is
         gamma_vals = self.coefficients_["gamma"].flatten()
-        if   null == "median":
+        if   reference == "median":
             gamma_null = np.median(gamma_vals)
-        elif null == "mean":
+        elif reference == "mean":
             gamma_null = np.mean(gamma_vals)
-        elif isinstance(null, (int, float)):
-            gamma_null = float(null)
+        elif isinstance(reference, (int, float)):
+            gamma_null = float(reference)
         else:
             raise ValueError("`null` must be 'median', 'mean', or a numeric value")
 
@@ -372,7 +372,7 @@ class FixedEffectPlottingMixin:
             estimate_col='gamma',
             ci_lower_col='gamma_lower',
             ci_upper_col='gamma_upper',
-            group_col='group_id',
+            group_col='provider_id',
             flag_col='flag' if use_flags else None,
             orientation=orientation,
             refline_value=refline_value,
@@ -390,7 +390,7 @@ class FixedEffectPlottingMixin:
         measure: str = 'ratio',
         test_method: str = 'score',
         use_flags: bool = True,
-        null: Union[str, float] = 'median',
+        reference: Union[str, float] = 'median',
         **plot_kwargs
     ) -> None:
         """Plot standardized measures (e.g., indirect ratio or rate) with confidence intervals in a caterpillar plot.
@@ -409,7 +409,7 @@ class FixedEffectPlottingMixin:
             Method for computing intervals: 'wald', 'score', or 'exact'.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the test method.
-        null : str or float, default='median'
+        reference : str or float, default='median'
             Null hypothesis for gamma in the test method.
         **plot_kwargs
             Additional arguments passed to plot_caterpillar (e.g., title, point_color).
@@ -425,7 +425,7 @@ class FixedEffectPlottingMixin:
             stdz=stdz,
             measure=measure,
             test_method=test_method,
-            null=null
+            reference=reference
         )
         key = f"{stdz}_{measure}"
         if key not in ci_results:
@@ -448,10 +448,10 @@ class FixedEffectPlottingMixin:
                 providers=group_ids,
                 level=level,
                 test_method=test_method,
-                reference=null
+                reference=reference
             )
             df = df.merge(test_df[['flag']],
-                        left_on='group_id',
+                        left_on='provider_id',
                         right_index=True,
                         how='left')
 
@@ -478,7 +478,7 @@ class FixedEffectPlottingMixin:
             estimate_col=f"{stdz}_{measure}",
             ci_lower_col=f"ci_{measure}_lower",
             ci_upper_col=f"ci_{measure}_upper",
-            group_col='group_id',
+            group_col='provider_id',
             flag_col='flag' if use_flags else None,
             orientation=orientation,
             refline_value=refline_value,

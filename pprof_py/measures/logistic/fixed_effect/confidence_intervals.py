@@ -112,8 +112,8 @@ class _ConfidenceIntervalMethods:
         Tuple[bool, bool]
             (no_events, all_events) indicating if the provider has no events or all events.
         """
-        sum_y = np.sum(self.outcome_[self.group_indices_ == group_idx])
-        gsize = self.group_sizes_[group_idx]
+        sum_y = np.sum(self.outcome_[self.provider_indices_ == group_idx])
+        gsize = self.provider_sizes_[group_idx]
         return sum_y == 0, sum_y == gsize
 
     def _score_ci_for_one_group(self, group_idx: int, alpha: float, alternative: str, gamma_guess: float) -> Tuple[float, float]:
@@ -137,8 +137,8 @@ class _ConfidenceIntervalMethods:
         """
         # Check for no events or all events
         no_events, all_events = self._get_no_all_events(group_idx)
-        observed = np.sum(self.outcome_[self.group_indices_ == group_idx])
-        xbeta_group = self.xbeta_[self.group_indices_ == group_idx]
+        observed = np.sum(self.outcome_[self.provider_indices_ == group_idx])
+        xbeta_group = self.xbeta_[self.provider_indices_ == group_idx]
 
         qnorm_half = norm.ppf(1.0 - alpha / 2.0)
         qnorm_1side = norm.ppf(1.0 - alpha)
@@ -204,8 +204,8 @@ class _ConfidenceIntervalMethods:
         """
         # Check for no events or all events
         no_events, all_events = self._get_no_all_events(group_idx)
-        observed = int(np.sum(self.outcome_[self.group_indices_ == group_idx]))
-        xbeta_group = self.xbeta_[self.group_indices_ == group_idx]
+        observed = int(np.sum(self.outcome_[self.provider_indices_ == group_idx]))
+        xbeta_group = self.xbeta_[self.provider_indices_ == group_idx]
         n_trials = len(xbeta_group)
 
         if n_trials == 0:
@@ -330,7 +330,7 @@ class _ConfidenceIntervalMethods:
 
         Returns
         -------
-        pd.DataFrame with columns ["group_id","gamma","gamma_lower","gamma_upper"].
+        pd.DataFrame with columns ["provider_id","gamma","gamma_lower","gamma_upper"].
         """
         gamma_vals = self.coefficients_["gamma"].flatten()
         se_gamma = np.sqrt(self.variances_["gamma"].flatten())
@@ -341,7 +341,7 @@ class _ConfidenceIntervalMethods:
         alpha = 1.0 - level
 
         records = []
-        for i, gid in enumerate(self.groups_):
+        for i, gid in enumerate(self.provider_ids_):
             if gid not in group_ids:
                 continue
 
@@ -373,7 +373,7 @@ class _ConfidenceIntervalMethods:
                 raise ValueError("test_method must be wald, score, exact")
 
             records.append({
-                "group_id": gid,
+                "provider_id": gid,
                 "gamma": gamma_est,
                 "gamma_lower": lower,
                 "gamma_upper": upper
@@ -390,7 +390,7 @@ class _ConfidenceIntervalMethods:
         measure: Union[str, list],
         alternative: str,
         test_method: str,
-        null: Union[str,float]
+        reference: Union[str,float]
     ) -> dict:
         """Factor out the logic for "option='SM'" to a dedicated helper,
         returning intervals for indirect/direct ratio/rate. 
@@ -408,25 +408,25 @@ class _ConfidenceIntervalMethods:
 
         # get the raw indirect/direct values
         sm_data = self.calculate_standardized_measures(
-            providers=None, stdz=stdz, null=null
+            providers=None, stdz=stdz, reference=reference
         )
 
         # build gamma CI maps
         df_gamma_ci = self._compute_gamma_intervals(
-            group_ids=self.groups_,
+            group_ids=self.provider_ids_,
             level=level,
             alternative=alternative,
             test_method=test_method
         )
-        gamma_lower_map = df_gamma_ci.set_index("group_id")["gamma_lower"].to_dict()
-        gamma_upper_map = df_gamma_ci.set_index("group_id")["gamma_upper"].to_dict()
+        gamma_lower_map = df_gamma_ci.set_index("provider_id")["gamma_lower"].to_dict()
+        gamma_upper_map = df_gamma_ci.set_index("provider_id")["gamma_upper"].to_dict()
 
         population_rate = np.mean(self.outcome_) * 100.0
         results = {}
 
         # ---- INDIRECT ----
         if "indirect" in sm_data:
-            base = sm_data["indirect"].copy().set_index("group_id")
+            base = sm_data["indirect"].copy().set_index("provider_id")
 
             # always compute ratio CIs if either ratio OR rate was requested
             if want_ratio or want_rate:
@@ -475,7 +475,7 @@ class _ConfidenceIntervalMethods:
 
         # ---- DIRECT ----
         if "direct" in sm_data:
-            base = sm_data["direct"].copy().set_index("group_id")
+            base = sm_data["direct"].copy().set_index("provider_id")
 
             if want_ratio or want_rate:
                 observed_arr = base["observed"]
@@ -517,19 +517,19 @@ class _ConfidenceIntervalMethods:
                 })
                 results["direct_rate"] = df_rate.copy()
 
-        # finally, turn group_id back into a column
+        # finally, turn provider_id back into a column
         for k, df in results.items():
-            if df.index.name == "group_id":
+            if df.index.name == "provider_id":
                 results[k] = df.reset_index()
 
         return results
     
     def _sum_logistic_for_provider(self, gid, gamma_val):
         """Sum logistic(gamma_val + xbeta_) for the observations belonging to provider gid."""
-        idx = np.where(self.groups_ == gid)[0]
+        idx = np.where(self.provider_ids_ == gid)[0]
         if len(idx) == 0: return np.nan
         group_idx = idx[0]
-        mask = (self.group_indices_ == group_idx)
+        mask = (self.provider_indices_ == group_idx)
         xbeta_group = self.xbeta_[mask]
         pvals = 1.0/(1.0 + np.exp(-(gamma_val + xbeta_group)))
         return pvals.sum()
@@ -548,7 +548,7 @@ class _ConfidenceIntervalMethods:
         level: float = 0.95,
         option: str = "SM",
         stdz: Union[str, list] = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         measure: Union[str, list] = ("rate", "ratio"),
         alternative: str = "two_sided",
         test_method: str = "exact"
@@ -579,7 +579,7 @@ class _ConfidenceIntervalMethods:
             - 'SM': intervals for standardized measures (indirect/direct ratio/rate).
         stdz : {'indirect','direct'} or list, default='indirect'
             Standardization method(s) to use if option="SM". Ignored if option="gamma".
-        null : {'median','mean'} or float, default='median'
+        reference : {'median','mean'} or float, default='median'
             Baseline norm for direct standardization. Ignored if option="gamma".
         measure : {'rate','ratio'} or list of these, default=('rate','ratio')
             Which standardized measures to produce intervals for if option="SM".
@@ -597,7 +597,7 @@ class _ConfidenceIntervalMethods:
         -------
         dict
             If option="gamma": 
-                { "gamma_ci": DataFrame with columns [group_id, gamma, gamma_lower, gamma_upper] }
+                { "gamma_ci": DataFrame with columns [provider_id, gamma, gamma_lower, gamma_upper] }
             If option="SM": 
                 Possibly includes keys:
                 - "indirect_ratio"
@@ -642,7 +642,7 @@ class _ConfidenceIntervalMethods:
                 raise ValueError("For option='gamma', 'measure' is not applicable.")
             
             # Subset or gather final group IDs
-            final_groups = self.groups_ if providers is None else [g for g in self.groups_ if g in providers]
+            final_groups = self.provider_ids_ if providers is None else [g for g in self.provider_ids_ if g in providers]
             # Compute gamma intervals
             gamma_ci_df = self._compute_gamma_intervals(
                 group_ids=np.array(final_groups),
@@ -655,7 +655,7 @@ class _ConfidenceIntervalMethods:
         elif option == "SM":
             # For standardized measures, we rely on a helper approach
             # that handles indirect/direct ratio/rate intervals:
-            final_groups = self.groups_ if providers is None else [g for g in self.groups_ if g in providers]
+            final_groups = self.provider_ids_ if providers is None else [g for g in self.provider_ids_ if g in providers]
             return self._compute_sm_intervals(
                 group_ids=np.array(final_groups),
                 level=level,
@@ -663,7 +663,7 @@ class _ConfidenceIntervalMethods:
                 measure=measure,
                 alternative=alternative,
                 test_method=test_method,
-                null=null
+                reference=reference
             )
 
         else:

@@ -79,7 +79,7 @@ model.fit(
     data,
     y_var='los',
     x_vars=['age', 'severity', 'comorbidity'],
-    group_var='hospital',
+    provider_var='hospital',
     reml=True,
 )
 ```
@@ -175,12 +175,12 @@ $-0.054$). For the linear model, ISDiff reduces to the BLUP minus the
 baseline — on the original outcome scale (days).
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 print(sm['indirect'].head(10))
 ```
 
 ```
-      group_id  indirect_difference     observed     expected
+      provider_id  indirect_difference     observed     expected
 0   Hospital_1             0.213653  1955.235135  1937.929217
 1  Hospital_10             0.488747  2216.366011  2170.912568
 2  Hospital_11            -0.639378  2133.990591  2194.731545
@@ -249,7 +249,7 @@ print(alpha_ci['alpha_ci'].head(10))
 ```
 
 ```
-                group_id     alpha  alpha_lower  alpha_upper
+                provider_id     alpha  alpha_lower  alpha_upper
 Hospital_1    Hospital_1  0.213653    -0.514031     0.941337
 Hospital_10  Hospital_10  0.488747    -0.194821     1.172315
 Hospital_11  Hospital_11 -0.639378    -1.316346     0.037589
@@ -270,14 +270,14 @@ zero, consistent with it not being flagged.
 
 ```python
 sm_ci = model.calculate_confidence_intervals(
-    option='SM', stdz='indirect', null=median_blup,
+    option='SM', stdz='indirect', reference=median_blup,
     level=0.95, alternative='two_sided',
 )
 print(sm_ci['indirect_ci'].head(10))
 ```
 
 ```
-      group_id  indirect_difference     observed     expected     lower     upper
+      provider_id  indirect_difference     observed     expected     lower     upper
 0   Hospital_1             0.213653  1955.235135  1937.929217 -0.514031  0.941337
 1  Hospital_10             0.488747  2216.366011  2170.912568 -0.194821  1.172315
 2  Hospital_11            -0.639378  2133.990591  2194.731545 -1.316922  0.037589
@@ -296,7 +296,7 @@ print(sm_ci['indirect_ci'].head(10))
 
 ```python
 model.plot_funnel(
-    null=median_blup,
+    reference=median_blup,
     target=0.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Difference (LOS)",
@@ -307,7 +307,7 @@ model.plot_funnel(
 
 ```python
 model.plot_provider_effects(
-    null=median_blup,
+    reference=median_blup,
     level=0.95,
     use_flags=True,
     plot_title="Provider Random Effects (BLUPs, LOS days)",
@@ -319,7 +319,7 @@ model.plot_provider_effects(
 ```python
 model.plot_standardized_measures(
     stdz='indirect',
-    null=median_blup,
+    reference=median_blup,
     level=0.95,
     use_flags=True,
     plot_title="Indirect Standardized Difference (LOS days)",

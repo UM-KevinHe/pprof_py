@@ -26,12 +26,12 @@ X_COLS = ["x1", "x2", "x3"]
 ```python
 from pprof_py.data import validate_and_convert_inputs, check_missingness, check_variation, run_structural_checks
 
-v = validate_and_convert_inputs(df, x_vars=X_COLS, y_var="event", group_var="provider")
+v = validate_and_convert_inputs(df, x_vars=X_COLS, y_var="event", provider_var="provider")
 v.X.shape, v.y.shape, v.groups.shape, v.covariate_names
 ```
 
 ```text
-validate_and_convert_inputs(X, y=None, groups=None, x_vars=None, y_var=None, group_var=None, *,
+validate_and_convert_inputs(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None, *,
                             n_var=None, obs_id_var=None, use_dataprep=False, dataprep_options=None) -> ValidatedInputs
 ```
 
@@ -83,8 +83,8 @@ boot.decile_table()
 split = SplitHalfIUR(n_iter=5, seed=1).fit(obs, exp, provider)
 split.summary()                                                     # one column per correlation / kappa variant
 
-fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, group_var="provider")
-direct = DirectIUR().fit(fe.group_sizes_, fe.coefficients_["gamma"], np.sqrt(fe.variances_["gamma"]))
+fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, provider_var="provider")
+direct = DirectIUR().fit(fe.provider_sizes_, fe.coefficients_["gamma"], np.sqrt(fe.variances_["gamma"]))
 direct.iur_
 direct.decile_table()
 ```

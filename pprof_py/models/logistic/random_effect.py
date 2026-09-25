@@ -196,8 +196,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         X: pd.DataFrame,
         y_var: str,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        provider_var: Optional[str] = None,
+        cluster_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         include_intercept: bool = True,
         verbose: Optional[bool] = None,
@@ -216,8 +216,12 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             Covariate column names to estimate jointly with random effects.
             If None, only the intercept (if include_intercept=True) and
             random effects are estimated.
-        group_vars : list of str
-            Random-intercept grouping variable(s).
+        provider_var : str
+            Column of provider IDs; its random intercepts are the provider effects that
+            the measures, tests, and plots report.
+        cluster_vars : str or list of str, optional
+            Further grouping columns with their own (crossed) random intercepts, e.g.
+            the hospital in Stage 2 of the three-stage model.
         offset_var : str, optional
             Column name for a known offset (e.g. X @ beta from a prior
             stage). Added to the linear predictor as-is.
@@ -229,12 +233,12 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         if verbose is None:
             verbose = self.verbose
 
-        if group_vars is None and group_var is not None:
-            group_vars = [group_var]
-        elif isinstance(group_vars, str):
-            group_vars = [group_vars]
-        elif group_vars is not None:
-            group_vars = list(group_vars)
+        if provider_var is None:
+            raise ValueError("provider_var is required.")
+        if isinstance(cluster_vars, str):
+            cluster_vars = [cluster_vars]
+        group_vars = [provider_var, *(cluster_vars or [])]
+        self._provider_var = provider_var
 
         if not group_vars:
             raise ValueError("At least one grouping variable is required")
@@ -797,49 +801,51 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
     # Convenience methods
     # ------------------------------------------------------------------
 
-    def get_random_effects(self, group_var: Optional[str] = None) -> pd.Series:
+    def get_random_effects(self, var: Optional[str] = None) -> pd.Series:
         """Per-provider random intercepts (BLUPs).
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         Series
         """
+        var = self._provider_var if var is None else var
         self._check_is_fitted()
         re = self.coefficients_["alpha"]
-        if group_var is None:
+        if var is None:
             if len(re) != 1:
-                raise ValueError(f"Specify group_var; available={list(re)}")
+                raise ValueError(f"Specify var; available={list(re)}")
             return list(re.values())[0]
-        if group_var not in re:
-            raise ValueError(f"Unknown group_var \'{group_var}\'")
-        return re[group_var]
+        if var not in re:
+            raise ValueError(f"Unknown grouping variable \'{var}\'")
+        return re[var]
 
-    def get_sigma(self, group_var: Optional[str] = None) -> float:
+    def get_sigma(self, var: Optional[str] = None) -> float:
         """Estimated random-effect standard deviation.
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         float
         """
+        var = self._provider_var if var is None else var
         if self.sigma_ is None:
             raise ValueError("Model has not been fitted")
-        if group_var is None:
+        if var is None:
             if len(self.sigma_) != 1:
-                raise ValueError(f"Specify group_var; available={list(self.sigma_)}")
+                raise ValueError(f"Specify var; available={list(self.sigma_)}")
             return next(iter(self.sigma_.values()))
-        if group_var not in self.sigma_:
-            raise ValueError(f"Unknown group_var \'{group_var}\'")
-        return self.sigma_[group_var]
+        if var not in self.sigma_:
+            raise ValueError(f"Unknown grouping variable \'{var}\'")
+        return self.sigma_[var]
 
     # ------------------------------------------------------------------
     # Prediction
@@ -850,7 +856,7 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         X: pd.DataFrame,
         *,
         x_vars: Optional[List[str]] = None,
-        group_var: Optional[str] = None,
+        re_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         use_re: bool = False,
         type: str = "response",
@@ -863,9 +869,9 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             New data for prediction.
         x_vars : list of str, optional
             Covariate columns. If None, uses covariates from fitting.
-        group_var : str, optional
-            Grouping variable column for including random effects.
-            Required when ``use_re=True``.
+        re_vars : str or list of str, optional
+            Grouping columns whose random effects ``use_re=True`` adds; defaults
+            to every fitted grouping column.
         offset_var : str, optional
             Offset column in ``X``. If None, offset is zero.
         use_re : bool, default False
@@ -904,17 +910,15 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
 
         # Add random effects if requested
         if use_re:
-            if group_var is None:
-                if len(self._group_vars) == 1:
-                    group_var = self._group_vars[0]
-                else:
-                    raise ValueError(
-                        f"Specify group_var for RE predictions; available: {self._group_vars}"
-                    )
-            re = self.coefficients_["alpha"][group_var]
-            groups_new = X[group_var].astype(str).values
-            re_vals = np.array([re.get(g, 0.0) for g in groups_new])
-            eta += re_vals
+            re_vars = list(self._group_vars) if re_vars is None else ([re_vars] if isinstance(re_vars, str) else list(re_vars))
+            unknown = [v for v in re_vars if v not in self._group_vars]
+            if unknown:
+                raise ValueError(f"Unknown grouping variables {unknown}; fitted: {self._group_vars}")
+            for gv in re_vars:
+                re = self.coefficients_["alpha"][gv]
+                groups_new = X[gv].astype(str).values
+                re_vals = np.array([re.get(g, 0.0) for g in groups_new])
+                eta += re_vals
 
         if type == "link":
             return eta

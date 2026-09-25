@@ -108,7 +108,7 @@ candidates = ["age", "diabetes", "chf", "comorbidity_count"]
 from pprof_py import LogisticFixedEffectModel
 
 fe = LogisticFixedEffectModel(algorithm="Serbin", screen_providers=False)
-fe.fit(X=df, y_var="death_30d", x_vars=candidates, group_var="facility_id",
+fe.fit(X=df, y_var="death_30d", x_vars=candidates, provider_var="facility_id",
        max_iter=200, tol=1e-6)
 beta_stage1 = fe.coefficients_["beta"]
 # age: 0.0348, diabetes: 0.4053, chf: 0.3633, comorbidity_count: 0.2304
@@ -129,7 +129,7 @@ df["xbeta_offset"] = df[candidates].values @ beta_stage1
 df["cluster_id"] = df["cluster_id"].astype("category")
 
 re = LogisticRandomEffectModel()
-re.fit(df, y_var="death_30d", group_var="cluster_id",
+re.fit(df, y_var="death_30d", provider_var="cluster_id",
        offset_var="xbeta_offset", x_vars=None)
 sigma_stage2 = re.sigma_["cluster_id"]
 # 0.1491  (true cluster-effect sd used to generate this cohort: 0.187)
@@ -142,7 +142,7 @@ time inside Stage 2) means this fit's only remaining job is the
 random-intercept variance for `cluster_id` — precisely Stage 2's
 scope, no more. `sigma_` is a dict keyed by grouping variable, since
 this class supports more than one random-intercept term at once; with
-a single `group_var` here, `sigma_["cluster_id"]` is the one value
+a single `provider_var` here, `sigma_["cluster_id"]` is the one value
 Stage 3 needs.
 
 ## 5. Stage 3: `LogisticMixedEffectModel` → provider effects $\gamma$

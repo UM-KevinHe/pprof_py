@@ -281,7 +281,7 @@ model.fit(
     X=data_df,
     y_var='Outcome',
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID',
+    provider_var='ProviderID',
     max_iter=500,
     tol=1e-4
 )
@@ -312,8 +312,8 @@ print(f"BIC: {model.bic_:.2f}")
 print(f"AUC: {model.auc_:.3f}")
 
 # Group information
-# print(f"Groups: {model.groups_[:5]}")
-# print(f"Group Sizes: {model.group_sizes_[:5]}")
+# print(f"Groups: {model.provider_ids_[:5]}")
+# print(f"Group Sizes: {model.provider_sizes_[:5]}")
 ```
 
 ### 3.3. Prediction
@@ -325,7 +325,7 @@ Generate predicted probabilities for new or existing data.
 predictions = model.predict(
     X=data_df,
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID'
+    provider_var='ProviderID'
 )
 print(f"First 5 predictions: {predictions[:5]}")
 ```
@@ -338,7 +338,7 @@ Calculate ISR, DSR, and corresponding rates using `.calculate_standardized_measu
 # Calculate Indirect Standardized Ratio and Rate vs median
 sm_indirect = model.calculate_standardized_measures(
     stdz='indirect',
-    null='median' # Use median gamma as baseline
+    reference='median' # Use median gamma as baseline
 )
 print("\n--- Indirect Measures (vs Median) ---")
 print(sm_indirect['indirect'].head()) # Access the DataFrame
@@ -387,7 +387,7 @@ isr_cis = model.calculate_confidence_intervals(
     measure='ratio',
     level=0.90,
     test_method='exact', # Base gamma CI method
-    null='median',
+    reference='median',
     alternative='two_sided' # Base gamma CIs must be two-sided
 )
 print("\n--- Indirect Ratio CIs (based on Exact) ---")

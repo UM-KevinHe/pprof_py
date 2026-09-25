@@ -28,13 +28,13 @@ def fit():
     model = LogisticFixedEffectModel()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        model.fit(df, x_vars=["x1", "x2"], y_var="y", group_var="provider", obs_id_var="patient")
+        model.fit(df, x_vars=["x1", "x2"], y_var="y", provider_var="provider", obs_id_var="patient")
     return model
 
 
 def _parts(model):
     gamma = model.coefficients_["gamma"].ravel()
-    return gamma, np.median(gamma), model.xbeta_.ravel(), model.outcome_.ravel(), np.asarray(model.group_indices_)
+    return gamma, np.median(gamma), model.xbeta_.ravel(), model.outcome_.ravel(), np.asarray(model.provider_indices_)
 
 
 @pytest.mark.parametrize("variance", ["model", "robust"])
@@ -68,7 +68,7 @@ def test_reference_options(fit):
     gamma = fit.coefficients_["gamma"].ravel()
     assert standardized_measure(fit, "gamma").reference_value == pytest.approx(np.median(gamma))
     assert standardized_measure(fit, "gamma", reference="mean").reference_value == pytest.approx(
-        np.average(gamma, weights=fit.group_sizes_))
+        np.average(gamma, weights=fit.provider_sizes_))
     assert standardized_measure(fit, "gamma", reference=-1.5).reference_value == -1.5
     a = standardized_measure(fit, "indirect_ratio", reference=-1.5)
     b = standardized_measure(fit, "indirect_ratio")
@@ -103,8 +103,8 @@ def test_invalid_combinations(fit):
 
 
 def test_agrees_with_the_reporting_function(fit):
-    sm = fit.calculate_standardized_measures(stdz=["indirect", "direct"], null="median")
-    ind, dr = sm["indirect"].set_index("group_id"), sm["direct"].set_index("group_id")
+    sm = fit.calculate_standardized_measures(stdz=["indirect", "direct"], reference="median")
+    ind, dr = sm["indirect"].set_index("provider_id"), sm["direct"].set_index("provider_id")
     for measure, ref, unit in (("indirect_ratio", ind.indirect_ratio, 1), ("indirect_rate", ind.indirect_rate, 100),
                                ("direct_ratio", dr.direct_ratio, 1), ("direct_rate", dr.direct_rate, 100)):
         est = standardized_measure(fit, measure).to_frame().estimate.loc[ref.index]
@@ -126,7 +126,7 @@ def test_test_standardized_defaults_and_null_models(fit):
     assert res.null_value.iloc[0] == pytest.approx(standardized_measure(fit, "direct_rate").reference_value)
     fixed = fit.test_standardized("direct_rate", null_model=FixedNull(sd=1.81))
     assert (fixed.null_sd == 1.81).all()
-    sizes = fit.group_sizes_
+    sizes = fit.provider_sizes_
     via_method = fit.test_standardized("indirect_ratio", null_model=EmpiricalNull.fitter(size=sizes, n_groups=4))
     z = z_statistic(standardized_measure(fit, "indirect_ratio"), null_value="reference", transform="identity")
     by_hand = provider_test(z, EmpiricalNull.fit(z, size=sizes, n_groups=4), bounds=(0.0, np.inf))
@@ -151,7 +151,7 @@ def test_providers_subset_and_bounds(fit):
 
 
 def test_at_bound_marks_zero_event_providers(fit):
-    flagged = set(np.asarray(fit.groups_)[at_bound(fit)].tolist())
+    flagged = set(np.asarray(fit.provider_ids_)[at_bound(fit)].tolist())
     assert {3, 7} <= flagged
 
 

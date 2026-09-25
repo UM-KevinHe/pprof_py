@@ -27,7 +27,7 @@ class MixedEffectMeasuresMixin:
         self,
         providers: Optional[Union[List, np.ndarray]] = None,
         stdz: Union[str, List[str]] = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
     ) -> dict:
         """Calculate indirect/direct standardized ratios and rates.
 
@@ -51,7 +51,7 @@ class MixedEffectMeasuresMixin:
             Subset of provider IDs. If None, all providers are included.
         stdz : str or list of str, default="indirect"
             Standardization method(s): "indirect" and/or "direct".
-        null : {'median', 'mean'} or float, default="median"
+        reference : {'median', 'mean'} or float, default="median"
             Null value for gamma in expected computation (indirect)
             and population norm (direct).
             - 'median': uses median(gamma)
@@ -75,12 +75,12 @@ class MixedEffectMeasuresMixin:
             raise ValueError("stdz must include 'indirect' and/or 'direct'.")
 
         # Determine null gamma
-        if null == "median":
+        if reference == "median":
             gamma_null = float(np.median(self.gamma_))
-        elif null == "mean":
+        elif reference == "mean":
             gamma_null = float(np.mean(self.gamma_))
-        elif isinstance(null, (int, float)):
-            gamma_null = float(null)
+        elif isinstance(reference, (int, float)):
+            gamma_null = float(reference)
         else:
             raise ValueError("null must be 'median', 'mean', or a numeric value.")
 
@@ -301,7 +301,7 @@ class MixedEffectMeasuresMixin:
         level: float = 0.95,
         option: str = "SM",
         stdz: Union[str, List[str]] = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         measure: Union[str, List[str]] = ("rate", "ratio"),
         alternative: str = "two_sided",
         test_method: str = "exact",
@@ -323,7 +323,7 @@ class MixedEffectMeasuresMixin:
         level : float, default=0.95
         option : {"gamma", "SM"}, default="SM"
         stdz : "indirect", "direct", or both, default="indirect"
-        null : "median", "mean", or float, default="median"
+        reference : "median", "mean", or float, default="median"
             Reference effect: gamma_0 of :meth:`test` and the standardization norm.
         measure : "rate", "ratio", or both, default=("rate", "ratio")
         alternative : {"two_sided", "greater", "less"}, default="two_sided"
@@ -347,7 +347,7 @@ class MixedEffectMeasuresMixin:
         if test_method not in ("exact", "poibin_exact"):
             raise ValueError("Intervals need a deterministic test: test_method must be 'exact' or 'poibin_exact'.")
         ids = self.provider_ids_
-        res = self.test(test_method=test_method, reference=null, null_model=null_model, alternative=alternative,
+        res = self.test(test_method=test_method, reference=reference, null_model=null_model, alternative=alternative,
                         level=level)
         lower = res["ci_lower"].reindex(ids).to_numpy(dtype=np.float64)
         upper = res["ci_upper"].reindex(ids).to_numpy(dtype=np.float64)
@@ -362,7 +362,7 @@ class MixedEffectMeasuresMixin:
         measures = [measure] if isinstance(measure, str) else list(measure)
         if not measures or not set(measures) <= {"ratio", "rate"}:
             raise ValueError("measure must be 'ratio', 'rate', or both.")
-        sm = self.calculate_standardized_measures(stdz=stdz_list, null=null)
+        sm = self.calculate_standardized_measures(stdz=stdz_list, reference=reference)
         idx = np.asarray(self._provider_idx).ravel()
         n_obs = len(self._obs)
         population_rate = float(np.sum(self._obs)) / n_obs * 100.0

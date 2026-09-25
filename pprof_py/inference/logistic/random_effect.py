@@ -35,7 +35,7 @@ class RandomEffectInferenceMixin:
     # Posterior standard errors (conditional variance of BLUPs)
     # ------------------------------------------------------------------
 
-    def _get_posterior_var(self, group_var: Optional[str] = None) -> Array:
+    def _get_posterior_var(self, var: Optional[str] = None) -> Array:
         """Posterior variances of the random-effect BLUPs.
 
         For the spherical parameterization u ~ N(0, I) with b = sigma * u,
@@ -48,7 +48,7 @@ class RandomEffectInferenceMixin:
 
         Parameters
         ----------
-        group_var : str, optional
+        var : str, optional
             Which grouping factor's posterior variances to return.
             If None, returns all (concatenated).
 
@@ -57,6 +57,7 @@ class RandomEffectInferenceMixin:
         np.ndarray
             Posterior variances for each level of the group.
         """
+        var = self._provider_var if var is None else var
         self._check_is_fitted()
 
         # Rebuild H at final estimates
@@ -76,8 +77,8 @@ class RandomEffectInferenceMixin:
         diag_Hinv = np.diag(Hinv_cols)
 
         # Var(b_k[j]) = sigma_k^2 * diag_Hinv[j_idx]
-        if group_var is not None:
-            k = self._group_vars.index(group_var)
+        if var is not None:
+            k = self._group_vars.index(var)
             sl = self._q_slices[k]
             sigma_k = self._sigma[k]
             return sigma_k**2 * diag_Hinv[sl]
@@ -89,12 +90,12 @@ class RandomEffectInferenceMixin:
             posterior_vars[sl] = self._sigma[k] ** 2 * diag_Hinv[sl]
         return posterior_vars
 
-    def _get_posterior_se(self, group_var: Optional[str] = None) -> pd.Series:
+    def _get_posterior_se(self, var: Optional[str] = None) -> pd.Series:
         """Posterior standard errors of BLUPs for a grouping factor.
 
         Parameters
         ----------
-        group_var : str, optional
+        var : str, optional
             Which grouping factor. If None and only one exists, uses that.
 
         Returns
@@ -102,14 +103,15 @@ class RandomEffectInferenceMixin:
         pd.Series
             Standard errors indexed by group level labels.
         """
-        if group_var is None:
+        var = self._provider_var if var is None else var
+        if var is None:
             if len(self._group_vars) == 1:
-                group_var = self._group_vars[0]
+                var = self._group_vars[0]
             else:
                 raise ValueError(
-                    f"Specify group_var; available: {self._group_vars}"
+                    f"Specify var; available: {self._group_vars}"
                 )
-        k = self._group_vars.index(group_var)
-        pvar = self._get_posterior_var(group_var=group_var)
+        k = self._group_vars.index(var)
+        pvar = self._get_posterior_var(var=var)
         se = np.sqrt(np.maximum(pvar, 0.0))
         return pd.Series(se, index=self._group_labels[k], name="posterior_se")

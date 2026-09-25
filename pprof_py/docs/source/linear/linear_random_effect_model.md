@@ -71,7 +71,7 @@ The implementation stores:
 
 For linear random effects models, standardized measures quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix. These measures are calculated either by comparing observed outcomes to expected outcomes under a baseline random effect (indirect standardization), or by comparing expected outcomes for the entire population under each provider's random effect to those under the baseline (direct standardization).
 
-Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `null` parameter in `LinearRandomEffectModel.calculate_standardized_measures`).
+Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `reference` parameter in `LinearRandomEffectModel.calculate_standardized_measures`).
 
 #### 2.3.1. Indirect Standardization
 
@@ -242,7 +242,7 @@ lre_model.fit(
     data_df,
     y_var='ContinuousY',
     x_vars=['Covariate1', 'Covariate2'],
-    group_var='ProviderID',
+    provider_var='ProviderID',
     reml=True
 )
 
@@ -266,7 +266,7 @@ print(random_effects_blups.head())
 fe_var_cov = lre_model.variances_['beta']
 re_var = lre_model.variances_['alpha']   # Variance of random effects (sigma_u^2)
 sigma_e = lre_model.sigma_               # Residual standard deviation (sigma_e)
-re_sd = lre_model.random_effect_sd_      # Dict of group_var -> sigma_u
+re_sd = lre_model.random_effect_sd_      # Dict of provider_var -> sigma_u
 print(f"\nEstimated Variance of Random Effects (sigma_u^2): {re_var.iloc[0,0]:.3f}")
 print(f"Estimated Residual Standard Deviation (sigma_e): {sigma_e:.3f}")
 print(f"Random-effect SD per group variable: {re_sd}")
@@ -306,7 +306,7 @@ print(f"\nFirst 5 predictions (fixed effects only): {predictions_fe_only}")
 predictions_with_re = lre_model.predict(
     data_df,
     x_vars=['Covariate1', 'Covariate2'],
-    group_var='ProviderID',
+    provider_var='ProviderID',
     use_re=True
 )
 print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
@@ -320,7 +320,7 @@ print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
 # Calculate Indirect Standardized Difference vs median random effect
 sm_results_lre = lre_model.calculate_standardized_measures(
     stdz='indirect', # Can be 'direct' or ['indirect', 'direct']
-    null='median'    # Baseline for random effects: 'median', 'mean', or a float
+    reference='median'    # Baseline for random effects: 'median', 'mean', or a float
 )
 print("\n--- Linear RE Indirect Measures (vs Median Random Effect) ---")
 if 'indirect' in sm_results_lre:
@@ -366,7 +366,7 @@ isd_cis_lre_results = lre_model.calculate_confidence_intervals(
     option='SM', # For standardized measures
     stdz='indirect',
     level=0.95,
-    null='median', # Baseline for u_i
+    reference='median', # Baseline for u_i
     alternative='two_sided'
 )
 print("\n--- Linear RE Indirect Difference CIs (vs Median Random Effect) ---")
@@ -382,13 +382,13 @@ Use plotting methods from the `LinearRandomEffectModel` instance. (Examples assu
 ```python
 
 # Provider random effects (BLUPs) with CIs
-lre_model.plot_provider_effects(null='median', level=0.95, use_flags=True)
+lre_model.plot_provider_effects(reference='median', level=0.95, use_flags=True)
 
 # Standardized differences caterpillar
-lre_model.plot_standardized_measures(stdz='indirect', null='median', level=0.95)
+lre_model.plot_standardized_measures(stdz='indirect', reference='median', level=0.95)
 
 # Funnel plot (differences vs provider size)
-lre_model.plot_funnel(stdz='indirect', null='median', target=0.0, alpha=[0.05, 0.01])
+lre_model.plot_funnel(stdz='indirect', reference='median', target=0.0, alpha=[0.05, 0.01])
 
 # Forest plot of fixed-effect coefficients
 lre_model.plot_coefficient_forest()
@@ -415,7 +415,7 @@ Linear random effect models provide a powerful framework for analyzing clustered
 - **Random Effects Assumption:** Assumes random effects are drawn from a specific distribution (typically normal) and are uncorrelated with covariates. Violation of the latter can lead to biased $\boldsymbol\beta$ estimates.
 - **Distributional Assumptions:** Relies on normality assumptions for errors and random effects for exact inference, though estimates can be robust.
 - **Complexity:** Conceptually and computationally more complex than simple OLS or FE models.
-- **Multiple Grouping Factors:** The current implementation supports multiple independent random-intercept terms (crossed grouping factors) via the `group_vars` parameter. Provider profiling with these models (`test()` and `calculate_standardized_measures()`) currently supports a single grouping factor only.
+- **Multiple Grouping Factors:** The current implementation supports multiple independent random-intercept terms (crossed grouping factors) via `provider_var` (the provider column) and `cluster_vars` (further crossed factors). Provider profiling with these models (`test()` and `calculate_standardized_measures()`) currently requires a fit without `cluster_vars`.
 
 ## 5. Conclusion
 

@@ -58,7 +58,7 @@ class LinearFixedEffectModel(
     ...     'group': [1, 1, 2, 2, 3, 3]
     ... })
     >>> model = LinearFixedEffectModel()
-    >>> model.fit(data, x_vars=['x1', 'x2'], y_var='y', group_var='group')
+    >>> model.fit(data, x_vars=['x1', 'x2'], y_var='y', provider_var='group')
     >>> predictions = model.predict(data[['x1', 'x2']], groups=data['group'])
     >>> print(predictions)
     """
@@ -77,9 +77,9 @@ class LinearFixedEffectModel(
         self.sigma_ = None
         self.aic_ = None
         self.bic_ = None
-        self.groups_ = None
-        self.group_indices_ = None
-        self.group_sizes_ = None
+        self.provider_ids_ = None
+        self.provider_indices_ = None
+        self.provider_sizes_ = None
         self.xbeta_ = None
         self.outcome_ = None
         self.covariate_names_ = None
@@ -93,7 +93,7 @@ class LinearFixedEffectModel(
                 "Call `fit` first."
             )
 
-    def fit(self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None) -> "LinearFixedEffectModel":
+    def fit(self, X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None) -> "LinearFixedEffectModel":
         """Fit the LinearFixedEffect model.
 
         Parameters
@@ -108,7 +108,7 @@ class LinearFixedEffectModel(
             Column names in X to be used as predictors.
         - y_var: str, optional
             Column name in X to be used as the response variable.
-        - group_var: str, optional
+        - provider_var: str, optional
             Column name in X to be used as group identifiers.
 
         Returns:
@@ -116,19 +116,19 @@ class LinearFixedEffectModel(
         - self: LinearFixedEffectModel
             The fitted model instance.
         """
-        validated = validate_and_convert_inputs(X, y, groups, x_vars, y_var, group_var)
-        X, y, groups = validated.X, validated.y, validated.groups
+        validated = validate_and_convert_inputs(X, y, provider_id, x_vars, y_var, provider_var)
+        X, y, provider_id = validated.X, validated.y, validated.provider_id
         self.covariate_names_ = validated.covariate_names
 
         self.outcome_ = y
 
-        self.groups_, self.group_indices_ = np.unique(groups, return_inverse=True)
-        self.group_sizes_ = np.bincount(self.group_indices_)
-        n_groups = len(self.groups_)
+        self.provider_ids_, self.provider_indices_ = np.unique(provider_id, return_inverse=True)
+        self.provider_sizes_ = np.bincount(self.provider_indices_)
+        n_groups = len(self.provider_ids_)
         n_samples, n_features = X.shape
 
         # Group preprocessing: Block diagonal matrix, group means
-        Q, y_means, X_means = preprocess_groups(X, y, self.group_indices_, n_groups)
+        Q, y_means, X_means = preprocess_groups(X, y, self.provider_indices_, n_groups)
 
         # Weighted least squares
         beta = perform_weighted_least_squares(Q, X, y)
@@ -140,29 +140,29 @@ class LinearFixedEffectModel(
 
         # Store results
         self.coefficients_ = {"beta": beta, "gamma": gamma}
-        self.fitted_, self.residuals_ = calculate_residuals(self.xbeta_, gamma, y, self.group_indices_)
+        self.fitted_, self.residuals_ = calculate_residuals(self.xbeta_, gamma, y, self.provider_indices_)
 
         self.sigma_ = self._estimate_sigma(self.residuals_, n_samples, n_groups, n_features)
 
         # Compute variances and statistics
-        self.variances_ = self._estimate_variances(Q, X, X_means, beta, self.group_sizes_)
+        self.variances_ = self._estimate_variances(Q, X, X_means, beta, self.provider_sizes_)
 
         self.aic_, self.bic_ = compute_model_statistics(self.residuals_, n_samples, n_groups, n_features)
 
         return self
 
-    def predict(self, X, groups=None, x_vars=None, group_var=None) -> np.ndarray:
+    def predict(self, X, provider_id=None, x_vars=None, provider_var=None) -> np.ndarray:
         """Predict using the LinearFixedEffect model.
 
         Parameters
         ----------
         X : array-like or pd.DataFrame
             Design matrix (covariates) or complete dataset.
-        groups : array-like or None
-            Group identifiers or None if `group_var` is specified in a DataFrame.
+        provider_id : array-like or None
+            Group identifiers or None if `provider_var` is specified in a DataFrame.
         x_vars : list of str, optional
             Column names in X to be used as predictors, required if X is a DataFrame.
-        group_var : str, optional
+        provider_var : str, optional
             Column name in X to be used as group identifiers, required if X is a DataFrame.
 
         Returns
@@ -173,19 +173,19 @@ class LinearFixedEffectModel(
         self._check_is_fitted()
 
         # Validate and convert inputs
-        validated = validate_and_convert_inputs(X, None, groups, x_vars, None, group_var)
-        X, groups = validated.X, validated.groups
+        validated = validate_and_convert_inputs(X, None, provider_id, x_vars, None, provider_var)
+        X, provider_id = validated.X, validated.provider_id
 
         # Align groups with fitted model's groups — validate membership
-        unseen = np.setdiff1d(groups, self.groups_)
+        unseen = np.setdiff1d(provider_id, self.provider_ids_)
         if unseen.size > 0:
             raise ValueError(
                 f"predict() received group ids not seen during fit: "
                 f"{unseen.tolist()}.  LinearFixedEffectModel cannot "
                 f"extrapolate to unseen providers."
             )
-        # np.searchsorted is safe now — every id is in self.groups_
-        group_indices = np.searchsorted(self.groups_, groups)
+        # np.searchsorted is safe now — every id is in self.provider_ids_
+        group_indices = np.searchsorted(self.provider_ids_, provider_id)
 
         # Retrieve regression coefficients
         beta = self.coefficients_["beta"]
@@ -198,7 +198,7 @@ class LinearFixedEffectModel(
         
         return predictions
 
-    def score(self, X, y, groups) -> float:
+    def score(self, X, y, provider_id) -> float:
         """Compute the R^2 score for the model.
 
         Parameters
@@ -215,7 +215,7 @@ class LinearFixedEffectModel(
         - r2: float
             R^2 score of the model.
         """
-        y_pred = self.predict(X, groups)
+        y_pred = self.predict(X, provider_id)
         ss_total = np.sum((y - np.mean(y))**2)
         ss_residual = np.sum((y - y_pred)**2)
         return 1 - (ss_residual / ss_total)

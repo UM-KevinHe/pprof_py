@@ -212,7 +212,7 @@ model.predict_survival_function(X_new)
 from pprof_py import LogisticFixedEffectModel
 
 model = LogisticFixedEffectModel()
-model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -224,11 +224,11 @@ model.calculate_standardized_measures()
 from pprof_py import LinearRandomEffectModel
 
 model = LinearRandomEffectModel(verbose=False)
-model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs
-model.random_effect_sd_           # {group_var: sigma_u}
+model.random_effect_sd_           # {provider_var: sigma_u}
 model.summary()
 model.test()                     # reference 0 (the random-effect mean) by default
 model.calculate_standardized_measures(stdz='indirect')
@@ -242,7 +242,7 @@ model.plot_provider_effects()
 from pprof_py import LogisticRandomEffectModel
 
 model = LogisticRandomEffectModel(verbose=False)
-model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects (log-odds)
 model.get_random_effects()        # BLUPs

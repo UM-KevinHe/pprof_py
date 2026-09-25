@@ -80,9 +80,9 @@ class _ProviderTestMethods:
             raise ValueError("The model must be fitted before testing.")
         alt = normalize_alternative(alternative)
         gamma = np.asarray(self.coefficients_["gamma"], dtype=np.float64).ravel()
-        g0 = reference_effect(gamma, self.group_sizes_, reference)
+        g0 = reference_effect(gamma, self.provider_sizes_, reference)
         m = gamma.size
-        idx = np.asarray(self.group_indices_).ravel()
+        idx = np.asarray(self.provider_indices_).ravel()
         xb = np.asarray(self.xbeta_, dtype=np.float64).ravel()
         y = np.asarray(self.outcome_, dtype=np.float64).ravel()
         trials = None if self.N_ is None else np.asarray(self.N_, dtype=np.float64).ravel()
@@ -116,10 +116,10 @@ class _ProviderTestMethods:
                              EXACT_P_FLOOR if test_method == "poibin_exact" else 0.5 / n_resample)
         else:
             raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', or 'bootstrap_exact'.")
-        result = effect_test(self.groups_, gamma, z, g0, se=se, null_model=null_model, alternative=alt,
+        result = effect_test(self.provider_ids_, gamma, z, g0, se=se, null_model=null_model, alternative=alt,
                              level=level, critical=critical, interval=interval, providers=providers,
                              test_method=test_method)
-        sizes = dict(zip(self.groups_, self.group_sizes_))
+        sizes = dict(zip(self.provider_ids_, self.provider_sizes_))
         result.attrs["provider_size"] = {g: sizes[g] for g in result.index}
         return result
 

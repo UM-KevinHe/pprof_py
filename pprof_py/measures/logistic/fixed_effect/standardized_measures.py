@@ -20,7 +20,7 @@ class _StandardizedMeasureMethods:
         self,
         providers=None,
         stdz="indirect",
-        null="median",
+        reference="median",
         include_extreme_obs: bool = False,
         extreme_obs_total_n: Optional[float] = None,
     ) -> dict:
@@ -37,10 +37,10 @@ class _StandardizedMeasureMethods:
             all providers are included.
         stdz : str or list of str, default="indirect"
             Standardization method(s). Must include at least one of {"indirect", "direct"}.
-        null : {'median', 'mean'} or float, default="median"
+        reference : {'median', 'mean'} or float, default="median"
             Defines the population norm if "direct" standardization is requested.
             - 'median': uses median(gamma)
-            - 'mean': uses weighted mean(gamma, weights=group_sizes_)
+            - 'mean': uses weighted mean(gamma, weights=provider_sizes_)
             - float: uses a user-specified numeric reference level.
         include_extreme_obs : bool, default=False
             If True, include extreme provider observations (with xbeta=0) in the
@@ -57,9 +57,9 @@ class _StandardizedMeasureMethods:
         -------
         dict
             A dictionary with keys for each requested standardization type:
-            - 'indirect' -> DataFrame with columns ["group_id", "indirect_ratio",
+            - 'indirect' -> DataFrame with columns ["provider_id", "indirect_ratio",
             "indirect_rate", "observed", "expected"].
-            - 'direct' -> DataFrame with columns ["group_id", "direct_ratio",
+            - 'direct' -> DataFrame with columns ["provider_id", "direct_ratio",
             "direct_rate", "observed", "expected", "n_pop"].
 
         Raises
@@ -99,18 +99,18 @@ class _StandardizedMeasureMethods:
         Ntot = Ntot_model + extreme_n
 
         # Determine gamma_null if needed
-        if null == "median":
+        if reference == "median":
             gamma_null = np.median(gamma)
-        elif null == "mean":
-            gamma_null = np.average(gamma, weights=self.group_sizes_)
-        elif isinstance(null, (int, float)):
-            gamma_null = float(null)
+        elif reference == "mean":
+            gamma_null = np.average(gamma, weights=self.provider_sizes_)
+        elif isinstance(reference, (int, float)):
+            gamma_null = float(reference)
         else:
             raise ValueError("Invalid 'null' argument for standardization baseline.")
 
         selected_groups = (
-            self.groups_ if providers is None
-            else self.groups_[np.isin(self.groups_, providers)]
+            self.provider_ids_ if providers is None
+            else self.provider_ids_[np.isin(self.provider_ids_, providers)]
         )
         results = {}
 
@@ -119,19 +119,19 @@ class _StandardizedMeasureMethods:
             expected_prob = 1.0 / (1.0 + np.exp(-(gamma_null + self.xbeta_)))
             # N-weighted expected: sum(N_i * p_null_i) per group
             expected_by_group = np.array([
-                np.sum(N_obs[self.group_indices_ == i] * expected_prob[self.group_indices_ == i])
-                for i in range(len(self.groups_))
+                np.sum(N_obs[self.provider_indices_ == i] * expected_prob[self.provider_indices_ == i])
+                for i in range(len(self.provider_ids_))
             ])
             observed_by_group = np.array([
-                np.sum(self.outcome_[self.group_indices_ == i])
-                for i in range(len(self.groups_))
+                np.sum(self.outcome_[self.provider_indices_ == i])
+                for i in range(len(self.provider_ids_))
             ])
             indirect_ratio = observed_by_group / expected_by_group
             population_rate = observed_by_group.sum() / Ntot_model * 100.0
             indirect_rate = np.clip(indirect_ratio * population_rate, 0.0, 100.0)
 
             indirect_df = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "indirect_ratio": indirect_ratio,
                 "indirect_rate": indirect_rate,
                 "observed": observed_by_group,
@@ -139,7 +139,7 @@ class _StandardizedMeasureMethods:
             })
 
             if providers is not None:
-                indirect_df = indirect_df[indirect_df["group_id"].isin(selected_groups)].reset_index(drop=True)
+                indirect_df = indirect_df[indirect_df["provider_id"].isin(selected_groups)].reset_index(drop=True)
             results["indirect"] = indirect_df
 
         # Direct standardization (N-weighted for binomial, with optional extreme obs)
@@ -167,16 +167,16 @@ class _StandardizedMeasureMethods:
             ds_rate = np.clip(direct_preds / Ntot * 100.0, 0.0, 100.0)
 
             direct_df = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "direct_ratio": ds_ratio,
                 "direct_rate": ds_rate,
-                "observed": np.full(len(self.groups_), obs_total),
+                "observed": np.full(len(self.provider_ids_), obs_total),
                 "expected": direct_preds,
                 "n_pop": Ntot,
             })
 
             if providers is not None:
-                direct_df = direct_df[direct_df["group_id"].isin(selected_groups)].reset_index(drop=True)
+                direct_df = direct_df[direct_df["provider_id"].isin(selected_groups)].reset_index(drop=True)
             results["direct"] = direct_df
 
         return results

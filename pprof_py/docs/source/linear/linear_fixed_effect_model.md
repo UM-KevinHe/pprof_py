@@ -112,7 +112,7 @@ The implementation (`LinearFixedEffectModel.__init__`) provides two options via 
 
 For linear models, standardized measures typically represent differences rather than ratios. They quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix.
 
-Let $\hat{\boldsymbol{\beta}}$ and $\hat{\boldsymbol{\gamma}}$ be the OLS estimates. Define a reference or baseline provider effect $\gamma_0$ (e.g., median or mean of $\hat{\gamma}_i$, as specified by the `null` parameter in `LinearFixedEffectModel.calculate_standardized_measures`).
+Let $\hat{\boldsymbol{\beta}}$ and $\hat{\boldsymbol{\gamma}}$ be the OLS estimates. Define a reference or baseline provider effect $\gamma_0$ (e.g., median or mean of $\hat{\gamma}_i$, as specified by the `reference` parameter in `LinearFixedEffectModel.calculate_standardized_measures`).
 
 #### 2.3.1. Indirect Standardization
 
@@ -264,7 +264,7 @@ lin_model.fit(
     X=data_df, # DataFrame containing all necessary columns
     y_var='ContinuousY',
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID'
+    provider_var='ProviderID'
 )
 
 print("Linear FE model fitting complete.")
@@ -307,7 +307,7 @@ print(f"Linear BIC: {lin_model.bic_:.2f}")
 linear_predictions = lin_model.predict(
     X=data_df, # Can be new data
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID'
+    provider_var='ProviderID'
 )
 print(f"First 5 linear predictions: {linear_predictions[:5]}")
 
@@ -320,7 +320,7 @@ print(f"First 5 linear predictions: {linear_predictions[:5]}")
 # Calculate Indirect Standardized Difference vs median
 sm_results_lin = lin_model.calculate_standardized_measures(
     stdz='indirect', # Can be 'direct' or ['indirect', 'direct']
-    null='median'    # Can be 'mean' or a float
+    reference='median'    # Can be 'mean' or a float
 )
 print("\n--- Linear Indirect Measures (vs Median) ---")
 print(sm_results_lin['indirect'].head()) # Access the DataFrame for 'indirect' results
@@ -371,7 +371,7 @@ isd_cis_lin_results = lin_model.calculate_confidence_intervals(
     option='SM',
     stdz='indirect', # Can be 'direct' or ['indirect', 'direct']
     level=0.95,
-    null='median',
+    reference='median',
     alternative='two_sided' # Can be 'less' or 'greater'
 )
 print("\n--- Linear Indirect Difference CIs (vs Median) ---")
@@ -387,14 +387,14 @@ Use plotting methods from the `LinearFixedEffectModel` instance.
 ```python
 
 # Funnel plot of standardized difference vs group size
-# lin_model.plot_funnel(stdz='indirect', null='median', alpha=0.05, target=0.0)
+# lin_model.plot_funnel(stdz='indirect', reference='median', alpha=0.05, target=0.0)
 
 # Caterpillar plot for provider effects (gamma)
-# lin_model.plot_provider_effects(level=0.95, use_flags=True, null='median')
+# lin_model.plot_provider_effects(level=0.95, use_flags=True, reference='median')
 
 # Caterpillar plot for Indirect Standardized Difference
 # lin_model.plot_standardized_measures(
-#     stdz='indirect', level=0.95, use_flags=True, null='median'
+#     stdz='indirect', level=0.95, use_flags=True, reference='median'
 # )
 
 # Forest plot for covariate effects (beta)

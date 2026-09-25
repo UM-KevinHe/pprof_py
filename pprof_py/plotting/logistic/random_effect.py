@@ -37,14 +37,15 @@ class _LogisticREPlottingHost(Protocol):
     covariate_names_: Optional[list]
     outcome_: Optional[np.ndarray]
     _group_vars: Optional[list]
+    _provider_var: Optional[str]
     _group_indices: Optional[list]
     _group_labels: Optional[list]
     _n_groups: Optional[list]
     _y: Optional[np.ndarray]
 
     def _check_is_fitted(self) -> None: ...
-    def get_random_effects(self, group_var: Optional[str] = None) -> pd.Series: ...
-    def _get_posterior_se(self, group_var: Optional[str] = None) -> pd.Series: ...
+    def get_random_effects(self, var: Optional[str] = None) -> pd.Series: ...
+    def _get_posterior_se(self, var: Optional[str] = None) -> pd.Series: ...
     def calculate_confidence_intervals(self, **kwargs: Any) -> Any: ...
     def calculate_standardized_measures(self, **kwargs: Any) -> dict: ...
     def test(self, **kwargs: Any) -> Any: ...
@@ -75,15 +76,15 @@ class RandomEffectPlottingMixin:
             )
         return group_var
 
-    def _resolve_null(self, null, group_var: str) -> float:
-        """Convert 'median'/'mean'/numeric *null* to a float BLUP value."""
+    def _resolve_reference(self, reference, group_var: str) -> float:
+        """Convert 'median'/'mean'/numeric *reference* to a float BLUP value."""
         blups = self.get_random_effects(group_var)
-        if null == "median":
+        if reference == "median":
             return float(np.median(blups.values))
-        if null == "mean":
+        if reference == "mean":
             return float(np.mean(blups.values))
-        if isinstance(null, (int, float)):
-            return float(null)
+        if isinstance(reference, (int, float)):
+            return float(reference)
         raise ValueError(
             "null must be 'median', 'mean', or a numeric value."
         )
@@ -94,9 +95,8 @@ class RandomEffectPlottingMixin:
 
     def plot_funnel(
         self,
-        group_var: Optional[str] = None,
         test_method: str = "wald",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         target: float = 1.0,
         alpha: Union[float, List[float]] = 0.05,
         labels: List[str] = _style.FLAG_LABELS,
@@ -134,21 +134,19 @@ class RandomEffectPlottingMixin:
 
         Parameters
         ----------
-        group_var : str, optional
-            Grouping variable to plot.  Required if the model has crossed
-            random effects; otherwise the single group is used.
         test_method : str, default 'wald'
             Test method passed to ``self.test()`` for flagging.
-        null : str or float, default 'median'
+        reference : str or float, default 'median'
             Baseline BLUP value for expected counts and flagging.
         target : float, default 1.0
             Reference value for the ratio (centre of the funnel).
         alpha : float or list of float, default 0.05
             Significance level(s) for control-limit bands.
         """
+        group_var = self._provider_var
         self._check_is_fitted()
         group_var = self._resolve_group_var(group_var)
-        gamma_null = self._resolve_null(null, group_var)
+        gamma_null = self._resolve_reference(reference, group_var)
 
         a_list = sorted(
             [alpha] if isinstance(alpha, (float, int)) else alpha
@@ -157,14 +155,14 @@ class RandomEffectPlottingMixin:
 
         # Standardized measures
         sm = self.calculate_standardized_measures(
-            group_var=group_var, stdz="indirect", null=gamma_null,
+            stdz="indirect", reference=gamma_null,
         )
         if "indirect" not in sm or sm["indirect"].empty:
             warnings.warn("No indirect SM data. Cannot plot.")
             return
         df = sm["indirect"].copy()
-        if "group_id" in df.columns:
-            df.set_index("group_id", inplace=True)
+        if "provider_id" in df.columns:
+            df.set_index("provider_id", inplace=True)
 
         # Precision = expected count
         df["precision"] = df["expected"]
@@ -172,7 +170,6 @@ class RandomEffectPlottingMixin:
 
         # Flags from test()
         test_df = self.test(
-            group_var=group_var,
             test_method=test_method,
             reference=gamma_null,
             level=1.0 - alpha_test,
@@ -246,11 +243,10 @@ class RandomEffectPlottingMixin:
 
     def plot_provider_effects(
         self,
-        group_var: Optional[str] = None,
         group_ids=None,
         level: float = 0.95,
         use_flags: bool = True,
-        null: Union[str, float] = 0,
+        reference: Union[str, float] = 0,
         test_method: str = "wald",
         **plot_kwargs,
     ) -> None:
@@ -258,27 +254,25 @@ class RandomEffectPlottingMixin:
 
         Parameters
         ----------
-        group_var : str, optional
-            Grouping variable.
         group_ids : list or np.ndarray, optional
             Subset of provider IDs to plot.
         level : float, default 0.95
             Confidence level for intervals.
         use_flags : bool, default True
             Colour-code providers using ``self.test()`` flags.
-        null : str or float, default 0
+        reference : str or float, default 0
             Null hypothesis for flagging (log-odds scale).
         test_method : str, default 'wald'
             Test method for flagging.
         **plot_kwargs
             Forwarded to ``plot_caterpillar``.
         """
+        group_var = self._provider_var
         self._check_is_fitted()
         group_var = self._resolve_group_var(group_var)
-        null_val = self._resolve_null(null, group_var) if isinstance(null, str) else float(null)
+        null_val = self._resolve_reference(reference, group_var) if isinstance(reference, str) else float(reference)
 
         ci = self.calculate_confidence_intervals(
-            group_var=group_var,
             providers=group_ids,
             level=level,
             option="alpha",
@@ -295,10 +289,9 @@ class RandomEffectPlottingMixin:
             flag_col_name = "flag"
             try:
                 test_df = self.test(
-                    group_var=group_var,
                     providers=(
-                        df_plot["group_id"].unique().tolist()
-                        if "group_id" in df_plot.columns
+                        df_plot["provider_id"].unique().tolist()
+                        if "provider_id" in df_plot.columns
                         else None
                     ),
                     level=level,
@@ -308,7 +301,7 @@ class RandomEffectPlottingMixin:
                 )
                 df_plot = df_plot.merge(
                     test_df[["flag"]],
-                    left_on="group_id",
+                    left_on="provider_id",
                     right_index=True,
                     how="left",
                 )
@@ -339,7 +332,7 @@ class RandomEffectPlottingMixin:
             estimate_col="alpha",
             ci_lower_col="alpha_lower",
             ci_upper_col="alpha_upper",
-            group_col="group_id",
+            group_col="provider_id",
             flag_col=flag_col_name,
             **plot_kwargs,
         )
@@ -350,13 +343,12 @@ class RandomEffectPlottingMixin:
 
     def plot_standardized_measures(
         self,
-        group_var: Optional[str] = None,
         group_ids=None,
         level: float = 0.95,
         stdz: str = "indirect",
         measure: str = "ratio",
         use_flags: bool = True,
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         test_method: str = "wald",
         **plot_kwargs,
     ) -> None:
@@ -364,8 +356,6 @@ class RandomEffectPlottingMixin:
 
         Parameters
         ----------
-        group_var : str, optional
-            Grouping variable.
         group_ids : list or np.ndarray, optional
             Subset of provider IDs.
         level : float, default 0.95
@@ -376,25 +366,25 @@ class RandomEffectPlottingMixin:
             Which measure to plot.
         use_flags : bool, default True
             Colour-code using flags.
-        null : str or float, default 'median'
+        reference : str or float, default 'median'
             Null BLUP for flagging.
         test_method : str, default 'wald'
             Test method for flagging.
         **plot_kwargs
             Forwarded to ``plot_caterpillar``.
         """
+        group_var = self._provider_var
         self._check_is_fitted()
         group_var = self._resolve_group_var(group_var)
-        null_val = self._resolve_null(null, group_var)
+        null_val = self._resolve_reference(reference, group_var)
 
         ci_key = f"{stdz}_{measure}"
         ci = self.calculate_confidence_intervals(
-            group_var=group_var,
             providers=group_ids,
             level=level,
             option="SM",
             stdz=stdz,
-            null=null_val,
+            reference=null_val,
             measure=measure,
             alternative="two_sided",
         )
@@ -422,10 +412,9 @@ class RandomEffectPlottingMixin:
             flag_col_name = "flag"
             try:
                 test_df = self.test(
-                    group_var=group_var,
                     providers=(
-                        df_plot["group_id"].unique().tolist()
-                        if "group_id" in df_plot.columns
+                        df_plot["provider_id"].unique().tolist()
+                        if "provider_id" in df_plot.columns
                         else None
                     ),
                     level=level,
@@ -435,7 +424,7 @@ class RandomEffectPlottingMixin:
                 )
                 df_plot = df_plot.merge(
                     test_df[["flag"]],
-                    left_on="group_id",
+                    left_on="provider_id",
                     right_index=True,
                     how="left",
                 )
@@ -469,7 +458,7 @@ class RandomEffectPlottingMixin:
             estimate_col=estimate_col,
             ci_lower_col="lower",
             ci_upper_col="upper",
-            group_col="group_id",
+            group_col="provider_id",
             flag_col=flag_col_name,
             **plot_kwargs,
         )

@@ -100,7 +100,7 @@ class TestDataValidation:
             "y": [0, 1, 0, 1, 0, 1],
         })
         result = validate_and_convert_inputs(
-            df, x_vars=["x1"], y_var="y", group_var="provider",
+            df, x_vars=["x1"], y_var="y", provider_var="provider",
         )
         assert result.y.shape[0] == 6
         assert result.X.shape == (6, 1)

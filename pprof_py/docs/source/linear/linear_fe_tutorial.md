@@ -78,7 +78,7 @@ model.fit(
     X=data,
     y_var='los',
     x_vars=['age', 'severity', 'comorbidity'],
-    group_var='hospital',
+    provider_var='hospital',
 )
 ```
 
@@ -151,12 +151,12 @@ linear, indirect and direct standardized differences are identical on
 a per-patient basis.
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 print(sm['indirect'].head(10))
 ```
 
 ```
-      group_id  indirect_difference     observed     expected
+      provider_id  indirect_difference     observed     expected
 0   Hospital_1             1.739358  2030.804766  1872.523173
 1  Hospital_10             0.097102  1220.432760  1214.509551
 2  Hospital_11             1.290467  2026.653917  1907.930979
@@ -227,7 +227,7 @@ print(gamma_ci['gamma_ci'].head(10))
 ```
 
 ```
-      group_id     gamma     lower     upper
+      provider_id     gamma     lower     upper
 0   Hospital_1  6.272529  5.289452  7.255605
 1  Hospital_10  4.630272  3.565612  5.694933
 2  Hospital_11  5.823637  4.841330  6.805945
@@ -248,14 +248,14 @@ $[0.31, 2.72]$ — entirely below the median.
 
 ```python
 sm_ci = model.calculate_confidence_intervals(
-    option='SM', stdz='indirect', null='median',
+    option='SM', stdz='indirect', reference='median',
     level=0.95, alternative='two_sided',
 )
 print(sm_ci['indirect_ci'].head(10))
 ```
 
 ```
-      group_id  indirect_difference     observed     expected     lower     upper
+      provider_id  indirect_difference     observed     expected     lower     upper
 0   Hospital_1             1.739358  2030.804766  1872.523173  0.756282  2.722434
 1  Hospital_10             0.097102  1220.432760  1214.509551 -0.967558  1.161763
 2  Hospital_11             1.290467  2026.653917  1907.930979  0.308160  2.272774
@@ -277,7 +277,7 @@ with its non-significant test result ($T = -0.04$, $p = 0.96$).
 
 ```python
 model.plot_funnel(
-    null='median',
+    reference='median',
     target=0.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Difference (LOS)",
@@ -292,7 +292,7 @@ need a smaller deviation to be flagged.
 
 ```python
 model.plot_provider_effects(
-    null='median',
+    reference='median',
     level=0.95,
     use_flags=True,
     plot_title="Provider Effects (γ̂ᵢ) with 95% CIs",
@@ -304,7 +304,7 @@ model.plot_provider_effects(
 ```python
 model.plot_standardized_measures(
     stdz='indirect',
-    null='median',
+    reference='median',
     level=0.95,
     use_flags=True,
     plot_title="Indirect Standardized Difference (LOS days)",

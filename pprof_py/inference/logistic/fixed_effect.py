@@ -29,8 +29,8 @@ class _LogisticFEInferenceHost(Protocol):
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
     fitted_: Optional[np.ndarray]
-    groups_: Optional[np.ndarray]
-    group_indices_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_indices_: Optional[np.ndarray]
     outcome_: Optional[np.ndarray]
     obs_ids_: Optional[np.ndarray]
     N_: Optional[np.ndarray]
@@ -63,7 +63,7 @@ class FixedEffectInferenceMixin:
             If the model has not been fitted (i.e., required attributes are None).
         """
         # Check if the model has been fitted
-        if self.fitted_ is None or self.X is None or self.group_indices_ is None:
+        if self.fitted_ is None or self.X is None or self.provider_indices_ is None:
             raise ValueError("Model must be fitted before estimating variances.")
 
         # Use precomputed predicted probabilities
@@ -73,14 +73,14 @@ class FixedEffectInferenceMixin:
         q = self.N_ * p * (1 - p)
 
         # Number of groups
-        n_groups = len(self.groups_)
+        n_groups = len(self.provider_ids_)
 
         # Information for gamma: inverse of sum(q) per group
-        info_gamma_inv = 1 / np.bincount(self.group_indices_, weights=q, minlength=n_groups)
+        info_gamma_inv = 1 / np.bincount(self.provider_indices_, weights=q, minlength=n_groups)
 
         # Cross-information: sum(X * q) per group for each covariate
         info_beta_gamma = np.array([
-            np.bincount(self.group_indices_, weights=q * self.X[:, i], minlength=n_groups)
+            np.bincount(self.provider_indices_, weights=q * self.X[:, i], minlength=n_groups)
             for i in range(self.X.shape[1])
         ])  # Shape: (n_covariates, n_groups)
 
@@ -151,7 +151,7 @@ class FixedEffectInferenceMixin:
         residuals = self.outcome_ - self.N_ * p
         q = self.N_ * p * (1 - p)
 
-        n_groups = len(self.groups_)
+        n_groups = len(self.provider_ids_)
         n_covariates = self.X.shape[1]
 
         # Pre-compute U_b = X * residual (observation-level beta scores)
@@ -164,7 +164,7 @@ class FixedEffectInferenceMixin:
         A2 = np.zeros((n_covariates, n_covariates))  # beta meat: (p, p)
 
         for j in range(n_groups):
-            mask_j = (self.group_indices_ == j)
+            mask_j = (self.provider_indices_ == j)
 
             # Bread: 1 / I_j where I_j = sum(q) within group j
             info_gamma_j = np.sum(q[mask_j])
@@ -210,12 +210,12 @@ class FixedEffectInferenceMixin:
         # --- Beta robust variance via full sandwich ---
         # Recompute information matrix components needed for the sandwich
         # D_inv (m,): inverse of gamma information per provider
-        info_gamma_inv = 1.0 / np.bincount(self.group_indices_, weights=q,
+        info_gamma_inv = 1.0 / np.bincount(self.provider_indices_, weights=q,
                                             minlength=n_groups)
 
         # B (p, m): cross-information matrix
         info_beta_gamma = np.array([
-            np.bincount(self.group_indices_, weights=q * self.X[:, i],
+            np.bincount(self.provider_indices_, weights=q * self.X[:, i],
                         minlength=n_groups)
             for i in range(n_covariates)
         ])  # shape: (p, m)
@@ -326,14 +326,14 @@ class FixedEffectInferenceMixin:
         self._check_is_fitted()
 
         # Full model log-likelihood
-        gamma_obs_full = self.coefficients_['gamma'][self.group_indices_]
+        gamma_obs_full = self.coefficients_['gamma'][self.provider_indices_]
         loglik_full = self.algorithm._loglikelihood(gamma_obs_full, self.coefficients_['beta'])
 
         # Fit reduced model excluding the covariate at index
         reduced_X = np.delete(self.X, index, axis=1)
         reduced_model = self.__class__(algorithm=self.algorithm_type)
         reduced_model.fit(
-            reduced_X, self.outcome_, self.group_indices_,
+            reduced_X, self.outcome_, self.provider_indices_,
             max_iter=self.algorithm.max_iter,
             tol=self.algorithm.tol,
             bound=self.algorithm.bound,
@@ -341,7 +341,7 @@ class FixedEffectInferenceMixin:
         )
 
         # Reduced model log-likelihood
-        gamma_obs_reduced = reduced_model.coefficients_['gamma'][reduced_model.group_indices_]
+        gamma_obs_reduced = reduced_model.coefficients_['gamma'][reduced_model.provider_indices_]
         loglik_reduced = reduced_model.algorithm._loglikelihood(gamma_obs_reduced, reduced_model.coefficients_['beta'])
 
         # Test statistic and p-value
@@ -373,7 +373,7 @@ class FixedEffectInferenceMixin:
         reduced_X = np.delete(self.X, index, axis=1)
         reduced_model = self.__class__(algorithm=self.algorithm_type)
         reduced_model.fit(
-            reduced_X, self.outcome_, self.group_indices_,
+            reduced_X, self.outcome_, self.provider_indices_,
             max_iter=self.algorithm.max_iter,
             tol=self.algorithm.tol,
             bound=self.algorithm.bound,
@@ -381,7 +381,7 @@ class FixedEffectInferenceMixin:
         )
 
         # Compute probabilities and weights under the reduced model
-        gamma_obs = reduced_model.coefficients_['gamma'][reduced_model.group_indices_]
+        gamma_obs = reduced_model.coefficients_['gamma'][reduced_model.provider_indices_]
         p = sigmoid(gamma_obs + reduced_X @ reduced_model.coefficients_['beta'])
         q = p * (1 - p)
 

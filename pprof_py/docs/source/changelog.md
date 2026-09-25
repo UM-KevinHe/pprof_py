@@ -84,11 +84,11 @@ results and breaks the `test()` and `test_standardized()` APIs.
 
 - `test()` in every family takes `providers` first, then keyword-only
   `test_method` (where a family offers several), `reference` (was
-  `null`), `null_model`, `alternative`, `level`, `critical`, `interval`,
+  `reference`), `null_model`, `alternative`, `level`, `critical`, `interval`,
   `n_resample` and `seed`. In the logistic fixed-effect model
   `n_resample` and `seed` replace `n_bootstrap` and `random_state`; in
   the random- and mixed-effect models `seed` now defaults to `None`
-  (was `1`). `LogisticRandomEffectModel.test()` takes `group_var` as a
+  (was `1`). `LogisticRandomEffectModel.test()` takes `provider_var` as a
   keyword (it was the first positional parameter). `empirical_null`,
   `n_strata`, `strata_var` and `score_modified` are removed.
 - Every test returns one table indexed by `provider`, with the columns
@@ -97,7 +97,7 @@ results and breaks the `test()` and `test_standardized()` APIs.
 - `test_standardized(measure, providers, null_value, transform,
   null_model, population, reference, variance, indirect_variance,
   alternative, level, critical, interval, bounds)` replaces the previous
-  signature; `null`, `variance_type`, `empirical_null`, `groupwise`,
+  signature; `reference`, `variance_type`, `empirical_null`, `groupwise`,
   `n_groups`, `remove_outliers`, `scale`, `z_scale`,
   `include_extreme_obs` and `extreme_obs_total_n` are removed.
 - `LogisticRandomEffectModel.test()` compares with `reference=0` (the

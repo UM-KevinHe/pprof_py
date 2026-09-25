@@ -44,7 +44,7 @@ class TestLinearFixedEffect:
     @pytest.fixture(scope="class")
     def model(self, data):
         m = LinearFixedEffectModel()
-        m.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+        m.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
         return m
 
     def test_beta(self, model):
@@ -98,7 +98,7 @@ class TestLinearRandomEffect:
     @pytest.fixture(scope="class")
     def model(self, data):
         m = LinearRandomEffectModel(verbose=False)
-        m.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+        m.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
         return m
 
     def test_beta(self, model):

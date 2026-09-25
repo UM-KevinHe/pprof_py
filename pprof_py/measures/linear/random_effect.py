@@ -39,7 +39,7 @@ class RandomEffectMeasuresMixin:
     def calculate_standardized_measures(
         self, providers: Optional[Union[list, np.ndarray]] = None,
         stdz: Union[str, list] = "indirect",
-        null: str = "median"
+        reference: str = "median"
     ) -> dict:
         """Calculate direct/indirect standardized differences for the random effect model.
 
@@ -50,7 +50,7 @@ class RandomEffectMeasuresMixin:
             Defaults to all providers.
         stdz : Union[str, list], default="indirect"
             Standardization method(s); can be "indirect", "direct", or both.
-        null : Union[str, float], default="median"
+        reference : Union[str, float], default="median"
             Baseline norm used for standardization; can be "median", "mean", or a specific numeric value.
 
         Returns
@@ -75,12 +75,12 @@ class RandomEffectMeasuresMixin:
         total_samples = len(self.fitted_)
 
         # Determine the null value for random effects
-        if null == "median":
+        if reference == "median":
             re_null = np.median(random_effects)
-        elif null == "mean":
+        elif reference == "mean":
             re_null = np.average(random_effects, weights=group_sizes)
-        elif isinstance(null, (int, float)):
-            re_null = null
+        elif isinstance(reference, (int, float)):
+            re_null = reference
         else:
             raise ValueError("Invalid 'null' argument provided. Must be 'median', 'mean', or a numeric value.")
 
@@ -104,14 +104,14 @@ class RandomEffectMeasuresMixin:
             indirect_diff = (observed_by_group - expected_by_group) / group_sizes
 
             indirect_df = pd.DataFrame({
-                "group_id": group_names,
+                "provider_id": group_names,
                 "indirect_difference": indirect_diff,
                 "observed": observed_by_group,
                 "expected": expected_by_group
             })
 
             if providers is not None:
-                indirect_df = indirect_df[indirect_df['group_id'].isin(selected_groups)].reset_index(drop=True)
+                indirect_df = indirect_df[indirect_df['provider_id'].isin(selected_groups)].reset_index(drop=True)
 
             results["indirect"] = indirect_df
 
@@ -127,14 +127,14 @@ class RandomEffectMeasuresMixin:
             direct_diff = (expected_direct_by_group - total_observed) / total_samples
 
             direct_df = pd.DataFrame({
-                "group_id": group_names,
+                "provider_id": group_names,
                 "direct_difference": direct_diff,
                 "observed": np.full(len(group_names), total_observed),
                 "expected": expected_direct_by_group
             })
 
             if providers is not None:
-                direct_df = direct_df[direct_df['group_id'].isin(selected_groups)].reset_index(drop=True)
+                direct_df = direct_df[direct_df['provider_id'].isin(selected_groups)].reset_index(drop=True)
 
             results["direct"] = direct_df
 
@@ -189,7 +189,7 @@ class RandomEffectMeasuresMixin:
         level: float = 0.95,
         option: str = "SM",
         stdz: Union[str, list] = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         alternative: str = "two_sided"
     ) -> dict:
         """Calculate confidence intervals for provider (random) effects or standardized measures.
@@ -204,7 +204,7 @@ class RandomEffectMeasuresMixin:
             Specifies whether to provide confidence intervals for "alpha" (provider effects) or "SM" (standardized measures).
         stdz : Union[str, list], default="indirect"
             Standardization method(s) if option is "SM"; must include "indirect" and/or "direct".
-        null : Union[str, float], default="median"
+        reference : Union[str, float], default="median"
             Baseline norm for calculating standardized measures.
         alternative : str, default="two_sided"
             One of "two_sided", "greater", or "less".
@@ -251,19 +251,19 @@ class RandomEffectMeasuresMixin:
         # Confidence Intervals for Provider (random) Effects ("alpha")
         if option == "alpha":
             alpha_ci = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.groups_,
                 "alpha": random_effects,
                 "alpha_lower": lower_alpha,
                 "alpha_upper": upper_alpha
             })
 
             if providers is not None:
-                alpha_ci = alpha_ci[alpha_ci["group_id"].isin(providers)].reset_index(drop=True)
+                alpha_ci = alpha_ci[alpha_ci["provider_id"].isin(providers)].reset_index(drop=True)
             result["alpha_ci"] = alpha_ci
 
         # Confidence Intervals for Standardized Measures (SM)
         if option == "SM":
-            sm_results = self.calculate_standardized_measures(stdz=stdz, null=null)
+            sm_results = self.calculate_standardized_measures(stdz=stdz, reference=reference)
             
             if "indirect" in stdz:
                 lower_obs = lower_alpha[self.group_indices_] + self.xbeta_.flatten()
@@ -278,7 +278,7 @@ class RandomEffectMeasuresMixin:
                 indirect_df["upper"] = (upper_prov - expected_indirect) / n_prov
                 
                 if providers is not None:
-                    indirect_df = indirect_df[indirect_df["group_id"].isin(providers)].reset_index(drop=True)
+                    indirect_df = indirect_df[indirect_df["provider_id"].isin(providers)].reset_index(drop=True)
                 result["indirect_ci"] = indirect_df
 
             # Direct standardization: 
@@ -315,7 +315,7 @@ class RandomEffectMeasuresMixin:
                 direct_df["lower"] = lower_direct
                 direct_df["upper"] = upper_direct
                 if providers is not None:
-                    direct_df = direct_df[direct_df["group_id"].isin(providers)].reset_index(drop=True)
+                    direct_df = direct_df[direct_df["provider_id"].isin(providers)].reset_index(drop=True)
                 result["direct_ci"] = direct_df
 
         return result

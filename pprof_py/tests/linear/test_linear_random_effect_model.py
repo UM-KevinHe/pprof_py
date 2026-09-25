@@ -22,7 +22,7 @@ def one_factor_validation():
 
     py_reml = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=500, tol_outer=1e-10
-    ).fit(df, "y", x_vars=["x"], group_var="g")
+    ).fit(df, "y", x_vars=["x"], provider_var="g")
 
     sm_reml = sm.MixedLM.from_formula(
         "y ~ x", groups="g", data=df
@@ -66,7 +66,7 @@ def crossed_validation():
 
     py = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=400, tol_outer=1e-9
-    ).fit(df, "y", x_vars=["x"], group_vars=["g1", "g2"])
+    ).fit(df, "y", x_vars=["x"], provider_var="g1", cluster_vars=["g2"])
 
     sm_fit = sm.MixedLM.from_formula(
         "y ~ x",
@@ -105,7 +105,7 @@ def ml_override_validation():
     model = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=300
     )
-    fit = model.fit(df, "y", x_vars=["x"], group_var="g", reml=False)
+    fit = model.fit(df, "y", x_vars=["x"], provider_var="g", reml=False)
 
     ref = sm.MixedLM.from_formula(
         "y ~ x", groups="g", data=df
@@ -128,7 +128,7 @@ def offset_validation():
     fit = LinearRandomEffectModel(
         verbose=False, reml=False, max_iter_outer=200
     ).fit(
-        df, "y", x_vars=["x"], group_var="g", offset_var="off"
+        df, "y", x_vars=["x"], provider_var="g", offset_var="off"
     )
 
     ols = sm.OLS(y - offset, sm.add_constant(x)).fit()

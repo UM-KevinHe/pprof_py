@@ -160,7 +160,7 @@ def standardized_measure(
                          "(see indirect_variance); variance='robust' applies to direct measures and gamma.")
 
     gamma = np.asarray(model.coefficients_["gamma"], dtype=np.float64).ravel()
-    sizes = np.asarray(model.group_sizes_, dtype=np.float64).ravel()
+    sizes = np.asarray(model.provider_sizes_, dtype=np.float64).ravel()
     g0 = _reference_gamma(gamma, sizes, reference)
     pop = StandardPopulation.from_model(model) if population is None else population
 
@@ -171,7 +171,7 @@ def standardized_measure(
         return pop.events
 
     if measure == "gamma":
-        return MeasureFrame.from_arrays(gamma, _gamma_se(model, variance), model.groups_,
+        return MeasureFrame.from_arrays(gamma, _gamma_se(model, variance), model.provider_ids_,
                                         measure=measure, reference_value=g0)
 
     if measure in ("direct_rate", "direct_ratio"):
@@ -184,10 +184,10 @@ def standardized_measure(
             est[j] = np.sum(pop.weight * p) / denominator
             se[j] = np.sum(pop.weight * p * (1.0 - p)) / denominator * se_gamma[j]
         ref = np.sum(pop.weight * sigmoid(g0 + pop.xbeta)) / denominator
-        return MeasureFrame.from_arrays(est, se, model.groups_, measure=measure, reference_value=float(ref))
+        return MeasureFrame.from_arrays(est, se, model.provider_ids_, measure=measure, reference_value=float(ref))
 
     # indirect measures: provider j's own observations
-    idx = np.asarray(model.group_indices_).ravel()
+    idx = np.asarray(model.provider_indices_).ravel()
     xb = np.asarray(model.xbeta_, dtype=np.float64).ravel()
     n_obs = getattr(model, "N_", None)
     w = np.ones(xb.size) if n_obs is None else np.asarray(n_obs, dtype=np.float64).ravel()
@@ -201,9 +201,9 @@ def standardized_measure(
         ratio = np.where(expected > 1e-10, observed / expected, np.nan)
         se = np.where(expected > 1e-10, np.sqrt(var_o) / expected, np.nan)
     if measure == "indirect_ratio":
-        return MeasureFrame.from_arrays(ratio, se, model.groups_, measure=measure, reference_value=1.0)
+        return MeasureFrame.from_arrays(ratio, se, model.provider_ids_, measure=measure, reference_value=1.0)
     rate = _population_events() / pop.total_weight
-    return MeasureFrame.from_arrays(ratio * rate, se * rate, model.groups_, measure=measure,
+    return MeasureFrame.from_arrays(ratio * rate, se * rate, model.provider_ids_, measure=measure,
                                     reference_value=float(rate))
 
 

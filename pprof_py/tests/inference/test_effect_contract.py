@@ -31,14 +31,14 @@ def models():
     y[prov == 5] = 0.0                                              # a zero-event provider
     df = pd.DataFrame(X, columns=["x1", "x2"]); df["y"] = y; df["provider"] = prov
     fe = LogisticFixedEffectModel(); _quiet(fe.fit, X, y, prov)
-    re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], group_var="provider", verbose=False)
+    re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
     me = LogisticMixedEffectModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="provider",
            gamma_init=np.full(m, -1.4), beta_init=fe.coefficients_["beta"].ravel(), sigma_init=0.35, verbose=False)
     yl = 5.0 + X @ [1.0, -0.5] + rng.normal(0, 0.6, m)[prov] + rng.normal(0, 2.0, prov.size)
     dfl = df.assign(y=yl)
     lfe = LinearFixedEffectModel(); _quiet(lfe.fit, X, yl, prov)
-    lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], group_var="provider", verbose=False)
+    lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
     return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre}
 
 
@@ -123,9 +123,9 @@ def test_binomial_trials_weight_the_score_test():
     y = rng.binomial(n_trials.astype(int), sig(-0.8 + 0.4 * X[:, 0] + rng.normal(0, 0.3, m)[prov])).astype(float)
     df = pd.DataFrame({"x1": X[:, 0], "y": y, "n": n_trials, "provider": prov})
     fe = LogisticFixedEffectModel(use_dataprep=False)                   # data prep insists on 0/1 outcomes
-    _quiet(fe.fit, df, x_vars=["x1"], y_var="y", n_var="n", group_var="provider")
+    _quiet(fe.fit, df, x_vars=["x1"], y_var="y", n_var="n", provider_var="provider")
     g0 = np.median(fe.coefficients_["gamma"].ravel())
-    p0 = np.clip(sig(g0 + fe.xbeta_.ravel()), 1e-10, 1 - 1e-10); idx = np.asarray(fe.group_indices_)
+    p0 = np.clip(sig(g0 + fe.xbeta_.ravel()), 1e-10, 1 - 1e-10); idx = np.asarray(fe.provider_indices_)
     z = (np.bincount(idx, fe.outcome_) - np.bincount(idx, fe.N_ * p0)) / np.sqrt(np.bincount(idx, fe.N_ * p0 * (1 - p0)))
     np.testing.assert_allclose(_quiet(fe.test, test_method="score").z_raw, z, rtol=1e-12)
     exact = _quiet(fe.test, test_method="poibin_exact")                    # trials expanded, so counts can exceed rows

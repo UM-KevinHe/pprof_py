@@ -113,7 +113,7 @@ model.fit(
     X=data,
     y_var='readmitted',
     x_vars=['age', 'chronic_conditions', 'prior_admission'],
-    group_var='provider_id',
+    provider_var='provider_id',
     max_iter=1000,
     tol=1e-6,
 )
@@ -186,7 +186,7 @@ patient mix.
 
 ```python
 gamma = model.coefficients_['gamma']   # length-100 array
-groups = model.groups_                  # provider labels
+groups = model.provider_ids_            # provider labels
 
 print(f"Gamma range: [{gamma.min():.4f}, {gamma.max():.4f}]")
 print(f"Gamma median: {np.median(gamma):.4f}")
@@ -226,7 +226,7 @@ their true performance — which is exactly the signal the funnel plot
 preds = model.predict(
     X=data,
     x_vars=['age', 'chronic_conditions', 'prior_admission'],
-    group_var='provider_id',
+    provider_var='provider_id',
 )
 print(f"Predicted probabilities: min={preds.min():.4f}, mean={preds.mean():.4f}, max={preds.max():.4f}")
 ```
@@ -250,13 +250,13 @@ it observe compared to how many would be *expected* if it performed
 at the median clinic's level?"
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 sm_df = sm['indirect']
 print(sm_df.head(10))
 ```
 
 ```
-     group_id  indirect_ratio  indirect_rate  observed   expected
+     provider_id  indirect_ratio  indirect_rate  observed   expected
 0    Clinic_1        1.257097      17.353737        17  13.523219
 1   Clinic_10        0.895757      12.365584        14  15.629231
 2  Clinic_100        0.579154       7.995002        11  18.993208
@@ -379,7 +379,7 @@ print(gamma_ci['gamma_ci'].head(10))
 ```
 
 ```
-     group_id     gamma  gamma_lower  gamma_upper
+     provider_id     gamma  gamma_lower  gamma_upper
 0    Clinic_1 -3.249995    -3.978365    -2.521626
 1   Clinic_10 -3.656766    -4.406950    -2.906583
 2  Clinic_100 -4.153595    -4.953717    -3.353474
@@ -415,7 +415,7 @@ sm_ci = model.calculate_confidence_intervals(
     option='SM',
     stdz='indirect',
     measure=['ratio', 'rate'],
-    null='median',
+    reference='median',
     level=0.95,
     test_method='wald',
     alternative='two_sided',
@@ -424,7 +424,7 @@ print(sm_ci['indirect_ratio'].head(10))
 ```
 
 ```
-     group_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
+     provider_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
 0    Clinic_1        1.257097      17.353737        17  13.523219        0.677407        2.157349
 1   Clinic_10        0.895757      12.365584        14  15.629231        0.455720        1.653704
 2  Clinic_100        0.579154       7.995002        11  18.993208        0.274811        1.155800
@@ -458,7 +458,7 @@ model.plot_provider_effects(
     level=0.95,
     test_method='wald',
     use_flags=True,
-    null='median',
+    reference='median',
     title="Provider Effects: Adjusted Log-Odds (Gamma)",
     figure_size=(10, 6),
 )
@@ -480,7 +480,7 @@ model.plot_standardized_measures(
     level=0.95,
     test_method='wald',
     use_flags=True,
-    null='median',
+    reference='median',
     title="Provider Standardized Ratios (Indirect O/E)",
     figure_size=(10, 6),
 )
@@ -497,7 +497,7 @@ Providers outside the funnel are the ones whose ISR is too far from
 ```python
 model.plot_funnel(
     test_method='poibin_exact',
-    null='median',
+    reference='median',
     target=1.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Ratios (O/E)",

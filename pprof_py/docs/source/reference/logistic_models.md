@@ -26,7 +26,7 @@ Logit model with one free effect γ per provider, fitted by the SerBIN algorithm
 ```python
 from pprof_py import LogisticFixedEffectModel
 
-fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, group_var="provider")   # X first; not fit(y, X, group)
+fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, provider_var="provider")   # X first; not fit(y, X, group)
 fe.summary()                                   # Wald table (test_method="wald")
 fe.summary(test_method="score")                # or "lr"
 fe.test(test_method="poibin_exact").head()     # exact Poisson-binomial provider test (default)
@@ -42,16 +42,16 @@ fe.calculate_standardized_measures()["indirect"].head()
 | `log_event_providers` | `True` | Log providers with no or all events. |
 | `threshold_cor`, `threshold_vif` | `0.9`, `10` | Multicollinearity thresholds. |
 
-`fit(X, y=None, groups=None, x_vars=None, y_var=None, group_var=None, n_var=None, obs_id_var=None, use_dataprep=None, screen_providers=None,
+`fit(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None, n_var=None, obs_id_var=None, use_dataprep=None, screen_providers=None,
 log_event_providers=None, cutoff=None, threshold_cor=None, threshold_vif=None, max_iter=10000, tol=1e-5, bound=10.0, backtrack=True)` —
 the `None` overrides replace the constructor values for this call; `bound` clips γ; `obs_id_var` (observation/patient id) enables cluster-robust
 variances (`summary(variance_type="robust")`); `n_var` accepts a trials-count column but the response is still validated as 0/1 — use one row per patient.
 
 **Fitted attributes:** `coefficients_` (`"beta"` `(p,)`, `"gamma"` `(m,)`), `variances_`, `robust_variances_`, `fitted_` (probabilities),
-`xbeta_`, `aic_`, `bic_`, `auc_`, `groups_`, `group_indices_`, `group_sizes_`, `covariate_names_`, `outcome_`, `obs_ids_`, `N_`, `X`, `algorithm`,
+`xbeta_`, `aic_`, `bic_`, `auc_`, `provider_ids_`, `provider_indices_`, `provider_sizes_`, `covariate_names_`, `outcome_`, `obs_ids_`, `N_`, `X`, `algorithm`,
 `algorithm_type`, `use_dataprep`, `dataprep_options`.
 
-**Methods:** `predict(X, groups=None, x_vars=None, group_var=None)` (probabilities); `score(...)` (accuracy);
+**Methods:** `predict(X, provider_id=None, x_vars=None, provider_var=None)` (probabilities); `score(...)` (accuracy);
 `summary(covariates=None, level=0.95, null=0, alternative="two_sided", test_method="wald", variance_type="model")`;
 `add_providers(provider_ids, gamma, se_gamma=0.01, group_sizes=None)` appends providers left out of the fit (for example zero-event
 providers, with γ = −17, or all-event providers, with γ = 17) so that they appear in standardized measures — this reproduces the R
@@ -64,7 +64,7 @@ Bernoulli-logit GLMM with random intercepts, fitted like `lme4::glmer` (penalize
 ```python
 from pprof_py import LogisticRandomEffectModel
 
-re = LogisticRandomEffectModel(verbose=False).fit(df, y_var="event", x_vars=X_COLS, group_var="provider")
+re = LogisticRandomEffectModel(verbose=False).fit(df, y_var="event", x_vars=X_COLS, provider_var="provider")
 re.coefficients_["beta"]                       # fixed effects (log-odds), Series
 re.sigma_                                      # {"provider": random-effect SD}
 re.get_random_effects().head()                 # BLUPs
@@ -81,12 +81,12 @@ re.test(test_method="wald").head()
 | `optimizer_stage1`, `optimizer_stage2` | `"bobyqa"`, `"nelder-mead"` | `"bobyqa"` requires `nlopt` (`pip install nlopt`); without it the code silently falls back — set `"powell"` explicitly if `nlopt` is not installed. |
 | `verbose` | `True` | Print progress. |
 
-`fit(X, y_var, x_vars=None, group_vars=None, group_var=None, offset_var=None, include_intercept=True, verbose=None)`. Several grouping
-factors are accepted (`sigma_` then has one entry per factor); the measure methods take `group_var` to choose the factor.
+`fit(X, y_var, x_vars=None, provider_var=None, cluster_vars=None, offset_var=None, include_intercept=True, verbose=None)`. Several grouping
+factors are accepted (`sigma_` then has one entry per factor); the measure methods take `provider_var` to choose the factor.
 
 **Fitted attributes:** `coefficients_`, `variances_`, `sigma_` (dict), `loglike_`, `aic_`, `bic_`, `converged_`, `pirls_converged_`, `pirls_iterations_`,
 `fitted_`, `residuals_`, `outcome_`, `groups_`, `group_sizes_`, `covariate_names_`, `pwrss_`, `ldL2_` and optimizer diagnostics.
-**Methods:** `summary()`, `get_random_effects(group_var=None)`, `get_sigma(group_var=None)`, `predict(X, *, x_vars=None, group_var=None,
+**Methods:** `summary()`, `get_random_effects(var=None)`, `get_sigma(var=None)`, `predict(X, *, x_vars=None, re_vars=None,
 offset_var=None, use_re=False, type="response")`, `pearson_residuals()`, `deviance_residuals()`, and the methods in {ref}`ll_ref_measures`.
 
 **Agreement with lme4.** On the synthetic dataset used for {ref}`ll_ref_linear` (binary outcome), `glmer(nAGQ = 1)` and this model agreed to
@@ -115,6 +115,6 @@ mixed.test(test_method="resampling", n_resample=200).head()
   `obs_var` names the true 0/1 outcome used for observed counts and resampling p-values (defaults to `y_var`).
 - **Attributes:** `gamma_`, `beta_`, `sigma_`, `xbeta_`, `fitted_`, `alpha_mean_`, `alpha_var_`, `alpha_mean_cluster_`, `alpha_var_cluster_`,
   `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `convergence_`, `coefficients_`.
-- **Methods:** `summary(alpha=0.05)`; `calculate_standardized_measures(providers=None, stdz="indirect", null="median")`;
-  `test(providers=None, *, test_method="resampling", reference="median", null_model=None, alternative="two_sided", level=0.95,
+- **Methods:** `summary(stage1_model=None, covariates=None, level=0.95, null=0.0, alternative="two_sided")` (the Stage 1 Wald table); `calculate_standardized_measures(providers=None, stdz="indirect", null="median")`;
+  `test(providers=None, *, test_method="exact", reference="median", null_model=None, alternative="two_sided", level=0.95,
   critical=None, n_resample=10000, seed=None)`, which returns the shared result table of {ref}`ll_ref_measures`.

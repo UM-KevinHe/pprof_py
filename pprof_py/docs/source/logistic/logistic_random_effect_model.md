@@ -45,8 +45,8 @@ The model aims to estimate the fixed effects $\boldsymbol\beta$, the random effe
 The `LogisticRandomEffectModel` fits the GLMM using a pure-Python implementation of the lme4 algorithm: Penalized Iteratively Reweighted Least Squares (PIRLS) for the inner loop, with a two-stage outer optimization (nAGQ=0 then Laplace/nAGQ=1). No R or pymer4 dependency is required.
 
 - **Fixed Effects** ($\hat{\boldsymbol\beta}$): Estimates of the population-average covariate effects. Stored in `coefficients_['beta']` (a `pd.Series`).
-- **Random Effects Variance** ($\hat{\sigma}^2_u$): Estimate of the variability between providers. Stored in `variances_['alpha']` (a dict mapping group_var to $\sigma^2_u$).
-- **Random Effects** (BLUPs, $\hat{u}_i$): Predictions of the provider-specific deviations from the overall intercept. These are Best Linear Unbiased Predictors (BLUPs) on the log-odds scale and exhibit shrinkage towards the mean (zero). Stored in `coefficients_['alpha']` (a dict of `pd.Series` per group_var). Also accessible via `get_random_effects(group_var)`.
+- **Random Effects Variance** ($\hat{\sigma}^2_u$): Estimate of the variability between providers. Stored in `variances_['alpha']` (a dict mapping provider_var to $\sigma^2_u$).
+- **Random Effects** (BLUPs, $\hat{u}_i$): Predictions of the provider-specific deviations from the overall intercept. These are Best Linear Unbiased Predictors (BLUPs) on the log-odds scale and exhibit shrinkage towards the mean (zero). Stored in `coefficients_['alpha']` (a dict of `pd.Series` per provider_var). Also accessible via `get_random_effects(provider_var)`.
 - **Variance-Covariance of Fixed Effects:** Stored in `variances_['beta']`.
 
 The fitted probabilities $\hat{p}_{ij}$ (including random effects) are stored in `fitted_`. The linear predictor from fixed effects only, $\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta}$, is stored in `xbeta_`.
@@ -55,7 +55,7 @@ The fitted probabilities $\hat{p}_{ij}$ (including random effects) are stored in
 
 For logistic random effects models, standardized measures allow for fair comparison of provider performance by adjusting for patient case mix and provider-specific random effects. The `calculate_standardized_measures` method computes both indirect and direct standardized ratios and rates, based on the predicted random effects (BLUPs).
 
-Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect (BLUP) for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `null` parameter).
+Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect (BLUP) for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `reference` parameter).
 
 #### 2.3.1. Indirect Standardization
 
@@ -202,7 +202,7 @@ data = pd.DataFrame({'Y': y, 'X1': x1, 'X2': x2, 'GroupID': groups})
 
 # Initialize and fit the model
 logit_re_model = LogisticRandomEffectModel()
-logit_re_model.fit(X=data, y_var='Y', x_vars=['X1', 'X2'], group_var='GroupID')
+logit_re_model.fit(X=data, y_var='Y', x_vars=['X1', 'X2'], provider_var='GroupID')
 ```
 
 ### 3.2. Accessing Results
@@ -220,7 +220,7 @@ print(random_effects_blups.head())
 
 # Variance Components
 fe_var_cov = logit_re_model.variances_['beta']
-re_var = logit_re_model.variances_['alpha']  # {group_var: sigma_u^2}
+re_var = logit_re_model.variances_['alpha']  # {provider_var: sigma_u^2}
 sigma_u2 = list(re_var.values())[0]
 print(f"\nEstimated Variance of Random Effects (sigma_u^2): {sigma_u2:.3f}")
 
@@ -252,7 +252,7 @@ print(f"\nPredicted probabilities (fixed effects only): {predictions_fe_only}")
 # Calculate Indirect Standardized Ratios and Rates vs median random effect
 sm_results = logit_re_model.calculate_standardized_measures(
     stdz='indirect',
-    null='median'
+    reference='median'
 )
 print("\n--- Logistic RE Indirect Measures (vs Median Random Effect) ---")
 if 'indirect' in sm_results:
@@ -295,7 +295,7 @@ if 'alpha_ci' in alpha_cis:
 sm_cis = logit_re_model.calculate_confidence_intervals(
     option='SM',
     stdz='indirect',
-    null='median',
+    reference='median',
     measure=['ratio', 'rate'],
     level=0.95
 )
@@ -310,12 +310,12 @@ Use plotting methods from the `LogisticRandomEffectModel` instance.
 ```python
 # Funnel plot: indirect standardized ratio (O/E) vs expected count
 logit_re_model.plot_funnel(
-    test_method='wald', null='median', target=1.0, alpha=[0.05, 0.01]
+    test_method='wald', reference='median', target=1.0, alpha=[0.05, 0.01]
 )
 
 # Provider effects caterpillar (BLUPs on log-odds scale)
 logit_re_model.plot_provider_effects(
-    null='median', level=0.95, use_flags=True
+    reference='median', level=0.95, use_flags=True
 )
 
 # Standardized measures caterpillar (indirect ratio with CIs)

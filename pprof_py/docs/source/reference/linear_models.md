@@ -27,18 +27,18 @@ X_COLS = ["x1", "x2", "x3"]
 ```python
 from pprof_py import LinearFixedEffectModel
 
-fe = LinearFixedEffectModel().fit(df, y_var="y", x_vars=X_COLS, group_var="provider")
+fe = LinearFixedEffectModel().fit(df, y_var="y", x_vars=X_COLS, provider_var="provider")
 fe.summary()                                  # covariate table
 fe.coefficients_["gamma"].shape               # (m, 1)
 fe.test().head()                              # provider tests vs the median provider effect
 ```
 
 - **Constructor:** `gamma_var_option="complete"` (default: the variance of γ includes the uncertainty in β) or `"simplified"` (σ²/n_i).
-- **`fit(X, y=None, groups=None, x_vars=None, y_var=None, group_var=None)`** — pass either a `DataFrame` plus column names, or arrays
+- **`fit(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None)`** — pass either a `DataFrame` plus column names, or arrays
   `fit(X, y, groups)`. No intercept is added.
 - **Fitted attributes:** `coefficients_`, `variances_`, `sigma_` (residual SD, divisor n − m − p), `aic_`, `bic_`, `fitted_`, `residuals_`,
-  `xbeta_`, `outcome_`, `groups_`, `group_indices_`, `group_sizes_`, `covariate_names_`, `gamma_var_option`.
-- **Methods:** `predict(X, groups=None, x_vars=None, group_var=None)`; `score(X, y, groups)` (R²); `get_fitted_params()` (dict with
+  `xbeta_`, `outcome_`, `provider_ids_`, `provider_indices_`, `provider_sizes_`, `covariate_names_`, `gamma_var_option`.
+- **Methods:** `predict(X, provider_id=None, x_vars=None, provider_var=None)`; `score(X, y, provider_id)` (R²); `get_fitted_params()` (dict with
   `coefficients`, `variances`, `sigma`, `aic`, `bic`); `summary(covariates=None, level=0.95, null=0, alternative="two_sided")`;
   the measure, test and plot methods in {ref}`ll_ref_measures`.
 
@@ -47,7 +47,7 @@ fe.test().head()                              # provider tests vs the median pro
 ```python
 from pprof_py import LinearRandomEffectModel
 
-re = LinearRandomEffectModel(verbose=False).fit(df, y_var="y", x_vars=X_COLS, group_var="provider")
+re = LinearRandomEffectModel(verbose=False).fit(df, y_var="y", x_vars=X_COLS, provider_var="provider")
 re.random_effect_sd_                          # {"provider": sigma_u}
 re.sigma_                                     # residual SD
 re.coefficients_["alpha"].head()              # BLUPs (random intercepts), Series
@@ -64,9 +64,9 @@ re.test().head()                              # reference 0 by default; also 'me
 | `theta_upper` | `inf` | Upper bound on the relative random-effect SDs (the lower bound is 0). |
 | `verbose` | `True` | Print progress. |
 
-`fit(X, y_var, x_vars=None, group_vars=None, group_var=None, offset_var=None, weights_var=None, include_intercept=True, reml=None, verbose=None)`:
+`fit(X, y_var, x_vars=None, provider_var=None, cluster_vars=None, offset_var=None, weights_var=None, include_intercept=True, reml=None, verbose=None)`:
 `X` must be a `DataFrame`; `weights_var` names inverse-residual-variance prior weights (lme4's `weights=`); `offset_var` a known offset;
-`group_vars` several random-intercept factors (crossed).
+`provider_var` names the provider column; `cluster_vars` adds further (crossed) random-intercept factors.
 
 **Fitted attributes:** `coefficients_` (`"beta"` and `"alpha"`, both `Series`), `variances_`, `sigma_`, `random_effect_sd_` (dict by factor),
 `loglike_`, `reml_`, `aic_`, `bic_`, `converged_`, `theta_`, `fitted_`, `residuals_`, `xbeta_`, `outcome_`, `groups_`, `group_indices_`,
@@ -74,8 +74,8 @@ re.test().head()                              # reference 0 by default; also 'me
 `ldL2_`, `ussq_`, `residual_variance_`, `optimizer_result_`.
 
 **Methods:** `summary()` (same columns as the fixed-effect model), `fixed_effects_table()`, `conf_int(level=0.95)` (`lower`, `upper`),
-`standard_errors()`, `residual_standard_error()`, `fitted_values()`, `get_sigma()`, `get_random_effect_sd(group_var=None)`,
-`get_random_effects(group_var=None)`, `predict(X, *, x_vars=None, group_vars=None, group_var=None, offset_var=None, use_re=False)`
+`standard_errors()`, `residual_standard_error()`, `fitted_values()`, `get_sigma()`, `get_random_effect_sd(var=None)`,
+`get_random_effects(var=None)`, `predict(X, *, x_vars=None, re_vars=None, offset_var=None, use_re=False)`
 (fixed effects only by default; `use_re=True` adds BLUPs for known levels and 0 for unknown ones, lme4's conditional convention), plus
 the measure, test and plot methods in {ref}`ll_ref_measures`.
 
@@ -97,6 +97,6 @@ This supports the README's "10⁻⁷–10⁻⁹" statement (the random-effect SD
 
 ```text
 lmer(y ~ x1 + x2 + x3 + (1|provider), data = d, REML = TRUE, weights = w)     # R
-LinearRandomEffectModel(reml=True).fit(d, y_var="y", x_vars=[...], group_var="provider", weights_var="w")   # Python
+LinearRandomEffectModel(reml=True).fit(d, y_var="y", x_vars=[...], provider_var="provider", weights_var="w")   # Python
 compare fixef(), sigma(), VarCorr()$provider, logLik(), ranef()$provider with beta, sigma_, random_effect_sd_, loglike_, alpha
 ```

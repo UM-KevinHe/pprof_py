@@ -94,7 +94,7 @@ def fitted():
     df.loc[df.provider == 5, "y"] = 0.0                               # a zero-event provider
     df["combo"] = df.provider * 100 + df.cluster
     fe = LogisticFixedEffectModel(use_dataprep=False, screen_providers=False)
-    _quiet(fe.fit, X=df, y_var="y", x_vars=["x1", "x2"], group_var="combo")
+    _quiet(fe.fit, X=df, y_var="y", x_vars=["x1", "x2"], provider_var="combo")
     beta = np.asarray(fe.coefficients_["beta"], dtype=float).ravel()
     me = LogisticMixedEffectModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
@@ -217,7 +217,7 @@ class TestSummary:
     def test_rejects_a_different_stage1(self, fitted):
         df, _, me, _ = fitted
         other = LogisticFixedEffectModel(use_dataprep=False, screen_providers=False)
-        _quiet(other.fit, X=df, y_var="y", x_vars=["x1", "x2"], group_var="provider")
+        _quiet(other.fit, X=df, y_var="y", x_vars=["x1", "x2"], provider_var="provider")
         with pytest.raises(ValueError, match="differs from the beta"):
             me.summary(stage1_model=other)
 

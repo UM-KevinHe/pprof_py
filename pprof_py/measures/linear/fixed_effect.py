@@ -23,9 +23,9 @@ class _LinearFEMeasuresHost(Protocol):
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
     fitted_: Optional[np.ndarray]
-    groups_: Optional[np.ndarray]
-    group_indices_: Optional[np.ndarray]
-    group_sizes_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_indices_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
     outcome_: Optional[np.ndarray]
     xbeta_: Optional[np.ndarray]
 
@@ -38,7 +38,7 @@ class FixedEffectMeasuresMixin:
     provider-effect hypothesis tests for `LinearFixedEffectModel`."""
 
     def calculate_standardized_measures(
-        self, providers=None, stdz="indirect", null="median"
+        self, providers=None, stdz="indirect", reference="median"
     ) -> dict:
         """Calculate direct/indirect standardized differences for a fixed effects linear model.
 
@@ -49,7 +49,7 @@ class FixedEffectMeasuresMixin:
             If None, calculates for all groups.
         stdz : Union[str, list], default="indirect"
             Methods for standardization; can be "indirect", "direct", or both.
-        null : Union[str, float], default="median"
+        reference : Union[str, float], default="median"
             Baseline norm used for standardization; can be "median", "mean", or a specific numeric value.
 
         Returns
@@ -74,46 +74,46 @@ class FixedEffectMeasuresMixin:
         # Extract model components
         gamma = self.coefficients_["gamma"].flatten()  # shape (m,)
         n_samples = len(self.outcome_)
-        group_sizes = self.group_sizes_
+        group_sizes = self.provider_sizes_
         
         # Determine the null value for gamma
-        if null == "median":
+        if reference == "median":
             gamma_null = np.median(gamma)
-        elif null == "mean":
+        elif reference == "mean":
             gamma_null = np.average(gamma, weights=group_sizes)
-        elif isinstance(null, (int, float)):
-            gamma_null = null
+        elif isinstance(reference, (int, float)):
+            gamma_null = reference
         else:
             raise ValueError("Invalid 'null' argument provided. Must be 'median', 'mean', or a numeric value.")
         
         # If providers are specified, select those groups; otherwise, use all groups.
         if providers is not None:
-            mask = np.isin(self.groups_, providers)
-            selected_groups = self.groups_[mask]
+            mask = np.isin(self.provider_ids_, providers)
+            selected_groups = self.provider_ids_[mask]
         else:
-            selected_groups = self.groups_
+            selected_groups = self.provider_ids_
         
         results = {}
         
         # Indirect Standardization
         if "indirect" in stdz:
-            n_groups = len(self.groups_)
+            n_groups = len(self.provider_ids_)
             # For each observation, expected outcome = gamma_null + linear predictor.
             expected = gamma_null + self.xbeta_.flatten()
             # Sum expected and observed by group.
-            expected_by_group = np.bincount(self.group_indices_, weights=expected, minlength=n_groups)
-            observed_by_group = np.bincount(self.group_indices_, weights=self.outcome_, minlength=n_groups)
+            expected_by_group = np.bincount(self.provider_indices_, weights=expected, minlength=n_groups)
+            observed_by_group = np.bincount(self.provider_indices_, weights=self.outcome_, minlength=n_groups)
             # Standardized difference is the (Obs - Exp) divided by the group size.
             indirect_diff = (observed_by_group - expected_by_group) / group_sizes
             
             indirect_df = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "indirect_difference": indirect_diff,
                 "observed": observed_by_group,
                 "expected": expected_by_group
             })
             if providers is not None:
-                indirect_df = indirect_df[indirect_df['group_id'].isin(selected_groups)].reset_index(drop=True)
+                indirect_df = indirect_df[indirect_df['provider_id'].isin(selected_groups)].reset_index(drop=True)
             results["indirect"] = indirect_df
         
         # Direct Standardization
@@ -128,13 +128,13 @@ class FixedEffectMeasuresMixin:
             direct_diff = (exp_direct_by_group - obs_direct_total) / n_samples
             
             direct_df = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "direct_difference": direct_diff,
-                "observed": np.full(len(self.groups_), obs_direct_total),
+                "observed": np.full(len(self.provider_ids_), obs_direct_total),
                 "expected": exp_direct_by_group
             })
             if providers is not None:
-                direct_df = direct_df[direct_df['group_id'].isin(selected_groups)].reset_index(drop=True)
+                direct_df = direct_df[direct_df['provider_id'].isin(selected_groups)].reset_index(drop=True)
             results["direct"] = direct_df
             
         return results
@@ -185,7 +185,7 @@ class FixedEffectMeasuresMixin:
         level: float = 0.95,
         option: str = "SM",
         stdz: Union[str, list] = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         alternative: str = "two_sided"
     ) -> dict:
         """Calculate confidence intervals for provider effects (gamma) or standardized measures (SM).
@@ -200,7 +200,7 @@ class FixedEffectMeasuresMixin:
             Either "gamma" for provider effects or "SM" for standardized measures.
         stdz : Union[str, list], default="indirect"
             Standardization method(s) if option is "SM"; must include "indirect" and/or "direct".
-        null : Union[str, float], default="median"
+        reference : Union[str, float], default="median"
             Baseline norm for calculating standardized measures.
         alternative : str, default="two_sided"
             One of "two_sided", "greater", or "less". (Note: gamma option only supports two_sided.)
@@ -239,38 +239,38 @@ class FixedEffectMeasuresMixin:
         
         if option == "gamma":
             gamma_ci = pd.DataFrame({
-                "group_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "gamma": gamma,
                 "lower": lower_gamma,
                 "upper": upper_gamma
             })
             if providers is not None:
-                gamma_ci = gamma_ci[gamma_ci["group_id"].isin(providers)].reset_index(drop=True)
+                gamma_ci = gamma_ci[gamma_ci["provider_id"].isin(providers)].reset_index(drop=True)
             result["gamma_ci"] = gamma_ci
         
         if option == "SM":
             # First get the standardized measures
-            sm_results = self.calculate_standardized_measures(stdz=stdz, null=null)
+            sm_results = self.calculate_standardized_measures(stdz=stdz, reference=reference)
             
             # For indirect SM, we need to aggregate CI bounds from gamma over observations.
             # Replicate group-level lower/upper bounds for each observation.
-            lower_obs = lower_gamma[self.group_indices_] + self.xbeta_.flatten()
-            upper_obs = upper_gamma[self.group_indices_] + self.xbeta_.flatten()
+            lower_obs = lower_gamma[self.provider_indices_] + self.xbeta_.flatten()
+            upper_obs = upper_gamma[self.provider_indices_] + self.xbeta_.flatten()
             # Sum over each group using np.bincount
-            lower_prov = np.bincount(self.group_indices_, weights=lower_obs)
-            upper_prov = np.bincount(self.group_indices_, weights=upper_obs)
+            lower_prov = np.bincount(self.provider_indices_, weights=lower_obs)
+            upper_prov = np.bincount(self.provider_indices_, weights=upper_obs)
             
             if "indirect" in stdz:
                 indirect_df = sm_results["indirect"].copy()
                 expected_indirect = indirect_df["expected"].to_numpy()
                 # Standardized difference: (observed - expected) normalized by group size.
-                lower_indirect = (lower_prov - expected_indirect) / self.group_sizes_
-                upper_indirect = (upper_prov - expected_indirect) / self.group_sizes_
+                lower_indirect = (lower_prov - expected_indirect) / self.provider_sizes_
+                upper_indirect = (upper_prov - expected_indirect) / self.provider_sizes_
                 indirect_df["lower"] = lower_indirect
                 indirect_df["upper"] = upper_indirect
                 if providers is not None:
                     # Filter by providers
-                    indirect_df = indirect_df[indirect_df["group_id"].isin(providers)]
+                    indirect_df = indirect_df[indirect_df["provider_id"].isin(providers)]
                 result["indirect_ci"] = indirect_df
             
             if "direct" in stdz:
@@ -278,12 +278,12 @@ class FixedEffectMeasuresMixin:
                 # So the CI for the direct measure is simply:
                 # lower_direct = lower_gamma - gamma_null
                 # upper_direct = upper_gamma - gamma_null
-                if null == "median":
+                if reference == "median":
                     gamma_null = np.median(gamma)
-                elif null == "mean":
-                    gamma_null = np.average(gamma, weights=self.group_sizes_)
-                elif isinstance(null, (int, float)):
-                    gamma_null = null
+                elif reference == "mean":
+                    gamma_null = np.average(gamma, weights=self.provider_sizes_)
+                elif isinstance(reference, (int, float)):
+                    gamma_null = reference
                 else:
                     raise ValueError("Invalid 'null' argument provided.")
                 direct_df = sm_results["direct"].copy()
@@ -292,8 +292,8 @@ class FixedEffectMeasuresMixin:
                 direct_df["lower"] = lower_direct
                 direct_df["upper"] = upper_direct
                 if providers is not None:
-                    # Filter direct CIs by providers; assume that the direct_df has a column named "group_id"
-                    direct_df = direct_df[direct_df["group_id"].isin(providers)]
+                    # Filter direct CIs by providers; assume that the direct_df has a column named "provider_id"
+                    direct_df = direct_df[direct_df["provider_id"].isin(providers)]
                 result["direct_ci"] = direct_df
             
         return result
@@ -341,8 +341,8 @@ class FixedEffectMeasuresMixin:
         gamma = np.asarray(self.coefficients_["gamma"], dtype=np.float64).ravel()
         se = np.sqrt(np.asarray(self.variances_["gamma"], dtype=np.float64).ravel())
         df = self.fitted_.size - len(self.coefficients_["beta"]) - gamma.size
-        g0 = reference_effect(gamma, self.group_sizes_, reference)
+        g0 = reference_effect(gamma, self.provider_sizes_, reference)
         z = t_to_z((gamma - g0) / se, df)
-        return effect_test(self.groups_, gamma, z, g0, se=se, df=df, null_model=null_model,
+        return effect_test(self.provider_ids_, gamma, z, g0, se=se, df=df, null_model=null_model,
                            alternative=normalize_alternative(alternative), level=level, critical=critical,
                            interval=interval, providers=providers, test_method="wald")

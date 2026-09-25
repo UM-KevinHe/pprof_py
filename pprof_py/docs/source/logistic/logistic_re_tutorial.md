@@ -92,7 +92,7 @@ model.fit(
     X=data,
     y_var='complication',
     x_vars=['age', 'severity', 'urgent'],
-    group_var='provider_id',
+    provider_var='provider_id',
 )
 ```
 
@@ -197,13 +197,13 @@ predicted complication burden (using its BLUP) to what would be expected
 if that hospital performed at the median level:
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 sm_df = sm['indirect']
 print(sm_df.head(10))
 ```
 
 ```
-      group_id  indirect_ratio  indirect_rate  observed   expected
+      provider_id  indirect_ratio  indirect_rate  observed   expected
 0   Hospital_1        0.801878      19.265898      17.0  21.200234
 1  Hospital_10        1.432589      34.419342      19.0  13.262703
 2  Hospital_11        1.102326      26.484456      30.0  27.215180
@@ -277,7 +277,7 @@ print(alpha_ci_df.head(10))
 ```
 
 ```
-      group_id     alpha  alpha_lower  alpha_upper
+      provider_id     alpha  alpha_lower  alpha_upper
 0   Hospital_1 -0.143147    -0.562868     0.276575
 1  Hospital_10  0.355628    -0.098824     0.810079
 2  Hospital_11  0.151774    -0.227760     0.531308
@@ -298,14 +298,14 @@ hospitals' CIs span zero, consistent with not being flagged.
 
 ```python
 sm_ci = model.calculate_confidence_intervals(
-    option='SM', stdz='indirect', null='median',
+    option='SM', stdz='indirect', reference='median',
     measure=['ratio'], level=0.95,
 )
 print(sm_ci['indirect_ratio'].head(10))
 ```
 
 ```
-      group_id  indirect_ratio     lower     upper
+      provider_id  indirect_ratio     lower     upper
 0   Hospital_1        0.801878  0.527018  1.220088
 1  Hospital_10        1.432589  0.909402  2.256771
 2  Hospital_11        1.102326  0.754190  1.611163
@@ -333,7 +333,7 @@ grows — small hospitals need an extreme ISR to be flagged.
 ```python
 model.plot_funnel(
     test_method='wald',
-    null='median',
+    reference='median',
     target=1.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Ratio (O/E)",
@@ -346,7 +346,7 @@ model.plot_funnel(
 model.plot_provider_effects(
     level=0.95,
     use_flags=True,
-    null='median',
+    reference='median',
     plot_title="Provider Random Effects (BLUPs, Log-Odds Scale)",
 )
 ```
@@ -363,7 +363,7 @@ model.plot_standardized_measures(
     measure='ratio',
     level=0.95,
     use_flags=True,
-    null='median',
+    reference='median',
     plot_title="Indirect Standardized Ratio (O/E) with CIs",
 )
 ```

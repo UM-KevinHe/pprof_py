@@ -232,7 +232,7 @@ class ValidatedInputs:
 
     X: np.ndarray
     y: np.ndarray
-    groups: np.ndarray
+    provider_id: np.ndarray
     covariate_names: List[str]
     obs_ids: Optional[np.ndarray] = None
     N: Optional[np.ndarray] = None
@@ -245,10 +245,10 @@ class ValidatedInputs:
 def validate_and_convert_inputs(
     X,
     y=None,
-    groups=None,
+    provider_id=None,
     x_vars=None,
     y_var=None,
-    group_var=None,
+    provider_var=None,
     *,
     n_var: Optional[str] = None,
     obs_id_var: Optional[str] = None,
@@ -269,7 +269,7 @@ def validate_and_convert_inputs(
         Design matrix (covariates) or complete dataset.
     y, groups : array-like, optional
         Response and group identifiers (required when *X* is array-like).
-    x_vars, y_var, group_var : str or list of str, optional
+    x_vars, y_var, provider_var : str or list of str, optional
         Column names (required when *X* is a DataFrame).
     n_var : str, optional
         Column for binomial N (trials per observation).
@@ -292,9 +292,9 @@ def validate_and_convert_inputs(
 
     # -- Handle DataFrame inputs -----------------------------------------
     if isinstance(X, pd.DataFrame):
-        if x_vars is None or group_var is None:
+        if x_vars is None or provider_var is None:
             raise ValueError(
-                "When providing a DataFrame, `x_vars` and `group_var` "
+                "When providing a DataFrame, `x_vars` and `provider_var` "
                 "must be specified."
             )
         covariate_names = list(x_vars)
@@ -303,7 +303,7 @@ def validate_and_convert_inputs(
         y_array = (
             data_for_prep[y_var].to_numpy() if y_var else np.zeros(X.shape[0])
         )
-        groups_array = data_for_prep[group_var].to_numpy()
+        groups_array = data_for_prep[provider_var].to_numpy()
         if obs_id_var is not None and obs_id_var in data_for_prep.columns:
             obs_ids = data_for_prep[obs_id_var].to_numpy()
         if n_var is not None and n_var in data_for_prep.columns:
@@ -313,8 +313,8 @@ def validate_and_convert_inputs(
     else:
         X_array = check_array(X, ensure_2d=True, dtype=np.float64)
         groups_array = (
-            check_array(groups, ensure_2d=False)
-            if groups is not None
+            check_array(provider_id, ensure_2d=False)
+            if provider_id is not None
             else np.zeros(X_array.shape[0])
         )
         y_array = (
@@ -348,7 +348,7 @@ def validate_and_convert_inputs(
         if isinstance(X, pd.DataFrame):
             Y_char = y_var if y_var else "y"
             X_char = x_vars
-            prov_char = group_var
+            prov_char = provider_var
         else:
             Y_char = "y"
             X_char = covariate_names
@@ -373,7 +373,7 @@ def validate_and_convert_inputs(
     return ValidatedInputs(
         X=X_array,
         y=y_array,
-        groups=groups_array,
+        provider_id=groups_array,
         covariate_names=covariate_names,
         obs_ids=obs_ids,
         N=N_,

@@ -46,7 +46,7 @@ class RandomEffectPlottingMixin:
     def plot_funnel(
         self,
         stdz: str = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         target: float = 0.0,
         alpha: Union[float, List[float]] = 0.05,
         labels: List[str] = _style.FLAG_LABELS,
@@ -84,7 +84,7 @@ class RandomEffectPlottingMixin:
         -----------
         stdz : str, default="indirect"
             Standardization method. For random effects, this can be "indirect" or "direct".
-        null : str or float, default="median"
+        reference : str or float, default="median"
             Baseline for provider effects (alpha) used in calculating the difference
             and for flagging. Can be "median", "mean", or a specific float value.
         target : float, default=0.0
@@ -144,34 +144,34 @@ class RandomEffectPlottingMixin:
             raise ValueError("Model must be fitted and sigma estimated before plotting funnel plot.")
 
         # Ttransform any "median"/"mean" null into a numeric value
-        if isinstance(null, str):
+        if isinstance(reference, str):
             # Grab the random effects as you do elsewhere
             random_effects = self.coefficients_["alpha"]
-            if null == "median":
-                null = np.median(random_effects)
-            elif null == "mean":
-                null = np.mean(random_effects)
+            if reference == "median":
+                reference = np.median(random_effects)
+            elif reference == "mean":
+                reference = np.mean(random_effects)
             else:
                 raise ValueError("If you pass a string to 'null', it must be 'median' or 'mean'.")
         else:
             # If it's already numeric, just ensure float
-            null = float(null)
+            reference = float(reference)
 
         a_list = sorted([alpha] if isinstance(alpha, (float, int)) else alpha)
         alpha_test = min(a_list)
 
-        sm_info = self.calculate_standardized_measures(stdz=stdz, null=null)
+        sm_info = self.calculate_standardized_measures(stdz=stdz, reference=reference)
         if stdz not in sm_info or sm_info[stdz].empty:
             warnings.warn(f"No standardized measure data found for '{stdz}'. Cannot plot.")
             return
         df = sm_info[stdz].copy()
-        if 'group_id' in df.columns: df.set_index('group_id', inplace=True)
+        if 'provider_id' in df.columns: df.set_index('provider_id', inplace=True)
         
         precision_map = pd.Series(self.group_sizes_, index=self.groups_)
         df["precision"] = df.index.map(precision_map)
         df.dropna(subset=['precision'], inplace=True)
 
-        test_df = self.test(reference=null, level=1.0 - alpha_test, alternative="two_sided")
+        test_df = self.test(reference=reference, level=1.0 - alpha_test, alternative="two_sided")
         df = df.merge(test_df[['flag']], left_index=True, right_index=True, how='left')
         df["flag"] = df["flag"].fillna(0).astype(int)
 
@@ -232,7 +232,7 @@ class RandomEffectPlottingMixin:
         group_ids=None, 
         level: float = 0.95,
         use_flags: bool = True, 
-        null: Union[str, float] = 0,
+        reference: Union[str, float] = 0,
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
@@ -246,7 +246,7 @@ class RandomEffectPlottingMixin:
             Confidence level for intervals.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the test method.
-        null : str or float, default=0
+        reference : str or float, default=0
             Null hypothesis for alpha used for flagging. Can be 'median', 'mean', or a float.
         test_method : str, optional
             Test method used specifically for generating flags ('wald' is the only one for LinearRE's .test()).
@@ -258,18 +258,18 @@ class RandomEffectPlottingMixin:
             raise ValueError("Model must be fitted first.")
 
         # Ttransform any "median"/"mean" null into a numeric value
-        if isinstance(null, str):
+        if isinstance(reference, str):
             # Grab the random effects as you do elsewhere
             random_effects = self.coefficients_["alpha"]
-            if null == "median":
-                null = np.median(random_effects)
-            elif null == "mean":
-                null = np.mean(random_effects)
+            if reference == "median":
+                reference = np.median(random_effects)
+            elif reference == "mean":
+                reference = np.mean(random_effects)
             else:
                 raise ValueError("If you pass a string to 'null', it must be 'median' or 'mean'.")
         else:
             # If it's already numeric, just ensure float
-            null = float(null)
+            reference = float(reference)
 
         ci_results = self.calculate_confidence_intervals(
             providers=group_ids, level=level, option='alpha', alternative='two_sided'
@@ -278,7 +278,7 @@ class RandomEffectPlottingMixin:
             warnings.warn("No alpha CI data. Cannot plot.")
             return
 
-        df_plot = ci_results['alpha_ci']  # Has 'group_id', 'alpha', 'alpha_lower', 'alpha_upper'
+        df_plot = ci_results['alpha_ci']  # Has 'provider_id', 'alpha', 'alpha_lower', 'alpha_upper'
 
         flag_col_name = None
         if use_flags:
@@ -289,26 +289,26 @@ class RandomEffectPlottingMixin:
 
             try:
                 test_df = self.test(
-                    providers=df_plot['group_id'].unique().tolist(),
+                    providers=df_plot['provider_id'].unique().tolist(),
                     level=level,
-                    reference=null,
+                    reference=reference,
                     alternative='two_sided'
                 )
 
-                # Merge flags using left_on='group_id' and right_index=True since test_df is indexed by provider IDs
-                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                # Merge flags using left_on='provider_id' and right_index=True since test_df is indexed by provider IDs
+                df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
                 df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
                 flag_col_name = None
 
         alpha_vals = self.coefficients_["alpha"].values.flatten()
-        if null == "median":
+        if reference == "median":
             alpha_null_val = np.median(alpha_vals)
-        elif null == "mean":
+        elif reference == "mean":
             alpha_null_val = np.average(alpha_vals, weights=self.group_sizes_ if self.group_sizes_ is not None else None)
         else:
-            alpha_null_val = float(null)
+            alpha_null_val = float(reference)
 
         orientation = plot_kwargs.pop('orientation', 'vertical')
         if orientation == 'vertical':
@@ -327,7 +327,7 @@ class RandomEffectPlottingMixin:
             estimate_col='alpha',
             ci_lower_col='alpha_lower',
             ci_upper_col='alpha_upper',
-            group_col='group_id',
+            group_col='provider_id',
             flag_col=flag_col_name,
             **plot_kwargs
         )
@@ -339,7 +339,7 @@ class RandomEffectPlottingMixin:
         stdz: str = 'indirect',
         measure: str = 'difference',
         use_flags: bool = True, 
-        null: Union[str, float] = 'median',
+        reference: Union[str, float] = 'median',
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
@@ -358,7 +358,7 @@ class RandomEffectPlottingMixin:
             The measure to plot. For linear models, this is always 'difference'.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the alpha test method.
-        null : str or float, default='median'
+        reference : str or float, default='median'
             Null hypothesis for alpha used for flagging and calculating the difference.
         test_method : str, optional
             Test method used specifically for generating flags. Defaults to 'wald' (t-test).
@@ -369,18 +369,18 @@ class RandomEffectPlottingMixin:
             raise ValueError("Model must be fitted.")
 
         # Ttransform any "median"/"mean" null into a numeric value
-        if isinstance(null, str):
+        if isinstance(reference, str):
             # Grab the random effects as you do elsewhere
             random_effects = self.coefficients_["alpha"]
-            if null == "median":
-                null = np.median(random_effects)
-            elif null == "mean":
-                null = np.mean(random_effects)
+            if reference == "median":
+                reference = np.median(random_effects)
+            elif reference == "mean":
+                reference = np.mean(random_effects)
             else:
                 raise ValueError("If you pass a string to 'null', it must be 'median' or 'mean'.")
         else:
             # If it's already numeric, just ensure float
-            null = float(null)
+            reference = float(reference)
 
         if measure != 'difference':
             warnings.warn("For LinearRandomEffectModel, standardized 'measure' is 'difference'.")
@@ -390,7 +390,7 @@ class RandomEffectPlottingMixin:
             level=level,
             option='SM',
             stdz=stdz,
-            null=null,
+            reference=reference,
             alternative='two_sided'
         )
         ci_key = f"{stdz}_ci"
@@ -398,7 +398,7 @@ class RandomEffectPlottingMixin:
             warnings.warn(f"No SM CI data for '{ci_key}'. Cannot plot.")
             return
 
-        df_plot = ci_results[ci_key]  # This df should have 'group_id', '{stdz}_difference', 'lower', 'upper'
+        df_plot = ci_results[ci_key]  # This df should have 'provider_id', '{stdz}_difference', 'lower', 'upper'
         estimate_col_name = f"{stdz}_difference"
 
         if estimate_col_name not in df_plot.columns or 'lower' not in df_plot.columns or 'upper' not in df_plot.columns:
@@ -412,13 +412,13 @@ class RandomEffectPlottingMixin:
                 warnings.warn(f"LinearRandomEffectModel.test uses a t-test (Wald-like). test_method '{current_test_method}' for flagging will use this.")
             try:
                 test_df = self.test(
-                    providers=df_plot['group_id'].unique().tolist(),
+                    providers=df_plot['provider_id'].unique().tolist(),
                     level=level,
-                    reference=null,
+                    reference=reference,
                     alternative='two_sided'
                 )
 
-                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
                 df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
@@ -445,7 +445,7 @@ class RandomEffectPlottingMixin:
             estimate_col=estimate_col_name,
             ci_lower_col='lower', 
             ci_upper_col='upper',
-            group_col='group_id', 
+            group_col='provider_id', 
             flag_col=flag_col_name, 
             **plot_kwargs
         )

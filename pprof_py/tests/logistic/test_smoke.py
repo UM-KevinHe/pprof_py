@@ -48,7 +48,7 @@ def data():
 
 def _fit_fixed_effect(data, algorithm):
     model = LogisticFixedEffectModel(use_dataprep=False, algorithm=algorithm)
-    model.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+    model.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
     return model
 
 
@@ -177,7 +177,7 @@ class TestLogisticFixedEffectDataPrep:
         model = LogisticFixedEffectModel(
             use_dataprep=True, screen_providers=True, log_event_providers=True, algorithm="Serbin"
         )
-        model.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+        model.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
         return model
 
     def test_beta(self, model):
@@ -197,7 +197,7 @@ class TestLogisticRandomEffect:
     @pytest.fixture(scope="class")
     def model(self, data):
         m = LogisticRandomEffectModel(verbose=False)
-        m.fit(data, y_var="y", x_vars=["x1", "x2"], group_var="provider")
+        m.fit(data, y_var="y", x_vars=["x1", "x2"], provider_var="provider")
         return m
 
     def test_beta(self, model):

@@ -28,8 +28,8 @@ class _LinearFEPlottingHost(Protocol):
     fitted_: Optional[np.ndarray]
     residuals_: Optional[np.ndarray]
     sigma_: Optional[float]
-    groups_: Optional[np.ndarray]
-    group_sizes_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
     covariate_names_: list
 
     def _check_is_fitted(self) -> None: ...
@@ -45,7 +45,7 @@ class FixedEffectPlottingMixin:
     def plot_funnel(
         self,
         stdz: str = "indirect",
-        null: Union[str, float] = "median",
+        reference: Union[str, float] = "median",
         target: float = 0.0,
         alpha: Union[float, List[float]] = 0.05,
         labels: List[str] = _style.FLAG_LABELS,
@@ -84,7 +84,7 @@ class FixedEffectPlottingMixin:
         stdz : str, default="indirect"
             Standardization method. Currently, only "indirect" is meaningfully
             supported as both indirect and direct differences simplify to gamma_i - gamma_null.
-        null : str or float, default="median"
+        reference : str or float, default="median"
             Baseline for provider effects (gamma) used in calculating the difference
             and for flagging. Can be "median", "mean", or a specific float value.
         target : float, default=0.0
@@ -140,7 +140,7 @@ class FixedEffectPlottingMixin:
         legend_location : str, default='best'
             Location string for the legend.
         """
-        if self.coefficients_ is None or self.sigma_ is None or self.groups_ is None or self.group_sizes_ is None:
+        if self.coefficients_ is None or self.sigma_ is None or self.provider_ids_ is None or self.provider_sizes_ is None:
             raise ValueError("Model must be fitted and sigma estimated before plotting funnel plot.")
         if stdz != "indirect":
             warnings.warn("Funnel plot for LinearFixedEffectModel is primarily designed for 'indirect' standardized differences.")
@@ -148,18 +148,18 @@ class FixedEffectPlottingMixin:
         a_list = sorted([alpha] if isinstance(alpha, (float, int)) else alpha)
         alpha_test = min(a_list)
 
-        sm_info = self.calculate_standardized_measures(stdz=stdz, null=null)
+        sm_info = self.calculate_standardized_measures(stdz=stdz, reference=reference)
         if stdz not in sm_info or sm_info[stdz].empty:
             warnings.warn(f"No standardized measure data found for '{stdz}'. Cannot plot.")
             return
         df = sm_info[stdz].copy()
-        if 'group_id' in df.columns: df.set_index('group_id', inplace=True)
+        if 'provider_id' in df.columns: df.set_index('provider_id', inplace=True)
         
-        precision_map = pd.Series(self.group_sizes_, index=self.groups_)
+        precision_map = pd.Series(self.provider_sizes_, index=self.provider_ids_)
         df["precision"] = df.index.map(precision_map)
         df.dropna(subset=['precision'], inplace=True)
 
-        test_df = self.test(reference=null, level=1.0 - alpha_test, alternative="two_sided")
+        test_df = self.test(reference=reference, level=1.0 - alpha_test, alternative="two_sided")
         df = df.merge(test_df[['flag']], left_index=True, right_index=True, how='left')
         df["flag"] = df["flag"].fillna(0).astype(int)
 
@@ -220,7 +220,7 @@ class FixedEffectPlottingMixin:
         group_ids=None, 
         level: float = 0.95,
         use_flags: bool = True, 
-        null: Union[str, float] = 'median',
+        reference: Union[str, float] = 'median',
         test_method: Optional[str] = None, # Added for consistency with LogisticFE
         **plot_kwargs
     ) -> None:
@@ -234,7 +234,7 @@ class FixedEffectPlottingMixin:
             Confidence level for intervals.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the test method.
-        null : str or float, default='median'
+        reference : str or float, default='median'
             Null hypothesis for gamma used for flagging. Can be 'median', 'mean', or a float.
         test_method : str, optional
              Test method used specifically for generating flags ('wald' is the only one for LinearFE's .test()).
@@ -257,7 +257,7 @@ class FixedEffectPlottingMixin:
             warnings.warn("No gamma CI data. Cannot plot.")
             return
         
-        df_plot = ci_results['gamma_ci'] # Has 'group_id', 'gamma', 'lower', 'upper'
+        df_plot = ci_results['gamma_ci'] # Has 'provider_id', 'gamma', 'lower', 'upper'
 
         flag_col_name = None
         if use_flags:
@@ -269,22 +269,22 @@ class FixedEffectPlottingMixin:
 
             try:
                 test_df = self.test(
-                    providers=df_plot['group_id'].unique().tolist(),
+                    providers=df_plot['provider_id'].unique().tolist(),
                     level=level, 
-                    reference=null,
+                    reference=reference,
                     alternative='two_sided'
                 )
-                # Merge flags using left_on='group_id' and right_index=True since test_df is indexed by provider IDs
-                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                # Merge flags using left_on='provider_id' and right_index=True since test_df is indexed by provider IDs
+                df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
                 df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
                 flag_col_name = None
         
         gamma_vals = self.coefficients_["gamma"].flatten()
-        if null == "median": gamma_null_val = np.median(gamma_vals)
-        elif null == "mean": gamma_null_val = np.average(gamma_vals, weights=self.group_sizes_ if self.group_sizes_ is not None else None)
-        else: gamma_null_val = float(null)
+        if reference == "median": gamma_null_val = np.median(gamma_vals)
+        elif reference == "mean": gamma_null_val = np.average(gamma_vals, weights=self.provider_sizes_ if self.provider_sizes_ is not None else None)
+        else: gamma_null_val = float(reference)
 
         # Default orientation is vertical (groups on Y, estimates on X)
         orientation = plot_kwargs.pop('orientation', 'vertical')
@@ -305,7 +305,7 @@ class FixedEffectPlottingMixin:
             estimate_col='gamma', 
             ci_lower_col='lower', 
             ci_upper_col='upper',
-            group_col='group_id', 
+            group_col='provider_id', 
             flag_col=flag_col_name, 
             **plot_kwargs
         )
@@ -316,7 +316,7 @@ class FixedEffectPlottingMixin:
         level: float = 0.95, 
         stdz: str = 'indirect',
         measure: str = 'difference',
-        use_flags: bool = True, null: Union[str, float] = 'median',
+        use_flags: bool = True, reference: Union[str, float] = 'median',
         test_method: Optional[str] = None,
         **plot_kwargs
     ) -> None:
@@ -335,7 +335,7 @@ class FixedEffectPlottingMixin:
             The measure to plot. For linear models, this is always 'difference'.
         use_flags : bool, default=True
             Whether to color-code providers based on flags from the gamma test method.
-        null : str or float, default='median'
+        reference : str or float, default='median'
             Null hypothesis for gamma used for flagging and calculating the difference.
         test_method : str, optional
              Test method used specifically for generating flags. Defaults to 'wald' (t-test).
@@ -352,7 +352,7 @@ class FixedEffectPlottingMixin:
             level=level,
             option='SM',
             stdz=stdz,
-            null=null,
+            reference=reference,
             alternative='two_sided'
         )
         ci_key = f"{stdz}_ci"
@@ -360,7 +360,7 @@ class FixedEffectPlottingMixin:
             warnings.warn(f"No SM CI data for '{ci_key}'. Cannot plot.")
             return
         
-        df_plot = ci_results[ci_key] # This df should have 'group_id', '{stdz}_difference', 'lower', 'upper'
+        df_plot = ci_results[ci_key] # This df should have 'provider_id', '{stdz}_difference', 'lower', 'upper'
         estimate_col_name = f"{stdz}_difference"
                 
         if estimate_col_name not in df_plot.columns or 'lower' not in df_plot.columns or 'upper' not in df_plot.columns:
@@ -373,12 +373,12 @@ class FixedEffectPlottingMixin:
             if current_test_method != 'wald':
                  warnings.warn(f"LinearFixedEffectModel.test uses a t-test (Wald-like). test_method '{current_test_method}' for flagging will use this.")
             try:
-                test_df = self.test(providers=df_plot['group_id'].unique().tolist(), 
+                test_df = self.test(providers=df_plot['provider_id'].unique().tolist(), 
                                     level=level, 
-                                    reference=null,
+                                    reference=reference,
                                     alternative='two_sided')
-                # Merge using left_on='group_id' and right_index=True
-                df_plot = df_plot.merge(test_df[['flag']], left_on='group_id', right_index=True, how='left')
+                # Merge using left_on='provider_id' and right_index=True
+                df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
                 df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
@@ -405,7 +405,7 @@ class FixedEffectPlottingMixin:
             estimate_col=estimate_col_name,
             ci_lower_col='lower', 
             ci_upper_col='upper',
-            group_col='group_id', 
+            group_col='provider_id', 
             flag_col=flag_col_name, 
             **plot_kwargs
         )

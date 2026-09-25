@@ -195,8 +195,8 @@ class LinearRandomEffectModel(
         X: pd.DataFrame,
         y_var: str,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        provider_var: Optional[str] = None,
+        cluster_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         weights_var: Optional[str] = None,
         include_intercept: bool = True,
@@ -215,10 +215,12 @@ class LinearRandomEffectModel(
             Response variable column name.
         x_vars : list of str, optional
             Fixed-effect covariate columns.
-        group_vars : list of str
-            Random-intercept grouping variables.
-        group_var : str, optional
-            Backward-compatible alias for one grouping variable.
+        provider_var : str
+            Column of provider IDs; its random intercepts are the provider effects that
+            the measures, tests, and plots report.
+        cluster_vars : str or list of str, optional
+            Further grouping columns with their own (crossed) random intercepts, e.g.
+            the hospital in Stage 2 of the three-stage model.
         offset_var : str, optional
             Known offset column added to the linear predictor as-is.
         weights_var : str, optional
@@ -236,12 +238,12 @@ class LinearRandomEffectModel(
             verbose = self.verbose
         use_reml = self.reml if reml is None else bool(reml)
 
-        if group_vars is None and group_var is not None:
-            group_vars = [group_var]
-        elif isinstance(group_vars, str):
-            group_vars = [group_vars]
-        elif group_vars is not None:
-            group_vars = list(group_vars)
+        if provider_var is None:
+            raise ValueError("provider_var is required.")
+        if isinstance(cluster_vars, str):
+            cluster_vars = [cluster_vars]
+        group_vars = [provider_var, *(cluster_vars or [])]
+        self._provider_var = provider_var
 
         if not group_vars:
             raise ValueError("At least one grouping variable is required")
@@ -854,21 +856,22 @@ class LinearRandomEffectModel(
 
     def get_random_effects(
         self,
-        group_var: Optional[str] = None,
+        var: Optional[str] = None,
     ) -> pd.Series:
         """Return BLUPs for the given grouping variable."""
+        var = self._provider_var if var is None else var
         if self._alpha_dict is None:
             raise ValueError("Model has not been fitted")
         re = self._alpha_dict
-        if group_var is None:
+        if var is None:
             if len(re) != 1:
                 raise ValueError(
-                    f"Specify group_var; available={list(re)}"
+                    f"Specify var; available={list(re)}"
                 )
             return list(re.values())[0]
-        if group_var not in re:
-            raise ValueError(f"Unknown group_var '{group_var}'")
-        return re[group_var]
+        if var not in re:
+            raise ValueError(f"Unknown grouping variable '{var}'")
+        return re[var]
 
     def get_sigma(self) -> float:
         """Profiled residual standard deviation.
@@ -883,28 +886,29 @@ class LinearRandomEffectModel(
 
     def get_random_effect_sd(
         self,
-        group_var: Optional[str] = None,
+        var: Optional[str] = None,
     ) -> Union[float, Dict[str, float]]:
         """Estimated random-effect standard deviation.
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         float or dict
         """
+        var = self._provider_var if var is None else var
         if self.random_effect_sd_ is None:
             raise ValueError("Model has not been fitted")
-        if group_var is None:
+        if var is None:
             if len(self.random_effect_sd_) != 1:
                 return dict(self.random_effect_sd_)
             return next(iter(self.random_effect_sd_.values()))
-        if group_var not in self.random_effect_sd_:
-            raise ValueError(f"Unknown group_var '{group_var}'")
-        return float(self.random_effect_sd_[group_var])
+        if var not in self.random_effect_sd_:
+            raise ValueError(f"Unknown grouping variable '{var}'")
+        return float(self.random_effect_sd_[var])
 
     # ------------------------------------------------------------------
     # Prediction
@@ -915,8 +919,7 @@ class LinearRandomEffectModel(
         X: pd.DataFrame,
         *,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        re_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         use_re: bool = False,
     ) -> Array:
@@ -948,22 +951,12 @@ class LinearRandomEffectModel(
             eta = X_fe @ beta
 
         if use_re:
-            if group_vars is None and group_var is not None:
-                group_vars = [group_var]
-            elif isinstance(group_vars, str):
-                group_vars = [group_vars]
-            elif group_vars is None:
-                group_vars = list(self._group_vars)
-            else:
-                group_vars = list(group_vars)
+            re_vars = list(self._group_vars) if re_vars is None else ([re_vars] if isinstance(re_vars, str) else list(re_vars))
+            unknown = [v for v in re_vars if v not in self._group_vars]
+            if unknown:
+                raise ValueError(f"Unknown grouping variables {unknown}; fitted: {self._group_vars}")
 
-            if list(group_vars) != list(self._group_vars):
-                raise ValueError(
-                    f"group_vars must match fitted grouping variables: "
-                    f"{self._group_vars}"
-                )
-
-            for gv in group_vars:
+            for gv in re_vars:
                 re = self._alpha_dict[gv]
                 groups_new = X[gv].astype(str).values
                 # pandas Index/Series labels may not be strings, so use
