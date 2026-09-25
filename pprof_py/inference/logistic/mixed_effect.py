@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import warnings
 from typing import List, Optional, Union
 from scipy.special import expit as plogis
-from ..effect_tests import (EXACT_P_FLOOR, clustered_poibin_tails, effect_test, integrated_poibin_tails, invert_decreasing, normalize_alternative, poibin_tails, reference_effect, resample_tails, z_from_tails)
+from ..count_tests import ClusterMixture, MonteCarlo, PlugIn, RowMixture, count_test, rows_by_provider
+from ..effect_tests import effect_test, normalize_alternative, reference_effect, resample_tails
 
 
 class LogisticMixedEffectInferenceMixin:
@@ -139,69 +139,31 @@ class LogisticMixedEffectInferenceMixin:
         idx = np.asarray(self._provider_idx).ravel()
         counts = np.bincount(idx, minlength=self.n_providers_)
         g0 = reference_effect(self.gamma_, counts, reference)
-        order = np.argsort(idx, kind="stable")
-        edges = np.r_[0, np.cumsum(counts)]
-        rows_of = [order[edges[j]:edges[j + 1]] for j in range(self.n_providers_)]
+        rows_of = rows_by_provider(idx, self.n_providers_)
         obs = np.array([self._obs[rows].sum() for rows in rows_of])
-        two = alt == "two_sided"
-
-        def z_of(tails, floor):
-            t = np.atleast_2d(tails)
-            return z_from_tails(t[:, 0] if two else t[:, 2], t[:, 1] if two else t[:, 3], alt, floor)
-
-        limits = None
         if test_method == "resampling":
             rng = np.random.default_rng(seed)
-            tails = np.empty((self.n_providers_, 4))
-            for j, rows in enumerate(rows_of):
-                tails[j] = resample_tails(obs[j], self.xbeta_[rows], self.alpha_mean_[rows], self.alpha_var_[rows],
-                                          g0, n_resample, rng)
-            floor = 0.5 / n_resample
-            z = z_of(tails, floor)
-            up, lo = (tails[:, 0], tails[:, 1]) if two else (tails[:, 2], tails[:, 3])
-            at_floor = (np.minimum(up, lo) if two else (up if alt == "greater" else lo)) <= floor
-            for j in np.flatnonzero(at_floor):
-                rows = rows_of[j]
-                z[j] = z_of(integrated_poibin_tails(obs[j], g0 + self.alpha_mean_[rows] + self.xbeta_[rows],
-                                                    self.alpha_var_[rows], self._POSTERIOR_NODES), EXACT_P_FLOOR)[0]
-            if at_floor.any():
-                warnings.warn(f"test_method='resampling': {int(at_floor.sum())} of {self.n_providers_} providers had "
-                              f"simulated tails at the Monte Carlo floor (0.5/n_resample = {floor:.2g}); their "
-                              "z-statistics use the exact tails of the same per-patient null instead.", stacklevel=2)
+            nulls = [MonteCarlo(simulate=lambda o, g, rows=rows: resample_tails(o, self.xbeta_[rows], self.alpha_mean_[rows],
+                                                                                 self.alpha_var_[rows], g, n_resample, rng),
+                                n_resample=n_resample,
+                                exact=RowMixture(eta=lambda g, rows=rows: g + self.alpha_mean_[rows] + self.xbeta_[rows],
+                                                 var=self.alpha_var_[rows], n_nodes=self._POSTERIOR_NODES))
+                     for rows in rows_of]
+        elif test_method == "exact":
+            clusters = np.asarray(self._cluster_idx).ravel()
+            mean_c, var_c = self.alpha_mean_cluster_, self.alpha_var_cluster_
+            nulls = [ClusterMixture(eta=lambda g, rows=rows: g + self.xbeta_[rows], cluster=clusters[rows], mean=mean_c,
+                                    var=var_c, n_nodes=self._POSTERIOR_NODES)
+                     for rows in rows_of]
         else:
-            tails_at = self._exact_tails_function(test_method, rows_of, obs)
-            z = z_of(np.array([tails_at(j, g0) for j in range(self.n_providers_)]), EXACT_P_FLOOR)
-            wanted = (np.ones(self.n_providers_, dtype=bool) if providers is None
-                      else np.isin(self.provider_ids_, np.atleast_1d(providers)))
-
-            def limits(z_lower, z_upper):
-                lower = np.full(self.n_providers_, np.nan)
-                upper = np.full(self.n_providers_, np.nan)
-                for j in np.flatnonzero(wanted):
-                    def zfun(g, j=j):
-                        return float(z_of(tails_at(j, g), EXACT_P_FLOOR)[0])
-                    lower[j] = invert_decreasing(zfun, self.gamma_[j], z_lower[j])
-                    upper[j] = invert_decreasing(zfun, self.gamma_[j], z_upper[j])
-                return lower, upper
+            nulls = [PlugIn(prob=lambda g, rows=rows: plogis(g + self.alpha_mean_[rows] + self.xbeta_[rows])) for rows in rows_of]
+        wanted = None if providers is None else np.isin(self.provider_ids_, np.atleast_1d(providers))
+        z, limits = count_test(obs, nulls, g0, alternative=alt, start=self.gamma_, wanted=wanted, floor_message=(
+            "test_method='resampling': {n} of {total} providers had simulated tails at the Monte Carlo floor "
+            "(0.5/n_resample = {floor:.2g}); their z-statistics use the exact tails of the same per-patient null instead."))
         return effect_test(self.provider_ids_, self.gamma_, z, g0, null_model=null_model, alternative=alt,
                            level=level, critical=critical, providers=providers, test_method=test_method,
                            limits=limits)
-
-    def _exact_tails_function(self, test_method, rows_of, obs):
-        """``tails_at(j, g)``: exact tails of provider j's count with its effect at ``g``."""
-        if test_method == "exact":
-            clusters = np.asarray(self._cluster_idx).ravel()
-            mean_c, var_c = self.alpha_mean_cluster_, self.alpha_var_cluster_
-
-            def tails_at(j, g):
-                rows = rows_of[j]
-                return clustered_poibin_tails(obs[j], g + self.xbeta_[rows], clusters[rows], mean_c, var_c,
-                                              self._POSTERIOR_NODES)
-        else:
-            def tails_at(j, g):
-                rows = rows_of[j]
-                return poibin_tails(obs[j], plogis(g + self.alpha_mean_[rows] + self.xbeta_[rows]))
-        return tails_at
 
     def calculate_confidence_intervals(
         self,

@@ -30,6 +30,7 @@ def models():
     y = rng.binomial(1, sig(-1.4 + X @ [0.5, -0.3] + g[prov])).astype(float)
     y[prov == 5] = 0.0                                              # a zero-event provider
     df = pd.DataFrame(X, columns=["x1", "x2"]); df["y"] = y; df["provider"] = prov
+    df["cluster"] = np.random.default_rng(7).integers(0, 12, prov.size)   # own stream: the other data are unchanged
     fe = LogisticFixedEffectModel(); _quiet(fe.fit, X, y, prov)
     re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
     me = LogisticMixedEffectModel()
@@ -39,7 +40,9 @@ def models():
     dfl = df.assign(y=yl)
     lfe = LinearFixedEffectModel(); _quiet(lfe.fit, X, yl, prov)
     lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
-    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre}
+    rec = LogisticRandomEffectModel()
+    _quiet(rec.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_vars=["cluster"], verbose=False)
+    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec}
 
 
 ROUTES = {
@@ -50,6 +53,9 @@ ROUTES = {
     "logistic_re/wald": ("re", dict(test_method="wald")),
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
+    "logistic_re_clustered/exact": ("rec", dict(test_method="exact")),
+    "logistic_re_clustered/poibin_exact": ("rec", dict(test_method="poibin_exact")),
+    "logistic_re_clustered/resampling": ("rec", dict(test_method="resampling", n_resample=1500, seed=3)),
     "logistic_me/exact": ("me", dict(test_method="exact")),
     "logistic_me/poibin_exact": ("me", dict(test_method="poibin_exact")),
     "logistic_me/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),

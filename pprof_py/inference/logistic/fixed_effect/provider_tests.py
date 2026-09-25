@@ -16,8 +16,8 @@ from fast_poibin import PoiBin
 
 from ....utils.numerical import sigmoid
 from ....inference.decision import provider_test, resolve_null_model
-from ....inference.effect_tests import (EXACT_P_FLOOR, bootstrap_tails, effect_test, normalize_alternative,
-                                        poibin_tails, reference_effect, z_from_tails)
+from ....inference.count_tests import MonteCarlo, PlugIn, count_test, rows_by_provider
+from ....inference.effect_tests import bootstrap_tails, effect_test, normalize_alternative, reference_effect
 from ....inference.empirical_null.models import NullModel, TheoreticalNull
 from ....inference.standardized import standardized_measure
 from ....inference.zstat import z_statistic
@@ -65,7 +65,8 @@ class _ProviderTestMethods:
             that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
         alternative, level, critical, interval
             As in :func:`~pprof_py.inference.provider_test`.
-            Intervals are available for the Wald test.
+            Intervals are available for the Wald test and, by inverting the
+            exact test, for ``"poibin_exact"``.
         n_resample, seed : int, optional
             Monte Carlo draws and seed for ``"bootstrap_exact"``.
 
@@ -87,6 +88,7 @@ class _ProviderTestMethods:
         y = np.asarray(self.outcome_, dtype=np.float64).ravel()
         trials = None if self.N_ is None else np.asarray(self.N_, dtype=np.float64).ravel()
         se = None
+        limits = None
         if test_method == "wald":
             se = np.sqrt(np.asarray(self.variances_["gamma"], dtype=np.float64).ravel())
             z = (gamma - g0) / se
@@ -99,26 +101,24 @@ class _ProviderTestMethods:
             with np.errstate(divide="ignore", invalid="ignore"):
                 z = np.where(var0 >= 1e-14, (observed - expected) / np.sqrt(var0), 0.0)
         elif test_method in ("poibin_exact", "bootstrap_exact"):
-            p0 = sigmoid(g0 + xb)
-            order = np.argsort(idx, kind="stable")
-            edges = np.r_[0, np.cumsum(np.bincount(idx, minlength=m))]
-            rng = np.random.default_rng(seed) if test_method == "bootstrap_exact" else None
-            tails = np.empty((m, 4))
-            for j in range(m):
-                rows = order[edges[j]:edges[j + 1]]
-                n_j = None if trials is None else trials[rows]
-                if test_method == "poibin_exact":
-                    tails[j] = poibin_tails(y[rows].sum(), p0[rows], n_j)
-                else:
-                    tails[j] = bootstrap_tails(y[rows].sum(), p0[rows], n_j, n_resample, rng)
-            two = alt == "two_sided"
-            z = z_from_tails(tails[:, 0] if two else tails[:, 2], tails[:, 1] if two else tails[:, 3], alt,
-                             EXACT_P_FLOOR if test_method == "poibin_exact" else 0.5 / n_resample)
+            rows_of = rows_by_provider(idx, m)
+            obs = np.array([y[rows].sum() for rows in rows_of])
+            n_of = [None if trials is None else trials[rows] for rows in rows_of]
+            if test_method == "poibin_exact":
+                nulls = [PlugIn(prob=lambda g, rows=rows: sigmoid(g + xb[rows]), trials=n_j) for rows, n_j in zip(rows_of, n_of)]
+            else:
+                rng = np.random.default_rng(seed)
+                nulls = [MonteCarlo(simulate=lambda o, g, rows=rows, n_j=n_j: bootstrap_tails(o, sigmoid(g + xb[rows]), n_j,
+                                                                                               n_resample, rng),
+                                    n_resample=n_resample)
+                         for rows, n_j in zip(rows_of, n_of)]
+            wanted = None if providers is None else np.isin(self.provider_ids_, np.atleast_1d(providers))
+            z, limits = count_test(obs, nulls, g0, alternative=alt, start=gamma, wanted=wanted)
         else:
             raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', or 'bootstrap_exact'.")
         result = effect_test(self.provider_ids_, gamma, z, g0, se=se, null_model=null_model, alternative=alt,
                              level=level, critical=critical, interval=interval, providers=providers,
-                             test_method=test_method)
+                             test_method=test_method, limits=limits)
         sizes = dict(zip(self.provider_ids_, self.provider_sizes_))
         result.attrs["provider_size"] = {g: sizes[g] for g in result.index}
         return result

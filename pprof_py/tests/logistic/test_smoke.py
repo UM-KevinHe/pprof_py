@@ -28,8 +28,8 @@ def _toy_data(n_groups=6, seed=12345):
         x1 = rng.normal(size=n)
         x2 = rng.normal(size=n)
         if g == 0:
-            # Zero-event provider: exercise the no-events branch of
-            # _exact_ci_for_one_group.
+            # Zero-event provider: exercise the open lower limit of the
+            # inverted exact test.
             y = np.zeros(n)
         else:
             linpred = -0.3 + 0.5 * x1 - 0.2 * x2 + (g - 2.5) * 0.4

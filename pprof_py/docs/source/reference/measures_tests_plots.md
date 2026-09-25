@@ -165,7 +165,7 @@ LogisticRandomEffectModel.test(
 LogisticMixedEffectModel.test(
     providers=None,
     *,
-    test_method: 'str' = 'resampling',
+    test_method: 'str' = 'exact',
     reference='median',
     null_model=None,
     alternative: 'str' = 'two_sided',
@@ -204,18 +204,21 @@ LinearRandomEffectModel.test(
 
 | Estimator | `test_method` (default first) | Default `reference` | Intervals |
 |---|---|---|---|
-| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald only |
-| `LogisticRandomEffectModel.test` | `"wald"`, `"poibin_exact"`, `"resampling"` | `0` | Wald only |
+| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald; inverted test (`"poibin_exact"`) |
+| `LogisticRandomEffectModel.test` | `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` | `0` | Wald; inverted test (`"exact"`, `"poibin_exact"`) |
 | `LogisticMixedEffectModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
 | `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
 | `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |
 
-- **Exact and Monte Carlo tests** (`"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event count with its
-  effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof. `"resampling"`
-  draws the other random effects from their posterior (He et al. 2013). The Monte Carlo tests use `n_resample` draws and `seed`; a
-  simulated tail probability of zero is replaced by `0.5 / n_resample`, except in `LogisticMixedEffectModel.test`, which uses the
-  exact tails of the same null for those providers. The mixed-effect model's default `"exact"` draws each cluster's effect once for
-  all of a provider's patients in that cluster and computes the count's distribution exactly.
+- **Exact and Monte Carlo tests** (`"exact"`, `"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event
+  count with its effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof.
+  `"exact"` (the mixed-effect default, and in random-effects models with one cluster factor) draws each cluster's effect once for all
+  of a provider's patients in that cluster and computes the count's distribution exactly. `"poibin_exact"` holds the other random
+  effects at their posterior means; `"resampling"` draws them from their posterior for each patient (He et al. 2013). The Monte Carlo
+  tests use `n_resample` draws and `seed`. In `"resampling"`, providers whose simulated tail reaches the floor `0.5 / n_resample` get
+  the exact tails of the same null, with a warning; `"bootstrap_exact"` keeps the floor. The exact tests' intervals invert the test,
+  so a limit excludes γ₀ exactly when the provider is flagged. All count tests run through one component,
+  `pprof_py.inference.count_tests`.
 - **Binomial outcomes** (a logistic fixed-effect model fitted with `n_var`) are weighted by their trials in the score, exact and bootstrap
   tests; the exact test expands trials up to 20,000 per provider.
 - **The logistic Wald test** uses the normal reference, as R pprof does. It is unreliable for providers at the numerical bound of γ

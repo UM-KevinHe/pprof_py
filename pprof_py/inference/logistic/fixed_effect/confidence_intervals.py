@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm, t
 from scipy.optimize import root_scalar
-from fast_poibin import PoiBin
 
 from ....utils.numerical import sigmoid
 
@@ -174,120 +173,6 @@ class _ConfidenceIntervalMethods:
             lower_bound = self._search_root(lower_func, (gamma_guess - 5.0, gamma_guess)) or -np.inf
         return (lower_bound, upper_bound)
 
-    def _exact_ci_for_one_group(self, group_idx: int, alpha: float, alternative: str, gamma_guess: float) -> (float, float):
-        """Compute 'exact' CI for a single provider's gamma using the fast_poibin package.
-
-        Parameters
-        ----------
-        group_idx : int
-            Provider index in [0, M-1].
-        alpha : float
-            1 - confidence level.
-        alternative : {'two_sided','greater','less'}
-            Specifies the alternative hypothesis.
-        gamma_guess : float
-            An initial guess for gamma.
-
-        Returns
-        -------
-        (float, float)
-            (lower_bound, upper_bound) for this provider's gamma.
-
-        Notes
-        -----
-        - Uses the fast_poibin.PoiBin class for computing PMF and CDF.
-        - For the "mid-p" approach when alternative == "two_sided", we compute:
-            lower tail: P(X <= obs-1) + 0.5 * P(X=obs) - alpha/2
-            upper tail: P(X >= obs) + 0.5 * P(X=obs) - alpha/2
-                      = (1 - P(X <= obs)) + P(X=obs) + 0.5 * P(X=obs) - alpha/2
-                      = 1 - P(X <= obs-1) - 0.5 * P(X=obs) - alpha/2
-        """
-        # Check for no events or all events
-        no_events, all_events = self._get_no_all_events(group_idx)
-        observed = int(np.sum(self.outcome_[self.provider_indices_ == group_idx]))
-        xbeta_group = self.xbeta_[self.provider_indices_ == group_idx]
-        n_trials = len(xbeta_group)
-
-        if n_trials == 0:
-            logger.warning(f"Group {group_idx} has no observations. Returning (-inf, inf).")
-            return (-np.inf, np.inf)
-
-        if no_events:
-            if alternative not in ["two_sided", "less"]:
-                return (-np.inf, np.inf)
-
-            def upper_func(gamma):
-                pvec = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-                if np.any(np.isnan(pvec)) or np.any(np.isinf(pvec)):
-                    return np.nan
-                pb = PoiBin(pvec)
-                alpha_level = alpha if alternative == "less" else alpha / 2.0
-                return 0.5 * pb.pmf[0] - alpha_level if len(pb.pmf) > 0 else np.nan
-
-            upper_bound = self._search_root(upper_func, (gamma_guess - 10.0, gamma_guess + 10.0))
-            return (-np.inf, upper_bound if upper_bound is not None else np.inf)
-
-        if all_events:
-            if alternative not in ["two_sided", "greater"]:
-                return (-np.inf, np.inf)
-
-            def lower_func(gamma):
-                pvec = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-                if np.any(np.isnan(pvec)) or np.any(np.isinf(pvec)):
-                    return np.nan
-                pb = PoiBin(pvec)
-                alpha_level = alpha if alternative == "greater" else alpha / 2.0
-                pmf_n = pb.pmf[n_trials] if len(pb.pmf) > n_trials else np.nan
-                return pmf_n - alpha_level if alternative == "greater" else 0.5 * pmf_n - alpha_level
-
-            lower_bound = self._search_root(lower_func, (gamma_guess - 10.0, gamma_guess + 10.0))
-            return (lower_bound if lower_bound is not None else -np.inf, np.inf)
-
-        def upper_func(gamma):
-            pvec = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-            if np.any(np.isnan(pvec)) or np.any(np.isinf(pvec)):
-                return np.nan
-            pb = PoiBin(pvec)
-            if len(pb.pmf) <= observed or len(pb.cdf) <= observed:
-                logger.warning(f"fast_poibin arrays too short for obs={observed}.")
-                return np.nan
-            pmf_obs = pb.pmf[observed]
-            cdf_minus_1 = pb.cdf[observed - 1] if observed > 0 else 0.0
-            if alternative == "two_sided":
-                return cdf_minus_1 + 0.5 * pmf_obs - alpha / 2.0
-            elif alternative == "less":
-                return cdf_minus_1 - alpha
-            return 1.0
-
-        def lower_func(gamma):
-            pvec = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-            if np.any(np.isnan(pvec)) or np.any(np.isinf(pvec)):
-                return np.nan
-            pb = PoiBin(pvec)
-            if len(pb.pmf) <= observed or len(pb.cdf) <= observed:
-                logger.warning(f"fast_poibin arrays too short for obs={observed}.")
-                return np.nan
-            pmf_obs = pb.pmf[observed]
-            cdf_obs = pb.cdf[observed]
-            if alternative == "two_sided":
-                return (1.0 - cdf_obs) + 0.5 * pmf_obs - alpha / 2.0
-            elif alternative == "greater":
-                cdf_minus_1 = pb.cdf[observed - 1] if observed > 0 else 0.0
-                return (1.0 - cdf_minus_1) - alpha
-            return 1.0
-
-        lower_bound, upper_bound = -np.inf, np.inf
-        search_interval_half_width = 5.0
-        if alternative in ["two_sided", "less"]:
-            upper_bound = self._search_root(upper_func, (gamma_guess, gamma_guess + search_interval_half_width)) or np.inf
-        if alternative in ["two_sided", "greater"]:
-            lower_bound = self._search_root(lower_func, (gamma_guess - search_interval_half_width, gamma_guess)) or -np.inf
-
-        if lower_bound > upper_bound:
-            logger.warning(f"Lower bound {lower_bound} > Upper bound {upper_bound} for group {group_idx}. Resetting.")
-            return (-np.inf, np.inf)
-        return (lower_bound, upper_bound)
-    
     def _validate_ci_arguments(self, option: str, stdz: Union[str, list], alternative: str) -> None:
         """Validate arguments for confidence interval calculations.
 
@@ -341,6 +226,10 @@ class _ConfidenceIntervalMethods:
         alpha = 1.0 - level
 
         records = []
+        if test_method == "exact":
+            # the limits of the exact test itself: the inverted poibin_exact test, dual to its flags
+            exact_limits = self.test(providers=[g for g in self.provider_ids_ if g in group_ids],
+                                     test_method="poibin_exact", alternative=alternative, level=level)
         for i, gid in enumerate(self.provider_ids_):
             if gid not in group_ids:
                 continue
@@ -366,9 +255,7 @@ class _ConfidenceIntervalMethods:
                     group_idx=i, alpha=alpha, alternative=alternative, gamma_guess=gamma_est
                 )
             elif test_method == "exact":
-                lower, upper = self._exact_ci_for_one_group(
-                    group_idx=i, alpha=alpha, alternative=alternative, gamma_guess=gamma_est
-                )
+                lower, upper = exact_limits.at[gid, "ci_lower"], exact_limits.at[gid, "ci_upper"]
             else:
                 raise ValueError("test_method must be wald, score, exact")
 

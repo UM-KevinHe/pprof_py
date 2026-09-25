@@ -273,8 +273,10 @@ print("\n--- Logistic RE Provider Test (vs Null RE of 0.0) ---")
 print(test_results.head())
 ```
 
-`test_method='poibin_exact'` and `'resampling'` test each provider's event count instead of its
-BLUP; every method returns the columns described in {ref}`ll_ref_measures`, with `flag` = 1 for
+`test_method='exact'`, `'poibin_exact'` and `'resampling'` test each provider's event count instead
+of its BLUP. `'exact'` needs one cluster factor (`cluster_vars`): each cluster's effect is drawn once,
+from its posterior, for all of the provider's patients in that cluster. The exact tests' limits invert
+the test. Every method returns the columns described in {ref}`ll_ref_measures`, with `flag` = 1 for
 providers above the reference and -1 below.
 
 ### 3.6. Confidence Interval Calculation (`.calculate_confidence_intervals()`)

@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 from scipy.special import expit
 from scipy.stats import norm
-from ..effect_tests import (EXACT_P_FLOOR, effect_test, normalize_alternative, poibin_tails, reference_effect, resample_tails, z_from_tails)
+from ..count_tests import ClusterMixture, MonteCarlo, PlugIn, RowMixture, count_test, rows_by_provider
+from ..effect_tests import effect_test, normalize_alternative, reference_effect, resample_tails
 from typing import List, Union
 
 Array = np.ndarray
@@ -20,6 +21,8 @@ Array = np.ndarray
 class LogisticRandomEffectInferenceMixin:
     """Fixed-effect summary and posterior BLUP variance/SE for
     `LogisticRandomEffectModel`."""
+
+    _POSTERIOR_NODES = 32   # Gauss-Hermite nodes of the exact tests, as in the mixed-effect model
 
     def summary(self) -> pd.DataFrame:
         self._check_is_fitted()
@@ -142,12 +145,18 @@ class LogisticRandomEffectInferenceMixin:
         ----------
         providers : array-like, optional
             Report only these groups; gamma_0 and any empirical null use all.
-        test_method : {"wald", "resampling", "poibin_exact"}
+        test_method : {"wald", "exact", "poibin_exact", "resampling"}
             ``"wald"``: ``(b_j - gamma_0) / SE(b_j)`` with the BLUP's posterior
-            SE. ``"poibin_exact"``: exact Poisson-binomial test of the group's
-            event count with its effect set to gamma_0 and other random effects
-            at their posterior means. ``"resampling"``: the same test drawing
-            the other random effects from their posterior (He et al. 2013).
+            SE. ``"exact"``: exact test of the group's event count with its
+            effect set to gamma_0 and one cluster effect per cluster, drawn from
+            its posterior and shared by the group's rows in that cluster (He et
+            al. 2013, step (ii)); needs exactly one cluster factor. The count's
+            distribution is a Gauss-Hermite mixture per cluster, convolved across
+            clusters. ``"poibin_exact"``: exact Poisson-binomial test with the
+            other random effects at their posterior means. ``"resampling"``: the
+            same test drawing the other random effects from their posterior for
+            each row (He et al. 2013); groups whose simulated tails reach the
+            Monte Carlo floor get the exact tails of that null, with a warning.
         reference : "median", "mean", or float
             The reference effect gamma_0 (default 0, the random-effect mean, as R pprof): the median of the estimated effects,
             their size-weighted mean, or a value on the effect scale.
@@ -157,7 +166,8 @@ class LogisticRandomEffectInferenceMixin:
             that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
         alternative, level, critical, interval
             As in :func:`~pprof_py.inference.provider_test`.
-            Intervals are available for the Wald test.
+            Intervals are available for the Wald test and, by inverting the
+            exact test, for ``"exact"`` and ``"poibin_exact"``.
         n_resample, seed : int, optional
             Monte Carlo draws and seed for ``"resampling"``.
 
@@ -171,8 +181,9 @@ class LogisticRandomEffectInferenceMixin:
         group_var = self._provider_var
         self._check_is_fitted()
         alt = normalize_alternative(alternative)
-        if test_method not in ("wald", "resampling", "poibin_exact"):
-            raise ValueError(f"test_method={test_method!r} is not supported; use 'wald', 'resampling', or 'poibin_exact'.")
+        if test_method not in ("wald", "exact", "poibin_exact", "resampling"):
+            raise ValueError(f"test_method={test_method!r} is not supported; "
+                             "use 'wald', 'exact', 'poibin_exact', or 'resampling'.")
         blups = self.get_random_effects(group_var)
         post_se = self._get_posterior_se(group_var)
         k = self._group_vars.index(group_var)
@@ -180,34 +191,51 @@ class LogisticRandomEffectInferenceMixin:
         n_levels = self._n_groups[k]
         g0 = reference_effect(blups.values, np.bincount(idx, minlength=n_levels), reference)
         se = None
+        limits = None
         if test_method == "wald":
             se = np.asarray(post_se.values, dtype=np.float64)
             z = (blups.values - g0) / np.maximum(se, 1e-15)
         else:
-            re_mean = np.zeros(self._n)
-            re_var = np.zeros(self._n)
-            for j, gv in enumerate(self._group_vars):
-                if gv == group_var:
-                    continue
-                re_mean += self.get_random_effects(gv).values[self._group_indices[j]]
-                re_var += self._get_posterior_se(gv).values[self._group_indices[j]] ** 2
-            order = np.argsort(idx, kind="stable")
-            edges = np.r_[0, np.cumsum(np.bincount(idx, minlength=n_levels))]
-            rng = np.random.default_rng(seed) if test_method == "resampling" else None
-            tails = np.empty((n_levels, 4))
-            for j in range(n_levels):
-                rows = order[edges[j]:edges[j + 1]]
-                obs = self._y[rows].sum()
+            rows_of = rows_by_provider(idx, n_levels)
+            obs = np.array([self._y[rows].sum() for rows in rows_of])
+            if test_method == "exact":
+                if len(self._group_vars) != 2:
+                    raise ValueError("test_method='exact' needs exactly one cluster factor (cluster_vars) besides the "
+                                     f"provider; this model has {len(self._group_vars) - 1}.")
+                c = 1 - k
+                cvar = self._group_vars[c]
+                codes = np.asarray(self._group_indices[c]).ravel()
+                mean_c = np.asarray(self.get_random_effects(cvar).values, dtype=np.float64)
+                var_c = np.asarray(self._get_posterior_se(cvar).values, dtype=np.float64) ** 2
+                nulls = [ClusterMixture(eta=lambda g, rows=rows: g + self.xbeta_[rows], cluster=codes[rows], mean=mean_c,
+                                        var=var_c, n_nodes=self._POSTERIOR_NODES)
+                         for rows in rows_of]
+            else:
+                re_mean = np.zeros(self._n)
+                re_var = np.zeros(self._n)
+                for j, gv in enumerate(self._group_vars):
+                    if gv == group_var:
+                        continue
+                    re_mean += self.get_random_effects(gv).values[self._group_indices[j]]
+                    re_var += self._get_posterior_se(gv).values[self._group_indices[j]] ** 2
                 if test_method == "poibin_exact":
-                    tails[j] = poibin_tails(obs, expit(g0 + re_mean[rows] + self.xbeta_[rows]))
+                    nulls = [PlugIn(prob=lambda g, rows=rows: expit(g + re_mean[rows] + self.xbeta_[rows])) for rows in rows_of]
                 else:
-                    tails[j] = resample_tails(obs, self.xbeta_[rows], re_mean[rows], re_var[rows], g0, n_resample, rng)
-            two = alt == "two_sided"
-            z = z_from_tails(tails[:, 0] if two else tails[:, 2], tails[:, 1] if two else tails[:, 3], alt,
-                             EXACT_P_FLOOR if test_method == "poibin_exact" else 0.5 / n_resample)
+                    rng = np.random.default_rng(seed)
+                    nulls = [MonteCarlo(simulate=lambda o, g, rows=rows: resample_tails(o, self.xbeta_[rows], re_mean[rows],
+                                                                                         re_var[rows], g, n_resample, rng),
+                                        n_resample=n_resample,
+                                        exact=RowMixture(eta=lambda g, rows=rows: g + re_mean[rows] + self.xbeta_[rows],
+                                                         var=re_var[rows], n_nodes=self._POSTERIOR_NODES))
+                             for rows in rows_of]
+            wanted = None if providers is None else np.isin(blups.index, np.atleast_1d(providers))
+            z, limits = count_test(obs, nulls, g0, alternative=alt, start=blups.values, wanted=wanted, floor_message=(
+                "test_method='resampling': {n} of {total} providers had simulated tails at the Monte Carlo floor "
+                "(0.5/n_resample = {floor:.2g}); their z-statistics use the exact tails of the same per-observation "
+                "null instead."))
         return effect_test(blups.index, blups.values, z, g0, se=se, null_model=null_model, alternative=alt,
                            level=level, critical=critical, interval=interval, providers=providers,
-                           test_method=test_method)
+                           test_method=test_method, limits=limits)
 
     def calculate_confidence_intervals(
         self,
