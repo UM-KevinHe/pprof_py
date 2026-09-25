@@ -16,15 +16,15 @@ from ...algorithms.linear.fixed_effect import (
     calculate_residuals,
     compute_model_statistics,
 )
-from ...inference.linear import FixedEffectInferenceMixin
-from ...measures.linear import FixedEffectMeasuresMixin
-from ...plotting.linear import FixedEffectPlottingMixin
+from ...inference.linear import LinearFixedEffectInferenceMixin
+from ...measures.linear import LinearFixedEffectMeasuresMixin
+from ...plotting.linear import LinearFixedEffectPlottingMixin
 
 
 class LinearFixedEffectModel(
-    FixedEffectInferenceMixin,
-    FixedEffectMeasuresMixin,
-    FixedEffectPlottingMixin,
+    LinearFixedEffectInferenceMixin,
+    LinearFixedEffectMeasuresMixin,
+    LinearFixedEffectPlottingMixin,
     ProviderModel,
 ):
     """Linear Fixed Effect model.
@@ -35,11 +35,11 @@ class LinearFixedEffectModel(
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
 
-    - `FixedEffectInferenceMixin` (`pprof_py.inference.linear`): sigma/variance estimation,
-      `summary()`.
-    - `FixedEffectMeasuresMixin` (`pprof_py.measures.linear`): standardized differences,
-      provider-level confidence intervals, provider-effect hypothesis testing, `test()`.
-    - `FixedEffectPlottingMixin` (`pprof_py.plotting.linear`): funnel/caterpillar/forest/
+    - `LinearFixedEffectInferenceMixin` (`pprof_py.inference.linear`): sigma/variance estimation,
+      `summary()`; provider-effect tests, `test()`; confidence intervals.
+    - `LinearFixedEffectMeasuresMixin` (`pprof_py.measures.linear`): standardized differences,
+      `calculate_standardized_measures()`.
+    - `LinearFixedEffectPlottingMixin` (`pprof_py.plotting.linear`): funnel/caterpillar/forest/
       residual/Q-Q plots.
 
     Parameters

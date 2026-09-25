@@ -23,8 +23,8 @@ from typing import Optional, List
 from ...base import ProviderModel
 
 from ...exceptions import NotFittedError
-from ...inference.logistic import MixedEffectInferenceMixin
-from ...measures.logistic import MixedEffectMeasuresMixin
+from ...inference.logistic import LogisticMixedEffectInferenceMixin
+from ...measures.logistic import LogisticMixedEffectMeasuresMixin
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def gauss_hermite_normal(n_nodes: int, sigma: float):
     return nodes, weights
 
 
-class LogisticMixedEffectModel(ProviderModel, MixedEffectInferenceMixin, MixedEffectMeasuresMixin):
+class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin, LogisticMixedEffectMeasuresMixin):
     """Logistic model with fixed provider effects and random cluster effects.
 
     **Stage 3** of a three-stage estimation pipeline (He et al., 2013):
@@ -83,10 +83,10 @@ class LogisticMixedEffectModel(ProviderModel, MixedEffectInferenceMixin, MixedEf
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
 
-    - `MixedEffectInferenceMixin` (`pprof_py.inference.logistic`): covariate (beta)
-      statistical inference, `summary()`.
-    - `MixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
-      provider-effect hypothesis testing, `test()`.
+    - `LogisticMixedEffectInferenceMixin` (`pprof_py.inference.logistic`): covariate (beta)
+      statistical inference, `summary()`; provider-effect tests, `test()`; confidence intervals.
+    - `LogisticMixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
+      `calculate_standardized_measures()`.
 
     Parameters
     ----------

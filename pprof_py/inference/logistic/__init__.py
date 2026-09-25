@@ -1,10 +1,10 @@
 """Covariate-level statistical inference for the logistic model family."""
-from .fixed_effect import FixedEffectInferenceMixin
-from .mixed_effect import MixedEffectInferenceMixin
-from .random_effect import RandomEffectInferenceMixin
+from .fixed_effect import LogisticFixedEffectInferenceMixin
+from .mixed_effect import LogisticMixedEffectInferenceMixin
+from .random_effect import LogisticRandomEffectInferenceMixin
 
 __all__ = [
-    "FixedEffectInferenceMixin",
-    "MixedEffectInferenceMixin",
-    "RandomEffectInferenceMixin",
+    "LogisticFixedEffectInferenceMixin",
+    "LogisticMixedEffectInferenceMixin",
+    "LogisticRandomEffectInferenceMixin",
 ]

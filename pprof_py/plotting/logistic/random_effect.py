@@ -25,7 +25,7 @@ from ...plotting import style as _style
 # ---------------------------------------------------------------------------
 
 class _LogisticREPlottingHost(Protocol):
-    """Attribute contract that ``RandomEffectPlottingMixin`` expects from
+    """Attribute contract that ``LogisticRandomEffectPlottingMixin`` expects from
     ``LogisticRandomEffectModel``."""
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
@@ -55,7 +55,7 @@ class _LogisticREPlottingHost(Protocol):
 # Mixin
 # ---------------------------------------------------------------------------
 
-class RandomEffectPlottingMixin:
+class LogisticRandomEffectPlottingMixin:
     """Funnel, provider-effect, standardized-measure, and coefficient-forest
     plots for ``LogisticRandomEffectModel``."""
 

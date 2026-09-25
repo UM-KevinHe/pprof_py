@@ -8,15 +8,15 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Protocol
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
+from ....utils.numerical import covariance_from_information, solve_information
 import pandas as pd
 from scipy.stats import norm, chi2
 
-from ...utils.numerical import sigmoid
+from ....utils.numerical import sigmoid
 
 
 class _LogisticFEInferenceHost(Protocol):
-    """Attribute contract that `FixedEffectInferenceMixin` expects from its
+    """Attribute contract that `LogisticFixedEffectInferenceMixin` expects from its
     host class (`LogisticFixedEffectModel`).
 
     This Protocol exists purely for documentation and static-analysis
@@ -45,7 +45,7 @@ class _LogisticFEInferenceHost(Protocol):
     def _check_is_fitted(self) -> None: ...
 
 
-class FixedEffectInferenceMixin:
+class _CovariateInferenceMethods:
     """Variance estimation and covariate-level (beta) statistical
     inference for `LogisticFixedEffectModel`."""
 

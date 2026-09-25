@@ -140,9 +140,9 @@ All plotting uses Matplotlib as the primary backend. The package-wide
 visual style is defined in `pprof_py.plotting.style`.
 
 Each model family exposes its plotting methods through a dedicated
-`PlottingMixin` (e.g., `plotting.linear.RandomEffectPlottingMixin`,
-`plotting.logistic.RandomEffectPlottingMixin`,
-`plotting.logistic.FixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticMixedEffectModel` have neither.
+`PlottingMixin` (e.g., `plotting.linear.LinearRandomEffectPlottingMixin`,
+`plotting.logistic.LogisticRandomEffectPlottingMixin`,
+`plotting.logistic.LogisticFixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticMixedEffectModel` have neither.
 
 ## Common Fitted Attributes
 

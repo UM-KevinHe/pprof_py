@@ -37,9 +37,9 @@ from scipy.sparse.linalg import splu
 from scipy.stats import t
 
 from ...exceptions import NotFittedError
-from ...inference.linear import RandomEffectInferenceMixin
-from ...measures.linear import RandomEffectMeasuresMixin
-from ...plotting.linear import RandomEffectPlottingMixin
+from ...inference.linear import LinearRandomEffectInferenceMixin
+from ...measures.linear import LinearRandomEffectMeasuresMixin
+from ...plotting.linear import LinearRandomEffectPlottingMixin
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +58,9 @@ class _FitState:
 
 
 class LinearRandomEffectModel(
-    RandomEffectInferenceMixin,
-    RandomEffectMeasuresMixin,
-    RandomEffectPlottingMixin,
+    LinearRandomEffectInferenceMixin,
+    LinearRandomEffectMeasuresMixin,
+    LinearRandomEffectPlottingMixin,
     ProviderModel,
 ):
     """Gaussian linear mixed-effects model with random intercepts, lme4-style.

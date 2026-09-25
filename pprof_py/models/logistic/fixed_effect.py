@@ -20,17 +20,17 @@ from ...data.preparation import DataPrepOptions
 from ...exceptions import NotFittedError
 from ...algorithms.logistic.fixed_effect import SerbinAlgorithm, BanAlgorithm, AlgorithmOptions
 from ...utils.numerical import sigmoid
-from ...inference.logistic import FixedEffectInferenceMixin
-from ...measures.logistic import FixedEffectMeasuresMixin
-from ...plotting.logistic import FixedEffectPlottingMixin
+from ...inference.logistic import LogisticFixedEffectInferenceMixin
+from ...measures.logistic import LogisticFixedEffectMeasuresMixin
+from ...plotting.logistic import LogisticFixedEffectPlottingMixin
 
 logger = logging.getLogger(__name__)
 
 
 class LogisticFixedEffectModel(
-    FixedEffectInferenceMixin,
-    FixedEffectMeasuresMixin,
-    FixedEffectPlottingMixin,
+    LogisticFixedEffectInferenceMixin,
+    LogisticFixedEffectMeasuresMixin,
+    LogisticFixedEffectPlottingMixin,
     ProviderModel,
 ):
     """Logistic Regression Model with Fixed Effects.
@@ -43,11 +43,12 @@ class LogisticFixedEffectModel(
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
 
-    - `FixedEffectInferenceMixin` (`pprof_py.inference.logistic`): variance estimation and
-      covariate (beta) hypothesis tests (Wald/LR/score), `summary()`.
-    - `FixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
-      provider-level confidence intervals, provider-effect (gamma) hypothesis testing, `test()`.
-    - `FixedEffectPlottingMixin` (`pprof_py.plotting.logistic`): funnel/caterpillar/forest plots.
+    - `LogisticFixedEffectInferenceMixin` (`pprof_py.inference.logistic`): variance estimation and
+      covariate (beta) hypothesis tests (Wald/LR/score), `summary()`; provider-effect tests,
+      `test()` and `test_standardized()`; confidence intervals.
+    - `LogisticFixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
+      `calculate_standardized_measures()`.
+    - `LogisticFixedEffectPlottingMixin` (`pprof_py.plotting.logistic`): funnel/caterpillar/forest plots.
 
     Parameters
     ----------

@@ -262,8 +262,8 @@ iteration, which can stop well short of the solution on some data sets;
 
 ## 8. Standardized measures and provider testing
 
-`calculate_standardized_measures()` and `test()` — mixed into this
-class from `MixedEffectMeasuresMixin` — follow the same conventions as
+`calculate_standardized_measures()` (from `LogisticMixedEffectMeasuresMixin`)
+and `test()` (from `LogisticMixedEffectInferenceMixin`) follow the same conventions as
 `LogisticFixedEffectModel` and
 [`LogisticRandomEffectModel`](logistic_random_effect_model_stats),
 with the cluster random effect's posterior mean folded into each

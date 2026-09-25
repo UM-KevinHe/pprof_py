@@ -20,7 +20,7 @@ from ...plotting import style as _style
 
 
 class _LinearREPlottingHost(Protocol):
-    """Attribute contract that `RandomEffectPlottingMixin` expects from its
+    """Attribute contract that `LinearRandomEffectPlottingMixin` expects from its
     host class (`LinearRandomEffectModel`).
     """
     coefficients_: Optional[Dict[str, Any]]
@@ -39,7 +39,7 @@ class _LinearREPlottingHost(Protocol):
     def test(self, **kwargs: Any) -> Any: ...
 
 
-class RandomEffectPlottingMixin:
+class LinearRandomEffectPlottingMixin:
     """Funnel, provider-effect, standardized-measure, coefficient-forest,
     and residual/Q-Q plots for `LinearRandomEffectModel`."""
 

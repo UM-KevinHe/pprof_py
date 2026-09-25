@@ -41,9 +41,9 @@ from scipy.sparse import coo_matrix, csr_matrix, eye
 from scipy.sparse.linalg import splu
 from scipy.stats import norm
 
-from ...inference.logistic import RandomEffectInferenceMixin
-from ...measures.logistic import RandomEffectMeasuresMixin
-from ...plotting.logistic import RandomEffectPlottingMixin
+from ...inference.logistic import LogisticRandomEffectInferenceMixin
+from ...measures.logistic import LogisticRandomEffectMeasuresMixin
+from ...plotting.logistic import LogisticRandomEffectPlottingMixin
 from ...exceptions import NotFittedError
 
 try:
@@ -67,7 +67,7 @@ class _FitState:
     iterations: int
 
 
-class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasuresMixin, RandomEffectPlottingMixin,
+class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRandomEffectMeasuresMixin, LogisticRandomEffectPlottingMixin,
                                 ProviderModel):
     """Bernoulli-logit GLMM with random intercepts, lme4-style.
 

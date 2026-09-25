@@ -1,5 +1,5 @@
 """Plotting mixins for the logistic model family."""
-from .fixed_effect import FixedEffectPlottingMixin
-from .random_effect import RandomEffectPlottingMixin
+from .fixed_effect import LogisticFixedEffectPlottingMixin
+from .random_effect import LogisticRandomEffectPlottingMixin
 
-__all__ = ["FixedEffectPlottingMixin", "RandomEffectPlottingMixin"]
+__all__ = ["LogisticFixedEffectPlottingMixin", "LogisticRandomEffectPlottingMixin"]

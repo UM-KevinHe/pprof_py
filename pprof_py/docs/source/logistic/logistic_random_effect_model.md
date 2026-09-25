@@ -170,7 +170,7 @@ $$
 
 ### 2.6. Visualization
 
-The `LogisticRandomEffectModel` class provides several plotting methods via the `RandomEffectPlottingMixin`:
+The `LogisticRandomEffectModel` class provides several plotting methods via the `LogisticRandomEffectPlottingMixin`:
 
 - **Funnel Plot** (`plot_funnel`): Plots the indirect standardized ratio (O/E) against expected count (precision). Control limits use the Poisson approximation $\text{target} \pm z_{1-\alpha/2} / \sqrt{E_i}$, with `target=1.0` for ratios. Providers are flagged using the `test()` method.
 - **Caterpillar Plot for Provider Effects** (`plot_provider_effects`): Displays BLUPs $\hat{u}_i$ on the log-odds scale with confidence intervals from the posterior standard errors. Optionally colour-codes providers using significance flags.

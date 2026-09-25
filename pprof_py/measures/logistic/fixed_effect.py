@@ -1,20 +1,42 @@
 """Standardized rate/ratio computation for logistic fixed-effect models.
 
-Contains ``_StandardizedMeasureMethods``, a mixin fragment providing
+Contains ``LogisticFixedEffectMeasuresMixin``, which provides
 :meth:`calculate_standardized_measures`.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
 import numpy as np
 import pandas as pd
 
-from ....utils.numerical import sigmoid
+from ...utils.numerical import sigmoid
 
 
-class _StandardizedMeasureMethods:
-    """Mixin fragment: standardized-measure computation."""
+
+@runtime_checkable
+class _LogisticFEMeasuresHost(Protocol):
+    """Attribute contract that ``LogisticFixedEffectMeasuresMixin`` expects from its
+    host class (``LogisticFixedEffectModel``)."""
+
+    coefficients_: Optional[Dict[str, Any]]
+    variances_: Optional[Dict[str, Any]]
+    robust_variances_: Optional[Dict[str, Any]]
+    fitted_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_indices_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
+    outcome_: Optional[np.ndarray]
+    xbeta_: Optional[np.ndarray]
+    N_: Optional[np.ndarray]
+    # --- Configuration / algorithm ---
+    algorithm: Any
+
+    def _check_is_fitted(self) -> None: ...
+    def calculate_standardized_measures(self, **kwargs: Any) -> dict: ...
+
+class LogisticFixedEffectMeasuresMixin:
+    """Standardized measures for ``LogisticFixedEffectModel``."""
 
     def calculate_standardized_measures(
         self,
