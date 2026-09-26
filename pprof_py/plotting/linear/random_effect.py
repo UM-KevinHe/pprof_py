@@ -23,13 +23,14 @@ class _LinearREPlottingHost(Protocol):
     """Attribute contract that `LinearRandomEffectPlottingMixin` expects from its
     host class (`LinearRandomEffectModel`).
     """
+    def _require_one_factor(self) -> None: ...
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
     fitted_: Optional[np.ndarray]
     residuals_: Optional[np.ndarray]
     sigma_: Optional[float]
-    groups_: Optional[np.ndarray]
-    group_sizes_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
     covariate_names_: list
     result: Any  # kept for protocol compatibility
 
@@ -140,7 +141,8 @@ class LinearRandomEffectPlottingMixin:
         legend_location : str, default='best'
             Location string for the legend.
         """
-        if self.coefficients_ is None or self.sigma_ is None or self.groups_ is None or self.group_sizes_ is None:
+        self._require_one_factor()
+        if self.coefficients_ is None or self.sigma_ is None or self.provider_ids_ is None or self.provider_sizes_ is None:
             raise ValueError("Model must be fitted and sigma estimated before plotting funnel plot.")
 
         # Ttransform any "median"/"mean" null into a numeric value
@@ -167,7 +169,7 @@ class LinearRandomEffectPlottingMixin:
         df = sm_info[stdz].copy()
         if 'provider_id' in df.columns: df.set_index('provider_id', inplace=True)
         
-        precision_map = pd.Series(self.group_sizes_, index=self.groups_)
+        precision_map = pd.Series(self.provider_sizes_, index=self.provider_ids_)
         df["precision"] = df.index.map(precision_map)
         df.dropna(subset=['precision'], inplace=True)
 
@@ -254,6 +256,7 @@ class LinearRandomEffectPlottingMixin:
         **plot_kwargs
             Additional arguments passed to plot_caterpillar (e.g., plot_title, orientation).
         """
+        self._require_one_factor()
         if self.coefficients_ is None or self.variances_ is None:
             raise ValueError("Model must be fitted first.")
 
@@ -306,7 +309,7 @@ class LinearRandomEffectPlottingMixin:
         if reference == "median":
             alpha_null_val = np.median(alpha_vals)
         elif reference == "mean":
-            alpha_null_val = np.average(alpha_vals, weights=self.group_sizes_ if self.group_sizes_ is not None else None)
+            alpha_null_val = np.average(alpha_vals, weights=self.provider_sizes_ if self.provider_sizes_ is not None else None)
         else:
             alpha_null_val = float(reference)
 
@@ -365,6 +368,7 @@ class LinearRandomEffectPlottingMixin:
         **plot_kwargs
             Additional arguments passed to plot_caterpillar.
         """
+        self._require_one_factor()
         if self.coefficients_ is None: 
             raise ValueError("Model must be fitted.")
 

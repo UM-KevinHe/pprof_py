@@ -69,8 +69,8 @@ re.test().head()                              # reference 0 by default; also 'me
 `provider_var` names the provider column; `cluster_vars` adds further (crossed) random-intercept factors.
 
 **Fitted attributes:** `coefficients_` (`"beta"` and `"alpha"`, both `Series`), `variances_`, `sigma_`, `random_effect_sd_` (dict by factor),
-`loglike_`, `reml_`, `aic_`, `bic_`, `converged_`, `theta_`, `fitted_`, `residuals_`, `xbeta_`, `outcome_`, `groups_`, `group_indices_`,
-`group_sizes_`, `covariate_names_`, `nobs_`, `n_fixed_effects_`, `n_random_effects_`, `outer_iterations_`, `objective_`, `pwrss_`,
+`loglike_`, `reml_`, `aic_`, `bic_`, `converged_`, `theta_`, `fitted_`, `residuals_`, `xbeta_`, `outcome_`, `provider_ids_`, `provider_indices_`,
+`provider_sizes_`, `cluster_ids_`, `cluster_indices_`, `cluster_sizes_`, `covariate_names_`, `nobs_`, `n_fixed_effects_`, `n_random_effects_`, `outer_iterations_`, `objective_`, `pwrss_`,
 `ldL2_`, `ussq_`, `residual_variance_`, `optimizer_result_`.
 
 **Methods:** `summary()` (same columns as the fixed-effect model), `fixed_effects_table()`, `conf_int(level=0.95)` (`lower`, `upper`),

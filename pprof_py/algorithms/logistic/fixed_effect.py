@@ -15,7 +15,7 @@ log-likelihood evaluation.
 import logging
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
+from ...utils.numerical import solve_information
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum

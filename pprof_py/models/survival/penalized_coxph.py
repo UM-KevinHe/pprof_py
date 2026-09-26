@@ -992,9 +992,8 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     n_bootstrap : int, default 100
         Number of bootstrap replicates when ``se_method='bootstrap'``.
     random_state : int, optional
-        Used to randomly assign folds when `fold_id` is not given,
-        and as the seed for bootstrap resampling.
-    se_rule : {"min", "1se"}, default "min"
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
+    se_rule : {"min", "1se"}, default "1se"
         Which cross-validated lambda `final_estimator_`/`coef_` uses: the
         minimum CV error (``"min"``) or the largest lambda within one SE of it
         (``"1se"``).
@@ -1035,7 +1034,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        se_rule: str = "min",
+        se_rule: str = "1se",
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,

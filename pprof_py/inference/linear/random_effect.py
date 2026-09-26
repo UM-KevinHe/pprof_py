@@ -182,6 +182,7 @@ class LinearRandomEffectInferenceMixin:
         dict
             Contains confidence intervals for specified options.
         """
+        self._require_one_factor()
         self._check_is_fitted()
 
         if isinstance(stdz, str):
@@ -202,8 +203,8 @@ class LinearRandomEffectInferenceMixin:
         # Compute the residual variance.
         sigma_sq = self.sigma_ ** 2
 
-        # self.group_sizes_ is an array with the number of observations for each provider.
-        n_prov = self.group_sizes_
+        # self.provider_sizes_ is an array with the number of observations for each provider.
+        n_prov = self.provider_sizes_
 
         # Compute the shrinkage factor for each provider.
         shrinkage_factor = var_alpha / (var_alpha + sigma_sq / n_prov)
@@ -218,7 +219,7 @@ class LinearRandomEffectInferenceMixin:
         # Confidence Intervals for Provider (random) Effects ("alpha")
         if option == "alpha":
             alpha_ci = pd.DataFrame({
-                "provider_id": self.groups_,
+                "provider_id": self.provider_ids_,
                 "alpha": random_effects,
                 "alpha_lower": lower_alpha,
                 "alpha_upper": upper_alpha
@@ -233,11 +234,11 @@ class LinearRandomEffectInferenceMixin:
             sm_results = self.calculate_standardized_measures(stdz=stdz, reference=reference)
 
             if "indirect" in stdz:
-                lower_obs = lower_alpha[self.group_indices_] + self.xbeta_.flatten()
-                upper_obs = upper_alpha[self.group_indices_] + self.xbeta_.flatten()
+                lower_obs = lower_alpha[self.provider_indices_] + self.xbeta_.flatten()
+                upper_obs = upper_alpha[self.provider_indices_] + self.xbeta_.flatten()
 
-                lower_prov = np.bincount(self.group_indices_, weights=lower_obs)
-                upper_prov = np.bincount(self.group_indices_, weights=upper_obs)
+                lower_prov = np.bincount(self.provider_indices_, weights=lower_obs)
+                upper_prov = np.bincount(self.provider_indices_, weights=upper_obs)
 
                 indirect_df = sm_results["indirect"].copy()
                 expected_indirect = indirect_df["expected"].to_numpy()
@@ -324,12 +325,13 @@ class LinearRandomEffectInferenceMixin:
             :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
             above gamma_0, -1 below, 0 not significant, NA not tested.
         """
+        self._require_one_factor()
         self._check_is_fitted()
         effects = self.coefficients_["alpha"]
         values = np.asarray(effects, dtype=np.float64).ravel()
         var_alpha = self.variances_["alpha"].values[0, 0]
         sigma_sq = self.sigma_ ** 2
-        n_prov = np.asarray(self.group_sizes_, dtype=np.float64)
+        n_prov = np.asarray(self.provider_sizes_, dtype=np.float64)
         g0 = reference_effect(values, n_prov, reference)
         se = np.sqrt(var_alpha / (var_alpha + sigma_sq / n_prov) * sigma_sq / n_prov)
         index = effects.index if hasattr(effects, "index") else np.arange(values.size)

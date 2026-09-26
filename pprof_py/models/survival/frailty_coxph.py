@@ -26,7 +26,6 @@ from ...exceptions import ConvergenceWarning
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
-from ...inference.survival.baseline import compute_baseline_hazard
 from ...algorithms.survival.ties import TieMethod
 from ...algorithms.survival.frailty import (
     gamma_posterior_moments,

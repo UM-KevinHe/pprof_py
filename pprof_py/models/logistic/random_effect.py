@@ -37,9 +37,8 @@ from ...base import ProviderModel
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.special import expit
-from scipy.sparse import coo_matrix, csr_matrix, eye
+from scipy.sparse import coo_matrix, csr_matrix
 from scipy.sparse.linalg import splu
-from scipy.stats import norm
 
 from ...inference.logistic import LogisticRandomEffectInferenceMixin
 from ...measures.logistic import LogisticRandomEffectMeasuresMixin
@@ -141,8 +140,12 @@ class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRand
         self.bic_: Optional[float] = None
         self.loglike_: Optional[float] = None
         self.sigma_: Optional[Dict[str, float]] = None
-        self.groups_: Optional[Dict[str, Array]] = None
-        self.group_sizes_: Optional[Dict[str, Array]] = None
+        self.provider_ids_: Optional[Array] = None
+        self.provider_sizes_: Optional[Array] = None
+        self.provider_indices_: Optional[Array] = None
+        self.cluster_ids_: Optional[Dict[str, Array]] = None
+        self.cluster_sizes_: Optional[Dict[str, Array]] = None
+        self.cluster_indices_: Optional[Dict[str, Array]] = None
         self.xbeta_: Optional[Array] = None
         self.covariate_names_: Optional[List[str]] = None
         self.outcome_: Optional[Array] = None
@@ -288,9 +291,8 @@ class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRand
         else:
             self._offset = work[offset_var].to_numpy(dtype=float)
 
-        # Group coding.
-        self.groups_ = {}
-        self.group_sizes_ = {}
+        # Group coding: the provider factor first, then the cluster factors.
+        sizes_by_var = []
         self._group_indices = []
         self._n_groups = []
         self._group_labels = []
@@ -305,8 +307,13 @@ class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRand
             self._group_indices.append(idx)
             self._n_groups.append(len(labels))
             self._group_labels.append(labels)
-            self.groups_[gv] = labels
-            self.group_sizes_[gv] = sizes
+            sizes_by_var.append(sizes)
+        self.provider_ids_ = self._group_labels[0]
+        self.provider_sizes_ = sizes_by_var[0]
+        self.provider_indices_ = self._group_indices[0]
+        self.cluster_ids_ = {gv: self._group_labels[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_sizes_ = {gv: sizes_by_var[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_indices_ = {gv: self._group_indices[j] for j, gv in enumerate(group_vars) if j > 0}
 
         self._q_slices = []
         start = 0

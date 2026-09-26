@@ -85,7 +85,8 @@ re.test(test_method="wald").head()
 factors are accepted (`sigma_` then has one entry per factor); the measure methods take `provider_var` to choose the factor.
 
 **Fitted attributes:** `coefficients_`, `variances_`, `sigma_` (dict), `loglike_`, `aic_`, `bic_`, `converged_`, `pirls_converged_`, `pirls_iterations_`,
-`fitted_`, `residuals_`, `outcome_`, `groups_`, `group_sizes_`, `covariate_names_`, `pwrss_`, `ldL2_` and optimizer diagnostics.
+`fitted_`, `residuals_`, `outcome_`, `provider_ids_`, `provider_sizes_`, `provider_indices_`, `cluster_ids_`, `cluster_sizes_`,
+`cluster_indices_` (dictionaries keyed by cluster column), `covariate_names_`, `pwrss_`, `ldL2_` and optimizer diagnostics.
 **Methods:** `summary()`, `get_random_effects(var=None)`, `get_sigma(var=None)`, `predict(X, *, x_vars=None, re_vars=None,
 offset_var=None, use_re=False, type="response")`, `pearson_residuals()`, `deviance_residuals()`, and the methods in {ref}`ll_ref_measures`.
 
@@ -109,7 +110,7 @@ stage3.test().head()
 ```
 
 - **Constructor:** `n_nodes=20`, `max_iter=10000`, `tol=1e-5`, `bound=10.0`, `bound_mode="relative"` (γ clipped to
-  `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="relative"` (or `"max_delta_gamma"`),
+  `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="max_delta_gamma"` (or `"relative"`, as in R),
   `estimator="he2013"` (or `"marginal"`, below).
 - **Estimators.** `"he2013"` is the iteration of He et al. (2013), as in R's `glmm.fac.hosp`; its fixed point depends on the
   start and is not the maximum likelihood estimate. `"marginal"` maximizes the marginal likelihood in γ with β and σ fixed. That
@@ -146,7 +147,7 @@ model.test().head()                            # Stage 3's tests; also its measu
 ```
 
 - **Constructor:** `cutoff=10` and Stage 3's settings (`n_nodes`, `max_iter`, `tol`, `bound`, `bound_mode`, `convergence_criterion`, `estimator`);
-  `bound_mode="absolute"` gives output comparable with R's `glmm.fac.hosp`.
+  `bound_mode="absolute", convergence_criterion="relative"` gives output comparable with R's `glmm.fac.hosp`.
 - **Attributes:** `prep_` (the `GLMMPreparedData`), `data_` (its data with the Stage 1 offset column `stage1_offset`), `stage1_`,
   `stage2_`, `stage3_`.
 - **Agreement with R.** On a crossed synthetic cohort (40 facilities, 12 hospitals) and given the same β, Stage 2 matches `glmer`

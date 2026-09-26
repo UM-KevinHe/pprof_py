@@ -248,9 +248,9 @@ and costs about as much.
 ## 8. Checks before trusting Stage 3
 
 - **Convergence.** Confirm `converged_` is `True` and `iterations_` is well below `max_iter`.
-  `convergence_criterion="relative"` (the default, as in R) stops on the change in the objective relative
-  to its change since the first iteration, which can stop short of the solution on some data sets;
-  `"max_delta_gamma"` stops when no $\gamma$ moves by more than `tol`. Under `"marginal"`, `tol` bounds the
+  `convergence_criterion="max_delta_gamma"` (the default) stops when no $\gamma$ moves by more than `tol`;
+  `"relative"`, R's rule, stops on the change in the objective relative to its change since the first
+  iteration, which can stop short of the solution on some data sets. Under `"marginal"`, `tol` bounds the
   largest score.
 - **Facilities at the bound.** $\gamma$ is clipped to `median(gamma_) ± bound` (`bound_mode="relative"`,
   the default) or `±bound` (`"absolute"`, as in R). A facility there has an outcome that the adjustment
@@ -283,8 +283,8 @@ it, or pass `summary(stage1=...)`. It raises if that model's $\beta$ is not the 
 
 ## 10. Matching R's `glmm.fac.hosp`
 
-For output comparable with R, use `LogisticThreeStageModel(bound_mode="absolute")` with the other
-defaults (`n_nodes=20`, `tol=1e-5`, `convergence_criterion="relative"`, `estimator="he2013"`), and for flags
+For output comparable with R, use `LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative")`
+with the other defaults (`n_nodes=20`, `tol=1e-5`, `estimator="he2013"`), and for flags
 comparable with R's `summary.glmm.fac`, `test_method="resampling"` with the empirical null of Section 6.
 On a crossed synthetic cohort (40 facilities, 12 hospitals), given the same $\beta$, Stage 2 matches R's
 `glmer` ($\sigma$ to $7\times10^{-6}$, the starting $\gamma$ to $10^{-5}$) and Stage 3 matches

@@ -14,30 +14,9 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    within_group_orthogonalize,
-    unorthogonalize_coefs,
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-)
-from ...algorithms.coordinate_descent import (
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    fit_group_regularization_path,
-)
-from ...algorithms.logistic.likelihood import (
-    build_logistic_objective,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_loglik,
-    logistic_deviance,
-    logistic_null_deviance,
-    logistic_intercept_update,
-)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers)
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
 from ...exceptions import NotFittedError
 from .penalized import DegenerateFeatureWarning, _resolve_lambda_path, _stratified_fold_assignment
 
@@ -462,6 +441,7 @@ class GroupLassoLogisticCV(ProviderModel):
     fold_id : array-like or None
     se_rule : {"1se", "min"}, default="1se"
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
     """
 

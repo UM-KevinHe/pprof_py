@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Protocol
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
+from ...utils.numerical import covariance_from_information
 import pandas as pd
 from scipy.stats import t
 from ..effect_tests import effect_test, normalize_alternative, reference_effect

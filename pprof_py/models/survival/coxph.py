@@ -8,18 +8,13 @@ what happens inside `fit`, not the class's public surface.
 from __future__ import annotations
 
 import warnings
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...data.survival_validation import (
-    validate_fit_inputs,
-    validate_X,
-    validate_X_predict,
-    validate_predict_offset,
-)
+from ...data.survival_validation import validate_fit_inputs, validate_X_predict, validate_predict_offset
 from ...data.survival_data import SurvivalData
 from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.optimization import newton_raphson

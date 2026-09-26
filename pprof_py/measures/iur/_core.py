@@ -6,7 +6,7 @@ decile-table helper used by both classes.
 """
 from __future__ import annotations
 
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Union
 
 import numpy as np
 import pandas as pd

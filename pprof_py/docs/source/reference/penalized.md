@@ -70,6 +70,9 @@ cv.lambda_min_, cv.lambda_1se_, cv.coef_
 cv.summary()          # lambda, n_nonzero, cv_mean_deviance, cv_se_deviance
 ```
 
+Fold assignment is random unless `random_state` (or `fold_id`) is set: with `random_state=None` (the default), the folds, and
+so the selected λ, change between calls.
+
 Accepts every `PenalizedCoxPH` parameter plus `n_folds=10`, `fold_id`, `se_method` (`"analytical"` or
 `"bootstrap"` — bootstrap supports Breslow ties only), `n_bootstrap=100`, `random_state`, and
 `select` (`"lambda_min"` default, or `"lambda_1se"`). It computes the Verweij–Van Houwelingen grouped deviance per

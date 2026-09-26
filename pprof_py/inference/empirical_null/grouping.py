@@ -1,7 +1,6 @@
 """Size-based grouping of providers for groupwise empirical-null calibration."""
 from __future__ import annotations
 
-from typing import Optional
 
 import numpy as np
 

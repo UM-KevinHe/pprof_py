@@ -15,24 +15,13 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-)
+from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors
 from ...algorithms.coordinate_descent import (
     compute_lambda_max,
     build_lambda_sequence,
     fit_regularization_path,
 )
-from ...algorithms.logistic.likelihood import (
-    build_logistic_objective,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_loglik,
-    logistic_deviance,
-    logistic_null_deviance,
-)
+from ...algorithms.logistic.likelihood import (build_logistic_objective, logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance)
 from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
@@ -552,6 +541,7 @@ class PenalizedLogisticCV(ProviderModel):
     se_rule : {"1se", "min"}, default="1se"
         If True, use lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
 
     Attributes (after fit)

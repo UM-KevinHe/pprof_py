@@ -7,18 +7,17 @@ Contains ``_ProviderTestMethods``, a mixin fragment providing
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple, Union
+from typing import Optional
+
+import warnings
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, t
-from fast_poibin import PoiBin
 
 from ....utils.numerical import sigmoid
 from ....inference.decision import provider_test, resolve_null_model
 from ....inference.count_tests import MonteCarlo, PlugIn, count_test, rows_by_provider
 from ....inference.effect_tests import bootstrap_tails, effect_test, normalize_alternative, reference_effect
-from ....inference.empirical_null.models import NullModel, TheoreticalNull
 from ....inference.standardized import standardized_measure
 from ....inference.zstat import z_statistic
 
@@ -92,6 +91,15 @@ class _ProviderTestMethods:
         if test_method == "wald":
             se = np.sqrt(np.asarray(self.variances_["gamma"], dtype=np.float64).ravel())
             z = (gamma - g0) / se
+            events = np.bincount(idx, weights=y, minlength=m)
+            size = np.bincount(idx, weights=np.ones_like(y) if trials is None else trials, minlength=m)
+            unbounded = (events == 0) | (events == size)       # no finite estimate: the effect sits at the bound
+            if providers is not None:
+                unbounded &= np.isin(self.provider_ids_, np.atleast_1d(providers))
+            if unbounded.any():
+                warnings.warn(f"{int(unbounded.sum())} provider(s) have no events or only events, so their effects have "
+                              "no finite estimate and are held at the bound; their Wald statistics and intervals are "
+                              "unreliable (test_method='poibin_exact' handles them).", UserWarning, stacklevel=2)
         elif test_method == "score":
             w = np.ones(xb.size) if trials is None else trials
             p0 = np.clip(sigmoid(g0 + xb), 1e-10, 1 - 1e-10)

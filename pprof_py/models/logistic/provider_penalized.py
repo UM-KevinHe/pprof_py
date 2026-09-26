@@ -13,41 +13,10 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-    elastic_net_penalty_value,
-    sparse_group_lasso_penalty_value,
-)
-from ...algorithms.coordinate_descent import (
-    compute_lambda_max,
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    solve_penalized_quadratic,
-    solve_sparse_group_penalized_quadratic,
-    PenalizedFitResult,
-    GroupPenalizedFitResult,
-)
-from ...algorithms.logistic.likelihood import (
-    logistic_loglik,
-    logistic_score,
-    logistic_information,
-    logistic_deviance,
-    logistic_null_deviance,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_intercept_update,
-    _safe_expit,
-)
-from ...algorithms.logistic.provider_effects import (
-    compute_provider_indices,
-    logistic_provider_newton_step,
-    provider_bound_clamp,
-)
+from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, compute_group_indices)
+from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic)
+from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit)
+from ...algorithms.logistic.provider_effects import compute_provider_indices, logistic_provider_newton_step
 from ...exceptions import NotFittedError
 from .penalized import (
     DegenerateFeatureWarning, _resolve_lambda_path,
@@ -615,6 +584,7 @@ class ProviderPenalizedLogisticCV(ProviderModel):
     se_rule : {"1se", "min"}, default="1se"
         If True, select lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
 
     Attributes (after fit)
     ----------------------

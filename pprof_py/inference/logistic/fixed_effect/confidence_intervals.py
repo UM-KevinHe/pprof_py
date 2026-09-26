@@ -13,7 +13,6 @@ import pandas as pd
 from scipy.stats import norm, t
 from scipy.optimize import root_scalar
 
-from ....utils.numerical import sigmoid
 
 logger = logging.getLogger(__name__)
 

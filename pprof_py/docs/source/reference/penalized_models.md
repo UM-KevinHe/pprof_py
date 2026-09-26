@@ -53,6 +53,9 @@ pp = ProviderPenalizedLogistic(n_lambda=8).fit(Xa, yb, provider_id=provider)
 pp.predict_provider_effect().head()                             # provider_id, gamma at the last lambda
 ```
 
+Fold assignment is random unless `random_state` is set: with `random_state=None` (the default), the folds, and
+so the selected λ, change between calls.
+
 ## Conventions shared by all of them
 
 - **Path estimators** (`PenalizedLinear`, `GroupLassoLinear`, `PenalizedLogistic`, `GroupLassoLogistic`, `ProviderPenalizedLogistic`) expose

@@ -10,7 +10,7 @@ import logging
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from .validation import (
     check_missingness as _check_missingness,

@@ -173,12 +173,13 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         iteration, which is symmetric around the typical provider whatever the
         baseline log-odds. ``"absolute"`` clips to ``[-bound, bound]``, as R's
         ``glmm.fac.hosp`` does; only providers at the bound differ.
-    convergence_criterion : {"relative", "max_delta_gamma"}, default="relative"
-        ``"relative"``: ``|obj_t - obj_{t-1}| / |obj_t - obj_1|`` for the
-        objective below, as in R (a zero denominator counts as converged when
-        the numerator is also zero, and otherwise does not stop the fit).
+    convergence_criterion : {"max_delta_gamma", "relative"}, default="max_delta_gamma"
         ``"max_delta_gamma"``: the largest absolute change in gamma, which does
-        not depend on the starting value.
+        not depend on the starting value. ``"relative"``: ``|obj_t - obj_{t-1}| /
+        |obj_t - obj_1|`` for the objective below, as in R (a zero denominator
+        counts as converged when the numerator is also zero, and otherwise does
+        not stop the fit); it can stop well short of the fixed point, so use it
+        for output comparable with R.
     estimator : {"he2013", "marginal"}, default="he2013"
         ``"he2013"``: the iteration of He et al. (2013) above, as in R's
         ``glmm.fac.hosp``; its fixed point depends on the start and is not the
@@ -250,7 +251,7 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         tol: float = 1e-5,
         bound: float = 10.0,
         bound_mode: str = "relative",
-        convergence_criterion: str = "relative",
+        convergence_criterion: str = "max_delta_gamma",
         estimator: str = "he2013",
     ):
         """Stage 3 of the three-stage logistic model."""

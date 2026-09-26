@@ -4,34 +4,15 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    within_group_orthogonalize,
-    unorthogonalize_coefs,
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-)
-from ...algorithms.coordinate_descent import (
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    fit_group_regularization_path,
-)
-from ...algorithms.linear.likelihood import (
-    build_linear_objective,
-    linear_null_score,
-    linear_unpenalized_null_fit,
-    linear_deviance,
-    linear_null_deviance,
-    linear_intercept_update,
-)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers)
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.linear.likelihood import (linear_unpenalized_null_fit, linear_deviance, linear_null_deviance, linear_intercept_update)
 from ...exceptions import NotFittedError
 from .penalized import DegenerateFeatureWarning, _resolve_lambda_path
 

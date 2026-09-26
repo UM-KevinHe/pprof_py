@@ -27,7 +27,6 @@ from typing import Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 
-from ..penalty import njit, _HAS_NUMBA
 
 logger = logging.getLogger(__name__)
 

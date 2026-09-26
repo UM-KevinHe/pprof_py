@@ -18,7 +18,8 @@ def fitted():
     raw = pd.read_csv(GOLDEN / "raw.csv")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        model = LogisticThreeStageModel(bound_mode="absolute").fit(raw, "Y", Z, "fac", "hosp")   # R's Stage 3 settings
+        model = LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative").fit(
+            raw, "Y", Z, "fac", "hosp")                                # R's Stage 3 settings
     return model, json.loads((GOLDEN / "r_stage23.json").read_text())
 
 
@@ -65,7 +66,8 @@ def test_marginal_estimator_through_the_pipeline(fitted):
     raw = pd.read_csv(GOLDEN / "raw.csv")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        marginal = LogisticThreeStageModel(bound_mode="absolute", estimator="marginal").fit(raw, "Y", Z, "fac", "hosp")
+        marginal = LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative",
+                                           estimator="marginal").fit(raw, "Y", Z, "fac", "hosp")
     assert marginal.stage3_.converged_ and marginal.stage3_.estimator == "marginal"
     assert marginal.stage3_.loglik_ >= model.stage3_.loglik_ - 1e-9
     assert np.array_equal(marginal.stage3_.beta_, model.stage3_.beta_) and marginal.stage3_.sigma_ == model.stage3_.sigma_

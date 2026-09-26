@@ -14,24 +14,13 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-)
+from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors
 from ...algorithms.coordinate_descent import (
     compute_lambda_max,
     build_lambda_sequence,
     fit_regularization_path,
 )
-from ...algorithms.linear.likelihood import (
-    build_linear_objective,
-    linear_null_score,
-    linear_unpenalized_null_fit,
-    linear_deviance,
-    linear_null_deviance,
-    linear_intercept_update,
-)
+from ...algorithms.linear.likelihood import (linear_unpenalized_null_fit, linear_deviance, linear_null_deviance, linear_intercept_update)
 from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
@@ -450,6 +439,7 @@ class PenalizedLinearCV(ProviderModel):
     se_rule : {"1se", "min"}, default="1se"
         If True, use lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter : int, default=100
     outer_tol : float, default=1e-9
     max_inner_iter : int, default=1000

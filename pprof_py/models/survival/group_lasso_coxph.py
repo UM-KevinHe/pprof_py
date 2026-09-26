@@ -40,15 +40,10 @@ from ...algorithms.survival.cox_likelihood import (
 from ...algorithms.survival.penalty import (
     validate_groups, rescale_group_multipliers, compute_group_indices,
 )
-from ...algorithms.survival.coordinate_descent import (
-    compute_group_lambda_max, build_lambda_sequence,
-    fit_group_regularization_path,
-)
+from ...algorithms.survival.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.survival.ties import TieMethod
-from ...utils.deviance import (
-    saturated_log_likelihood, cox_deviance, deviance_ratio,
-)
-from .coxph import CoxPH, NotFittedError
+from ...utils.deviance import saturated_log_likelihood, cox_deviance
+from .coxph import CoxPH
 from .penalized_coxph import (
     _PenalizedCoxPHBase,
     _PenalizedCoxPHCVBase,
@@ -476,7 +471,8 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         ``'analytical'`` (glmnet-style weighted CV SE) or
         ``'bootstrap'`` (Breslow ties only).
     random_state : int or None, default None
-    se_rule : str, default 'min'
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
+    se_rule : str, default '1se'
         ``'min'`` or ``'1se'``.
 
     Attributes (set by ``fit``)
@@ -516,7 +512,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        se_rule: str = "min",
+        se_rule: str = "1se",
     ):
         """Cross-validated group lasso Cox."""
         self.groups = groups

@@ -48,48 +48,27 @@ Shao, Y. & He, K. (2026). grplasso R package.
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...data.survival_validation import validate_fit_inputs, validate_X
-from ...data.survival_data import SurvivalData
-from ...algorithms.survival.cox_likelihood import (
-    cox_partial_likelihood,
-    precompute_stratum_indices,
-)
+from ...data.survival_validation import validate_X
+from ...algorithms.survival.cox_likelihood import cox_partial_likelihood
 from ...algorithms.survival.penalty import (
     validate_groups,
     rescale_group_multipliers,
     compute_group_indices,
 )
-from ...algorithms.survival.coordinate_descent import (
-    fit_single_lambda,
-    fit_single_lambda_group,
-    compute_lambda_max,
-    compute_group_lambda_max,
-    build_lambda_sequence,
-)
+from ...algorithms.survival.coordinate_descent import (fit_single_lambda, fit_single_lambda_group, compute_lambda_max, compute_group_lambda_max)
 from ...algorithms.survival.provider_effects import (
     validate_provider_ids,
     compute_provider_scores,
     provider_newton_step,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...utils.deviance import (
-    saturated_log_likelihood,
-    deviance_ratio,
-)
-from ...utils.numerical import safe_exp
-from .coxph import CoxPH, NotFittedError
-from .penalized_coxph import (
-    _PenalizedCoxPHBase,
-    _resolve_lambda_path,
-    DegenerateFeatureWarning,
-)
+from .penalized_coxph import _PenalizedCoxPHBase, _resolve_lambda_path
 
 logger = logging.getLogger(__name__)
 

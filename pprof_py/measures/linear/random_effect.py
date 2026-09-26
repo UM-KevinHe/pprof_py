@@ -16,12 +16,13 @@ class _LinearREMeasuresHost(Protocol):
     """Attribute contract that `LinearRandomEffectMeasuresMixin` expects from its
     host class (`LinearRandomEffectModel`).
     """
+    def _require_one_factor(self) -> None: ...
     coefficients_: Optional[Dict[str, Any]]
     variances_: Optional[Dict[str, Any]]
     fitted_: Optional[np.ndarray]
-    groups_: Optional[np.ndarray]
-    group_indices_: Optional[np.ndarray]
-    group_sizes_: Optional[np.ndarray]
+    provider_ids_: Optional[np.ndarray]
+    provider_indices_: Optional[np.ndarray]
+    provider_sizes_: Optional[np.ndarray]
     sigma_: Optional[float]
     xbeta_: Optional[np.ndarray]
 
@@ -56,6 +57,7 @@ class LinearRandomEffectMeasuresMixin:
             A dictionary containing DataFrames of standardized differences and observed/expected outcomes
             grouped by method. The keys will be "indirect" and/or "direct" based on the selected methods.
         """
+        self._require_one_factor()
 
         self._check_is_fitted()
         if isinstance(stdz, str):
@@ -66,9 +68,9 @@ class LinearRandomEffectMeasuresMixin:
 
         # Extract model components
         random_effects = self.coefficients_["alpha"]
-        group_names = self.groups_
-        group_indices = self.group_indices_
-        group_sizes = self.group_sizes_
+        group_names = self.provider_ids_
+        group_indices = self.provider_indices_
+        group_sizes = self.provider_sizes_
         total_samples = len(self.fitted_)
 
         # Determine the null value for random effects

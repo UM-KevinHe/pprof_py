@@ -1,0 +1,4 @@
+"step","action","variable","n_variables","aic"
+0,"start",NA,5,1324.31627971273
+1,"remove","x3",4,1319.72911118963
+2,"remove","x4",3,1315.84713127294

@@ -41,32 +41,17 @@ References
 from __future__ import annotations
 
 import logging
-import warnings
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.survival.discrete_survival import (
-    discretize_times,
-    initialize_baseline_hazard,
-    compute_n_at_risk,
-    compute_discrete_lambda_max,
-    discrete_residuals,
-    discrete_loglik,
-    fit_discrete_regularization_path,
-    fit_single_lambda_discrete,
-    person_period_expand,
-    predict_discrete_hazard,
-    predict_survival_probability,
-    DiscreteFitResult,
-)
+from ...algorithms.survival.discrete_survival import (discretize_times, initialize_baseline_hazard, compute_n_at_risk, compute_discrete_lambda_max, discrete_residuals, fit_discrete_regularization_path, person_period_expand, predict_discrete_hazard, predict_survival_probability)
 from ...algorithms.survival.penalty import (
     weighted_column_scale,
     rescale_penalty_factors,
 )
-from ...algorithms.survival.coordinate_descent import build_lambda_sequence
 from .coxph import NotFittedError
 
 logger = logging.getLogger(__name__)
@@ -593,7 +578,7 @@ class DiscreteSurvivalCV(ProviderModel):
         Lambda selection rule: ``'min'`` (minimum CV error) or
         ``'1se'`` (largest lambda within 1 SE of minimum).
     random_state : int or None, default None
-        Random seed for fold assignment.
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_fold_retries : int, default 100
         Maximum retries for event-stratified fold assignment with
         timepoint coverage.

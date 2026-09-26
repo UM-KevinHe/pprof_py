@@ -22,20 +22,13 @@ Provenance: new file, 2026-09. Pattern drawn from:
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-)
+from ...algorithms.penalty import weighted_column_scale, rescale_penalty_factors
 from ...algorithms.survival.discrete_survival import (
     discretize_times,
     initialize_baseline_hazard,
@@ -679,6 +672,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     se_rule : {"1se", "min"}, default="1se"
         ``"1se"`` selects ``lambda_1se_``; ``"min"`` selects ``lambda_min_``.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_fold_retries : int, default=100
         Maximum retries for event-stratified fold assignment with
         timepoint coverage.

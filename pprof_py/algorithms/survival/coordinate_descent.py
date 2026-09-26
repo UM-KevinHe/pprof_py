@@ -78,12 +78,7 @@ import numpy as np
 
 import logging
 
-from .penalty import (
-    soft_threshold,
-    elastic_net_penalty_value,
-    sparse_group_lasso_penalty_value,
-    compute_group_indices,
-)
+from .penalty import elastic_net_penalty_value, sparse_group_lasso_penalty_value, compute_group_indices
 from .risk_sets import njit, _HAS_NUMBA
 
 logger = logging.getLogger(__name__)

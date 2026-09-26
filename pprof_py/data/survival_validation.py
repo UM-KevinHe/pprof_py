@@ -8,7 +8,7 @@ permitted.
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple, List
+from typing import Tuple, List
 
 import numpy as np
 import pandas as pd

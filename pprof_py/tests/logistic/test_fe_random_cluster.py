@@ -368,7 +368,7 @@ class TestFitOptions:
         rng = np.random.default_rng(1)
         df = pd.DataFrame({"provider": np.repeat(np.arange(6), 30), "cluster": np.tile(np.arange(3), 60),
                            "x1": rng.normal(size=180), "y": 0.0})
-        me = LogisticFERandomClusterModel(bound_mode="absolute")
+        me = LogisticFERandomClusterModel(bound_mode="absolute", convergence_criterion="relative")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             me.fit(df, "y", ["x1"], "provider", "cluster", gamma_init=np.full(6, -10.0), beta=np.array([0.2]), sigma=0.3,
@@ -389,7 +389,7 @@ class TestFitOptions:
         return df
 
     def test_newton_information_floor(self):
-        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="absolute")
+        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="absolute", convergence_criterion="relative")
         with pytest.warns(RuntimeWarning, match="Newton information"):
             me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", gamma_init=np.zeros(8),
                    beta=np.array([0.1]), sigma=30.0, verbose=False)

@@ -1,7 +1,7 @@
 """Split-half correlation-based Inter-Unit Reliability estimation."""
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Optional, Sequence
 
 import numpy as np
 import pandas as pd

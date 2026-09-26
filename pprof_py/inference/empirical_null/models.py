@@ -198,11 +198,11 @@ class EmpiricalNull(NullModel):
                    "converged": None, "n_iter": None, "fallback": False, "note": ""}
             if values.size < min_group_size:
                 if small_group == "error":
-                    raise ValueError(f"Group {g!r} has {values.size} eligible providers; "
+                    raise ValueError(f"Group {g} has {values.size} eligible providers; "
                                      f"at least {min_group_size} are required.")
                 row.update(fitted_mean=0.0, null_mean=0.0, null_sd=1.0, fallback=True,
                            note=f"fewer than {min_group_size} eligible values; theoretical null used")
-                problems.append(f"group {g!r}: {row['note']}")
+                problems.append(f"group {g}: {row['note']}")
             else:
                 res = estimator(values)
                 if isinstance(res, LocationScale):
@@ -211,11 +211,11 @@ class EmpiricalNull(NullModel):
                 else:
                     loc, scl = float(res[0]), float(res[1])
                 if not (np.isfinite(loc) and np.isfinite(scl) and scl > 0):
-                    raise ValueError(f"Group {g!r} has a nonpositive or nonfinite fitted SD or mean.")
+                    raise ValueError(f"Group {g} has a nonpositive or nonfinite fitted SD or mean.")
                 row.update(fitted_mean=loc, null_mean=loc, null_sd=scl)
                 if row["converged"] is False:
                     row["note"] = "did not converge"
-                    problems.append(f"group {g!r}: fit did not converge in {row['n_iter']} iterations")
+                    problems.append(f"group {g}: fit did not converge in {row['n_iter']} iterations")
             rows.append(row)
 
         diagnostics = pd.DataFrame(rows)

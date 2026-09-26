@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.special import expit
 from scipy.stats import norm
 
 from ...plotting import plot_caterpillar

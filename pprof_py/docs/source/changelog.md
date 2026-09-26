@@ -60,6 +60,20 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - `DataPrep` accepts binomial trials (`n_char`), so binomial fixed-effect fits can use it; the trials
   are now re-read after screening, where they were misaligned.
 
+**Consistency decisions**
+
+- The random-effects models' fitted attributes follow the fixed-effect names: `provider_ids_`, `provider_sizes_` and
+  `provider_indices_` for the provider, and `cluster_ids_`, `cluster_sizes_` and `cluster_indices_` (dictionaries keyed
+  by cluster column), replacing `groups_`, `group_sizes_` and `group_indices_`.
+- `LinearRandomEffectModel`'s measures, intervals, tests and provider plots raise a clear error for a fit with
+  `cluster_vars`, which they do not support (they failed obscurely before).
+- `LogisticFERandomClusterModel` and `LogisticThreeStageModel` default to `convergence_criterion="max_delta_gamma"`,
+  which stops closer to the solution than R's `"relative"` rule; pass `"relative"` for output comparable with R.
+- Every CV class defaults to `se_rule="1se"`; the two Cox CV classes defaulted to `"min"`.
+- The fixed-effect Wald test warns about providers with no events or only events, whose effects have no finite
+  estimate.
+- The survival R-comparison results (`r_reference/results/`) are committed, so those tests run on a fresh clone.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.

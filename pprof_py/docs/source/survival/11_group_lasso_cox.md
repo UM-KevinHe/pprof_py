@@ -198,8 +198,7 @@ correctly.
 ## 11.5 Selecting `lambda_1se`
 
 `GroupLassoCoxPHCV` takes the lambda-selection rule as `se_rule`
-(`"min"` or `"1se"`), like every CV class, but defaults to `"min"`
-(the Cox CV classes' default; the others default to `"1se"`).
+(`"min"` or `"1se"`), like every CV class, and defaults to `"1se"`.
 
 ```python
 cv_1se = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5,
