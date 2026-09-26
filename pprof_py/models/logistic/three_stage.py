@@ -37,7 +37,7 @@ class LogisticThreeStageModel(ProviderModel):
     cutoff : int, default 10
         Providers, and Stage 1's provider x cluster cells, need more than ``cutoff``
         records (see :func:`~pprof_py.data.glmm_data_prep`).
-    n_nodes, max_iter, tol, bound, bound_mode, convergence_criterion
+    n_nodes, max_iter, tol, bound, bound_mode, convergence_criterion, estimator
         Stage 3's settings (see :class:`LogisticFERandomClusterModel`).
 
     Attributes
@@ -61,6 +61,7 @@ class LogisticThreeStageModel(ProviderModel):
         bound: float = 10.0,
         bound_mode: str = "relative",
         convergence_criterion: str = "relative",
+        estimator: str = "he2013",
     ):
         self.cutoff = cutoff
         self.n_nodes = n_nodes
@@ -69,6 +70,7 @@ class LogisticThreeStageModel(ProviderModel):
         self.bound = bound
         self.bound_mode = bound_mode
         self.convergence_criterion = convergence_criterion
+        self.estimator = estimator
         self.prep_: Optional[GLMMPreparedData] = None
         self.data_: Optional[pd.DataFrame] = None
         self.stage1_: Optional[LogisticFixedEffectModel] = None
@@ -112,7 +114,8 @@ class LogisticThreeStageModel(ProviderModel):
                    offset_var=OFFSET, verbose=False)
         stage3 = LogisticFERandomClusterModel(n_nodes=self.n_nodes, max_iter=self.max_iter, tol=self.tol,
                                               bound=self.bound, bound_mode=self.bound_mode,
-                                              convergence_criterion=self.convergence_criterion)
+                                              convergence_criterion=self.convergence_criterion,
+                                              estimator=self.estimator)
         stage3.fit(d, "y_adj", x_vars, provider_var, cluster_var, stage1=stage1, stage2=stage2, obs_var=y_var,
                    verbose=verbose)
         self.prep_, self.data_ = prep, d

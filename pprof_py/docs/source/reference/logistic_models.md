@@ -109,14 +109,23 @@ stage3.test().head()
 ```
 
 - **Constructor:** `n_nodes=20`, `max_iter=10000`, `tol=1e-5`, `bound=10.0`, `bound_mode="relative"` (γ clipped to
-  `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="relative"` (or `"max_delta_gamma"`).
+  `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="relative"` (or `"max_delta_gamma"`),
+  `estimator="he2013"` (or `"marginal"`, below).
+- **Estimators.** `"he2013"` is the iteration of He et al. (2013), as in R's `glmm.fac.hosp`; its fixed point depends on the
+  start and is not the maximum likelihood estimate. `"marginal"` maximizes the marginal likelihood in γ with β and σ fixed. That
+  likelihood is concave in γ, so the estimate is unique and start-independent; it is computed by adaptive Gauss–Hermite quadrature
+  (each cluster's `n_nodes` nodes centered and scaled at its posterior, so they stay accurate for large clusters) and a projected
+  Newton iteration, with `tol` bounding the largest score. `loglik_` reports the marginal log-likelihood under either estimator.
+  On the review cohort (200 facilities, 60 hospitals) the two estimates differ by up to 0.091 in γ (median 0.002) and 0.091 in SRR,
+  and the marginal log-likelihood is 0.12 higher.
 - **`fit(data, y_var, x_vars, provider_var, cluster_var, *, stage1=None, stage2=None, beta=None, sigma=None, gamma_init=None, obs_var=None, verbose=True)`:**
   pass the fitted stages (β is Stage 1's covariate effects, matched to `x_vars` by name; σ is Stage 2's cluster SD, taken by name;
   the start is Stage 2's provider effects, matched by ID, plus its intercept), or pass `beta`, `sigma` and `gamma_init` explicitly,
   for example from R, but not both. `y_var` is normally the boundary-adjusted outcome (`y_adj` from `glmm_data_prep`) that keeps γ
   finite; `obs_var` names the true 0/1 outcome used for observed counts and the tests (defaults to `y_var`).
 - **Attributes:** `gamma_`, `beta_`, `sigma_`, `xbeta_`, `fitted_`, `alpha_mean_`, `alpha_var_`, `alpha_mean_cluster_`, `alpha_var_cluster_`,
-  `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `converged_`, `convergence_`, `coefficients_`, `stage1_`.
+  `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `converged_`, `convergence_`, `coefficients_`, `stage1_`,
+  `loglik_`.
 - **Methods:** `summary(stage1=None, covariates=None, level=0.95, null=0.0, alternative="two_sided")` (the Stage 1 Wald table);
   `calculate_standardized_measures(providers=None, stdz="indirect", reference="median")`; `calculate_confidence_intervals(...)`;
   `test(providers=None, *, test_method="exact", reference="median", null_model=None, alternative="two_sided", level=0.95,
@@ -136,7 +145,7 @@ model.stage1_, model.stage2_, model.stage3_    # the fitted stages
 model.test().head()                            # Stage 3's tests; also its measures, intervals and summary()
 ```
 
-- **Constructor:** `cutoff=10` and Stage 3's settings (`n_nodes`, `max_iter`, `tol`, `bound`, `bound_mode`, `convergence_criterion`);
+- **Constructor:** `cutoff=10` and Stage 3's settings (`n_nodes`, `max_iter`, `tol`, `bound`, `bound_mode`, `convergence_criterion`, `estimator`);
   `bound_mode="absolute"` gives output comparable with R's `glmm.fac.hosp`.
 - **Attributes:** `prep_` (the `GLMMPreparedData`), `data_` (its data with the Stage 1 offset column `stage1_offset`), `stage1_`,
   `stage2_`, `stage3_`.

@@ -58,3 +58,14 @@ def test_rejects_data_with_the_offset_column():
     raw = pd.read_csv(GOLDEN / "raw.csv").assign(stage1_offset=0.0)
     with pytest.raises(ValueError, match="stage1_offset"):
         LogisticThreeStageModel().fit(raw, "Y", Z, "fac", "hosp")
+
+
+def test_marginal_estimator_through_the_pipeline(fitted):
+    model, _ = fitted
+    raw = pd.read_csv(GOLDEN / "raw.csv")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        marginal = LogisticThreeStageModel(bound_mode="absolute", estimator="marginal").fit(raw, "Y", Z, "fac", "hosp")
+    assert marginal.stage3_.converged_ and marginal.stage3_.estimator == "marginal"
+    assert marginal.stage3_.loglik_ >= model.stage3_.loglik_ - 1e-9
+    assert np.array_equal(marginal.stage3_.beta_, model.stage3_.beta_) and marginal.stage3_.sigma_ == model.stage3_.sigma_

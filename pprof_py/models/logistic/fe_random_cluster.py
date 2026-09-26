@@ -32,6 +32,76 @@ logger = logging.getLogger(__name__)
 _INFO_FLOOR = 1e-8
 
 
+def _cluster_modes(gamma, xbeta, y, prov_idx, clust_idx, sigma, n_clust, start=None, max_steps=100):
+    """Mode and curvature scale of each cluster effect's posterior (the adaptive quadrature's center and scale).
+
+    The log posterior of cluster h's effect ``a``, ``sum_h log f(y | eta + a) - a^2 / (2 sigma^2)``, is concave,
+    so a guarded Newton iteration finds its mode; the scale is ``1 / sqrt(-second derivative)`` there.
+    """
+    base = gamma[prov_idx] + xbeta
+    a = np.zeros(n_clust) if start is None else np.array(start, dtype=np.float64)
+    for _ in range(max_steps):
+        p = plogis(base + a[clust_idx])
+        grad = np.bincount(clust_idx, weights=y - p, minlength=n_clust) - a / sigma ** 2
+        curv = np.bincount(clust_idx, weights=p * (1.0 - p), minlength=n_clust) + 1.0 / sigma ** 2
+        step = np.clip(grad / curv, -1.0, 1.0)
+        a = a + step
+        if np.max(np.abs(step)) < 1e-10:
+            break
+    p = plogis(base + a[clust_idx])
+    curv = np.bincount(clust_idx, weights=p * (1.0 - p), minlength=n_clust) + 1.0 / sigma ** 2
+    return a, 1.0 / np.sqrt(curv)
+
+
+def _marginal_terms(gamma, xbeta, y, prov_idx, clust_idx, t_nodes, log_wt, sigma, center, scale, n_prov, n_clust,
+                    cell_idx=None, n_cells=0):
+    """Marginal log-likelihood of the provider effects by adaptive Gauss-Hermite quadrature, its score, the posterior.
+
+    Cluster h's effect is integrated at the nodes ``center_h + sqrt(2) scale_h t_k``, which follow the effect's
+    posterior, so a few nodes are accurate at any cluster size. A row contributes ``y log p + (1 - y) log(1 - p)``
+    at ``logit p = gamma_i + x beta + a`` (concave in ``gamma`` also for an adjusted, fractional ``y``). For fixed
+    centers and scales the returned score and the Hessian built from the cell terms are this objective's exact
+    derivatives. Returns the log-likelihood, the score per provider, the posterior node weights and node values
+    per cluster, and, when ``cell_idx`` (provider x cluster cells) is given, each cell's score and curvature at
+    every node.
+    """
+    n_nodes = t_nodes.size
+    a_nodes = center[:, None] + np.sqrt(2.0) * scale[:, None] * t_nodes[None, :]
+    base = gamma[prov_idx] + xbeta
+    ll = np.empty((n_clust, n_nodes))
+    prob = np.empty((base.size, n_nodes))
+    for k in range(n_nodes):
+        eta = base + a_nodes[clust_idx, k]
+        ll[:, k] = np.bincount(clust_idx, weights=-(y * np.logaddexp(0.0, -eta) + (1.0 - y) * np.logaddexp(0.0, eta)),
+                               minlength=n_clust)
+        prob[:, k] = plogis(eta)
+    log_post = ll + log_wt - a_nodes ** 2 / (2.0 * sigma ** 2)
+    peak = log_post.max(axis=1, keepdims=True)
+    log_z = np.log(np.exp(log_post - peak).sum(axis=1, keepdims=True)) + peak
+    post = np.exp(log_post - log_z)
+    loglik = float(np.sum(log_z[:, 0] + np.log(np.sqrt(2.0) * scale) - np.log(np.sqrt(2.0 * np.pi) * sigma)))
+    score = np.bincount(prov_idx, weights=y - (prob * post[clust_idx]).sum(axis=1), minlength=n_prov)
+    if cell_idx is None:
+        return loglik, score, post, a_nodes, None, None
+    s_cell = np.stack([np.bincount(cell_idx, weights=y - prob[:, k], minlength=n_cells) for k in range(n_nodes)], axis=1)
+    v_cell = np.stack([np.bincount(cell_idx, weights=prob[:, k] * (1.0 - prob[:, k]), minlength=n_cells)
+                       for k in range(n_nodes)], axis=1)
+    return loglik, score, post, a_nodes, s_cell, v_cell
+
+
+def _adaptive_rule(n_nodes):
+    """Standard Gauss-Hermite nodes and the log weights of the adaptive rule (``log w_k + t_k^2``)."""
+    t_nodes, w = hermgauss(n_nodes)
+    return t_nodes, np.log(w) + t_nodes ** 2
+
+
+def _marginal_loglik(gamma, xbeta, y, prov_idx, clust_idx, sigma, n_nodes, n_prov, n_clust):
+    """The adaptive-quadrature marginal log-likelihood at ``gamma``, with the nodes centered for it."""
+    center, scale = _cluster_modes(gamma, xbeta, y, prov_idx, clust_idx, sigma, n_clust)
+    t_nodes, log_wt = _adaptive_rule(n_nodes)
+    return _marginal_terms(gamma, xbeta, y, prov_idx, clust_idx, t_nodes, log_wt, sigma, center, scale, n_prov, n_clust)[0]
+
+
 def gauss_hermite_normal(n_nodes: int, sigma: float):
     """Generate GH quadrature nodes/weights for N(0, sigma^2).
 
@@ -109,6 +179,17 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         the numerator is also zero, and otherwise does not stop the fit).
         ``"max_delta_gamma"``: the largest absolute change in gamma, which does
         not depend on the starting value.
+    estimator : {"he2013", "marginal"}, default="he2013"
+        ``"he2013"``: the iteration of He et al. (2013) above, as in R's
+        ``glmm.fac.hosp``; its fixed point depends on the start and is not the
+        maximum likelihood estimate. ``"marginal"``: the maximum of the exact
+        Gauss-Hermite marginal likelihood in gamma (beta and sigma fixed), by a
+        projected Newton iteration with a line search. That likelihood is
+        concave in gamma, so the estimate is unique and does not depend on the
+        start. Rows contribute ``y log p + (1 - y) log(1 - p)``, also for the
+        adjusted outcome; ``tol`` bounds the largest score and ``max_iter`` the
+        Newton steps; the posterior moments of the cluster effects are those at
+        the estimate.
 
     Notes
     -----
@@ -155,6 +236,9 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         evaluated).
     converged_ : bool
         Whether the criterion fell below ``tol`` within ``max_iter``.
+    loglik_ : float
+        The exact Gauss-Hermite marginal log-likelihood at ``gamma_``, under
+        either estimator, which compares their fits.
     stage1_ : LogisticFixedEffectModel or None
         The Stage 1 model passed to ``fit``; ``summary()`` reports its Wald table.
     """
@@ -167,6 +251,7 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         bound: float = 10.0,
         bound_mode: str = "relative",
         convergence_criterion: str = "relative",
+        estimator: str = "he2013",
     ):
         """Stage 3 of the three-stage logistic model."""
         self.n_nodes = n_nodes
@@ -175,6 +260,7 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         self.bound = bound
         self.bound_mode = bound_mode
         self.convergence_criterion = convergence_criterion
+        self.estimator = estimator
 
         # Results (populated after fit)
         self.gamma_: Optional[np.ndarray] = None
@@ -268,6 +354,8 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
             raise ValueError("bound_mode must be 'relative' or 'absolute'.")
         if self.convergence_criterion not in ("relative", "max_delta_gamma"):
             raise ValueError("convergence_criterion must be 'relative' or 'max_delta_gamma'.")
+        if self.estimator not in ("he2013", "marginal"):
+            raise ValueError("estimator must be 'he2013' or 'marginal'.")
         self._x_vars = list(x_vars)
 
         # Extract arrays
@@ -319,6 +407,8 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         gamma_obs = gamma[prov_idx]
 
         nodes, weights = gauss_hermite_normal(self.n_nodes, sigma)
+        if self.estimator == "marginal":
+            return self._fit_marginal(y, xbeta, prov_idx, clust_idx, gamma, beta, sigma, nodes, weights, stage1, verbose)
 
         if verbose:
             logger.info("Fitting mixed effect model (NR + GH quadrature)...")
@@ -451,12 +541,103 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         self.convergence_ = float(crit)
         self.converged_ = converged
         self.stage1_ = stage1
+        self.loglik_ = _marginal_loglik(gamma, xbeta, y, prov_idx, clust_idx, sigma, self.n_nodes, self.n_providers_,
+                                        self.n_clusters_)
 
         return self
 
     # ------------------------------------------------------------------
     # Utilities
     # ------------------------------------------------------------------
+
+    def _fit_marginal(self, y, xbeta, prov_idx, clust_idx, gamma, beta, sigma, nodes, weights, stage1, verbose):
+        """Maximize the marginal likelihood in gamma (beta, sigma fixed): projected Newton with a line search.
+
+        The exact marginal likelihood is concave in gamma (its integrand is jointly log-concave), so its
+        maximizer is unique. It is computed by adaptive Gauss-Hermite quadrature: each iteration centers and
+        scales every cluster's nodes at its posterior, then takes a Newton step, with the Hessian the posterior
+        covariance of the per-node cell scores minus their posterior mean curvature (sparse: providers interact
+        only through shared clusters), and a backtracking line search at those nodes.
+        """
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.linalg import spsolve
+        n_prov, n_clust = self.n_providers_, self.n_clusters_
+        t_nodes, log_wt = _adaptive_rule(self.n_nodes)
+        codes, cell_idx = np.unique(np.asarray(prov_idx, np.int64) * n_clust + clust_idx, return_inverse=True)
+        cell_prov, cell_clust = codes // n_clust, codes % n_clust
+        order = np.argsort(cell_clust, kind="stable")
+        edges = np.r_[0, np.cumsum(np.bincount(cell_clust, minlength=n_clust))]
+        pair_a = np.concatenate([np.repeat(order[edges[h]:edges[h + 1]], edges[h + 1] - edges[h]) for h in range(n_clust)])
+        pair_b = np.concatenate([np.tile(order[edges[h]:edges[h + 1]], edges[h + 1] - edges[h]) for h in range(n_clust)])
+
+        def bounds(g):
+            if self.bound_mode == "absolute":
+                return -self.bound, self.bound
+            center = np.median(g)
+            return center - self.bound, center + self.bound
+
+        def terms(g, center, scale, hessian=False):
+            return _marginal_terms(g, xbeta, y, prov_idx, clust_idx, t_nodes, log_wt, sigma, center, scale,
+                                   n_prov, n_clust, cell_idx if hessian else None, codes.size)
+
+        gamma = np.asarray(gamma, dtype=np.float64)
+        gamma = np.clip(gamma, *bounds(gamma))
+        iter_count, crit, stalled, center = 0, np.inf, False, None
+        while True:
+            center, scale = _cluster_modes(gamma, xbeta, y, prov_idx, clust_idx, sigma, n_clust, start=center)
+            loglik, score, post, a_nodes, s_cell, v_cell = terms(gamma, center, scale, hessian=True)
+            lo, hi = bounds(gamma)
+            held = ((gamma <= lo + 1e-12) & (score < 0)) | ((gamma >= hi - 1e-12) & (score > 0))
+            free = np.flatnonzero(~held)
+            crit = float(np.max(np.abs(score[free]))) if free.size else 0.0
+            if verbose:
+                logger.info(f"  Newton {iter_count}: log-likelihood {loglik:.10f}, max |score| {crit:.3e}")
+            if crit < self.tol or iter_count >= self.max_iter or stalled:
+                break
+            post_cell = post[cell_clust]
+            mean_cell = (post_cell * s_cell).sum(axis=1)
+            cov = (post_cell[pair_a] * s_cell[pair_a] * s_cell[pair_b]).sum(axis=1) - mean_cell[pair_a] * mean_cell[pair_b]
+            rows = np.r_[cell_prov[pair_a], cell_prov]
+            cols = np.r_[cell_prov[pair_b], cell_prov]
+            vals = np.r_[-cov, (post_cell * v_cell).sum(axis=1)]          # the negative Hessian
+            neg_hess = coo_matrix((vals, (rows, cols)), shape=(n_prov, n_prov)).tocsc()
+            step = np.zeros(n_prov)
+            step[free] = spsolve(neg_hess[free][:, free], score[free])
+            slope, t = float(score[free] @ step[free]), 1.0
+            while True:
+                proposal = gamma + t * step
+                trial = np.clip(proposal, *bounds(proposal))
+                if terms(trial, center, scale)[0] >= loglik + 1e-4 * t * slope:
+                    break
+                t *= 0.5
+                if t < 1e-10:
+                    stalled = True
+                    break
+            if not stalled:
+                gamma = trial
+                iter_count += 1
+        converged = bool(crit < self.tol)
+        if not converged:
+            warnings.warn(f"The marginal-likelihood Newton iteration did not converge within max_iter={self.max_iter} "
+                          f"iterations (max |score| {crit:.3g} >= tol {self.tol:g}).", RuntimeWarning, stacklevel=3)
+        alpha_mean_cluster = (post * a_nodes).sum(axis=1)
+        alpha_var_cluster = (post * a_nodes ** 2).sum(axis=1) - alpha_mean_cluster ** 2
+        self.gamma_ = gamma
+        self.beta_ = beta
+        self.coefficients_ = {"beta": self.beta_, "gamma": self.gamma_}
+        self.sigma_ = sigma
+        self.alpha_mean_cluster_ = alpha_mean_cluster
+        self.alpha_var_cluster_ = alpha_var_cluster
+        self.alpha_mean_ = alpha_mean_cluster[clust_idx]
+        self.alpha_var_ = alpha_var_cluster[clust_idx]
+        self.xbeta_ = xbeta
+        self.fitted_ = plogis(gamma[prov_idx] + self.alpha_mean_ + xbeta)
+        self.iterations_ = iter_count
+        self.convergence_ = crit
+        self.converged_ = converged
+        self.stage1_ = stage1
+        self.loglik_ = loglik
+        return self
 
     def _stage_values(self, stage1, stage2, beta, sigma, gamma_init, x_vars, provider_var, cluster_var):
         """beta, sigma and the starting gamma: from the fitted stages, or given explicitly."""

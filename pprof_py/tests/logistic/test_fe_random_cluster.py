@@ -12,6 +12,7 @@ from scipy.stats import norm
 
 from pprof_py import LogisticRandomEffectModel, LogisticFixedEffectModel, LogisticFERandomClusterModel
 from pprof_py.inference import FixedNull
+from pprof_py.models.logistic.fe_random_cluster import _marginal_loglik
 from pprof_py.inference.effect_tests import (EXACT_P_FLOOR, clustered_poibin_tails, integrated_poibin_tails,
                                              poibin_tails, resample_tails, z_from_tails)
 
@@ -255,6 +256,50 @@ class TestStages:
         df, fe, _, beta = fitted
         with pytest.raises(ValueError, match="not x_vars"):
             LogisticFERandomClusterModel().fit(df, "y", ["x1"], "provider", "cluster", stage1=fe, stage2=_stage2(df, beta))
+
+
+class TestMarginalEstimator:
+    @staticmethod
+    def _fit(df, beta, estimator, start):
+        model = LogisticFERandomClusterModel(estimator=estimator, tol=1e-9)
+        return _quiet(model.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
+                      beta=beta, sigma=0.35, gamma_init=start, verbose=False)
+
+    def test_is_unique_and_at_least_as_likely_as_he2013(self, fitted):
+        df, _, _, beta = fitted
+        a, b = self._fit(df, beta, "marginal", np.full(36, -1.2)), self._fit(df, beta, "marginal", np.zeros(36))
+        he = self._fit(df, beta, "he2013", np.full(36, -1.2))
+        assert a.converged_ and b.converged_
+        assert np.max(np.abs(a.gamma_ - b.gamma_)) < 1e-8
+        assert a.loglik_ >= he.loglik_ - 1e-9
+
+    def test_the_estimate_is_stationary(self, fitted):
+        # central differences of the marginal log-likelihood itself (nodes re-centred at every point)
+        df, _, _, beta = fitted
+        m = self._fit(df, beta, "marginal", np.full(36, -1.2))
+        args = (m.xbeta_, m._y, np.asarray(m._provider_idx), np.asarray(m._cluster_idx), m.sigma_, m.n_nodes,
+                m.n_providers_, m.n_clusters_)
+        free = [j for j in range(36) if abs(m.gamma_[j] - np.median(m.gamma_)) < m.bound - 1e-6]
+        for j in free[:8]:
+            step = np.zeros(36)
+            step[j] = 1e-4
+            slope = (_marginal_loglik(m.gamma_ + step, *args) - _marginal_loglik(m.gamma_ - step, *args)) / 2e-4
+            assert abs(slope) < 1e-5
+
+    def test_tests_and_limits_work(self, fitted):
+        df, _, _, beta = fitted
+        m = self._fit(df, beta, "marginal", np.full(36, -1.2))
+        for method in ("exact", "poibin_exact"):
+            res = m.test(test_method=method)
+            g0 = res["null_value"].iloc[0]
+            assert ((res["flag"] != 0) == ((res["ci_lower"] > g0) | (res["ci_upper"] < g0))).all()
+        assert np.isfinite(m.test(test_method="resampling", n_resample=500, seed=1)["z_raw"]).all()
+
+    def test_rejects_an_unknown_estimator(self, fitted):
+        df, _, _, beta = fitted
+        with pytest.raises(ValueError, match="estimator"):
+            LogisticFERandomClusterModel(estimator="exact").fit(df, "y", ["x1", "x2"], "provider", "cluster", beta=beta,
+                                                                sigma=0.35, gamma_init=np.zeros(36))
 
 
 class TestSummary:
