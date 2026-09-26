@@ -330,7 +330,7 @@ class TestSummary:
 class TestFitOptions:
     def test_update_sigma_removed(self):
         with pytest.raises(TypeError):
-            LogisticFERandomClusterModel(update_sigma=True)
+            LogisticFERandomClusterModel(estimator="he2013", update_sigma=True)
 
     def test_converged_attributes(self, fitted):
         me = fitted[2]
@@ -340,12 +340,12 @@ class TestFitOptions:
         df, _, me, beta = fitted
         med = np.median(me.gamma_)
         assert np.isclose(me.gamma_[5], med - me.bound)                      # zero-event provider, relative clamp
-        ab = LogisticFERandomClusterModel(bound_mode="absolute")
+        ab = LogisticFERandomClusterModel(estimator="he2013", bound_mode="absolute")
         _quiet(ab.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
                gamma_init=np.full(36, -1.2), beta=beta, sigma=0.35, verbose=False)
         assert ab.gamma_[5] == -ab.bound
         with pytest.raises(ValueError, match="bound_mode"):
-            LogisticFERandomClusterModel(bound_mode="median").fit(df, "y", ["x1", "x2"], "provider", "cluster",
+            LogisticFERandomClusterModel(estimator="he2013", bound_mode="median").fit(df, "y", ["x1", "x2"], "provider", "cluster",
                                                              gamma_init=np.zeros(36), beta=beta, sigma=0.35,
                                                              verbose=False)
 
@@ -353,12 +353,12 @@ class TestFitOptions:
         df, _, me, beta = fitted
         args = dict(y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster", beta=beta,
                     sigma=0.35, verbose=False)
-        first = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma")
+        first = LogisticFERandomClusterModel(estimator="he2013", convergence_criterion="max_delta_gamma")
         _quiet(first.fit, df, gamma_init=np.full(36, -1.2), **args)
-        again = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma")
+        again = LogisticFERandomClusterModel(estimator="he2013", convergence_criterion="max_delta_gamma")
         _quiet(again.fit, df, gamma_init=first.gamma_, **args)        # a start at the solution stops at once
         assert first.converged_ and again.converged_ and again.iterations_ == 1
-        tight = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma", tol=1e-12)
+        tight = LogisticFERandomClusterModel(estimator="he2013", convergence_criterion="max_delta_gamma", tol=1e-12)
         _quiet(tight.fit, df, gamma_init=np.full(36, -1.2), **args)
         np.testing.assert_allclose(first.gamma_, tight.gamma_, atol=1e-4)
 
@@ -368,7 +368,7 @@ class TestFitOptions:
         rng = np.random.default_rng(1)
         df = pd.DataFrame({"provider": np.repeat(np.arange(6), 30), "cluster": np.tile(np.arange(3), 60),
                            "x1": rng.normal(size=180), "y": 0.0})
-        me = LogisticFERandomClusterModel(bound_mode="absolute", convergence_criterion="relative")
+        me = LogisticFERandomClusterModel(estimator="he2013", bound_mode="absolute", convergence_criterion="relative")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             me.fit(df, "y", ["x1"], "provider", "cluster", gamma_init=np.full(6, -10.0), beta=np.array([0.2]), sigma=0.3,
@@ -389,14 +389,14 @@ class TestFitOptions:
         return df
 
     def test_newton_information_floor(self):
-        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="absolute", convergence_criterion="relative")
+        me = LogisticFERandomClusterModel(estimator="he2013", max_iter=300, bound_mode="absolute", convergence_criterion="relative")
         with pytest.warns(RuntimeWarning, match="Newton information"):
             me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", gamma_init=np.zeros(8),
                    beta=np.array([0.1]), sigma=30.0, verbose=False)
         assert me.converged_ and np.isfinite(me.gamma_).all() and np.all(np.abs(me.gamma_) <= me.bound)
 
     def test_breakdown_is_reported(self):
-        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="relative")
+        me = LogisticFERandomClusterModel(estimator="he2013", max_iter=300, bound_mode="relative")
         with pytest.warns(RuntimeWarning, match="Did not converge"):
             _ = me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", gamma_init=np.zeros(8),
                        beta=np.array([0.1]), sigma=30.0, verbose=False)

@@ -109,7 +109,7 @@ print(round(stage3.sigma_, 4), stage3.converged_, stage3.iterations_)
 ```
 ```
 {'age': 0.0207, 'diabetes': 0.3742, 'chf': 0.4402, 'comorbidity_count': 0.1672}
-0.4244 True 25
+0.4244 True 4
 ```
 
 The fitted model keeps every stage: `prep_` (the prepared data), `data_` (with the Stage 1 offset
@@ -160,9 +160,9 @@ print(result[["estimate", "null_value", "z_raw", "p_value", "flag", "ci_lower", 
 ```
              estimate  null_value   z_raw  p_value  flag  ci_lower  ci_upper
 provider_id
-1             -4.2868     -3.0599 -1.7461   0.0808     0   -6.1618   -2.9362
-2             -3.2135     -3.0599 -0.9725   0.3308     0   -3.5283   -2.9086
-3             -3.6813     -3.0599 -2.4522   0.0142    -1   -4.2259   -3.1780
+1             -4.2292      -3.004 -1.7314   0.0834     0   -6.1072   -2.8707
+2             -3.2210      -3.004 -1.3096   0.1903     0   -3.5511   -2.8990
+3             -3.5757      -3.004 -2.1839   0.0290    -1   -4.1297   -3.0595
 ```
 
 Every test compares a facility's event count with its distribution when its effect is the reference
@@ -196,8 +196,8 @@ result_en = model.test(null_model=EmpiricalNull.fitter(size=size.to_numpy(float)
 
 | test | flagged, theoretical null (above the reference) | flagged, empirical null |
 |---|---|---|
-| `"exact"` | 28 (17) | 9 |
-| `"poibin_exact"` | 29 (18) | 8 |
+| `"exact"` | 27 (17) | 9 |
+| `"poibin_exact"` | 28 (18) | 8 |
 | `"resampling"` (`seed=1`) | 29 (18) | 9 |
 
 [The empirical null guide](../reference/empirical_null) covers the options. Standardized readmission
@@ -208,55 +208,54 @@ print(model.calculate_standardized_measures(stdz="indirect")["indirect"].head(3)
 ```
 ```
    provider_id  indirect_ratio  indirect_rate  observed  expected
-0            1          0.3805         9.7219       2.0    5.2558
-1            2          0.9002        22.9979      58.0   64.4313
-2            3          0.6308        16.1165      18.0   28.5338
+0            1          0.3825         9.7710       2.0    5.2293
+1            2          0.8643        22.0805      58.0   67.1082
+2            3          0.6529        16.6806      18.0   27.5687
 ```
 
 ## 7. Two estimators
 
 Stage 3 has two estimators of $\gamma$:
 
-- `estimator="he2013"` (the default) is the iteration of He et al. (2013), as in R's `glmm.fac.hosp`.
-  Its fixed point depends on the starting value and is not the maximum likelihood estimate.
-- `estimator="marginal"` maximizes the marginal likelihood in $\gamma$ with $\beta$ and $\sigma$ fixed.
-  That likelihood is concave in $\gamma$, so the estimate is unique and does not depend on the start.
-  It is computed by adaptive Gauss–Hermite quadrature (each hospital's nodes centered and scaled at its
-  posterior) and a projected Newton iteration.
+- `estimator="marginal"` (the default) maximizes the marginal likelihood in $\gamma$ with $\beta$ and
+  $\sigma$ fixed. That likelihood is concave in $\gamma$, so the estimate is unique and does not depend
+  on the start. It is computed by adaptive Gauss–Hermite quadrature (each hospital's nodes centered and
+  scaled at its posterior) and a projected Newton iteration, which here converged in 4 steps.
+- `estimator="he2013"` is the iteration of He et al. (2013), as in R's `glmm.fac.hosp`. Its fixed point
+  depends on the starting value and is not the maximum likelihood estimate.
 
 ```python
-marginal = LogisticThreeStageModel(cutoff=10, estimator="marginal").fit(
+he = LogisticThreeStageModel(cutoff=10, estimator="he2013").fit(
     df, "readmit", covariates, "facility_id", "hospital_id")
-print(round(model.stage3_.loglik_, 4), round(marginal.stage3_.loglik_, 4))
+print(round(model.stage3_.loglik_, 4), round(he.stage3_.loglik_, 4))
 ```
 ```
--8119.6908 -8117.9024
+-8117.9024 -8119.6908
 ```
 
-`loglik_` is the marginal log-likelihood under either estimator. Here the marginal estimate is 1.79
-higher, in 4 Newton steps; the two estimates of $\gamma$ differ by up to 0.22 (median 0.079), and three
-facilities' `"exact"`-test flags change (28 flagged against 27). Starting the marginal estimator from
-$\gamma = 0$ instead reaches the same estimate.
+`loglik_` is the marginal log-likelihood under either estimator. Here the marginal estimate's is 1.79
+higher; `"he2013"` took 25 iterations to a solution that differs from it by up to 0.22 in $\gamma$
+(median 0.079), and three facilities' `"exact"`-test flags differ (28 flagged against 27). Starting the
+marginal estimator from $\gamma = 0$ instead reaches the same estimate.
 
 Most of that difference comes from `"he2013"`'s fixed quadrature nodes, not from its iteration. Its
 `n_nodes` nodes (20 by default) are fixed, and a hospital with hundreds of discharges has a posterior
 narrower than their spacing. This cohort's hospitals have a median of 816 discharges: with 60 fixed
-nodes the two estimates differ by at most 0.079, and with 100 by at most 0.004. For output comparable
-with R, keep `"he2013"` with R's settings (Section 10); otherwise `"marginal"` is the accurate choice,
-and costs about as much.
+nodes `"he2013"` differs from the marginal estimate by at most 0.079, and with 100 by at most 0.004.
+Use `"he2013"` for output comparable with R (Section 10).
 
 ## 8. Checks before trusting Stage 3
 
-- **Convergence.** Confirm `converged_` is `True` and `iterations_` is well below `max_iter`.
+- **Convergence.** Confirm `converged_` is `True` and `iterations_` is well below `max_iter`. Under
+  `"marginal"` (the default), `tol` bounds the largest score. Under `"he2013"`,
   `convergence_criterion="max_delta_gamma"` (the default) stops when no $\gamma$ moves by more than `tol`;
   `"relative"`, R's rule, stops on the change in the objective relative to its change since the first
-  iteration, which can stop short of the solution on some data sets. Under `"marginal"`, `tol` bounds the
-  largest score.
+  iteration, which can stop short of the solution on some data sets.
 - **Facilities at the bound.** $\gamma$ is clipped to `median(gamma_) ± bound` (`bound_mode="relative"`,
   the default) or `±bound` (`"absolute"`, as in R). A facility there has an outcome that the adjustment
   in `y_adj` did not make finite (none does here).
-- **Quadrature under `"he2013"`.** With large hospitals, check the estimate against `"marginal"` or a
-  larger `n_nodes` (Section 7).
+- **Quadrature under `"he2013"`.** With large hospitals, `"he2013"` needs a larger `n_nodes` to approach the
+  marginal estimate (Section 7).
 - **$\sigma$ is Stage 2's.** Earlier versions offered `update_sigma=True`, which re-estimated $\sigma$ from
   the posterior hospital effects each iteration and drove it toward zero (R's `glmm.fac.hosp` does the
   same); it was removed.
@@ -283,8 +282,8 @@ it, or pass `summary(stage1=...)`. It raises if that model's $\beta$ is not the 
 
 ## 10. Matching R's `glmm.fac.hosp`
 
-For output comparable with R, use `LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative")`
-with the other defaults (`n_nodes=20`, `tol=1e-5`, `estimator="he2013"`), and for flags
+For output comparable with R, use `LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative", estimator="he2013")`
+with the other defaults (`n_nodes=20`, `tol=1e-5`), and for flags
 comparable with R's `summary.glmm.fac`, `test_method="resampling"` with the empirical null of Section 6.
 On a crossed synthetic cohort (40 facilities, 12 hospitals), given the same $\beta$, Stage 2 matches R's
 `glmer` ($\sigma$ to $7\times10^{-6}$, the starting $\gamma$ to $10^{-5}$) and Stage 3 matches

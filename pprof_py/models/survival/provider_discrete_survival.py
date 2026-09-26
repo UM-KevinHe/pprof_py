@@ -586,26 +586,50 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
             "gamma": gamma,
         })
 
+    def _path_index(self, lambda_value, which):
+        """The path point: nearest to ``lambda_value``, else ``which``, else the last."""
+        if lambda_value is not None:
+            return int(np.argmin(np.abs(np.asarray(self.lambda_path_) - lambda_value)))
+        return -1 if which is None else which
+
+    def _to_person_period(self, wide, time):
+        """Rows of ``wide`` (one column per time point) cut at each subject's time, stacked."""
+        k = wide.shape[1]
+        time_int = np.clip(np.searchsorted(self.time_points_, np.asarray(time, dtype=np.float64)) + 1, 1, k)
+        return np.concatenate([wide[i, :time_int[i]] for i in range(wide.shape[0])])
+
     def predict_hazard(
-        self, X, provider_id=None, which: int = -1,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted conditional hazard at each time point.
+        """Predicted conditional hazard.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_new, p)
+        provider_id : array-like, optional
+            Provider of each row; rows of unknown providers get no provider effect.
+        time : array-like, optional
+            Follow-up time of each row: the result is then in person-period (long)
+            form, as ``DiscreteSurvival.predict_hazard``. Without it, the result has
+            one column per time point.
+        lambda_value : float, optional
+            The path point nearest to this lambda.
+        which : int, optional
+            Path index (default: the last).
 
         Returns
         -------
-        ndarray, shape (n_new, n_timepoints)
+        ndarray, shape (n_new, n_timepoints), or ``(sum(time_int),)`` with ``time``
         """
         self._check_is_fitted()
+        which = self._path_index(lambda_value, which)
         X = np.asarray(X, dtype=np.float64)
         coef = self.coef_path_[which]
         alpha = self.baseline_hazard_path_[which]
         n_new = X.shape[0]
-        n_t = len(alpha)
-
         # eta_{i,t} = alpha_t + X_i @ beta
         eta_base = X @ coef  # shape (n_new,)
         eta = np.outer(np.ones(n_new), alpha) + eta_base[:, np.newaxis]
-
         # Add provider effects.
         if provider_id is not None:
             gamma = self.gamma_path_[which]
@@ -616,27 +640,20 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
                 pidx = label_to_idx.get(pid, -1)
                 if pidx >= 0:
                     eta[row_idx, :] += gamma[pidx]
-
-        return 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
+        hazard = 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
+        return hazard if time is None else self._to_person_period(hazard, time)
 
     def predict_survival(
-        self, X, provider_id=None, which: int = -1,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted survival probability at each time point.
+        """Predicted survival probability, ``S(t) = prod_{s<=t} (1 - h(s))``.
 
-        S(t) = prod_{s<=t} (1 - h(s))
-
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as :meth:`predict_hazard`.
         """
-        hazard = self.predict_hazard(X, provider_id, which)
-        return np.cumprod(1.0 - hazard, axis=1)
+        hazard = self.predict_hazard(X, provider_id=provider_id, lambda_value=lambda_value, which=which)
+        survival = np.cumprod(1.0 - hazard, axis=1)
+        return survival if time is None else self._to_person_period(survival, time)
 
-
-# ======================================================================
-# Cross-validated ProviderPenalizedDiscreteSurvival
-# ======================================================================
 
 class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     """Cross-validated provider-penalized discrete-time survival model.
@@ -717,6 +734,7 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     provider_labels_ : ndarray
     fold_assignment_ : ndarray of int, shape (n,)
     """
+
 
     def __init__(
         self,
@@ -994,8 +1012,8 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         # =============================================================
         # 6. Store fitted attributes
         # =============================================================
-        self.cv_mean_ = cv_mean
-        self.cv_se_ = cv_se
+        self.cv_mean_deviance_ = cv_mean
+        self.cv_se_deviance_ = cv_se
         self.lambda_min_ = float(lambda_min)
         self.lambda_1se_ = float(lambda_1se)
         self.lambda_min_idx_ = int(idx_min)
@@ -1036,43 +1054,35 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
             )
 
     def predict_hazard(
-        self, X, provider_id=None, which=None,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted hazard at the selected lambda.
+        """Predicted hazard at the selected lambda (unless ``lambda_value`` or ``which`` is given).
 
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as ``ProviderPenalizedDiscreteSurvival.predict_hazard``.
         """
         self._check_is_fitted()
-        if which is None:
+        if which is None and lambda_value is None:
             which = (
                 self.lambda_1se_idx_
                 if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
-        return self.model_.predict_hazard(X, provider_id, which=which)
-
+        return self.model_.predict_hazard(X, provider_id=provider_id, time=time, lambda_value=lambda_value, which=which)
     def predict_survival(
-        self, X, provider_id=None, which=None,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted survival at the selected lambda.
+        """Predicted survival at the selected lambda (unless ``lambda_value`` or ``which`` is given).
 
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as ``ProviderPenalizedDiscreteSurvival.predict_survival``.
         """
         self._check_is_fitted()
-        if which is None:
+        if which is None and lambda_value is None:
             which = (
                 self.lambda_1se_idx_
                 if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
-        return self.model_.predict_survival(
-            X, provider_id, which=which,
-        )
-
+        return self.model_.predict_survival(X, provider_id=provider_id, time=time, lambda_value=lambda_value, which=which)
     def predict_provider_effect(self, which=None) -> pd.DataFrame:
         """Provider effects at the selected lambda."""
         self._check_is_fitted()

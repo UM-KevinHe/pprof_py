@@ -482,7 +482,9 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     cv_se_deviance_ : ndarray, shape (n_lambda_,)
     lambda_min_ : float
     lambda_1se_ : float
-    final_estimator_ : GroupLassoCoxPH
+    model_ : GroupLassoCoxPH
+    lambda_ : float
+        The lambda that ``se_rule`` selects, at which ``model_`` and ``coef_`` are fit.
     coef_ : ndarray
     fold_id_ : ndarray, shape (n_obs,)
     full_fit_ : GroupLassoCoxPH
@@ -768,15 +770,16 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
             self.lambda_min_ if self.se_rule == "min"
             else self.lambda_1se_
         )
-        self.final_estimator_ = GroupLassoCoxPH(
+        self.model_ = GroupLassoCoxPH(
             lambda_path=chosen_lambda, **self._base_kwargs(),
         )
-        self.final_estimator_.fit(
+        self.model_.fit(
             data.X, event=data.event, start=data.start,
             stop=data.stop, strata=data.strata_codes,
             offset=data.offset, sample_weight=data.weight,
         )
-        self.coef_ = self.final_estimator_.coef_
+        self.coef_ = self.model_.coef_
+        self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_

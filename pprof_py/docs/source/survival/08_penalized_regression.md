@@ -124,7 +124,7 @@ cv_parsimonious = PenalizedCoxPHCV(alpha=1.0, se_rule="1se", random_state=0).fit
 )
 ```
 
-`cv.final_estimator_` gives you the fully-fitted `PenalizedCoxPH`-style
+`cv.model_` gives you the fully-fitted `PenalizedCoxPH`-style
 object at the selected lambda, if you need more than just `coef_` —
 the fitted deviance, the number of nonzero coefficients, and so on.
 

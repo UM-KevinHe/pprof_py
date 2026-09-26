@@ -210,7 +210,7 @@ class LogisticFixedEffectPlottingMixin:
 
         # 4. Get Flags
         test_df = self.test(reference=reference, level=1.0 - alpha_test, test_method=test_method)
-        df["flag"] = test_df.loc[df.index, "flag"].fillna(0).astype(int)
+        df["flag"] = test_df.loc[df.index, "flag"].astype(float)
 
         # --- Calculate Control Limits ---
         limits_list = []

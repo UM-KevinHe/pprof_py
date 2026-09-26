@@ -112,14 +112,12 @@ convergence easier to reach in practice.
 delegate to `predict_hazard()`/`predict_survival()` internally
 (Section 13.5).
 
-## 13.5 `predict_hazard()`/`predict_survival()` need `time=`
+## 13.5 `predict_hazard()`/`predict_survival()`: person-period or one column per time
 
-Unlike `CoxPH.predict_partial_hazard()`, which needs no `time=`
-argument at all (a Cox partial hazard is a single, time-invariant
-relative-risk number), a discrete-time hazard is timepoint-specific by
-construction — "the hazard" isn't one number per patient, it's one
-number *per patient per period*, so both methods require `time=`
-explicitly:
+Unlike `CoxPH.predict_partial_hazard()` (a Cox partial hazard is a single,
+time-invariant relative-risk number), a discrete-time hazard is one number
+*per patient per period*. With `time=`, both methods return the person-period
+form, one value per period up to each patient's time:
 
 ```python
 import numpy as np
@@ -137,11 +135,11 @@ Internally, both methods map `time` into the integer codes that
 `np.searchsorted`, selecting the correct column of `alpha_path_`
 for each query point.
 
-Note that `ProviderPenalizedDiscreteSurvival`'s
-`predict_hazard()` ([Chapter 14](14_provider_discrete_survival))
-follows a different convention, returning a 2-D `(n, K)` wide-format
-array instead of a 1-D person-period vector — same method name,
-different return shape.
+Without `time=`, they return an `(n, K)` array, one column per time point.
+The signature is the one `ProviderPenalizedDiscreteSurvival`
+([Chapter 14](14_provider_discrete_survival)) uses after its `provider_id`:
+`(X, time=None, lambda_value=None, which=None)`, where `which` picks a path
+point by index and `lambda_value` a lambda (by default, the last).
 
 ## 13.6 Cross-validation with `DiscreteSurvivalCV`
 

@@ -144,11 +144,17 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         alpha_h ~ N(0, sigma^2) = random effect for cluster h (integrated out)
         beta = fixed covariate effects (from Stage 1, held fixed)
 
-    The algorithm iterates:
-    1. GH quadrature to compute posterior moments E[alpha|Y], Var[alpha|Y]
-    2. Newton-Raphson updates for gamma (provider) given posterior moments
-    3. Convergence via the relative change in the objective (default) or the
-       largest change in gamma
+    Two estimators of gamma:
+
+    * ``estimator="marginal"`` (the default) maximizes the marginal likelihood in
+      gamma, with the cluster effects integrated out by adaptive Gauss-Hermite
+      quadrature, by a projected Newton iteration. The likelihood is concave in
+      gamma, so the estimate is unique and does not depend on the start.
+    * ``estimator="he2013"`` iterates as He et al. (2013) and R's
+      ``glmm.fac.hosp``: Gauss-Hermite posterior moments of the cluster effects,
+      then Newton-Raphson updates of gamma given them, until the largest change
+      in gamma (default) or the relative change in the objective falls below
+      ``tol``.
 
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
@@ -180,17 +186,18 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         counts as converged when the numerator is also zero, and otherwise does
         not stop the fit); it can stop well short of the fixed point, so use it
         for output comparable with R.
-    estimator : {"he2013", "marginal"}, default="he2013"
-        ``"he2013"``: the iteration of He et al. (2013) above, as in R's
-        ``glmm.fac.hosp``; its fixed point depends on the start and is not the
-        maximum likelihood estimate. ``"marginal"``: the maximum of the exact
-        Gauss-Hermite marginal likelihood in gamma (beta and sigma fixed), by a
-        projected Newton iteration with a line search. That likelihood is
-        concave in gamma, so the estimate is unique and does not depend on the
-        start. Rows contribute ``y log p + (1 - y) log(1 - p)``, also for the
-        adjusted outcome; ``tol`` bounds the largest score and ``max_iter`` the
-        Newton steps; the posterior moments of the cluster effects are those at
-        the estimate.
+    estimator : {"marginal", "he2013"}, default="marginal"
+        ``"marginal"``: the maximum of the marginal likelihood in gamma (beta and
+        sigma fixed), by adaptive Gauss-Hermite quadrature and a projected Newton
+        iteration with a line search. That likelihood is concave in gamma, so the
+        estimate is unique and does not depend on the start. Rows contribute
+        ``y log p + (1 - y) log(1 - p)``, also for the adjusted outcome; ``tol``
+        bounds the largest score and ``max_iter`` the Newton steps; the posterior
+        moments of the cluster effects are those at the estimate. ``"he2013"``:
+        the iteration of He et al. (2013) above, as in R's ``glmm.fac.hosp``, with
+        ``n_nodes`` fixed nodes; its fixed point depends on the start and is not
+        the maximum likelihood estimate, and fixed nodes misstate the likelihood
+        for large clusters. Use it for output comparable with R.
 
     Notes
     -----
@@ -252,7 +259,7 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         bound: float = 10.0,
         bound_mode: str = "relative",
         convergence_criterion: str = "max_delta_gamma",
-        estimator: str = "he2013",
+        estimator: str = "marginal",
     ):
         """Stage 3 of the three-stage logistic model."""
         self.n_nodes = n_nodes

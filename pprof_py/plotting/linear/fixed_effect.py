@@ -161,7 +161,7 @@ class LinearFixedEffectPlottingMixin:
 
         test_df = self.test(reference=reference, level=1.0 - alpha_test, alternative="two_sided")
         df = df.merge(test_df[['flag']], left_index=True, right_index=True, how='left')
-        df["flag"] = df["flag"].fillna(0).astype(int)
+        df["flag"] = df["flag"].astype(float)
 
         limits_list = []
         for a_val in a_list:
@@ -276,7 +276,7 @@ class LinearFixedEffectPlottingMixin:
                 )
                 # Merge flags using left_on='provider_id' and right_index=True since test_df is indexed by provider IDs
                 df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
-                df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
+                df_plot[flag_col_name] = df_plot[flag_col_name].astype(float)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
                 flag_col_name = None
@@ -379,7 +379,7 @@ class LinearFixedEffectPlottingMixin:
                                     alternative='two_sided')
                 # Merge using left_on='provider_id' and right_index=True
                 df_plot = df_plot.merge(test_df[['flag']], left_on='provider_id', right_index=True, how='left')
-                df_plot[flag_col_name] = df_plot[flag_col_name].fillna(0).astype(int)
+                df_plot[flag_col_name] = df_plot[flag_col_name].astype(float)
             except Exception as e:
                 warnings.warn(f"Could not generate flags. Plotting without flags. Error: {e}")
                 flag_col_name = None

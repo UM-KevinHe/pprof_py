@@ -455,24 +455,23 @@ class DiscreteSurvival(ProviderModel):
     def predict_hazard(
         self,
         X,
-        time,
+        time=None,
         lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
         """Predicted hazard probabilities in person-period (long) format.
 
-        Returns a 1-D array whose length equals ``sum(time_int)`` after
-        discretizing each subject's *time* into integer codes via
-        ``timepoint_map_``.  This is distinct from
-        ``ProviderPenalizedDiscreteSurvival.predict_hazard()``, which
-        returns a 2-D ``(n, K)`` wide-format array instead (see
-        ISSUE-023 in ``CODE_ISSUES.md``).
+        With ``time``, a 1-D array whose length equals ``sum(time_int)`` after
+        discretizing each subject's *time* via ``timepoint_map_``; without it,
+        an ``(n, K)`` array, one column per time point. The signature matches
+        ``ProviderPenalizedDiscreteSurvival.predict_hazard()`` (after ``provider_id``).
 
         Parameters
         ----------
         X : DataFrame or ndarray, shape ``(n, p)``
-        time : array-like, shape ``(n,)``
-            Follow-up time for each subject.
+        time : array-like, shape ``(n,)``, optional
+            Follow-up time for each subject: the result is then in person-period
+            (long) form. Without it, the result has one column per time point.
         lambda_value : float or None
         which : int or None
 
@@ -485,14 +484,11 @@ class DiscreteSurvival(ProviderModel):
             X_np = X.values.astype(np.float64)
         else:
             X_np = np.asarray(X, dtype=np.float64)
-        time_np = np.asarray(time, dtype=np.float64)
-
-        # ISSUE-019 fix: look up query times against the fitted
-        # timepoint mapping rather than re-discretizing locally.
-        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
-        # Clip to valid range [1, K].
         K = len(self.timepoint_map_)
-        time_int = np.clip(time_int, 1, K)
+        if time is None:            # every time point: the wide (n, K) form
+            time_int = np.full(X_np.shape[0], K)
+        else:                       # up to each subject's time: the person-period form
+            time_int = np.clip(np.searchsorted(self.timepoint_map_, np.asarray(time, dtype=np.float64)) + 1, 1, K)
 
         if lambda_value is not None:
             coef = self.coef_at(lambda_value)
@@ -507,12 +503,13 @@ class DiscreteSurvival(ProviderModel):
             alpha = self.alpha_path_[-1]
 
         eta = X_np @ coef
-        return predict_discrete_hazard(alpha, eta, time_int)
+        out = predict_discrete_hazard(alpha, eta, time_int)
+        return out.reshape(-1, K) if time is None else out
 
     def predict_survival(
         self,
         X,
-        time,
+        time=None,
         lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
@@ -527,12 +524,11 @@ class DiscreteSurvival(ProviderModel):
             X_np = X.values.astype(np.float64)
         else:
             X_np = np.asarray(X, dtype=np.float64)
-        time_np = np.asarray(time, dtype=np.float64)
-
-        # ISSUE-019 fix: same as predict_hazard — use fitted mapping.
-        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
         K = len(self.timepoint_map_)
-        time_int = np.clip(time_int, 1, K)
+        if time is None:            # every time point: the wide (n, K) form
+            time_int = np.full(X_np.shape[0], K)
+        else:                       # up to each subject's time: the person-period form
+            time_int = np.clip(np.searchsorted(self.timepoint_map_, np.asarray(time, dtype=np.float64)) + 1, 1, K)
 
         if lambda_value is not None:
             coef = self.coef_at(lambda_value)
@@ -546,7 +542,8 @@ class DiscreteSurvival(ProviderModel):
             alpha = self.alpha_path_[-1]
 
         eta = X_np @ coef
-        return predict_survival_probability(alpha, eta, time_int)
+        out = predict_survival_probability(alpha, eta, time_int)
+        return out.reshape(-1, K) if time is None else out
 
     def summary(self, which: int = -1) -> pd.DataFrame:
         """Summary table at a given lambda index."""
@@ -587,13 +584,19 @@ class DiscreteSurvivalCV(ProviderModel):
 
     Attributes
     ----------
+    lambda_path_ : ndarray
+        The lambda sequence (the full-data fit's).
     lambda_min_ : float
         Lambda with minimum mean CV error.
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
-    cv_mean_ : ndarray, shape (n_lambda,)
+    lambda_ : float
+        The lambda that ``se_rule`` selects.
+    coef_ : ndarray
+        The full-data coefficients at ``lambda_``.
+    cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean CV error per lambda.
-    cv_se_ : ndarray, shape (n_lambda,)
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV error per lambda.
     model_ : DiscreteSurvival
         Full-data fit.
@@ -660,6 +663,7 @@ class DiscreteSurvivalCV(ProviderModel):
         full_model.fit(X, time, event, sample_weight=sample_weight)
         self.model_ = full_model
         lambda_seq = full_model.lambda_path_
+        self.lambda_path_ = lambda_seq
         n_lambda = len(lambda_seq)
 
         # --- Cross-validation ---
@@ -747,8 +751,8 @@ class DiscreteSurvivalCV(ProviderModel):
         cv_mean[valid] = np.mean(loss_matrix[:, valid], axis=0)
         cv_se[valid] = np.std(loss_matrix[:, valid], axis=0, ddof=1) / np.sqrt(self.n_folds)
 
-        self.cv_mean_ = cv_mean
-        self.cv_se_ = cv_se
+        self.cv_mean_deviance_ = cv_mean
+        self.cv_se_deviance_ = cv_se
 
         # Lambda selection
         valid_idx = np.where(valid)[0]
@@ -767,6 +771,8 @@ class DiscreteSurvivalCV(ProviderModel):
         # is within 1 SE of the minimum
         candidates = valid_idx[cv_mean[valid_idx] <= threshold]
         self.lambda_1se_ = lambda_seq[candidates[0]]
+        self.lambda_ = self.lambda_1se_ if self.se_rule == "1se" else self.lambda_min_
+        self.coef_ = self.model_.coef_at(self.lambda_)
 
         return self
 
@@ -862,6 +868,6 @@ class DiscreteSurvivalCV(ProviderModel):
         result = self.model_.summary(which=idx)
         result.attrs['lambda'] = lam
         result.attrs['rule'] = rule
-        result.attrs['cv_mean'] = self.cv_mean_[idx]
-        result.attrs['cv_se'] = self.cv_se_[idx]
+        result.attrs['cv_mean_deviance'] = self.cv_mean_deviance_[idx]
+        result.attrs['cv_se_deviance'] = self.cv_se_deviance_[idx]
         return result

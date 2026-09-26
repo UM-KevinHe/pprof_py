@@ -891,7 +891,7 @@ class _PenalizedCoxPHCVBase:
 
     def _check_is_fitted(self) -> None:
         cls_name = type(self).__name__
-        if not hasattr(self, "final_estimator_"):
+        if not hasattr(self, "model_"):
             raise NotFittedError(
                 f"This {cls_name} instance is not fitted yet. "
                 "Call `fit` first."
@@ -910,7 +910,7 @@ class _PenalizedCoxPHCVBase:
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        return self.final_estimator_.predict_linear(X, offset=offset)
+        return self.model_.predict_linear(X, offset=offset)
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:
         """Partial hazard at the selected lambda.
@@ -925,7 +925,7 @@ class _PenalizedCoxPHCVBase:
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        return self.final_estimator_.predict_partial_hazard(
+        return self.model_.predict_partial_hazard(
             X, offset=offset,
         )
 
@@ -994,7 +994,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     random_state : int, optional
         Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     se_rule : {"min", "1se"}, default "1se"
-        Which cross-validated lambda `final_estimator_`/`coef_` uses: the
+        Which cross-validated lambda `model_`/`coef_` uses: the
         minimum CV error (``"min"``) or the largest lambda within one SE of it
         (``"1se"``).
     Remaining parameters are passed through to the underlying
@@ -1010,11 +1010,13 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         The lambda with minimum cross-validated deviance, and the
         largest lambda within one standard error of that minimum
         (glmnet's 1-SE rule).
-    final_estimator_ : PenalizedCoxPH
+    model_ : PenalizedCoxPH
         Fit on the *full* data at `lambda_min_` or `lambda_1se_` (per
         `select`).
+    lambda_ : float
+        The lambda that ``se_rule`` selects, at which ``model_`` and ``coef_`` are fit.
     coef_ : ndarray
-        `final_estimator_.coef_`.
+        `model_.coef_`.
     fold_id_ : ndarray, shape (n_obs,)
         The fold assignment actually used.
     """
@@ -1310,15 +1312,16 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
             if self.se_rule == "min"
             else self.lambda_1se_
         )
-        self.final_estimator_ = PenalizedCoxPH(
+        self.model_ = PenalizedCoxPH(
             lambda_path=chosen_lambda, **self._base_kwargs(),
         )
-        self.final_estimator_.fit(
+        self.model_.fit(
             data.X, event=data.event, start=data.start,
             stop=data.stop, strata=data.strata_codes,
             offset=data.offset, sample_weight=data.weight,
         )
-        self.coef_ = self.final_estimator_.coef_
+        self.coef_ = self.model_.coef_
+        self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_

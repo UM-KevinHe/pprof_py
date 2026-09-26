@@ -61,9 +61,10 @@ so the selected λ, change between calls.
 - **Path estimators** (`PenalizedLinear`, `GroupLassoLinear`, `PenalizedLogistic`, `GroupLassoLogistic`, `ProviderPenalizedLogistic`) expose
   `coef_path_` (`n_lambda × p`), `intercept_path_`, `lambda_path_` (descending) and further `*_path_` arrays. They have **no `coef_`**;
   use `coef_at(lambda_value)` (interpolated), `intercept_at` (logistic), or index the path.
-- **`*CV` estimators** refit on all data and expose `coef_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `cv_mean_*_`, `cv_se_*_`, `cv_std_*_`, and `model_`
-  (the refit path estimator). With the default `se_rule="1se"`, `lambda_` is `lambda_1se_`. The error attributes are named for the loss:
-  `cv_*_mse_` (linear) and `cv_*_deviance_` (logistic).
+- **`*CV` estimators** refit on all data. Every CV class, here and in the survival family, exposes the same attributes:
+  `lambda_path_`, `cv_mean_deviance_` and `cv_se_deviance_` (the cross-validated deviance and its standard error at each lambda;
+  for linear models the deviance is the residual sum of squares), `lambda_min_`, `lambda_1se_`, `lambda_` (the one `se_rule` selects;
+  with the default `"1se"`, `lambda_1se_`), `model_` (the full-data fit) and `coef_` (at `lambda_`).
 - `lambda_path` may be `None` (automatic path of `n_lambda` values from `lambda_max_`), or explicit values. The automatic path always returns
   `n_lambda` points; glmnet may stop earlier.
 - `standardize=True` scales columns by their population standard deviation before penalizing and returns coefficients on the original scale.

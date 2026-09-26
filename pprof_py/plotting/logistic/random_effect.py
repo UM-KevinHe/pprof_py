@@ -177,7 +177,7 @@ class LogisticRandomEffectPlottingMixin:
         df = df.merge(
             test_df[["flag"]], left_index=True, right_index=True, how="left",
         )
-        df["flag"] = df["flag"].fillna(0).astype(int)
+        df["flag"] = df["flag"].astype(float)
 
         # Poisson-approximation control limits: target +/- z / sqrt(E)
         limits_list = []
@@ -305,7 +305,7 @@ class LogisticRandomEffectPlottingMixin:
                     how="left",
                 )
                 df_plot[flag_col_name] = (
-                    df_plot[flag_col_name].fillna(0).astype(int)
+                    df_plot[flag_col_name].astype(float)
                 )
             except Exception as exc:
                 warnings.warn(
@@ -428,7 +428,7 @@ class LogisticRandomEffectPlottingMixin:
                     how="left",
                 )
                 df_plot[flag_col_name] = (
-                    df_plot[flag_col_name].fillna(0).astype(int)
+                    df_plot[flag_col_name].astype(float)
                 )
             except Exception as exc:
                 warnings.warn(

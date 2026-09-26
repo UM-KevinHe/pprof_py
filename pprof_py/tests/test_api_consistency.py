@@ -70,3 +70,36 @@ def test_defaults():
     assert LogisticThreeStageModel().convergence_criterion == "max_delta_gamma"
     assert PenalizedCoxPHCV().se_rule == "1se"
     assert GroupLassoCoxPHCV(groups=[0, 1]).se_rule == "1se"
+
+
+def _legend_texts(ax):
+    legend = ax.get_legend()
+    return [t.get_text() for t in legend.get_texts()] if legend is not None else []
+
+
+def test_untested_providers_are_drawn_as_their_own_category(crossed):
+    import inspect
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from pprof_py.plotting.coefficients import plot_caterpillar
+
+    df = pd.DataFrame({"estimate": [0.1, -0.2, 0.3, 0.0], "flag": [1.0, -1.0, np.nan, 0.0]}, index=list("abcd"))
+    params = inspect.signature(plot_caterpillar).parameters
+    kwargs = {k: v for k, v in dict(estimate_col="estimate", flag_col="flag").items() if k in params}
+    plt.close("all")
+    plot_caterpillar(df, **kwargs)
+    texts = _legend_texts(plt.gca())
+    assert "Not tested (1)" in texts and not any(t.startswith("Expected (2)") for t in texts)
+    plt.close("all")
+
+    fe = _quiet(LogisticFixedEffectModel(use_dataprep=False, screen_providers=False).fit, crossed, y_var="y",
+                x_vars=["x"], provider_var="provider")
+    real = fe.test(test_method="poibin_exact")
+    patched = real.copy()
+    patched.loc[patched.index[0], "flag"] = np.nan              # one provider without a test result
+    fe.test = lambda *args, **kwargs: patched
+    out = _quiet(fe.plot_funnel)
+    ax = out[1] if isinstance(out, tuple) else plt.gca()
+    assert "Not tested (1)" in _legend_texts(ax)
+    plt.close("all")

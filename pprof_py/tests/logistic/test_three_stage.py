@@ -18,7 +18,7 @@ def fitted():
     raw = pd.read_csv(GOLDEN / "raw.csv")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        model = LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative").fit(
+        model = LogisticThreeStageModel(bound_mode="absolute", convergence_criterion="relative", estimator="he2013").fit(
             raw, "Y", Z, "fac", "hosp")                                # R's Stage 3 settings
     return model, json.loads((GOLDEN / "r_stage23.json").read_text())
 

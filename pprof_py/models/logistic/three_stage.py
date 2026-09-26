@@ -61,7 +61,7 @@ class LogisticThreeStageModel(ProviderModel):
         bound: float = 10.0,
         bound_mode: str = "relative",
         convergence_criterion: str = "max_delta_gamma",
-        estimator: str = "he2013",
+        estimator: str = "marginal",
     ):
         self.cutoff = cutoff
         self.n_nodes = n_nodes

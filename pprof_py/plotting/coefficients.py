@@ -213,8 +213,9 @@ def plot_caterpillar(
     legend_handles = {}
 
     if plot_flags:
-        plot_df[flag_col] = plot_df[flag_col].fillna(0).astype(int)
-        for flag, subset in plot_df.groupby(flag_col):
+        for flag, subset in plot_df.groupby(flag_col, dropna=False, sort=True):
+            untested = pd.isna(flag)                  # no test result: drawn hollow, listed last
+            key = 99 if untested else int(flag)
             mask = plot_df.index.isin(subset.index)
             pos  = positions[mask]
             if orientation == "vertical":
@@ -224,23 +225,24 @@ def plot_caterpillar(
                 x_arr, y_arr = pos, subset[estimate_col].values
                 err_arr = ([errs[0][mask], errs[1][mask]] if errs is not None else None)
 
-            color_point = flag_colors.get(flag, point_color_default)
-            color_err   = flag_colors.get(flag, errorbar_color_default)
+            color_point = _style.COLOR_UNTESTED if untested else flag_colors.get(key, point_color_default)
+            color_err   = _style.COLOR_UNTESTED if untested else flag_colors.get(key, errorbar_color_default)
+            face, edge, width = ("none", color_point, 0.8) if untested else (color_point, 'grey', 0.5)
             _draw(
                 ax, x_arr, y_arr, err_arr,
                 ecolor=color_err,
                 elinewidth=errorbar_size,
                 alpha=errorbar_alpha,
-                color=color_point,
+                color=face,
                 s=point_size * 30,
-                edgecolor='grey',
-                linewidth=0.5
+                edgecolor=edge,
+                linewidth=width
             )
             # build legend handle
-            label_idx = {-1:0, 0:1, 1:2}.get(flag, 1)
-            handle = ax.scatter([], [], color=color_point, s=point_size*30,
-                                alpha=point_alpha, edgecolor='grey', linewidth=0.5)
-            legend_handles[flag] = (handle, f"{labels[label_idx]} ({len(subset)})")
+            label = _style.UNTESTED_LABEL if untested else labels[{-1: 0, 0: 1, 1: 2}.get(key, 1)]
+            handle = ax.scatter([], [], color=face, s=point_size*30,
+                                alpha=point_alpha, edgecolor=edge, linewidth=width)
+            legend_handles[key] = (handle, f"{label} ({len(subset)})")
     else:
         if orientation == "vertical":
             x_arr, y_arr, err_arr = vals, positions, errs

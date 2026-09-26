@@ -82,7 +82,7 @@ model.baseline_hazard_path_.shape   # (100, 4)  -- alpha_t path
 model.gamma_path_.shape     # (100, 40)          -- one column per facility
 ```
 
-## 14.5 `predict_hazard()` here is a different, and safer, design
+## 14.5 `predict_hazard()` and `predict_survival()`
 
 ```python
 hz = model.predict_hazard(X.values[:3], provider_id.values[:3], which=50)
@@ -91,17 +91,13 @@ sv = model.predict_survival(X.values[:3], provider_id.values[:3], which=50)
 sv.shape   # (3, 4)
 ```
 
-Note that this is not [Chapter 13's](13_discrete_survival)
-`predict_hazard()` with a `provider_id=` argument tacked on — the
-signature and return shape are both different.
-`DiscreteSurvival.predict_hazard(X, time, ...)` requires `time=` and
-returns a 1-D, person-period-length array.
-`ProviderPenalizedDiscreteSurvival.predict_hazard(X, provider_id=None,
-which=-1)` takes **no `time=` argument at all** and returns a 2-D
-array — the hazard at *every* timepoint for every subject, wide
-format.  If you don't specifically need a single per-subject timepoint,
-the wide-format pattern is convenient since it avoids choosing which
-timepoints to query up front.
+The signature is [Chapter 13's](13_discrete_survival) with `provider_id`
+second: `predict_hazard(X, provider_id=None, time=None, lambda_value=None,
+which=None)`. Without `time=`, as here, the result has one column per time
+point; with it, the person-period form of Chapter 13, one value per period up
+to each subject's time. `which` picks a path point by index (by default, the
+last) and `lambda_value` the path point nearest a lambda; rows of providers the
+model has not seen get no provider effect.
 
 `predict_survival()` here is exactly the cumulative product of
 `1 - predict_hazard()` across the timepoint axis

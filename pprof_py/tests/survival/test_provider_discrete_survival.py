@@ -564,22 +564,22 @@ class TestProviderPenalizedDiscreteSurvivalCV:
         """lambda_1se should have CV error within 1 SE of the min."""
         cv, *_ = fitted_cv_model
         threshold = (
-            cv.cv_mean_[cv.lambda_min_idx_]
-            + cv.cv_se_[cv.lambda_min_idx_]
+            cv.cv_mean_deviance_[cv.lambda_min_idx_]
+            + cv.cv_se_deviance_[cv.lambda_min_idx_]
         )
-        assert cv.cv_mean_[cv.lambda_1se_idx_] <= threshold + 1e-12
+        assert cv.cv_mean_deviance_[cv.lambda_1se_idx_] <= threshold + 1e-12
 
     def test_cv_se_positive(self, fitted_cv_model):
         """CV standard errors should be positive where finite."""
         cv, *_ = fitted_cv_model
-        finite = np.isfinite(cv.cv_se_)
-        assert np.all(cv.cv_se_[finite] > 0)
+        finite = np.isfinite(cv.cv_se_deviance_)
+        assert np.all(cv.cv_se_deviance_[finite] > 0)
 
     def test_cv_mean_not_nan(self, fitted_cv_model):
         """CV mean should have no NaN at valid lambdas."""
         cv, *_ = fitted_cv_model
         # At least some lambdas should have valid CV loss.
-        assert np.sum(np.isfinite(cv.cv_mean_)) > 0
+        assert np.sum(np.isfinite(cv.cv_mean_deviance_)) > 0
 
     def test_fold_assignment_shape(self, fitted_cv_model):
         """Fold assignment should have correct length and expected

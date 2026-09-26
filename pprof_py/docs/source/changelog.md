@@ -70,6 +70,15 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - `LogisticFERandomClusterModel` and `LogisticThreeStageModel` default to `convergence_criterion="max_delta_gamma"`,
   which stops closer to the solution than R's `"relative"` rule; pass `"relative"` for output comparable with R.
 - Every CV class defaults to `se_rule="1se"`; the two Cox CV classes defaulted to `"min"`.
+- `LogisticFERandomClusterModel` and `LogisticThreeStageModel` default to `estimator="marginal"`; pass
+  `estimator="he2013"` (with `convergence_criterion="relative"` and `bound_mode="absolute"`) for output comparable with R.
+- Every CV class exposes the same attributes: `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`, `lambda_min_`,
+  `lambda_1se_`, `lambda_`, `model_` and `coef_`. The Cox CVs' `final_estimator_` is `model_`; the discrete-survival CVs'
+  `cv_mean_`/`cv_se_` are `cv_mean_deviance_`/`cv_se_deviance_`; `DiscreteSurvivalCV` gains `lambda_path_`, `lambda_` and `coef_`.
+- `DiscreteSurvival` and `ProviderPenalizedDiscreteSurvival` share one `predict_hazard()`/`predict_survival()` signature,
+  `(X, [provider_id,] time=None, lambda_value=None, which=None)`: without `time`, one column per time point; with it, the
+  person-period form. Pass `which` by keyword (it was the third positional argument of the provider model's methods).
+- Plots draw providers without a test result (`flag` NA) as hollow grey "Not tested" points; they were drawn as not flagged.
 - The fixed-effect Wald test warns about providers with no events or only events, whose effects have no finite
   estimate.
 - The survival R-comparison results (`r_reference/results/`) are committed, so those tests run on a fresh clone.
