@@ -9,6 +9,62 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased — three-stage model and structural redesign
+
+This breaks parts of the API; no old name is kept as a deprecated alias.
+
+**Three-stage model**
+
+- `LogisticThreeStageModel` runs He et al.'s three-stage pipeline from raw data, as R's
+  `glmm.fac.hosp`: `glmm_data_prep`, Stage 1 on facility × hospital cells, Stage 2 with crossed
+  facility and hospital intercepts and the Stage 1 offset, and Stage 3. See the
+  [three-stage chapter](logistic/logistic_three_stage_model), which replaces the mixed-effect chapter.
+- `LogisticMixedEffectModel` is renamed `LogisticFERandomClusterModel`. Its `fit()` takes the fitted
+  stages (`stage1=`, `stage2=`) and derives β (by covariate name), σ (by name) and the start (Stage 2's
+  facility effects matched by ID, plus its intercept); or explicit `beta`, `sigma` and `gamma_init`,
+  which replace `beta_init` and `sigma_init`. `summary(stage1=...)` replaces `stage1_model=`.
+- `estimator="marginal"` maximizes the marginal likelihood (unique and start-independent) by adaptive
+  Gauss–Hermite quadrature; `"he2013"` stays the default. `loglik_` reports the marginal
+  log-likelihood under either estimator.
+- `pprof_py.data.glmm_data_prep` reproduces R's `glmm.data.prep`.
+
+**Provider tests**
+
+- One count-test component, `pprof_py.inference.count_tests`, runs every count `test()`.
+- `LogisticRandomEffectModel.test(test_method="exact")`: each cluster's effect is drawn once for all of
+  a provider's rows in it, and the count's distribution is computed exactly (one cluster factor).
+- `"poibin_exact"` returns limits by inverting the test in the fixed-effect and random-effects models;
+  the fixed-effect `calculate_confidence_intervals(test_method="exact")` returns those limits.
+- The random-effects `"resampling"` gives providers at the Monte Carlo floor the exact tails of the
+  same null, with a warning.
+- Provider-test results are indexed by `provider_id` (was `provider`), and `predict_provider_effect()`
+  returns a `provider_id` column.
+
+**Vocabulary and API**
+
+- `provider_var` replaces `group_var`. The random-effects models take `provider_var` and `cluster_vars`
+  (replacing `group_vars`); their accessors take `var`, and `predict()` takes `re_vars`. Arrays of
+  provider IDs are `provider_id` (was `groups`, or `provider` in `ProviderPenalizedCoxPH`), and output
+  tables have a `provider_id` column (was `group_id`). Standardized measures, intervals and plots take
+  `reference` (was `null`).
+- The CV selection rule is `se_rule` (`"min"` or `"1se"`) in every CV class, replacing `use_1se` and
+  `select`; each class keeps its default. `provider_bound`, `provider_max_iter`, `alpha`, `model_` and
+  `lambda_value` replace `gamma_bound`, `max_provider_iter`, `alpha_en`, `best_model_` and `lambda_val`.
+  `breslow_baseline_hazard` is removed (use `compute_baseline_hazard`).
+- The fixed-effect models' `groups_`, `group_indices_` and `group_sizes_` are `provider_ids_`,
+  `provider_indices_` and `provider_sizes_`.
+
+**Data preparation**
+
+- `DataPrep` keeps providers with more than `cutoff` records (was at least `cutoff`), as R does.
+- `DataPrep` accepts binomial trials (`n_char`), so binomial fixed-effect fits can use it; the trials
+  are now re-read after screening, where they were misaligned.
+
+**Internals**
+
+- Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
+- Provider tests and intervals moved from `measures/` to `inference/`, and every mixin has a unique name.
+
 ## Unreleased — mixed-effect model inference
 
 Reviewed against R's `glmm.fac.hosp`, `summary.glmm.fac` and
@@ -171,7 +227,7 @@ provider-penalized, and discrete-survival estimators:
   [Chapter 13](survival/13_discrete_survival).
 - **`LogisticMixedEffectModel`** — Stage 3 of the He et al. (2013)
   three-stage SRR approach; see the
-  [mixed-effect chapter](logistic/logistic_mixed_effect_model).
+  [mixed-effect chapter](logistic/logistic_three_stage_model).
 
 ## 0.2.0 — the survival/Cox foundation
 

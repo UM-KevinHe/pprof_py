@@ -9,7 +9,7 @@ intervals (**funnel**). Both take a plain DataFrame, not a fitted
 model object, so they work identically regardless of which model
 class produced the numbers — `LogisticFixedEffectModel`,
 `LogisticFERandomClusterModel`
-([Chapter 5](../logistic/logistic_mixed_effect_model)),
+([Chapter 5](../logistic/logistic_three_stage_model)),
 `ProviderPenalizedLogistic`
 ([provider-penalized chapter](../logistic/provider_penalized_logistic)),
 or `ProviderPenalizedCoxPH`
@@ -96,7 +96,7 @@ plotting layers over a DataFrame you construct from whatever fitted
 model you're profiling. The `predict_provider_effect()` /
 `calculate_standardized_measures()` / `test()` methods this
 documentation covers throughout (most recently in
-[Chapter 5's](../logistic/logistic_mixed_effect_model) Section 8 and
+[Chapter 5's](../logistic/logistic_three_stage_model) Section 8 and
 the [provider-penalized logistic chapter's](../logistic/provider_penalized_logistic)
 Section 6) are the usual source for `estimate_col`, interval columns,
 and `flag_col` — assemble their output into one DataFrame with the

@@ -64,7 +64,7 @@ logistic/logistic_random_effect_model
 logistic/penalized_logistic
 logistic/group_lasso_logistic
 logistic/provider_penalized_logistic
-logistic/logistic_mixed_effect_model
+logistic/logistic_three_stage_model
 ```
 
 ```{toctree}
