@@ -1,7 +1,7 @@
 (logistic_mixed_effect_model)=
 # Logistic Mixed-Effect Regression: Stage 3 of the Staged SRR Approach
 
-`LogisticMixedEffectModel` is not a self-sufficient, hand-it-raw-data
+`LogisticFERandomClusterModel` is not a self-sufficient, hand-it-raw-data
 model the way every other class in this documentation is. It is
 **Stage 3** of a three-stage estimation approach for facility-level
 Standardized Readmission Ratios (SRRs) adjusted for discharging
@@ -41,7 +41,7 @@ class:
 |---|---|---|
 | 1 — fixed-effects model | $\beta$ | [`LogisticFixedEffectModel`](logistic_fixed_effect_model) |
 | 2 — random-effects model | hospital variance $\sigma^2$ | [`LogisticRandomEffectModel`](logistic_random_effect_model_stats) |
-| 3 — mixed-effects model | provider effects $\gamma$ | `LogisticMixedEffectModel` (this class) |
+| 3 — mixed-effects model | provider effects $\gamma$ | `LogisticFERandomClusterModel` (this class) |
 
 Each stage takes the previous stages' output as a fixed input, not
 something it re-derives. By the time Stage 3 runs, $\beta$ and
@@ -145,45 +145,36 @@ this class supports more than one random-intercept term at once; with
 a single `provider_var` here, `sigma_["cluster_id"]` is the one value
 Stage 3 needs.
 
-## 5. Stage 3: `LogisticMixedEffectModel` → provider effects $\gamma$
+## 5. Stage 3: `LogisticFERandomClusterModel` → provider effects $\gamma$
 
 ```python
-from pprof_py import LogisticMixedEffectModel
+from pprof_py import LogisticFERandomClusterModel
 
 df["facility_id"] = df["facility_id"].astype("category")
 n_providers = df["facility_id"].nunique()
 
-model = LogisticMixedEffectModel(n_nodes=15, max_iter=200, tol=1e-6)
+model = LogisticFERandomClusterModel(n_nodes=15, max_iter=200, tol=1e-6)
 model.fit(
     df, y_var="death_30d", x_vars=candidates,
     provider_var="facility_id", cluster_var="cluster_id",
+    beta=beta_stage1,             # from Stage 1 -- held fixed throughout fit()
+    sigma=sigma_stage2,           # from Stage 2 -- held fixed
     gamma_init=np.zeros(n_providers),
-    beta_init=beta_stage1,        # from Stage 1 -- held fixed throughout fit()
-    sigma_init=sigma_stage2,      # from Stage 2 -- held fixed
-    stage1_model=fe,              # the Stage 1 model, for summary()
     verbose=False,
 )
 model.converged_     # True
 model.iterations_    # well below max_iter
 ```
 
-$\beta$ and $\sigma$ enter through `beta_init`/`sigma_init` — names
-that describe their role in *this stage's* iteration (they seed the
-Newton-Raphson/GH-quadrature loop) more than where they come from, so
-it's easy to read them as values this call will go on to refine, the
-way `gamma_init` clearly is. It won't: `beta`/`xbeta` are set once
-before the loop and never reassigned inside it — only `gamma` (Newton-
-Raphson) and the cluster posterior moments (GH quadrature) actually
-update each iteration. That is Stage 3 correctly treating Stage 1 and
-2's output as fixed, not a gap in the loop. Skipping Stages 1–2 and
-passing arbitrary `beta_init`/`sigma_init` values will still run
-without error — `fit()` has no way to know they weren't properly
-estimated — and will fit `gamma_` around whatever nonsense it was
-given.
-
-The class docstring documents this intentional design: `beta_init`
-and `sigma_init` are held fixed throughout `fit()`, consistent with
-the three-stage decomposition of He et al. (2013).
+$\beta$ and $\sigma$ stay fixed: only $\gamma$ (Newton–Raphson) and the
+cluster posterior moments (Gauss–Hermite quadrature) update each iteration,
+which is Stage 3 treating Stages 1 and 2 as given, as in He et al. (2013).
+Given the fitted stages instead, `fit(stage1=fe, stage2=re)` takes $\beta$
+from Stage 1 by covariate name and $\sigma$ from Stage 2 by cluster name,
+and starts from Stage 2's provider effects plus its intercept, matched by
+provider ID. That needs a Stage 2 fitted with the facility as provider and
+the cluster as its one cluster factor; this chapter's Stage 2 has only the
+cluster intercept, so it passes the values explicitly.
 
 ## 6. Reading the fitted effects
 
@@ -223,14 +214,14 @@ Section 3 describes, not a sign anything is wrong.
 estimated there and held fixed here, so its standard errors are Stage 1's,
 whose Wald variance accounts for the estimated provider effects. It returns
 the Stage 1 model's Wald table, the same as `fe.summary(test_method="wald")`
-from Section 3, and needs that model, given to `fit(stage1_model=...)` or to
-`summary(stage1_model=...)`; it raises if the model's $\beta$ is not the one
-passed as `beta_init`. (R's `summary.glmm.covar` also reports the Stage 1 fit.
+from Section 3, and needs that model: `fit(stage1=..., stage2=...)` stores it,
+or pass `summary(stage1=...)`. It raises if that model's $\beta$ is not the one
+this model was fit with. (R's `summary.glmm.covar` also reports the Stage 1 fit.
 Earlier versions computed an information matrix from the Stage 3 fit at fixed
 $\beta$ and $\gamma$, which understated the standard errors.)
 
 ```python
-model.summary()    # the Stage 1 Wald table: estimate, std_error, stat, p_value, ci_lower, ci_upper
+model.summary(stage1=fe)    # the Stage 1 Wald table: estimate, std_error, stat, p_value, ci_lower, ci_upper
 ```
 
 ## 7. Two things worth checking before trusting Stage 3's output

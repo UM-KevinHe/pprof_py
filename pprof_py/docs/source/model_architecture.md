@@ -46,7 +46,7 @@ explicit inheritance is needed (though it is allowed).
 
 | Family | Module | Classes |
 |--------|--------|---------|
-| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
+| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
 | Linear | `pprof_py.models.linear` | `LinearFixedEffectModel`, `LinearRandomEffectModel`, `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear` |
 | Survival | `pprof_py.models.survival` | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`, `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`, `CauseSpecificCoxPH`, `FineGrayPH` |
 | Selection | `pprof_py.selection` | `CoxPHSelector` |
@@ -57,7 +57,7 @@ All models are importable from the package root:
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticMixedEffectModel,
+    LogisticFERandomClusterModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -142,7 +142,7 @@ visual style is defined in `pprof_py.plotting.style`.
 Each model family exposes its plotting methods through a dedicated
 `PlottingMixin` (e.g., `plotting.linear.LinearRandomEffectPlottingMixin`,
 `plotting.logistic.LogisticRandomEffectPlottingMixin`,
-`plotting.logistic.LogisticFixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticMixedEffectModel` have neither.
+`plotting.logistic.LogisticFixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticFERandomClusterModel` have neither.
 
 ## Common Fitted Attributes
 

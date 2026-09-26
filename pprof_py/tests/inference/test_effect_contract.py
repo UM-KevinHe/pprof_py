@@ -7,7 +7,7 @@ import pytest
 from scipy.stats import norm, t as t_dist
 
 from pprof_py import (LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel,
-                      LogisticMixedEffectModel, LogisticRandomEffectModel)
+                      LogisticFERandomClusterModel, LogisticRandomEffectModel)
 from pprof_py.inference import HUBER_RLM, PROVIDER_TEST_COLUMNS, EmpiricalNull
 
 sig = lambda x: 1 / (1 + np.exp(-x))
@@ -33,9 +33,9 @@ def models():
     df["cluster"] = np.random.default_rng(7).integers(0, 12, prov.size)   # own stream: the other data are unchanged
     fe = LogisticFixedEffectModel(); _quiet(fe.fit, X, y, prov)
     re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
-    me = LogisticMixedEffectModel()
+    me = LogisticFERandomClusterModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="provider",
-           gamma_init=np.full(m, -1.4), beta_init=fe.coefficients_["beta"].ravel(), sigma_init=0.35, verbose=False)
+           gamma_init=np.full(m, -1.4), beta=fe.coefficients_["beta"].ravel(), sigma=0.35, verbose=False)
     yl = 5.0 + X @ [1.0, -0.5] + rng.normal(0, 0.6, m)[prov] + rng.normal(0, 2.0, prov.size)
     dfl = df.assign(y=yl)
     lfe = LinearFixedEffectModel(); _quiet(lfe.fit, X, yl, prov)
@@ -56,9 +56,9 @@ ROUTES = {
     "logistic_re_clustered/exact": ("rec", dict(test_method="exact")),
     "logistic_re_clustered/poibin_exact": ("rec", dict(test_method="poibin_exact")),
     "logistic_re_clustered/resampling": ("rec", dict(test_method="resampling", n_resample=1500, seed=3)),
-    "logistic_me/exact": ("me", dict(test_method="exact")),
-    "logistic_me/poibin_exact": ("me", dict(test_method="poibin_exact")),
-    "logistic_me/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),
+    "logistic_fe_random_cluster/exact": ("me", dict(test_method="exact")),
+    "logistic_fe_random_cluster/poibin_exact": ("me", dict(test_method="poibin_exact")),
+    "logistic_fe_random_cluster/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),
     "linear_fe/wald": ("lfe", {}),
     "linear_re/wald": ("lre", {}),
 }
@@ -106,7 +106,7 @@ def test_linear_fe_uses_student_t(models):
     np.testing.assert_allclose(res.ci_upper - res.estimate, t_dist.isf(0.025, df) * res.se, rtol=1e-10)
 
 
-@pytest.mark.parametrize("route", ["logistic_fe/bootstrap_exact", "logistic_re/resampling", "logistic_me/resampling"])
+@pytest.mark.parametrize("route", ["logistic_fe/bootstrap_exact", "logistic_re/resampling", "logistic_fe_random_cluster/resampling"])
 def test_monte_carlo_routes_are_reproducible(models, route):
     a, b = _run(models, route), _run(models, route)
     c = _run(models, route, seed=4)

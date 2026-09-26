@@ -185,7 +185,7 @@ interval excludes the null value exactly when the provider is flagged;
 `interval="scale_only"` widens them without shifting. The result's
 `attrs["null_model"]` records the fitted null.
 
-R's `summary.glmm.fac` (the reference for `LogisticMixedEffectModel.test`)
+R's `summary.glmm.fac` (the reference for `LogisticFERandomClusterModel.test`)
 fits `MASS::rlm` with its defaults within quartiles of a facility-size
 variable, setting missing sizes to 0:
 

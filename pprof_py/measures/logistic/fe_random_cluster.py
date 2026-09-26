@@ -1,7 +1,7 @@
-"""Standardized measures for `LogisticMixedEffectModel`: direct and indirect
+"""Standardized measures for `LogisticFERandomClusterModel`: direct and indirect
 standardized rates and ratios. Provider-effect tests and confidence intervals
-are in `pprof_py.inference.logistic.mixed_effect`. Mixed into
-the model class so that `models/logistic/mixed_effect.py` can stay
+are in `pprof_py.inference.logistic.fe_random_cluster`. Mixed into
+the model class so that `models/logistic/fe_random_cluster.py` can stay
 focused on configuration, fitting, and prediction.
 """
 from __future__ import annotations
@@ -14,9 +14,9 @@ from scipy.special import expit as plogis
 
 
 
-class LogisticMixedEffectMeasuresMixin:
+class LogisticFERandomClusterMeasuresMixin:
     """Standardized measures and provider-effect hypothesis tests for
-    `LogisticMixedEffectModel`."""
+    `LogisticFERandomClusterModel`."""
 
     def calculate_standardized_measures(
         self,

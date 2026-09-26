@@ -14,7 +14,7 @@ import pandas as pd
 from pprof_py.inference import PROVIDER_TEST_COLUMNS
 import pytest
 
-from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
+from pprof_py import LogisticFixedEffectModel, LogisticFERandomClusterModel, LogisticRandomEffectModel
 from pprof_py.exceptions import NotFittedError
 
 
@@ -126,8 +126,8 @@ class TestLogisticFixedEffectBan:
 
 
 def _mixed_effect_inits(data, x_vars=("x1", "x2")):
-    """No existing call-site precedent in the repo for gamma_init/beta_init/
-    sigma_init; derive simple, deterministic starting values."""
+    """No existing call-site precedent in the repo for gamma_init/beta/
+    sigma; derive simple, deterministic starting values."""
     beta_init = np.zeros(len(x_vars))
     y_bar = data["y"].mean()
     logit_bar = np.log(y_bar / (1 - y_bar))
@@ -137,12 +137,12 @@ def _mixed_effect_inits(data, x_vars=("x1", "x2")):
     return gamma_init, beta_init, sigma_init
 
 
-class TestLogisticMixedEffect:
+class TestLogisticFERandomCluster:
     @pytest.fixture(scope="class")
     def model(self, data):
         x_vars = ["x1", "x2"]
         gamma_init, beta_init, sigma_init = _mixed_effect_inits(data, x_vars)
-        m = LogisticMixedEffectModel()
+        m = LogisticFERandomClusterModel()
         m.fit(
             data,
             y_var="y",
@@ -150,8 +150,8 @@ class TestLogisticMixedEffect:
             provider_var="provider",
             cluster_var="provider",
             gamma_init=gamma_init,
-            beta_init=beta_init,
-            sigma_init=sigma_init,
+            beta=beta_init,
+            sigma=sigma_init,
             verbose=False,
         )
         return m

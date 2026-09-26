@@ -1,4 +1,4 @@
-"""LogisticMixedEffectModel inference: exact tails, inverted-test intervals, the
+"""LogisticFERandomClusterModel inference: exact tails, inverted-test intervals, the
 resampling floor fallback, Stage 1 summary routing, and the Stage 3 fit options."""
 import itertools
 import warnings
@@ -10,7 +10,7 @@ from scipy.integrate import quad
 from scipy.special import expit
 from scipy.stats import norm
 
-from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel
+from pprof_py import LogisticRandomEffectModel, LogisticFixedEffectModel, LogisticFERandomClusterModel
 from pprof_py.inference import FixedNull
 from pprof_py.inference.effect_tests import (EXACT_P_FLOOR, clustered_poibin_tails, integrated_poibin_tails,
                                              poibin_tails, resample_tails, z_from_tails)
@@ -96,9 +96,9 @@ def fitted():
     fe = LogisticFixedEffectModel(use_dataprep=False, screen_providers=False)
     _quiet(fe.fit, X=df, y_var="y", x_vars=["x1", "x2"], provider_var="combo")
     beta = np.asarray(fe.coefficients_["beta"], dtype=float).ravel()
-    me = LogisticMixedEffectModel()
+    me = LogisticFERandomClusterModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
-           gamma_init=np.full(n_prov, -1.2), beta_init=beta, sigma_init=0.35, verbose=False)
+           gamma_init=np.full(n_prov, -1.2), beta=beta, sigma=0.35, verbose=False)
     return df, fe, me, beta
 
 
@@ -197,17 +197,77 @@ class TestConfidenceIntervals:
             me.calculate_confidence_intervals(test_method="resampling")
 
 
+def _stage2(df, beta, provider="provider"):
+    re_ = LogisticRandomEffectModel(verbose=False)
+    _quiet(re_.fit, df.assign(off=df[["x1", "x2"]].to_numpy(float) @ beta), y_var="y", x_vars=None,
+           provider_var=provider, cluster_vars=["cluster"], offset_var="off", verbose=False)
+    return re_
+
+
+class TestStages:
+    def test_stages_give_the_explicit_fit(self, fitted):
+        df, fe, _, beta = fitted
+        re_ = _stage2(df, beta)
+        staged = LogisticFERandomClusterModel()
+        _quiet(staged.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
+               stage1=fe, stage2=re_, verbose=False)
+        start = re_.get_random_effects("provider").reindex(staged.provider_ids_).to_numpy() + \
+            float(re_.coefficients_["beta"]["(Intercept)"])
+        explicit = LogisticFERandomClusterModel()
+        _quiet(explicit.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
+               beta=beta, sigma=re_.sigma_["cluster"], gamma_init=start, verbose=False)
+        assert np.array_equal(staged.gamma_, explicit.gamma_)
+        assert staged.sigma_ == re_.sigma_["cluster"] and np.array_equal(staged.beta_, beta)
+
+    def test_start_matches_providers_by_id_across_id_types(self, fitted):
+        df, fe, _, beta = fitted
+        text = df.assign(provider=df["provider"].astype(str))         # Stage 2 sorts '1', '10', '11', ...
+        re_ = _stage2(text, beta)
+        assert list(re_.get_random_effects("provider").index[:3]) == ["0", "1", "10"]
+        staged = LogisticFERandomClusterModel()
+        _quiet(staged.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
+               stage1=fe, stage2=_stage2(text, beta), verbose=False)
+        blup = re_.get_random_effects("provider")
+        start = np.array([blup[str(p)] for p in staged.provider_ids_]) + float(re_.coefficients_["beta"]["(Intercept)"])
+        explicit = LogisticFERandomClusterModel()
+        _quiet(explicit.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
+               beta=beta, sigma=re_.sigma_["cluster"], gamma_init=start, verbose=False)
+        assert np.array_equal(staged.gamma_, explicit.gamma_)
+
+    def test_stages_or_values_not_both(self, fitted):
+        df, fe, _, beta = fitted
+        args = dict(y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster", verbose=False)
+        with pytest.raises(ValueError, match="not both"):
+            LogisticFERandomClusterModel().fit(df, stage1=fe, stage2=_stage2(df, beta), sigma=0.3, **args)
+        with pytest.raises(ValueError, match="both stage1 and stage2"):
+            LogisticFERandomClusterModel().fit(df, stage1=fe, **args)
+        with pytest.raises(ValueError, match="missing"):
+            LogisticFERandomClusterModel().fit(df, beta=beta, sigma=0.3, **args)
+
+    def test_rejects_a_stage2_without_the_cluster_factor(self, fitted):
+        df, fe, _, beta = fitted
+        single = LogisticRandomEffectModel(verbose=False)
+        _quiet(single.fit, df, y_var="y", x_vars=None, provider_var="provider", verbose=False)
+        with pytest.raises(ValueError, match="cluster_vars"):
+            LogisticFERandomClusterModel().fit(df, "y", ["x1", "x2"], "provider", "cluster", stage1=fe, stage2=single)
+
+    def test_rejects_a_stage1_with_other_covariates(self, fitted):
+        df, fe, _, beta = fitted
+        with pytest.raises(ValueError, match="not x_vars"):
+            LogisticFERandomClusterModel().fit(df, "y", ["x1"], "provider", "cluster", stage1=fe, stage2=_stage2(df, beta))
+
+
 class TestSummary:
     def test_routes_to_stage1_wald(self, fitted):
         df, fe, me, beta = fitted
-        pd.testing.assert_frame_equal(me.summary(stage1_model=fe), fe.summary(test_method="wald"))
+        pd.testing.assert_frame_equal(me.summary(stage1=fe), fe.summary(test_method="wald"))
 
     def test_stage1_from_fit(self, fitted):
         df, fe, _, beta = fitted
-        me = LogisticMixedEffectModel()
+        me = LogisticFERandomClusterModel()
         _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
-               gamma_init=np.full(36, -1.2), beta_init=beta, sigma_init=0.35, verbose=False, stage1_model=fe)
-        assert me.stage1_model_ is fe
+               stage1=fe, stage2=_stage2(df, beta), verbose=False)
+        assert me.stage1_ is fe
         pd.testing.assert_frame_equal(me.summary(), fe.summary(test_method="wald"))
 
     def test_requires_stage1(self, fitted):
@@ -219,13 +279,13 @@ class TestSummary:
         other = LogisticFixedEffectModel(use_dataprep=False, screen_providers=False)
         _quiet(other.fit, X=df, y_var="y", x_vars=["x1", "x2"], provider_var="provider")
         with pytest.raises(ValueError, match="differs from the beta"):
-            me.summary(stage1_model=other)
+            me.summary(stage1=other)
 
 
 class TestFitOptions:
     def test_update_sigma_removed(self):
         with pytest.raises(TypeError):
-            LogisticMixedEffectModel(update_sigma=True)
+            LogisticFERandomClusterModel(update_sigma=True)
 
     def test_converged_attributes(self, fitted):
         me = fitted[2]
@@ -235,24 +295,25 @@ class TestFitOptions:
         df, _, me, beta = fitted
         med = np.median(me.gamma_)
         assert np.isclose(me.gamma_[5], med - me.bound)                      # zero-event provider, relative clamp
-        ab = LogisticMixedEffectModel(bound_mode="absolute")
+        ab = LogisticFERandomClusterModel(bound_mode="absolute")
         _quiet(ab.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster",
-               gamma_init=np.full(36, -1.2), beta_init=beta, sigma_init=0.35, verbose=False)
+               gamma_init=np.full(36, -1.2), beta=beta, sigma=0.35, verbose=False)
         assert ab.gamma_[5] == -ab.bound
         with pytest.raises(ValueError, match="bound_mode"):
-            LogisticMixedEffectModel(bound_mode="median").fit(df, "y", ["x1", "x2"], "provider", "cluster",
-                                                             np.zeros(36), beta, 0.35, verbose=False)
+            LogisticFERandomClusterModel(bound_mode="median").fit(df, "y", ["x1", "x2"], "provider", "cluster",
+                                                             gamma_init=np.zeros(36), beta=beta, sigma=0.35,
+                                                             verbose=False)
 
     def test_max_delta_gamma_from_the_solution(self, fitted):
         df, _, me, beta = fitted
-        args = dict(y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster", beta_init=beta,
-                    sigma_init=0.35, verbose=False)
-        first = LogisticMixedEffectModel(convergence_criterion="max_delta_gamma")
+        args = dict(y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="cluster", beta=beta,
+                    sigma=0.35, verbose=False)
+        first = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma")
         _quiet(first.fit, df, gamma_init=np.full(36, -1.2), **args)
-        again = LogisticMixedEffectModel(convergence_criterion="max_delta_gamma")
+        again = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma")
         _quiet(again.fit, df, gamma_init=first.gamma_, **args)        # a start at the solution stops at once
         assert first.converged_ and again.converged_ and again.iterations_ == 1
-        tight = LogisticMixedEffectModel(convergence_criterion="max_delta_gamma", tol=1e-12)
+        tight = LogisticFERandomClusterModel(convergence_criterion="max_delta_gamma", tol=1e-12)
         _quiet(tight.fit, df, gamma_init=np.full(36, -1.2), **args)
         np.testing.assert_allclose(first.gamma_, tight.gamma_, atol=1e-4)
 
@@ -262,10 +323,11 @@ class TestFitOptions:
         rng = np.random.default_rng(1)
         df = pd.DataFrame({"provider": np.repeat(np.arange(6), 30), "cluster": np.tile(np.arange(3), 60),
                            "x1": rng.normal(size=180), "y": 0.0})
-        me = LogisticMixedEffectModel(bound_mode="absolute")
+        me = LogisticFERandomClusterModel(bound_mode="absolute")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            me.fit(df, "y", ["x1"], "provider", "cluster", np.full(6, -10.0), np.array([0.2]), 0.3, verbose=False)
+            me.fit(df, "y", ["x1"], "provider", "cluster", gamma_init=np.full(6, -10.0), beta=np.array([0.2]), sigma=0.3,
+                   verbose=False)
         assert me.converged_ and me.convergence_ == 0.0 and me.iterations_ == 2
 
     @staticmethod
@@ -282,15 +344,15 @@ class TestFitOptions:
         return df
 
     def test_newton_information_floor(self):
-        me = LogisticMixedEffectModel(max_iter=300, bound_mode="absolute")
+        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="absolute")
         with pytest.warns(RuntimeWarning, match="Newton information"):
-            me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", np.zeros(8), np.array([0.1]),
-                   30.0, verbose=False)
+            me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", gamma_init=np.zeros(8),
+                   beta=np.array([0.1]), sigma=30.0, verbose=False)
         assert me.converged_ and np.isfinite(me.gamma_).all() and np.all(np.abs(me.gamma_) <= me.bound)
 
     def test_breakdown_is_reported(self):
-        me = LogisticMixedEffectModel(max_iter=300, bound_mode="relative")
+        me = LogisticFERandomClusterModel(max_iter=300, bound_mode="relative")
         with pytest.warns(RuntimeWarning, match="Did not converge"):
-            _ = me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", np.zeros(8),
-                       np.array([0.1]), 30.0, verbose=False)
+            _ = me.fit(self._sparse_provider_data(), "y", ["x1"], "provider", "cluster", gamma_init=np.zeros(8),
+                       beta=np.array([0.1]), sigma=30.0, verbose=False)
         assert me.converged_ is False and me.convergence_ == np.inf

@@ -137,5 +137,5 @@ every CV class in the package, and the full-data fit is `cv.model_`.
 
 Deliverable 4 is complete: both discrete-time survival chapters are
 written.  The package's remaining undocumented surface after this
-deliverable is `LogisticMixedEffectModel` (Deliverable 5) and the
+deliverable is `LogisticFERandomClusterModel` (Deliverable 5) and the
 infrastructure and utility reference pages (Deliverable 6).

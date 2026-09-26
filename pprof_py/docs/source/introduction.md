@@ -55,7 +55,7 @@ families:
    readmission). Available as fixed effects
    (`LogisticFixedEffectModel`), random effects
    (`LogisticRandomEffectModel`), mixed effects
-   (`LogisticMixedEffectModel`), penalized (`PenalizedLogistic`,
+   (`LogisticFERandomClusterModel`), penalized (`PenalizedLogistic`,
    `PenalizedLogisticCV`), group lasso (`GroupLassoLogistic`,
    `GroupLassoLogisticCV`), and provider-penalized
    (`ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV`).
@@ -94,7 +94,7 @@ All models are importable from the package root:
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticMixedEffectModel,
+    LogisticFERandomClusterModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,

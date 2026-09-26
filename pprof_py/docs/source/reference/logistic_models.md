@@ -92,29 +92,54 @@ offset_var=None, use_re=False, type="response")`, `pearson_residuals()`, `devian
 **Agreement with lme4.** On the synthetic dataset used for {ref}`ll_ref_linear` (binary outcome), `glmer(nAGQ = 1)` and this model agreed to
 about 2e-5 in β, the random-effect SD, the log-likelihood and the BLUPs — looser than the linear model, and not covered by any test in the repository.
 
-## `LogisticMixedEffectModel`
+## `LogisticFERandomClusterModel`
 
-Fixed provider effects γ and a random cluster effect α ~ N(0, σ²): `logit P(Y = 1) = γ_provider + α_cluster + Xβ`. The random effect is
-integrated out by Gauss–Hermite quadrature, providers are updated by Newton–Raphson. **Starting values are required.**
+Stage 3 of the three-stage model: fixed provider effects γ and a random cluster effect α ~ N(0, σ²),
+`logit P(Y = 1) = γ_provider + α_cluster + Xβ`, with β (from Stage 1) and σ (from Stage 2) held fixed. The random effect is
+integrated out by Gauss–Hermite quadrature; the provider effects are updated by Newton–Raphson.
 
 ```python
-import numpy as np
-from pprof_py import LogisticMixedEffectModel
+from pprof_py import LogisticFERandomClusterModel
 
-mixed = LogisticMixedEffectModel(n_nodes=10, max_iter=200)
-mixed.fit(df, y_var="event", x_vars=X_COLS, provider_var="provider", cluster_var="cluster",
-          gamma_init=np.zeros(m), beta_init=np.zeros(3), sigma_init=0.5, verbose=False)
-# mixed.summary(stage1_model=fe) reports the Stage 1 Wald table for beta
-mixed.test(test_method="resampling", n_resample=200).head()
+stage3 = LogisticFERandomClusterModel()
+stage3.fit(df, y_var="y_adj", x_vars=X_COLS, provider_var="provider", cluster_var="cluster",
+           stage1=fe, stage2=re, obs_var="event", verbose=False)   # re: provider + one cluster factor
+stage3.summary()                                                 # the Stage 1 Wald table for beta
+stage3.test().head()
 ```
 
 - **Constructor:** `n_nodes=20`, `max_iter=10000`, `tol=1e-5`, `bound=10.0`, `bound_mode="relative"` (γ clipped to
   `median ± bound`; `"absolute"` clips to `±bound` as in R), `convergence_criterion="relative"` (or `"max_delta_gamma"`).
-- **`fit(data, y_var, x_vars, provider_var, cluster_var, gamma_init, beta_init, sigma_init, obs_var=None, verbose=True, stage1_model=None)`:** `gamma_init`
-  has one entry per provider, `beta_init` one per covariate. `y_var` is normally a boundary-adjusted outcome (`Y_adj`) that keeps γ finite;
-  `obs_var` names the true 0/1 outcome used for observed counts and resampling p-values (defaults to `y_var`).
+- **`fit(data, y_var, x_vars, provider_var, cluster_var, *, stage1=None, stage2=None, beta=None, sigma=None, gamma_init=None, obs_var=None, verbose=True)`:**
+  pass the fitted stages (β is Stage 1's covariate effects, matched to `x_vars` by name; σ is Stage 2's cluster SD, taken by name;
+  the start is Stage 2's provider effects, matched by ID, plus its intercept), or pass `beta`, `sigma` and `gamma_init` explicitly,
+  for example from R, but not both. `y_var` is normally the boundary-adjusted outcome (`y_adj` from `glmm_data_prep`) that keeps γ
+  finite; `obs_var` names the true 0/1 outcome used for observed counts and the tests (defaults to `y_var`).
 - **Attributes:** `gamma_`, `beta_`, `sigma_`, `xbeta_`, `fitted_`, `alpha_mean_`, `alpha_var_`, `alpha_mean_cluster_`, `alpha_var_cluster_`,
-  `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `convergence_`, `coefficients_`.
-- **Methods:** `summary(stage1_model=None, covariates=None, level=0.95, null=0.0, alternative="two_sided")` (the Stage 1 Wald table); `calculate_standardized_measures(providers=None, stdz="indirect", null="median")`;
+  `provider_ids_`, `cluster_ids_`, `n_providers_`, `n_clusters_`, `iterations_`, `converged_`, `convergence_`, `coefficients_`, `stage1_`.
+- **Methods:** `summary(stage1=None, covariates=None, level=0.95, null=0.0, alternative="two_sided")` (the Stage 1 Wald table);
+  `calculate_standardized_measures(providers=None, stdz="indirect", reference="median")`; `calculate_confidence_intervals(...)`;
   `test(providers=None, *, test_method="exact", reference="median", null_model=None, alternative="two_sided", level=0.95,
   critical=None, n_resample=10000, seed=None)`, which returns the shared result table of {ref}`ll_ref_measures`.
+
+## `LogisticThreeStageModel`
+
+The whole pipeline, as R's `glmm.fac.hosp`: `glmm_data_prep`; Stage 1, `LogisticFixedEffectModel` on the provider × cluster cells
+with more than `cutoff` records and the raw outcome; Stage 2, `LogisticRandomEffectModel` with crossed provider and cluster intercepts
+and the offset `Xβ`, on the adjusted outcome; Stage 3, `LogisticFERandomClusterModel` from the fitted stages.
+
+```python
+from pprof_py import LogisticThreeStageModel
+
+model = LogisticThreeStageModel(cutoff=10).fit(df, y_var="readmit", x_vars=X_COLS, provider_var="facility", cluster_var="hospital")
+model.stage1_, model.stage2_, model.stage3_    # the fitted stages
+model.test().head()                            # Stage 3's tests; also its measures, intervals and summary()
+```
+
+- **Constructor:** `cutoff=10` and Stage 3's settings (`n_nodes`, `max_iter`, `tol`, `bound`, `bound_mode`, `convergence_criterion`);
+  `bound_mode="absolute"` gives output comparable with R's `glmm.fac.hosp`.
+- **Attributes:** `prep_` (the `GLMMPreparedData`), `data_` (its data with the Stage 1 offset column `stage1_offset`), `stage1_`,
+  `stage2_`, `stage3_`.
+- **Agreement with R.** On a crossed synthetic cohort (40 facilities, 12 hospitals) and given the same β, Stage 2 matches `glmer`
+  (σ to 7e-6, starting γ to 1e-5) and Stage 3 matches `glmm.fac.hosp` (γ to 2e-5, SRR to 1e-5). R's Stage 1 (`pprof::logis_fe`)
+  could not be run.

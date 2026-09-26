@@ -191,7 +191,7 @@ All primary model classes are importable directly from `pprof_py`.
 ```
 
 ```{eval-rst}
-.. autoclass:: pprof_py.LogisticMixedEffectModel
+.. autoclass:: pprof_py.LogisticFERandomClusterModel
    :members:
    :show-inheritance:
 ```

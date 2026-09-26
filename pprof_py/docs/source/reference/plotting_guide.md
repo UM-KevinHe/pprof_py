@@ -8,7 +8,7 @@ own precision, with statistical control limits instead of per-point
 intervals (**funnel**). Both take a plain DataFrame, not a fitted
 model object, so they work identically regardless of which model
 class produced the numbers — `LogisticFixedEffectModel`,
-`LogisticMixedEffectModel`
+`LogisticFERandomClusterModel`
 ([Chapter 5](../logistic/logistic_mixed_effect_model)),
 `ProviderPenalizedLogistic`
 ([provider-penalized chapter](../logistic/provider_penalized_logistic)),

@@ -57,7 +57,7 @@ log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wa
 | | `"direct"` | `provider_id`, `direct_difference`, `observed`, `expected` |
 | `LogisticFixedEffectModel` | `"indirect"` | `provider_id`, `indirect_ratio`, `indirect_rate`, `observed`, `expected` |
 | | `"direct"` | `provider_id`, `direct_ratio`, `direct_rate`, `observed`, `expected`, `n_pop` |
-| `LogisticRandomEffectModel`, `LogisticMixedEffectModel` | `"indirect"` | as the fixed-effect logistic indirect table |
+| `LogisticRandomEffectModel`, `LogisticFERandomClusterModel` | `"indirect"` | as the fixed-effect logistic indirect table |
 
 Signatures: `providers=None, stdz="indirect", reference="median"` for the linear and mixed classes; the logistic fixed-effect version adds
 `include_extreme_obs=False, extreme_obs_total_n=None`.
@@ -162,7 +162,7 @@ LogisticRandomEffectModel.test(
 ```
 
 ```text
-LogisticMixedEffectModel.test(
+LogisticFERandomClusterModel.test(
     providers=None,
     *,
     test_method: 'str' = 'exact',
@@ -206,7 +206,7 @@ LinearRandomEffectModel.test(
 |---|---|---|---|
 | `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald; inverted test (`"poibin_exact"`) |
 | `LogisticRandomEffectModel.test` | `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` | `0` | Wald; inverted test (`"exact"`, `"poibin_exact"`) |
-| `LogisticMixedEffectModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
+| `LogisticFERandomClusterModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
 | `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
 | `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |
 
@@ -263,7 +263,7 @@ All plots use Matplotlib and return `None` (they draw on the current figure). Co
 | `LinearFixedEffectModel`, `LinearRandomEffectModel` | `plot_funnel(stdz="indirect", reference="median", target=0.0, alpha=0.05, …)`, `plot_provider_effects(…, test_method=None)`, `plot_standardized_measures(…, measure="difference", …)`, `plot_coefficient_forest(orientation="vertical", refline_value=0.0, …)`, `plot_residuals(…)`, `plot_qq(…)` |
 | `LogisticFixedEffectModel` | `plot_funnel(test_method="score", target=1.0, …)`, `plot_provider_effects(test_method="wald", …)`, `plot_standardized_measures(measure="ratio", test_method="score", …)`, `plot_coefficient_forest(…)`; `plot_residuals` and `plot_qq` raise `NotImplementedError` |
 | `LogisticRandomEffectModel` | as above with `test_method="wald"` defaults; no residual plots |
-| `LogisticMixedEffectModel` | no plotting methods |
+| `LogisticFERandomClusterModel` | no plotting methods |
 
 `plot_standardized_measures` on the linear models draws the intervals of K2. Two standalone functions are exported: `pprof_py.plot_caterpillar(df, estimate_col="estimate",
 ci_lower_col="lower", ci_upper_col="upper", group_col=None, flag_col=None, …)` and `pprof_py.plotting.plot_funnel(df, limits_df, *, estimate_col, precision_col,

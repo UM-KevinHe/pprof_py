@@ -23,8 +23,8 @@ from typing import Optional, List
 from ...base import ProviderModel
 
 from ...exceptions import NotFittedError
-from ...inference.logistic import LogisticMixedEffectInferenceMixin
-from ...measures.logistic import LogisticMixedEffectMeasuresMixin
+from ...inference.logistic import LogisticFERandomClusterInferenceMixin
+from ...measures.logistic import LogisticFERandomClusterMeasuresMixin
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def gauss_hermite_normal(n_nodes: int, sigma: float):
     return nodes, weights
 
 
-class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin, LogisticMixedEffectMeasuresMixin):
+class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferenceMixin, LogisticFERandomClusterMeasuresMixin):
     """Logistic model with fixed provider effects and random cluster effects.
 
     **Stage 3** of a three-stage estimation pipeline (He et al., 2013):
@@ -83,9 +83,9 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
 
-    - `LogisticMixedEffectInferenceMixin` (`pprof_py.inference.logistic`): covariate (beta)
+    - `LogisticFERandomClusterInferenceMixin` (`pprof_py.inference.logistic`): covariate (beta)
       statistical inference, `summary()`; provider-effect tests, `test()`; confidence intervals.
-    - `LogisticMixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
+    - `LogisticFERandomClusterMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
       `calculate_standardized_measures()`.
 
     Parameters
@@ -155,7 +155,7 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
         evaluated).
     converged_ : bool
         Whether the criterion fell below ``tol`` within ``max_iter``.
-    stage1_model_ : LogisticFixedEffectModel or None
+    stage1_ : LogisticFixedEffectModel or None
         The Stage 1 model passed to ``fit``; ``summary()`` reports its Wald table.
     """
 
@@ -168,7 +168,7 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
         bound_mode: str = "relative",
         convergence_criterion: str = "relative",
     ):
-        """Logistic mixed-effect provider model."""
+        """Stage 3 of the three-stage logistic model."""
         self.n_nodes = n_nodes
         self.max_iter = max_iter
         self.tol = tol
@@ -194,7 +194,7 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
         self.iterations_: Optional[int] = None
         self.convergence_: Optional[float] = None
         self.converged_: Optional[bool] = None
-        self.stage1_model_ = None
+        self.stage1_ = None
 
         # Internal indices
         self._provider_idx: Optional[np.ndarray] = None
@@ -211,13 +211,15 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
         x_vars: List[str],
         provider_var: str,
         cluster_var: str,
-        gamma_init: np.ndarray,
-        beta_init: np.ndarray,
-        sigma_init: float,
+        *,
+        stage1=None,
+        stage2=None,
+        beta: Optional[np.ndarray] = None,
+        sigma: Optional[float] = None,
+        gamma_init: Optional[np.ndarray] = None,
         obs_var: Optional[str] = None,
         verbose: bool = True,
-        stage1_model=None,
-    ) -> "LogisticMixedEffectModel":
+    ) -> "LogisticFERandomClusterModel":
         """Fit the mixed effect model via Newton-Raphson + GH quadrature.
 
         Parameters
@@ -234,16 +236,20 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
             Provider/facility ID column (fixed effect grouping).
         cluster_var : str
             Cluster/hospital ID column (random effect grouping).
-        gamma_init : np.ndarray
-            Initial provider effects, shape (n_providers,).
-        beta_init : np.ndarray
-            Covariate effects from Stage 1
-            (``LogisticFixedEffectModel``), shape (n_covariates,).
-            Held fixed throughout Stage 3 iteration; this class
-            estimates only γ.
-        sigma_init : float
-            Cluster random effect std dev from Stage 2
-            (``LogisticRandomEffectModel``), held fixed.
+        stage1 : LogisticFixedEffectModel, optional
+            The fitted Stage 1 model. beta is its covariate effects, matched to
+            ``x_vars`` by name and held fixed; this class estimates only γ. Stored
+            as ``stage1_`` for ``summary()``.
+        stage2 : LogisticRandomEffectModel, optional
+            The fitted Stage 2 model, with ``provider_var`` as its provider and
+            ``cluster_var`` as its one cluster factor. sigma is its cluster SD,
+            taken by name and held fixed; the iteration starts from its provider
+            effects, matched to this model's providers by ID, plus its intercept.
+        beta, sigma, gamma_init : optional
+            Explicit values instead of the stages (for example from R): the
+            covariate effects in ``x_vars`` order and the cluster SD, both held
+            fixed, and the starting provider effects in ``provider_ids_`` order.
+            Pass either ``stage1`` and ``stage2`` or all three values.
         obs_var : str, optional
             Column name for the actual observed outcome, used for
             computing SRR observed counts and resampling p-values.
@@ -253,9 +259,6 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
             outcome (e.g., 'readmit30_flag').
         verbose : bool, default=True
             Print iteration progress.
-        stage1_model : LogisticFixedEffectModel, optional
-            The fitted Stage 1 model that produced ``beta_init``; stored as
-            ``stage1_model_`` for ``summary()``.
 
         Returns
         -------
@@ -304,6 +307,9 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
 
         prov_idx = self._provider_idx
         clust_idx = self._cluster_idx
+
+        beta_init, sigma_init, gamma_init = self._stage_values(stage1, stage2, beta, sigma, gamma_init, x_vars,
+                                                               provider_var, cluster_var)
 
         # Initialize
         gamma = gamma_init.copy()
@@ -444,13 +450,60 @@ class LogisticMixedEffectModel(ProviderModel, LogisticMixedEffectInferenceMixin,
         self.iterations_ = iter_count
         self.convergence_ = float(crit)
         self.converged_ = converged
-        self.stage1_model_ = stage1_model
+        self.stage1_ = stage1
 
         return self
 
     # ------------------------------------------------------------------
     # Utilities
     # ------------------------------------------------------------------
+
+    def _stage_values(self, stage1, stage2, beta, sigma, gamma_init, x_vars, provider_var, cluster_var):
+        """beta, sigma and the starting gamma: from the fitted stages, or given explicitly."""
+        given = [name for name, value in (("beta", beta), ("sigma", sigma), ("gamma_init", gamma_init)) if value is not None]
+        if stage1 is not None or stage2 is not None:
+            if stage1 is None or stage2 is None:
+                raise ValueError("Pass both stage1 and stage2, or beta, sigma and gamma_init instead.")
+            if given:
+                raise ValueError(f"Pass either the fitted stages or {given}, not both.")
+            return self._values_from_stages(stage1, stage2, x_vars, provider_var, cluster_var)
+        missing = [name for name in ("beta", "sigma", "gamma_init") if name not in given]
+        if missing:
+            raise ValueError(f"Pass stage1 and stage2, or all of beta, sigma and gamma_init (missing: {missing}).")
+        beta = np.asarray(beta, dtype=np.float64).ravel()
+        gamma_init = np.asarray(gamma_init, dtype=np.float64).ravel()
+        if beta.size != len(x_vars):
+            raise ValueError(f"beta has {beta.size} entries for {len(x_vars)} covariates.")
+        if gamma_init.size != self.n_providers_:
+            raise ValueError(f"gamma_init has {gamma_init.size} entries for {self.n_providers_} providers.")
+        return beta, float(sigma), gamma_init
+
+    def _values_from_stages(self, stage1, stage2, x_vars, provider_var, cluster_var):
+        """beta from Stage 1 by covariate name; sigma and the start from Stage 2, matched by name and ID."""
+        names = list(getattr(stage1, "covariate_names_", None) or [])
+        coef = getattr(stage1, "coefficients_", None)
+        if not names or not isinstance(coef, dict) or "beta" not in coef:
+            raise ValueError("stage1 must be a fitted LogisticFixedEffectModel.")
+        if sorted(names) != sorted(x_vars):
+            raise ValueError(f"stage1 was fit on covariates {names}, not x_vars {list(x_vars)}.")
+        beta = pd.Series(np.asarray(coef["beta"], dtype=np.float64).ravel(), index=names).reindex(list(x_vars)).to_numpy()
+        if (getattr(stage2, "sigma_", None) is None or getattr(stage2, "_provider_var", None) != provider_var
+                or list(getattr(stage2, "_group_vars", None) or []) != [provider_var, cluster_var]):
+            raise ValueError(f"stage2 must be a fitted LogisticRandomEffectModel with provider_var={provider_var!r} "
+                             f"and cluster_vars=[{cluster_var!r}].")
+        sigma = float(stage2.sigma_[cluster_var])
+        fixed = stage2.coefficients_["beta"]
+        if "(Intercept)" not in fixed.index:
+            raise ValueError("stage2 needs an intercept (include_intercept=True).")
+        blups = stage2.get_random_effects(provider_var)
+        start = blups.reindex(self.provider_ids_).to_numpy(dtype=np.float64)
+        if np.isnan(start).any():     # the stages saw the IDs as different types (for example numbers and text)
+            by_text = {str(k): float(v) for k, v in blups.items()}
+            start = np.array([by_text.get(str(k), np.nan) for k in self.provider_ids_])
+        missing = [p for p, v in zip(self.provider_ids_, start) if np.isnan(v)]
+        if missing:
+            raise ValueError(f"stage2 has no effect for {len(missing)} provider(s), e.g. {missing[:5]}.")
+        return beta, sigma, start + float(fixed["(Intercept)"])
 
     def _check_is_fitted(self) -> None:
         """Raise `NotFittedError` if the model has not been fitted yet."""
