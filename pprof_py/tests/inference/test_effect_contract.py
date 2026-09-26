@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from scipy.stats import norm, t as t_dist
 
-from pprof_py import (LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel,
+from pprof_py import (ProviderPenalizedLogistic, LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel,
                       LogisticFERandomClusterModel, LogisticRandomEffectModel)
 from pprof_py.inference import HUBER_RLM, PROVIDER_TEST_COLUMNS, EmpiricalNull
 
@@ -42,7 +42,9 @@ def models():
     lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
     rec = LogisticRandomEffectModel()
     _quiet(rec.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_vars=["cluster"], verbose=False)
-    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec}
+    ppl = ProviderPenalizedLogistic(n_lambda=6)
+    _quiet(ppl.fit, X, y, prov)
+    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec, "ppl": ppl}
 
 
 ROUTES = {
@@ -54,6 +56,7 @@ ROUTES = {
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
     "logistic_re_clustered/exact": ("rec", dict(test_method="exact")),
+    "provider_penalized_logistic/poibin_exact": ("ppl", dict(test_method="poibin_exact")),
     "logistic_re_clustered/poibin_exact": ("rec", dict(test_method="poibin_exact")),
     "logistic_re_clustered/resampling": ("rec", dict(test_method="resampling", n_resample=1500, seed=3)),
     "logistic_fe_random_cluster/exact": ("me", dict(test_method="exact")),

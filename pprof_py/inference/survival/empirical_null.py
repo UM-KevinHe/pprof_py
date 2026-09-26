@@ -37,9 +37,6 @@ from scipy.stats import norm, poisson
 
 ArrayLike = Union[np.ndarray, list, tuple]
 
-_LITERAL_MAD_CONSTANT = 0.6745
-_DEFAULT_HUBER_K = 1.345
-_DEFAULT_BISQUARE_C = 4.685
 _DEFAULT_ALPHA = 0.05
 _DEFAULT_UPPER_CAP = 10000.0
 

@@ -26,6 +26,9 @@ from ...algorithms.survival.risk_sets import njit, _HAS_NUMBA
 from ...utils.numerical import safe_exp
 
 
+_FEW_CLUSTERS = 30   # below this the cluster sandwich is known to understate the variance (REV-021)
+
+
 @njit(cache=True)
 def _score_cluster_right_numba(
     stop,
@@ -399,6 +402,9 @@ def robust_covariance(
     if not np.all(np.isfinite(cluster_scores)):
         raise ValueError("cluster_scores must contain only finite values")
 
+    if cluster_scores.shape[0] < _FEW_CLUSTERS:
+        warnings.warn(f"The robust variance uses {cluster_scores.shape[0]} clusters; with fewer than {_FEW_CLUSTERS}, the "
+                      "sandwich estimator can understate standard errors.", UserWarning, stacklevel=2)
     meat = cluster_scores.T @ cluster_scores
     robust = naive_covariance @ meat @ naive_covariance
     return 0.5 * (robust + robust.T)

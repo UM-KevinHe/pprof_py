@@ -206,6 +206,7 @@ LinearRandomEffectModel.test(
 |---|---|---|---|
 | `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald; inverted test (`"poibin_exact"`) |
 | `LogisticRandomEffectModel.test` | `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` | `0` | Wald; inverted test (`"exact"`, `"poibin_exact"`) |
+| `ProviderPenalizedLogistic.test` | `"poibin_exact"` | `"median"` | inverted test |
 | `LogisticFERandomClusterModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
 | `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
 | `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |

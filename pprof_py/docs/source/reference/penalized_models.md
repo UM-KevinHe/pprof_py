@@ -235,7 +235,7 @@ PenalizedLogisticCV(
 | `PenalizedLogistic` | `coef_at`, `intercept_at`, `predict_proba(X, lambda_value=None)`, `predict(X, lambda_value=None, threshold=0.5)`, `summary(which=-1)` |
 | `PenalizedLogisticCV`, `GroupLassoLogisticCV` | `predict_proba`, `predict` |
 | `GroupLassoLogistic` | `coef_at`, `active_group_labels`, `predict_proba`, `predict` |
-| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)` |
+| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)`; `test(providers=None, *, test_method="poibin_exact", reference="median", null_model=None, alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1)`, the fixed-effect model's count test at one path point, with limits by inversion (unweighted fits; the CV class tests at its selected lambda) |
 | `ProviderPenalizedLogisticCV` | the same, with `which=None` (the selected λ) |
 
 ## Agreement with glmnet

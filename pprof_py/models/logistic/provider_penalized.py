@@ -13,6 +13,9 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
+from scipy.special import expit
+from ...inference.count_tests import PlugIn, count_test, rows_by_provider
+from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
 from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, compute_group_indices)
 from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic)
 from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit)
@@ -379,6 +382,7 @@ class ProviderPenalizedLogistic(ProviderModel):
         self.penalty_factor_ = pf_full
         self._excluded_features_ = degenerate
         self._provider_idx_ = prov_idx
+        self._fit_data = (X, y, offset, weight)      # for test(): the training rows
 
         null_dev = logistic_null_deviance(y, weight)
         deviances = np.array([-2.0 * ll for ll in loglik_results])
@@ -476,6 +480,54 @@ class ProviderPenalizedLogistic(ProviderModel):
 # Provider-aware fold assignment
 # ======================================================================
 
+    def test(self, providers=None, *, test_method="poibin_exact", reference="median", null_model=None,
+             alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1):
+        """Provider-effect tests at one point of the path (by default, the last).
+
+        The fixed-effect model's count test: each provider's event count is compared
+        with its Poisson-binomial distribution when its effect is the reference
+        ``gamma_0``, with the covariate effects, intercept and offset at the chosen
+        path point. ``ci_lower``/``ci_upper`` invert the test.
+
+        Parameters
+        ----------
+        providers : array-like, optional
+            Providers to test (default: all).
+        test_method : {"poibin_exact"}
+        reference, null_model, alternative, level, critical
+            As in :func:`~pprof_py.inference.provider_test`.
+        lambda_value : float, optional
+            The path point nearest to this lambda.
+        which : int, default -1
+            Path index.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The shared provider-test table, indexed by ``provider_id``.
+        """
+        self._check_is_fitted()
+        if test_method != "poibin_exact":
+            raise ValueError("ProviderPenalizedLogistic.test supports test_method='poibin_exact' only.")
+        X, y, offset, weight = self._fit_data
+        if not np.all(weight == 1.0):
+            raise ValueError("test() needs an unweighted fit: the count test treats each row as one Bernoulli outcome.")
+        if lambda_value is not None and which == -1:
+            which = int(np.argmin(np.abs(self.lambda_path_ - lambda_value)))
+        alt = normalize_alternative(alternative)
+        gamma = np.asarray(self.gamma_path_[which], dtype=np.float64)
+        idx = np.asarray(self._provider_idx_).ravel()
+        g0 = reference_effect(gamma, np.bincount(idx, minlength=gamma.size), reference)
+        fixed = X @ self.coef_path_[which] + self.intercept_path_[which] + offset
+        rows_of = rows_by_provider(idx, gamma.size)
+        obs = np.array([y[rows].sum() for rows in rows_of])
+        nulls = [PlugIn(prob=lambda g, rows=rows: expit(g + fixed[rows])) for rows in rows_of]
+        wanted = None if providers is None else np.isin(self.provider_labels_, np.atleast_1d(providers))
+        z, limits = count_test(obs, nulls, g0, alternative=alt, start=gamma, wanted=wanted)
+        return effect_test(self.provider_labels_, gamma, z, g0, null_model=null_model, alternative=alt, level=level,
+                           critical=critical, providers=providers, test_method=test_method, limits=limits)
+
+
 def _provider_stratified_fold_assignment(
     y: np.ndarray,
     provider_id: np.ndarray,
@@ -548,6 +600,7 @@ def _provider_stratified_fold_assignment(
 # ======================================================================
 # ProviderPenalizedLogisticCV
 # ======================================================================
+
 
 class ProviderPenalizedLogisticCV(ProviderModel):
     """Cross-validated two-layer provider-penalized logistic regression.
@@ -852,6 +905,17 @@ class ProviderPenalizedLogisticCV(ProviderModel):
             self.predict_proba(X, provider_id, lambda_value, which)
             >= threshold
         ).astype(int)
+
+    def test(self, providers=None, *, lambda_value=None, which=None, **kwargs):
+        """Provider-effect tests at the selected lambda (unless ``lambda_value`` or ``which`` is given).
+
+        See :meth:`ProviderPenalizedLogistic.test`.
+        """
+        if getattr(self, "model_", None) is None:
+            raise ValueError("The model must be fitted before testing.")
+        if which is None and lambda_value is None:
+            which = self.lambda_1se_idx_ if self.se_rule == "1se" else self.lambda_min_idx_
+        return self.model_.test(providers, lambda_value=lambda_value, which=-1 if which is None else which, **kwargs)
 
     def predict_provider_effect(self, which=None) -> pd.DataFrame:
         """Provider effects at the selected lambda."""

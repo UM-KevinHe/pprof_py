@@ -79,6 +79,9 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   `(X, [provider_id,] time=None, lambda_value=None, which=None)`: without `time`, one column per time point; with it, the
   person-period form. Pass `which` by keyword (it was the third positional argument of the provider model's methods).
 - Plots draw providers without a test result (`flag` NA) as hollow grey "Not tested" points; they were drawn as not flagged.
+- `ProviderPenalizedLogistic.test()`: the fixed-effect model's exact count test at one path point (`which` or
+  `lambda_value`), with limits by inversion; `ProviderPenalizedLogisticCV.test()` tests at the selected lambda.
+- The cluster-robust (sandwich) covariance of the survival models warns when it uses fewer than 30 clusters.
 - The fixed-effect Wald test warns about providers with no events or only events, whose effects have no finite
   estimate.
 - The survival R-comparison results (`r_reference/results/`) are committed, so those tests run on a fresh clone.

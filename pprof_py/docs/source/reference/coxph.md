@@ -49,7 +49,7 @@ model.converged_         # always check this -- see "Convergence" below
 | `max_iter` | `20` | Maximum Newton–Raphson iterations (R: `iter.max`). |
 | `eps` | `1e-9` | Convergence tolerance on the *relative change in log-likelihood* between accepted steps (R: `eps`). |
 | `confidence_level` | `0.95` | Level for `confidence_intervals_` and the `summary()` interval columns. |
-| `robust` | `False` | Report the cluster-robust (sandwich) covariance instead of the model-based one. Without `cluster=`, every row is its own cluster. |
+| `robust` | `False` | Report the cluster-robust (sandwich) covariance instead of the model-based one. Without `cluster=`, every row is its own cluster. With fewer than 30 clusters it warns: the sandwich estimator can then understate standard errors (no small-sample correction is applied, as in R's `survival`). |
 
 `robust` is a *constructor* argument. `fit()` has no `robust` keyword — passing one raises
 `TypeError`.
