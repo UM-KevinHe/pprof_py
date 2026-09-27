@@ -59,9 +59,13 @@ from ...algorithms.survival.cox_likelihood import cox_partial_likelihood
 from ...algorithms.survival.penalty import (
     validate_groups,
     rescale_group_multipliers,
-    compute_group_indices,
 )
-from ...algorithms.survival.coordinate_descent import (fit_single_lambda, fit_single_lambda_group, compute_lambda_max, compute_group_lambda_max)
+from ...algorithms.survival.coordinate_descent import (PenalizedFitResult, fit_single_lambda, compute_lambda_max)
+from ...algorithms.coordinate_descent import (
+    GroupPenalizedFitResult, fit_single_lambda_group, compute_group_lambda_max,
+    add_unpenalized_block, drop_unpenalized_block, _compute_group_kkt_violation,
+)
+from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, resolve_penalty_alpha
 from ...algorithms.survival.provider_effects import (
     validate_provider_ids,
     compute_provider_scores,
@@ -71,9 +75,6 @@ from ...algorithms.survival.ties import TieMethod
 from .penalized_coxph import _PenalizedCoxPHBase, _resolve_lambda_path
 
 logger = logging.getLogger(__name__)
-
-_VALID_PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
-
 
 # ======================================================================
 # Validation
@@ -85,14 +86,11 @@ def _validate_provider_parameters(
     standardize, max_outer_iter, outer_tol, max_inner_iter, inner_tol,
     fit_intercept,
 ):
-    """Validate constructor parameters for ProviderPenalizedCoxPH."""
-    if penalty_type not in _VALID_PENALTY_TYPES:
-        raise ValueError(
-            f"penalty_type must be one of {_VALID_PENALTY_TYPES}, "
-            f"got {penalty_type!r}"
-        )
-    if not np.isfinite(alpha) or not 0.0 <= float(alpha) <= 1.0:
-        raise ValueError(f"alpha must be in [0, 1], got {alpha}")
+    """Validate constructor parameters for ProviderPenalizedCoxPH.
+
+    Returns the mixing parameter the penalty type fits with.
+    """
+    alpha = resolve_penalty_alpha(penalty_type, alpha)
     if penalty_type in ("group_lasso", "sparse_group_lasso") and groups is None:
         raise ValueError(
             f"groups must be provided when penalty_type={penalty_type!r}"
@@ -173,6 +171,7 @@ def _validate_provider_parameters(
             "Cox proportional hazards regression does not support "
             "an intercept"
         )
+    return alpha
 
 
 # ======================================================================
@@ -208,11 +207,11 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     penalty_type : str, default ``'elastic_net'``
         ``'elastic_net'``, ``'group_lasso'``, or
         ``'sparse_group_lasso'``.
-    alpha : float, default 1.0
-        Mixing parameter:
-
-        * elastic net: 0 = ridge, 1 = lasso (glmnet convention).
-        * group / sparse group: 0 = group lasso, 1 = lasso.
+    alpha : float or None, default None
+        Mixing parameter.  ``'elastic_net'``: 0 = ridge, 1 = lasso (glmnet
+        convention; ``None`` means 1).  ``'group_lasso'``: the pure group
+        lasso; only ``None`` or 0 is accepted.  ``'sparse_group_lasso'``:
+        required; 0 = group lasso, 1 = lasso.
     groups : array-like or None, default None
         Group labels per feature (required for group penalties).
     group_multiplier : array-like or None, default None
@@ -222,6 +221,11 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     lambda_min_ratio : float or None, default None
     lambda_path : float, sequence, or None, default None
     standardize : bool, default True
+    orthogonalize : bool, default True
+        Group penalties only.  Orthogonalize each penalized group within
+        itself (on its weighted, centered columns), so the group penalty is
+        the standardized group lasso ``GroupLassoCoxPH`` and R's ``grplasso``
+        fit; ``False`` fits the plain group lasso on the standardized columns.
     ties : str, default ``'breslow'``
     fit_intercept : bool, default False
     provider_bound : float, default 10.0
@@ -258,14 +262,16 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     provider_converged_path_ : ndarray of bool, shape ``(n_lambda_,)``
     log_likelihood_path_, deviance_ratio_path_, n_nonzero_path_ :
         From ``_PenalizedCoxPHBase``.
-    groups_, n_groups_, group_weights_ : (group penalties only)
+    groups_, n_groups_, group_weights_, kkt_violation_path_ : (group penalties only)
+    alpha_ : float
+        The mixing parameter used (see ``alpha``).
     gamma_, coef_, lambda_ : set when ``lambda_path_`` has length 1.
     """
 
     def __init__(
         self,
         penalty_type: str = "elastic_net",
-        alpha: float = 1.0,
+        alpha: Optional[float] = None,
         groups=None,
         group_multiplier=None,
         penalty_factor=None,
@@ -273,6 +279,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         lambda_min_ratio: Optional[float] = None,
         lambda_path=None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         ties: Union[str, TieMethod] = "breslow",
         fit_intercept: bool = False,
         provider_bound: float = 10.0,
@@ -294,6 +301,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.ties = ties
         self.fit_intercept = fit_intercept
         self.provider_bound = provider_bound
@@ -308,17 +316,20 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _compute_provider_null_point(self, prep, provider_idx, n_providers):
+    def _compute_provider_null_point(self, prep, X_design, provider_idx,
+                                     n_providers, unpenalized):
         """Null point for ``lambda_max``: penalized β at 0, γ (and any
         unpenalized β) at their joint MLE.
 
-        Returns ``(beta_null, gamma_null)``.  Alternates the provider
-        Newton layer with the restricted unpenalized β fit, which reduces
-        to a pure γ fit when every column is penalized (the common case).
+        ``unpenalized`` marks the unpenalized columns: ``pf == 0`` for the
+        elastic net, group 0 for the group penalties.  Returns
+        ``(beta_null, gamma_null)``.  Alternates the provider Newton layer
+        with the restricted unpenalized β fit, which reduces to a pure γ fit
+        when every column is penalized (the common case).
         """
         beta_null = np.zeros(prep.p_fit, dtype=np.float64)
         gamma_null = np.zeros(n_providers, dtype=np.float64)
-        always_unpen = prep.pf_fit == 0.0
+        always_unpen = np.asarray(unpenalized, dtype=bool)
         has_unpen = bool(np.any(always_unpen)) and not bool(
             np.all(always_unpen)
         )
@@ -330,7 +341,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
             # γ layer, given current β.
             eta = (
                 gamma_null[provider_idx]
-                + prep.X_fit @ beta_null
+                + X_design @ beta_null
                 + prep.data.offset
             )
             score_gamma, info_gamma = compute_provider_scores(
@@ -352,7 +363,9 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 continue
 
             # Unpenalized β layer, given current γ.
-            obj = self._build_beta_objective(prep, gamma_null, provider_idx)
+            obj = self._build_beta_objective(
+                prep, X_design, gamma_null, provider_idx,
+            )
             _ll, score, info = obj(beta_null)
             idx = np.flatnonzero(always_unpen)
             H = info[np.ix_(idx, idx)]
@@ -368,11 +381,13 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
 
         return beta_null, gamma_null
 
-    def _build_beta_objective(self, prep, gamma, provider_idx):
+    def _build_beta_objective(self, prep, X_design, gamma, provider_idx):
         """Build β objective closure with current γ as offset.
 
         The γ contribution enters as an additional offset so that the
         existing penalized solvers can be reused without modification.
+        ``X_design`` is the fitted design (orthogonalized for group
+        penalties with ``orthogonalize``).
         """
         effective_offset = prep.data.offset + gamma[provider_idx]
         ties = self.ties
@@ -381,7 +396,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         def objective_fn(beta):  # noqa: D401
             """Partial log-likelihood, score, and information at *beta*."""
             return cox_partial_likelihood(
-                prep.X_fit, prep.data.start, prep.data.stop,
+                X_design, prep.data.start, prep.data.stop,
                 prep.data.event, beta,
                 offset=effective_offset,
                 weight=prep.data.weight,
@@ -429,7 +444,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 "identifier array)"
             )
 
-        _validate_provider_parameters(
+        alpha = _validate_provider_parameters(
             self.penalty_type, self.alpha,
             self.provider_bound, self.provider_max_iter,
             self.provider_tol, self.groups,
@@ -437,6 +452,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
             self.standardize, self.max_outer_iter, self.outer_tol,
             self.max_inner_iter, self.inner_tol, self.fit_intercept,
         )
+        self.alpha_ = alpha
 
         # --- Common data preparation (base mixin) ---
         prep = self._prepare_fit_data(
@@ -452,13 +468,14 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         )
 
         # --- Penalty-specific setup ---
+        use_groups = self.penalty_type != "elastic_net"
+        X_design, QL_blocks = prep.X_fit, None
         groups_fit = group_weights_fit = None
-        gs_arr = ge_arr = None
         n_groups_fit = 0
         groups_full = group_sizes = group_weights = None
         n_groups = 0
 
-        if self.penalty_type in ("group_lasso", "sparse_group_lasso"):
+        if use_groups:
             groups_raw = np.asarray(self.groups, dtype=np.float64)
             if groups_raw.shape != (prep.p_full,):
                 raise ValueError(
@@ -472,18 +489,26 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 self.group_multiplier, group_sizes, n_groups,
             )
             # Remap for reduced feature set (after degenerate removal).
-            groups_fit = groups_full[prep.fit_cols]
-            groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
-                groups_fit, prep.p_fit,
+            groups_fit, _sizes_fit, n_groups_fit = validate_groups(
+                groups_full[prep.fit_cols], prep.p_fit,
             )
-            group_weights_fit = rescale_group_multipliers(
-                None if self.group_multiplier is None
-                else group_weights,
-                group_sizes_fit, n_groups_fit,
+            group_weights_fit = fit_group_multipliers(
+                self.group_multiplier, groups_full, prep.fit_cols,
             )
-            gs_arr, ge_arr = compute_group_indices(
-                groups_fit, n_groups_fit,
+            # C8b: the standardized group lasso (groups orthogonalized on
+            # their centered columns), as GroupLassoCoxPH and R fit it.
+            X_design, _objective, QL_blocks = self._group_design(
+                prep, groups_fit,
             )
+            # Unpenalized (group 0) columns join the block solver as a block
+            # with no penalty (ISSUE-010).
+            (blocks, gs_arr, ge_arr, gw_blocks, pf_blocks, n_blocks,
+             has_unpen) = add_unpenalized_block(
+                groups_fit, n_groups_fit, group_weights_fit, prep.pf_fit,
+            )
+            unpenalized = groups_fit == 0
+        else:
+            unpenalized = prep.pf_fit == 0.0
 
         # --- Null point (β_null, γ=γ̂) ---
         # REV-003: the inherited PenalizedCoxPH null point evaluates the
@@ -496,29 +521,27 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         # its set.lambda.cox builds the null residual from per-provider risk
         # sets rather than pooled ones.
         beta_null, gamma_null = self._compute_provider_null_point(
-            prep, provider_idx, n_providers,
+            prep, X_design, provider_idx, n_providers, unpenalized,
         )
         objective_null = self._build_beta_objective(
-            prep, gamma_null, provider_idx,
+            prep, X_design, gamma_null, provider_idx,
         )
         _ll_null, score_null, _info_null = objective_null(beta_null)
 
         # --- Lambda max ---
-        if self.penalty_type == "elastic_net":
-            always_unpen = prep.pf_fit == 0.0
+        if not use_groups:
             lambda_max = (
-                0.0 if np.all(always_unpen)
+                0.0 if np.all(unpenalized)
                 else compute_lambda_max(
-                    score_null, prep.c, prep.pf_fit, self.alpha,
+                    score_null, prep.c, prep.pf_fit, alpha,
                 )
             )
         else:
-            always_unpen = groups_fit == 0
             lambda_max = (
-                0.0 if np.all(always_unpen)
+                0.0 if np.all(unpenalized)
                 else compute_group_lambda_max(
                     score_null, prep.c, groups_fit,
-                    group_weights_fit, prep.pf_fit, self.alpha,
+                    group_weights_fit, prep.pf_fit, alpha,
                 )
             )
 
@@ -533,6 +556,22 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         gamma = gamma_null.copy()
         beta = beta_null.copy()
 
+        # lambda_max is the smallest lambda at which the null point solves
+        # the problem (for the elastic net only when alpha >= 1e-3, the floor
+        # compute_lambda_max divides by), so at or above it the null point is
+        # stored as is: iterating from it only adds rounding noise to its
+        # exact zeros.  (A generated path starts at exp(log(lambda_max)),
+        # which can fall an ulp below it.)
+        null_is_solution = (use_groups or alpha >= 1e-3) and lambda_max > 0
+        lam_null = lambda_max * (1.0 - 1e-12)
+        common_null = dict(
+            beta=beta_null.copy(), log_likelihood=_ll_null,
+            objective_value=-prep.c * _ll_null, n_outer_iter=0,
+            n_inner_iter_total=0, converged=True,
+            message="null point (lambda >= lambda_max)",
+            information=_info_null,
+        )
+
         results = []
         gamma_path = []
         n_provider_iter = []
@@ -540,6 +579,25 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
 
         for lam_idx, lam in enumerate(lambda_sequence):
             lam_val = float(lam)
+            if null_is_solution and lam_val >= lam_null:
+                if use_groups:
+                    null_result = GroupPenalizedFitResult(
+                        **common_null,
+                        active_groups=np.zeros(n_groups_fit, dtype=bool),
+                        group_norms=np.zeros(n_groups_fit),
+                        df=float(np.sum(beta_null != 0.0)),
+                        kkt_violation=_compute_group_kkt_violation(
+                            prep.c * score_null, beta_null, lam_val, alpha,
+                            blocks, gw_blocks, pf_blocks, n_blocks,
+                        ),
+                    )
+                else:
+                    null_result = PenalizedFitResult(**common_null)
+                results.append(null_result)
+                gamma_path.append(gamma_null.copy())
+                n_provider_iter.append(0)
+                provider_converged_list.append(True)
+                continue
             converged_two_layer = False
             prov_iters = 0
 
@@ -549,7 +607,7 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 # --- Step 1: update γ given current β ---
                 eta = (
                     gamma[provider_idx]
-                    + prep.X_fit @ beta
+                    + X_design @ beta
                     + prep.data.offset
                 )
                 score_gamma, info_gamma = compute_provider_scores(
@@ -568,13 +626,13 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
 
                 # --- Step 2: update β given current γ ---
                 objective_fn_beta = self._build_beta_objective(
-                    prep, gamma, provider_idx,
+                    prep, X_design, gamma, provider_idx,
                 )
 
-                if self.penalty_type == "elastic_net":
+                if not use_groups:
                     beta_result = fit_single_lambda(
                         objective_fn_beta, beta, prep.c, lam_val,
-                        self.alpha, prep.pf_fit,
+                        alpha, prep.pf_fit,
                         outer_max_iter=self.max_outer_iter,
                         outer_tol=self.outer_tol,
                         inner_max_iter=self.max_inner_iter,
@@ -583,14 +641,16 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 else:
                     beta_result = fit_single_lambda_group(
                         objective_fn_beta, beta, prep.c, lam_val,
-                        self.alpha, prep.pf_fit,
-                        groups_fit, group_weights_fit,
-                        gs_arr, ge_arr, n_groups_fit,
+                        alpha, pf_blocks,
+                        blocks, gw_blocks,
+                        gs_arr, ge_arr, n_blocks,
                         outer_max_iter=self.max_outer_iter,
                         outer_tol=self.outer_tol,
                         inner_max_iter=self.max_inner_iter,
                         inner_tol=self.inner_tol,
                     )
+                    if has_unpen:
+                        beta_result = drop_unpenalized_block(beta_result)
 
                 beta_change = (
                     float(np.max(
@@ -627,8 +687,12 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         # ============================================================
         # Store results
         # ============================================================
+        stored = results if QL_blocks is None else [
+            r._replace(beta=unorthogonalize_coefs(r.beta, groups_fit, QL_blocks))
+            for r in results
+        ]
         self._store_path_results(
-            results, prep, lambda_sequence, lambda_max,
+            stored, prep, lambda_sequence, lambda_max,
             lambda_min_ratio,
         )
 
@@ -649,21 +713,23 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
         )
 
         # Group-specific attributes (group penalties only).
-        if self.penalty_type in ("group_lasso", "sparse_group_lasso"):
+        if use_groups:
             self.groups_ = groups_full
             self.group_sizes_ = group_sizes
             self.n_groups_ = n_groups
             self.group_weights_ = group_weights
-            if hasattr(results[0], "group_norms"):
-                self.group_norms_ = np.array(
-                    [r.group_norms for r in results],
-                )
-                self.active_groups_ = [
-                    r.active_groups for r in results
-                ]
-                self.df_path_ = np.array(
-                    [r.df for r in results],
-                )
+            self.group_norms_ = np.array(
+                [r.group_norms for r in results],
+            )
+            self.active_groups_ = [
+                r.active_groups for r in results
+            ]
+            self.df_path_ = np.array(
+                [r.df for r in results],
+            )
+            self.kkt_violation_path_ = np.array(
+                [r.kkt_violation for r in results],
+            )
 
         # Convenience: single-lambda case.
         if len(gamma_path) == 1:

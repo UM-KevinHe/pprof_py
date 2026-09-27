@@ -107,7 +107,7 @@ gl.group_norms_.shape                      # (n_lambda_, n_groups_)
 | `penalty_factor` | `None` | L1-part factors; only active when `alpha > 0`. |
 | `n_lambda`, `lambda_min_ratio`, `lambda_path`, `standardize`, `ties`, `fit_intercept` | as `PenalizedCoxPH` | |
 | `method` | `"proximal_newton"` | `"MM"` is accepted by the constructor but `fit` raises `NotImplementedError`. |
-| `orthogonalize` | `False` | Accepted; documented as a placeholder for the (unimplemented) MM method. |
+| `orthogonalize` | `True` | Orthogonalize each penalized group within itself on its centered columns: the standardized group lasso of R's `grplasso::Strat.cox`. `False` fits the plain group lasso on the standardized columns. |
 | `use_active_set` | `False` | Active-set screening in the inner solver. (The class docstring names this parameter `active_set`; the argument is `use_active_set`.) |
 | `max_outer_iter`, `outer_tol`, `max_inner_iter`, `inner_tol` | `100`, `1e-9`, `1000`, `1e-10` | |
 
@@ -133,8 +133,10 @@ pp.predict_provider_effect(provider_id=[0, 1], lambda_value=lam)       # selecte
 pp.predict_linear_with_provider(X.iloc[:4], provider[:4], lambda_value=lam)
 ```
 
-Parameters: `penalty_type` (`"elastic_net"` default, `"group_lasso"`, `"sparse_group_lasso"`), `alpha=1.0`, `groups`,
-`group_multiplier`, `penalty_factor`, the λ-path parameters, `standardize`, `ties`, `provider_bound=10.0`,
+Parameters: `penalty_type` (`"elastic_net"` default, `"group_lasso"`, `"sparse_group_lasso"`), `alpha=None` (the elastic
+net's mixing, 1 when `None`; `"group_lasso"` is the pure group lasso and accepts only `None` or `0`; `"sparse_group_lasso"`
+requires it), `groups` (`0` = unpenalized, contiguous), `group_multiplier`, `penalty_factor`, the λ-path parameters,
+`standardize`, `orthogonalize=True` (group penalties, as `GroupLassoCoxPH`), `ties`, `provider_bound=10.0`,
 `provider_backtrack=False` (placeholder), `provider_max_iter=20`, `provider_tol=1e-6`, and solver tolerances
 (`outer_tol` defaults to `1e-7` here, looser than the `1e-9` of the non-provider models).
 
@@ -149,7 +151,7 @@ Parameters: `penalty_type` (`"elastic_net"` default, `"group_lasso"`, `"sparse_g
 | Estimator | Reference | Status |
 |---|---|---|
 | `PenalizedCoxPH` / `CV` | R `glmnet` 4.1.8 (`family="cox"`, `cv.glmnet`) | All tests in `test_penalized_r_comparison.py` pass on a fresh run (coefficient paths to 1e-4–5e-4, λ to 1e-6, CV deviance to 0.01); Efron ties checked by self-consistency against `CoxPH(ties="efron")` as λ → 0 |
-| `GroupLassoCoxPH` / `CV` | none | Internal tests only |
-| `ProviderPenalizedCoxPH` | none | Internal tests only |
+| `GroupLassoCoxPH` / `CV` | R `grplasso::Strat.cox` without `prov.char` (one stratum) | Coefficient paths on R's λ path to 1e-8, λ_max to 1e-10 (`test_cox_group_paths.py`, goldens with an unpenalized column and custom multipliers); KKT residual below 1e-8 |
+| `ProviderPenalizedCoxPH` | `GroupLassoCoxPH` with the provider dummies as unpenalized columns (the same model) | Coefficients and provider-effect differences to 1e-8 (`test_cox_group_paths.py`); elastic net: internal tests |
 
 See {ref}`survival_validation_tools` for how to re-run the comparisons.

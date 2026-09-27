@@ -43,13 +43,10 @@ class GroupLassoLinear(ProviderModel):
     max_outer_iter : int, default=100
         Maximum outer (proximal Newton) iterations per lambda.
     outer_tol : float, default=1e-9
-        Outer-loop convergence tolerance.  Note that the group block
-        solver frequently fails to reach stationarity at this tolerance
-        on correlated within-group designs; ``converged_path_`` reports
-        that honestly rather than declaring success.  Inspect
-        ``kkt_violation_path_`` for the actual distance from
-        stationarity at each path point.
-        Outer convergence tolerance.
+        Outer-loop convergence tolerance: a path point is converged when
+        its relative KKT residual falls below ``10 * outer_tol`` (or below
+        ``max(10 * outer_tol, 1e-6)`` once the iterates stop moving);
+        ``kkt_violation_path_`` gives the residual at each point.
     max_inner_iter : int, default=1000
         Maximum inner (CD) iterations per outer step.
     inner_tol : float, default=1e-10

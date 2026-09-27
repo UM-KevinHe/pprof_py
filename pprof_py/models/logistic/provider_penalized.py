@@ -16,8 +16,8 @@ from ...base import ProviderModel
 from scipy.special import expit
 from ...inference.count_tests import PlugIn, count_test, rows_by_provider
 from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
-from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, compute_group_indices, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs)
-from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic)
+from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha)
+from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic, add_unpenalized_block)
 from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit, logistic_intercept_update)
 from ...algorithms.logistic.provider_effects import compute_provider_indices, logistic_provider_newton_step
 from ...exceptions import NotFittedError
@@ -27,41 +27,6 @@ from .penalized import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-_PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
-
-
-def _resolve_alpha(penalty_type, alpha):
-    """The mixing parameter a penalty type fits with.
-
-    ``"elastic_net"``: ``alpha`` (``None`` means 1, the lasso).
-    ``"group_lasso"``: the pure group lasso, alpha = 0; ``None`` or 0 only.
-    ``"sparse_group_lasso"``: ``alpha`` is required (0 = group lasso,
-    1 = lasso).
-    """
-    if penalty_type not in _PENALTY_TYPES:
-        raise ValueError(
-            f"penalty_type must be one of {_PENALTY_TYPES}, got {penalty_type!r}"
-        )
-    if penalty_type == "group_lasso":
-        if alpha is not None and float(alpha) != 0.0:
-            raise ValueError(
-                "penalty_type='group_lasso' is the pure group lasso (alpha=0); "
-                "use penalty_type='sparse_group_lasso' to add an L1 term"
-            )
-        return 0.0
-    if alpha is None:
-        if penalty_type == "sparse_group_lasso":
-            raise ValueError(
-                "penalty_type='sparse_group_lasso' needs alpha in [0, 1] "
-                "(0 = group lasso, 1 = lasso)"
-            )
-        return 1.0
-    value = float(alpha)
-    if not (np.isfinite(value) and 0.0 <= value <= 1.0):
-        raise ValueError(f"alpha must be in [0, 1], got {alpha!r}")
-    return value
 
 
 class ProviderPenalizedLogistic(ProviderModel):
@@ -248,7 +213,7 @@ class ProviderPenalizedLogistic(ProviderModel):
                 "provider_id (or provider=) must be provided "
                 "(per-observation provider identifiers)."
             )
-        alpha = _resolve_alpha(self.penalty_type, self.alpha)
+        alpha = resolve_penalty_alpha(self.penalty_type, self.alpha)
         self.alpha_ = alpha
         if isinstance(X, pd.DataFrame):
             self.feature_names_in_ = np.array(X.columns.tolist())
@@ -333,25 +298,11 @@ class ProviderPenalizedLogistic(ProviderModel):
                 X_fit, QL_blocks = within_group_orthogonalize(
                     X_fit, groups_fit, weight,
                 )
-            gs_arr, ge_arr = compute_group_indices(groups_fit, n_groups_fit)
-            # Unpenalized (group 0) columns form a pseudo-group with no
-            # penalty, so the block solver updates them (ISSUE-010, as in
-            # fit_group_regularization_path).
-            gw_blocks, pf_blocks = gw_fit, pf_fit
-            unpen_cols = np.flatnonzero(groups_fit == 0)
-            if unpen_cols.size:
-                if not np.array_equal(
-                    unpen_cols, np.arange(unpen_cols[0], unpen_cols[-1] + 1)
-                ):
-                    raise ValueError(
-                        "Unpenalized (group=0) features must be contiguous "
-                        f"in column ordering (got columns {unpen_cols.tolist()})"
-                    )
-                gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
-                ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
-                gw_blocks = np.append(gw_fit, 0.0)
-                pf_blocks = pf_fit.copy()
-                pf_blocks[unpen_cols] = 0.0
+            # Unpenalized (group 0) columns join the block solver as a block
+            # with no penalty (ISSUE-010).
+            _labels, gs_arr, ge_arr, gw_blocks, pf_blocks, _n_blocks, _added = (
+                add_unpenalized_block(groups_fit, n_groups_fit, gw_fit, pf_fit)
+            )
         else:
             groups_fit = None
             gw_fit = None

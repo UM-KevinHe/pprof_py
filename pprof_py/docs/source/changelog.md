@@ -103,6 +103,21 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   `"sparse_group_lasso"`. An unknown `penalty_type` raises.
 - `group_multiplier` is used by `GroupLassoLogistic`, `GroupLassoLinear` and `ProviderPenalizedLogistic`; it was accepted
   and ignored.
+- One group solver serves every family: `GroupLassoCoxPH` and `ProviderPenalizedCoxPH` use the logistic and linear
+  classes' solver. The survival copy thresholded multi-member groups on the wrong scale, so the Cox group paths solved no
+  objective (KKT residuals 0.2-0.4); it never updated unpenalized (group 0) columns; and it reported convergence without a
+  KKT check.
+- `GroupLassoCoxPH` and `ProviderPenalizedCoxPH` fit the standardized group lasso (`orthogonalize=True`; it was a
+  placeholder in `GroupLassoCoxPH`), with groups orthogonalized on their centered columns, as R's `grplasso::Strat.cox`
+  does; `GroupLassoCoxPH` matches `Strat.cox` on identical data. `GroupLassoCoxPH`'s λ path starts at the true
+  `lambda_max_` (it started at `lambda_max_ + 1e-5`), and both classes expose `kkt_violation_path_`.
+- `ProviderPenalizedCoxPH`: `alpha` follows the penalty type as in `ProviderPenalizedLogistic` (`"group_lasso"` fit a lasso
+  at the old default of 1); group-0 columns are fitted at the null point and along the path (they stayed at zero); at or
+  above `lambda_max_` the path returns the null point exactly, for the elastic net too. With provider dummies as
+  unpenalized columns, `GroupLassoCoxPH` gives the same path.
+- The group paths' `converged_path_` is True wherever the KKT residual meets the tolerance. With the active set on (the
+  default of `GroupLassoLogistic` and `GroupLassoLinear`), any group at zero sent the solver to `max_outer_iter` and the
+  point was reported as not converged; `n_iter_path_` drops accordingly.
 
 **Internals**
 

@@ -38,9 +38,10 @@ from ...algorithms.survival.cox_likelihood import (
     cox_partial_likelihood, precompute_stratum_indices,
 )
 from ...algorithms.survival.penalty import (
-    validate_groups, rescale_group_multipliers, compute_group_indices,
+    validate_groups, rescale_group_multipliers,
 )
-from ...algorithms.survival.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.survival.ties import TieMethod
 from ...utils.deviance import saturated_log_likelihood, cox_deviance
 from .coxph import CoxPH
@@ -151,10 +152,11 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     standardize : bool, default True
         Standardize features before fitting; coefficients returned on
         original scale.
-    orthogonalize : bool, default False
-        Within-group SVD orthogonalization (recommended for
-        ``method='MM'``).  Currently a placeholder; ``method='MM'``
-        is not yet implemented.
+    orthogonalize : bool, default True
+        Orthogonalize each penalized group within itself (on its weighted,
+        centered columns), so the penalty is the standardized group lasso
+        that R's ``grplasso::Strat.cox`` fits.  ``False`` fits the plain
+        group lasso on the standardized columns.
     method : str, default 'proximal_newton'
         Optimization method: ``'proximal_newton'`` (exact Hessian) or
         ``'MM'`` (diagonal majorization, not yet implemented).
@@ -162,10 +164,10 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
         Tie-handling method: ``'breslow'`` or ``'efron'``.
     use_active_set : bool, default False
         When True, the proximal-Newton inner CD solver uses active-set
-        screening to skip groups whose coefficients are zero.  This
-        can speed up large problems (many groups, most inactive) but
-        may yield slightly different sparsity patterns at intermediate
-        lambda values due to proximal-Newton path dependence.
+        screening to skip groups whose coefficients are zero.  This can
+        speed up large problems (many groups, most inactive); both settings
+        converge to the same solution (convergence is certified by the KKT
+        residual over every group).
     max_outer_iter : int, default 100
     outer_tol : float, default 1e-9
     max_inner_iter : int, default 1000
@@ -186,7 +188,11 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     converged_path_ : ndarray of bool, shape (n_lambda_,)
     n_iter_path_ : ndarray of int, shape (n_lambda_,)
     group_norms_ : ndarray, shape (n_lambda_, n_groups)
-        ``||beta_g||_2`` per group at each lambda.
+        ``||beta_g||_2`` per group at each lambda, in the fitted
+        (orthogonalized, when ``orthogonalize``) coordinates.
+    kkt_violation_path_ : ndarray, shape (n_lambda_,)
+        Relative KKT residual at each lambda (``converged_path_`` is True
+        where it falls below the solver's threshold).
     active_groups_ : list of ndarray of bool
         Boolean mask of active groups at each lambda.
     df_path_ : ndarray, shape (n_lambda_,)
@@ -209,7 +215,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
         lambda_min_ratio: Optional[float] = None,
         lambda_path=None,
         standardize: bool = True,
-        orthogonalize: bool = False,
+        orthogonalize: bool = True,
         method: str = "proximal_newton",
         ties: Union[str, TieMethod] = "breslow",
         use_active_set: bool = False,
@@ -305,18 +311,16 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
 
         # Remap groups for the reduced feature set (after
         # degenerate-column removal).
-        groups_fit = groups[prep.fit_cols]
-        groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
-            groups_fit, prep.p_fit,
+        groups_fit, _sizes_fit, n_groups_fit = validate_groups(
+            groups[prep.fit_cols], prep.p_fit,
         )
-        group_weights_fit = rescale_group_multipliers(
-            None if self.group_multiplier is None
-            else group_weights,
-            group_sizes_fit, n_groups_fit,
+        group_weights_fit = fit_group_multipliers(
+            self.group_multiplier, groups, prep.fit_cols,
         )
-        gs_arr, ge_arr = compute_group_indices(
-            groups_fit, n_groups_fit,
-        )
+
+        # C8b: the standardized group lasso (groups orthogonalized on their
+        # centered columns), as R's grplasso::Strat.cox fits.
+        X_design, objective_fn, QL_blocks = self._group_design(prep, groups_fit)
 
         # --- Null point for lambda_max ---
         # Group-specific: unpenalized features are those with
@@ -333,7 +337,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
                 eps=self.outer_tol,
             )
             restricted.fit(
-                prep.X_fit[:, always_unpenalized],
+                X_design[:, always_unpenalized],
                 duration=None, event=prep.data.event,
                 start=prep.data.start, stop=prep.data.stop,
                 strata=prep.data.strata_codes,
@@ -342,7 +346,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
             )
             beta_null[always_unpenalized] = restricted.coef_
 
-        _, score_null, _ = prep.objective_fn(beta_null)
+        _, score_null, _ = objective_fn(beta_null)
         lambda_max = (
             0.0 if np.all(always_unpenalized)
             else compute_group_lambda_max(
@@ -351,15 +355,16 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
             )
         )
 
+        # The true lambda_max, as the logistic and linear group classes use
+        # (R pads its first lambda by 1e-5).
         lambda_sequence, lambda_min_ratio = _resolve_lambda_path(
             self.lambda_path, lambda_max, self.lambda_min_ratio,
             self.n_lambda, prep.p_fit, prep.data.n_obs,
-            lambda_pad=1e-5,
         )
 
         # --- Fit the group lasso path ---
         results = fit_group_regularization_path(
-            prep.objective_fn, prep.p_fit, prep.c, self.alpha,
+            objective_fn, prep.p_fit, prep.c, self.alpha,
             lambda_sequence, groups_fit, group_weights_fit,
             prep.pf_fit, n_groups_fit,
             beta_warm_start=beta_null,
@@ -371,9 +376,18 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
         )
 
         # --- Common result storage (from base) ---
+        # group_norms stay in the fitted (orthogonalized) coordinates, the
+        # quantities the penalty acts on; beta goes back to X's columns.
+        stored = results if QL_blocks is None else [
+            r._replace(beta=unorthogonalize_coefs(r.beta, groups_fit, QL_blocks))
+            for r in results
+        ]
         self._store_path_results(
-            results, prep, lambda_sequence, lambda_max,
+            stored, prep, lambda_sequence, lambda_max,
             lambda_min_ratio,
+        )
+        self.kkt_violation_path_ = np.array(
+            [r.kkt_violation for r in results],
         )
 
         # --- Group-specific result attributes ---
@@ -500,7 +514,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         lambda_min_ratio: Optional[float] = None,
         lambda_path=None,
         standardize: bool = True,
-        orthogonalize: bool = False,
+        orthogonalize: bool = True,
         method: str = "proximal_newton",
         ties: Union[str, TieMethod] = "breslow",
         use_active_set: bool = False,

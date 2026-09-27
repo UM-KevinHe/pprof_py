@@ -40,6 +40,7 @@ from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
 from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.penalty import weighted_column_scale, rescale_penalty_factors
+from ...algorithms.penalty import within_group_orthogonalize
 from ...algorithms.survival.coordinate_descent import (
     fit_regularization_path,
     compute_lambda_max,
@@ -289,6 +290,40 @@ class _PenalizedCoxPHBase:
             penalty_factor_full=penalty_factor_full,
             objective_fn=objective_fn, c=c, stratum_idx=stratum_idx,
         )
+
+    def _group_design(self, prep: SimpleNamespace, groups_fit: np.ndarray):
+        """Design, objective and back-transform blocks for a group penalty.
+
+        With ``orthogonalize=True`` each penalized group is orthogonalized
+        within itself on its weighted, centered columns, so the penalty is the
+        standardized group lasso R's ``grplasso::Strat.cox`` fits (it
+        orthogonalizes the centered standardized design).  Centering leaves
+        the partial likelihood unchanged; it enters only the penalty's metric.
+
+        Returns ``(X_design, objective_fn, QL_blocks)``; ``QL_blocks`` is None
+        when the design is not orthogonalized.
+        """
+        if not getattr(self, "orthogonalize", False):
+            return prep.X_fit, prep.objective_fn, None
+        data = prep.data
+        weight = data.weight
+        xm = (weight / weight.sum()) @ prep.X_fit
+        X_design, QL_blocks = within_group_orthogonalize(
+            prep.X_fit - xm, groups_fit, weight,
+        )
+        ties = getattr(self, "ties", "breslow")
+        stratum_idx = prep.stratum_idx
+
+        def objective_fn(beta_fit):  # noqa: D401
+            """Partial log-likelihood, score, and information at *beta_fit*."""
+            return cox_partial_likelihood(
+                X_design, data.start, data.stop, data.event, beta_fit,
+                offset=data.offset, weight=weight,
+                strata=data.strata_codes, ties=ties,
+                stratum_indices=stratum_idx,
+            )
+
+        return X_design, objective_fn, QL_blocks
 
     def _compute_null_point(self, prep: SimpleNamespace):
         """Compute the null point for lambda_max calculation.

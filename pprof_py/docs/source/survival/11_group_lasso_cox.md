@@ -109,7 +109,7 @@ from pprof_py import GroupLassoCoxPH
 m = GroupLassoCoxPH(groups=groups, alpha=0.0)
 m.fit(X, duration=time, event=death)
 
-m.lambda_max_     # 0.018695372653239166
+m.lambda_max_     # 0.01864441735179914
 m.n_groups_        # 5 -- the four penalized groups plus the two singletons
 m.group_sizes_     # array([2, 2, 2, 1, 1])
 ```
@@ -121,7 +121,7 @@ concern, and this was confirmed directly:
 ```python
 lam = m.lambda_path_[60]
 m.predict_partial_hazard(X.values[:3], lambda_value=lam)
-# [31.805, 6.502, 30.534], confirmed equal to exp(X @ coef_at(lam))
+# [33.198, 6.705, 31.967], confirmed equal to exp(X @ coef_at(lam))
 # computed independently, to full floating-point precision.
 ```
 
@@ -135,11 +135,11 @@ for g in range(1, m.n_groups_ + 1):
     print(g, first, m.lambda_path_[first] if first is not None else None)
 ```
 ```
-group 1 (access type)          first active at index  8, lambda=0.00889
-group 2 (diabetes + comorbidity) first active at index  1, lambda=0.01704
-group 3 (noise lab panel)      first active at index 25, lambda=0.00183
-group 4 (sex, singleton)       first active at index 36, lambda=0.00066
-group 5 (vintage_years, singleton) first active at index 21, lambda=0.00265
+group 1 (access type)          first active at index  7, lambda=0.00972
+group 2 (diabetes + comorbidity) first active at index  1, lambda=0.01699
+group 3 (noise lab panel)      first active at index 25, lambda=0.00182
+group 4 (sex, singleton)       first active at index 36, lambda=0.00065
+group 5 (vintage_years, singleton) first active at index 21, lambda=0.00264
 ```
 
 The comorbidity group enters first, access type not far behind — both

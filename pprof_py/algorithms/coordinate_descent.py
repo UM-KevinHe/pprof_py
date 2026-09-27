@@ -1379,10 +1379,11 @@ def fit_single_lambda_group(
         kkt_threshold = max(10.0 * outer_tol, 1e-12)
         # See the matching comment in ``fit_single_lambda``.
         stall_kkt_tol = max(kkt_threshold, 1e-6)
+        # The KKT residual covers every group, active or not, so it certifies
+        # the point as it stands.  (C18: a further pass with every group
+        # active re-derived the same active set whenever a group was zero at
+        # the solution, and so looped to max_outer_iter.)
         if kkt_violation < kkt_threshold:
-            if use_active_set and not np.all(active_groups):
-                active_groups[:] = True
-                continue
             converged = True
             message = "converged (KKT)"
             break
@@ -1394,9 +1395,6 @@ def fit_single_lambda_group(
             and rel_obj_change < outer_tol
             and kkt_violation < stall_kkt_tol
         ):
-            if use_active_set and not np.all(active_groups):
-                active_groups[:] = True
-                continue
             converged = True
             message = "converged (beta/obj)"
             break
@@ -1409,6 +1407,53 @@ def fit_single_lambda_group(
         converged=converged, message=message, information=info,
         active_groups=active_snap, group_norms=gnorms, df=df,
         kkt_violation=float(kkt_violation),
+    )
+
+
+def add_unpenalized_block(groups, n_groups, group_weights, penalty_factor):
+    """Block structure with the unpenalized (group 0) columns as one more block.
+
+    ISSUE-010: the block solver updates only the blocks it is given, so the
+    group-0 columns join as a block with no penalty (multiplier 0, penalty
+    factors 0) instead of being skipped.  They must be contiguous.
+
+    Returns
+    -------
+    groups, group_starts, group_ends, group_weights, penalty_factor, n_blocks, added
+        Group labels with group 0 relabelled ``n_groups + 1``, the block
+        index arrays and parameters, the number of blocks, and whether the
+        unpenalized block was added.
+    """
+    groups_arr = np.asarray(groups, dtype=np.intp)
+    gw = np.asarray(group_weights, dtype=np.float64)
+    pf = np.asarray(penalty_factor, dtype=np.float64)
+    gs_arr, ge_arr = compute_group_indices(groups_arr, n_groups)
+    unpen_mask = groups_arr == 0
+    if not np.any(unpen_mask):
+        return groups_arr, gs_arr, ge_arr, gw, pf, n_groups, False
+    unpen_cols = np.where(unpen_mask)[0]
+    if not np.array_equal(
+        unpen_cols, np.arange(unpen_cols[0], unpen_cols[0] + len(unpen_cols))
+    ):
+        raise ValueError(
+            "Unpenalized (group=0) features must be contiguous "
+            f"in column ordering (got columns {unpen_cols.tolist()})"
+        )
+    groups_arr = groups_arr.copy()
+    groups_arr[unpen_mask] = n_groups + 1
+    gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
+    ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
+    gw = np.append(gw, 0.0)
+    pf = pf.copy()
+    pf[unpen_mask] = 0.0
+    return groups_arr, gs_arr, ge_arr, gw, pf, n_groups + 1, True
+
+
+def drop_unpenalized_block(result):
+    """The result without the unpenalized block's entries (see ``add_unpenalized_block``)."""
+    return result._replace(
+        active_groups=result.active_groups[:-1],
+        group_norms=result.group_norms[:-1],
     )
 
 
@@ -1456,34 +1501,9 @@ def fit_group_regularization_path(
         raise ValueError("lambda_sequence must contain finite non-negative values")
     if lam_arr.size > 1 and np.any(np.diff(lam_arr) > 0):
         raise ValueError("lambda_sequence must be sorted descending")
-    groups_arr = np.asarray(groups, dtype=np.intp)
-    gw = np.asarray(group_weights, dtype=np.float64)
-    pf = np.asarray(penalty_factor, dtype=np.float64)
-    gs_arr, ge_arr = compute_group_indices(groups_arr, n_groups)
-
-    # ISSUE-010: include unpenalized (group=0) columns as a pseudo-group
-    # with zero weight and zero penalty factor so the block-CD kernel
-    # updates them with no shrinkage instead of silently skipping them.
-    unpen_mask = groups_arr == 0
-    _has_unpen = np.any(unpen_mask)
-    if _has_unpen:
-        unpen_cols = np.where(unpen_mask)[0]
-        if not np.array_equal(
-            unpen_cols, np.arange(unpen_cols[0], unpen_cols[0] + len(unpen_cols))
-        ):
-            raise ValueError(
-                "Unpenalized (group=0) features must be contiguous "
-                f"in column ordering (got columns {unpen_cols.tolist()})"
-            )
-        pseudo_label = n_groups + 1
-        groups_arr = groups_arr.copy()
-        groups_arr[unpen_mask] = pseudo_label
-        gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
-        ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
-        gw = np.append(gw, 0.0)
-        pf = pf.copy()
-        pf[unpen_mask] = 0.0
-        n_groups += 1
+    groups_arr, gs_arr, ge_arr, gw, pf, n_groups, _has_unpen = (
+        add_unpenalized_block(groups, n_groups, group_weights, penalty_factor)
+    )
 
     beta = (
         np.zeros(p, dtype=np.float64)
@@ -1504,20 +1524,7 @@ def fit_group_regularization_path(
         # Strip the pseudo-group from the result so callers see the
         # original n_groups-sized arrays.
         if _has_unpen:
-            result = GroupPenalizedFitResult(
-                beta=result.beta,
-                log_likelihood=result.log_likelihood,
-                objective_value=result.objective_value,
-                n_outer_iter=result.n_outer_iter,
-                n_inner_iter_total=result.n_inner_iter_total,
-                converged=result.converged,
-                message=result.message,
-                information=result.information,
-                active_groups=result.active_groups[:-1],
-                group_norms=result.group_norms[:-1],
-                df=result.df,
-                kkt_violation=result.kkt_violation,
-            )
+            result = drop_unpenalized_block(result)
         results.append(result)
         beta = result.beta
     return results

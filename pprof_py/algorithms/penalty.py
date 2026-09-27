@@ -415,6 +415,42 @@ def fit_group_multipliers(
     return gm[surviving - 1]
 
 
+
+PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
+
+
+def resolve_penalty_alpha(penalty_type: str, alpha: Optional[float]) -> float:
+    """The mixing parameter a provider model's penalty type fits with.
+
+    ``"elastic_net"``: ``alpha`` (``None`` means 1, the lasso).
+    ``"group_lasso"``: the pure group lasso, alpha = 0; ``None`` or 0 only.
+    ``"sparse_group_lasso"``: ``alpha`` is required (0 = group lasso,
+    1 = lasso).
+    """
+    if penalty_type not in PENALTY_TYPES:
+        raise ValueError(
+            f"penalty_type must be one of {PENALTY_TYPES}, got {penalty_type!r}"
+        )
+    if penalty_type == "group_lasso":
+        if alpha is not None and float(alpha) != 0.0:
+            raise ValueError(
+                "penalty_type='group_lasso' is the pure group lasso (alpha=0); "
+                "use penalty_type='sparse_group_lasso' to add an L1 term"
+            )
+        return 0.0
+    if alpha is None:
+        if penalty_type == "sparse_group_lasso":
+            raise ValueError(
+                "penalty_type='sparse_group_lasso' needs alpha in [0, 1] "
+                "(0 = group lasso, 1 = lasso)"
+            )
+        return 1.0
+    value = float(alpha)
+    if not (np.isfinite(value) and 0.0 <= value <= 1.0):
+        raise ValueError(f"alpha must be in [0, 1], got {alpha!r}")
+    return value
+
+
 def sparse_group_lasso_penalty_value(
     beta: np.ndarray,
     alpha: float,
