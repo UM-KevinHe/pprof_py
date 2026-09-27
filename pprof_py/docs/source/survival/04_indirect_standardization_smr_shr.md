@@ -256,6 +256,70 @@ SMR equal to 1" constraint the underlying methods literature builds
 around. If these two totals are wildly different, suspect the
 offset-mean correction from Section 4.6 before anything else.
 
+### Both measures in one call, and direct standardization
+
+`CoxPH.calculate_standardized_measures` carries out Sections 4.5-4.7 from
+the stage 1 fit: the national baseline is the Breslow estimator with
+$X_i\hat\beta$ as offset (so no offset-mean correction is involved), and
+each facility's expected deaths follow. Pass the data stage 1 was fitted
+to, plus each row's facility:
+
+```python
+measures = stage1.calculate_standardized_measures(
+    X1, duration=cohort["time"], event=cohort["death"],
+    provider_id=cohort["facility_id"], stdz=["indirect", "direct"],
+)
+print(measures["indirect"].head().round(6).to_string(index=False))
+```
+```
+ provider_id  indirect_ratio  observed  expected  person_time
+           0        1.451239      11.0  7.579731      253.043
+           1        1.034079       8.0  7.736351      240.727
+           2        1.647355       7.0  4.249237      159.953
+           3        0.528177       4.0  7.573212      220.816
+           4        1.434676       9.0  6.273192      194.164
+```
+
+These are `facility_table`'s observed and expected deaths and SMRs, with
+each facility's time at risk added (the grouping variable of the
+empirical null in Section 4.8).
+
+**Direct standardization** asks the converse question: how many deaths
+would the *whole* population have had under facility $k$'s own baseline
+hazard? With $\hat\Lambda_{0k}$ facility $k$'s stage 1 (stratified)
+baseline and $O$ the total observed deaths,
+
+$$
+\text{DSR}_k = \frac{E^{(k)}}{O}, \qquad
+E^{(k)} = \sum_{i} \exp(X_i\hat\beta)\,\hat\Lambda_{0k}(t_i),
+$$
+
+summed over *all* patients. Above 1 again means more deaths than the
+national norm. Every facility is evaluated on the same patients, so
+direct ratios can be compared across facilities. But each rests on the
+facility's own baseline over the population's whole follow-up: that
+baseline is flat after the facility's last death, so a facility followed
+for less time than the population is understated, and a small facility's
+DSR is noisy (one with no deaths has a DSR of 0).
+
+```python
+print(measures["direct"].head().round(6).to_string(index=False))
+```
+```
+ provider_id  direct_ratio  observed   expected  n_pop
+           0      1.428424     259.0 369.961749   4000
+           1      1.065564     259.0 275.980998   4000
+           2      1.580136     259.0 409.255305   4000
+           3      0.519908     259.0 134.656279   4000
+           4      1.414668     259.0 366.399072   4000
+```
+
+Both baselines are Breslow estimators, as in the methodology, whatever
+`ties` fitted $\hat\beta$ (with no tied death times the Breslow and Efron
+baselines coincide). With left-truncated data, pass `start=` and `stop=`
+instead of `duration=`: each patient contributes the hazard between entry
+and exit.
+
 ## 4.8 Is an SMR of 1.45 actually surprising?
 
 Facility 0 shows 11 observed deaths against 7.58 expected — an SMR of

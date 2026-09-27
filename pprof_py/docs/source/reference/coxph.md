@@ -106,6 +106,7 @@ Rows may be in any order. The full list of input checks, and the exception raise
 | `predict_survival_function(X, offset=None, stratum=None)` | `exp(-cumulative hazard)`, same shape. |
 | `score(X, duration=…, event=…, start=…, stop=…, strata=…, offset=…, sample_weight=…)` | The partial log-likelihood of the supplied data at the fitted coefficients (a `float`). |
 | `summary()` | `DataFrame` indexed by feature name with columns `coef`, `exp(coef)`, `se(coef)`, `z`, `p`, `lower_<level>%`, `upper_<level>%`. |
+| `calculate_standardized_measures(X, duration=…, event=…, start=…, stop=…, *, provider_id, offset=None, providers=None, stdz="indirect")` | Indirect and direct standardized ratios (SMR, SHR) per provider: a dict with an `"indirect"` table (`provider_id`, `indirect_ratio`, `observed`, `expected`, `person_time`) and/or a `"direct"` table (`provider_id`, `direct_ratio`, `observed`, `expected`, `n_pop`). See below. |
 
 `predict_cumulative_hazard` / `predict_survival_function` are evaluated **only at the stratum's
 event times** — there is no `times=` argument. To read the step function at arbitrary times, forward-fill:
@@ -160,6 +161,27 @@ stage2.baseline_hazard_                    # the "expected" side of the comparis
 
 `stage2.coef_` is an empty array and `stage2.summary()` an empty table; the result of interest is the baseline hazard.
 The full method is in Chapter 4 of the tutorial.
+
+`calculate_standardized_measures` does both stages from `stage1` and adds direct standardization:
+
+```python
+m = stage1.calculate_standardized_measures(X, start=np.zeros(n), stop=time, event=event,
+                                           provider_id=provider, stdz=["indirect", "direct"])
+```
+
+With `eta_i = X_i @ coef_ + offset_i`, a national baseline `Lambda_0` (the Breslow estimator over all rows with `eta` as
+offset: He and Schaubel's two-stage estimate for a fit stratified by provider, the pooled model's for an unstratified
+fit) and each provider's baseline `Lambda_0j` (the Breslow estimator over its rows at the same coefficients):
+
+- indirect ratio `O_j / E_j`: provider j's observed events over `E_j = sum_{i in j} exp(eta_i) [Lambda_0(stop_i) -
+  Lambda_0(start_i)]`; the `E_j` add up to the total observed events;
+- direct ratio `E^(j) / O`: `E^(j) = sum_{all i} exp(eta_i) [Lambda_0j(stop_i) - Lambda_0j(start_i)]`, the events
+  expected if every patient had provider j's baseline, over the total observed `O`.
+
+These follow the SMR tutorial's definitions and match R's `survival` (`basehaz` of the stratified model and of the
+offset-only model) to 1e-14. Baselines are Breslow estimators whatever `ties` fitted the coefficients; rows are
+unweighted. A provider's baseline is flat after its last event, so its direct ratio understates a hazard that
+continues over the population's later follow-up.
 
 ## R parity cheat-sheet
 

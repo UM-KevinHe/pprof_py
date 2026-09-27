@@ -137,6 +137,14 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - The Fine-Gray R comparison checks `FineGrayPH`'s standard errors against R's cluster-robust SEs, with which they agree to
   1e-14. It compared them with R's model-based `se(coef)`, 5% away; the two failures it reported were this mismatch.
 
+**Survival standardized measures**
+
+- `CoxPH.calculate_standardized_measures` gives indirect and direct standardized ratios (SMR, SHR) per provider, as
+  defined in the SMR tutorial: the indirect ratio against the national Breslow baseline (He and Schaubel's two-stage
+  estimate for a fit stratified by provider, the pooled model's otherwise), and the direct ratio from each provider's own
+  baseline applied to the whole population. It matches R's `survival` to 1e-14, left truncation and tied times included.
+  Survival Chapter 4 shows it next to the two-stage computation by hand.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
