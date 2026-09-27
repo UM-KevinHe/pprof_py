@@ -155,6 +155,13 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   provider flags change. Stage 2's σ carries more of the pipeline's uncertainty than Stage 1's β (REV-022); a
   hospital-only Stage 2 overstates it, the production two-effect Stage 2 does not.
 
+**Empirical-null operating characteristics**
+
+- The empirical-null guide reports a simulation study of flag rates and power under overdispersion (logistic fixed-effect
+  tests and Cox SMRs): the theoretical null's flag rate rises to 0.29 as unexplained provider variation grows, while the
+  empirical null grouped by provider size holds about 0.05; one-sided outliers make it conservative, and groups of a dozen
+  providers make it liberal. No code changes.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
