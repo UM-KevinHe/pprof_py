@@ -72,6 +72,15 @@ so the selected λ, change between calls.
 - Weights and offsets: every `fit` takes `sample_weight` and `offset`.
 - `predict(X, lambda_value=None)` uses the last λ on the path when `lambda_value` is omitted (path estimators) or `coef_` (CV estimators).
 - A predictor with zero weighted variance triggers that module's own `DegenerateFeatureWarning`.
+- Group penalties are the standardized group lasso that R's `grplasso` fits: with `orthogonalize=True` (the default) each
+  penalized group is orthogonalized within itself before penalizing; `orthogonalize=False` fits the plain group lasso on the
+  standardized columns, which R has no counterpart for. `group_multiplier` gives one multiplier per penalized group (default
+  `sqrt(group size)`); `0` in `groups` marks unpenalized columns, which must be contiguous.
+- `ProviderPenalizedLogistic` matches R's `grp.lasso(prov.char=)` (`penalty_type="group_lasso"`) and `pp.lasso(prov.char=)`
+  (`penalty_type="elastic_net"`, `alpha=1`). `alpha` follows the penalty type: the elastic net's mixing (default 1, the
+  lasso); `"group_lasso"` is the pure group lasso (only `None` or `0`); `"sparse_group_lasso"` requires it. `lambda_max_` is
+  taken with the provider effects, the intercept and any unpenalized coefficients at their joint MLE, and at or above it the
+  path returns that null point exactly. With one provider the group path is `GroupLassoLogistic`'s.
 
 ## Signatures
 
@@ -121,6 +130,7 @@ GroupLassoLinear(
     penalty_factor: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     use_active_set: 'bool' = True,
     max_outer_iter: 'int' = 100,
@@ -157,6 +167,7 @@ GroupLassoLogistic(
     penalty_factor: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     use_active_set: 'bool' = True,
     max_outer_iter: 'int' = 100,
@@ -169,7 +180,7 @@ GroupLassoLogistic(
 ```text
 ProviderPenalizedLogistic(
     penalty_type: 'str' = 'elastic_net',
-    alpha: 'float' = 1.0,
+    alpha: 'Optional[float]' = None,
     groups: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
     provider_bound: 'float' = 10.0,
@@ -178,12 +189,14 @@ ProviderPenalizedLogistic(
     lambda_path: 'Optional[np.ndarray]' = None,
     penalty_factor: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-07,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
     provider_max_iter: 'int' = 10,
+    provider_tol: 'Optional[float]' = None,
 )
 ```
 

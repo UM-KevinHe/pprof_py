@@ -134,7 +134,7 @@ provider_id = cohort["facility_id"].values   # 60 facilities
 model = ProviderPenalizedLogistic(alpha=1.0)   # elastic_net, alpha=1.0 -> lasso
 model.fit(X, y, provider_id)
 
-model.lambda_max_      # 0.021890177718538... -- identical to Chapter 1's, same X, y
+model.lambda_max_      # 0.0218972938207... -- Chapter 1's is 0.0218901777185...: here the facility effects are fitted
 model.n_providers_     # 60
 model.gamma_path_.shape   # (100, 60)
 ```
@@ -161,7 +161,7 @@ p2 = model.predict_proba(new_X, new_prov, lambda_value=model.lambda_path_[50])
 
 ```python
 model.n_nonzero_path_[[0, 10, 20, 30, 40, 50, 70, 99]]
-# array([ 1,  5,  7, 10, 10, 10, 10, 10])
+# array([ 0,  5,  7, 10, 10, 10, 10, 10])
 ```
 
 Covariates enter the model as lambda falls, the same story

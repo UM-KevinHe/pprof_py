@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers)
 from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
 from ...exceptions import NotFittedError
@@ -44,6 +44,10 @@ class GroupLassoLogistic(ProviderModel):
     group_multiplier : array-like or None
         Per-group penalty multipliers.  Default: sqrt(group_size).
     standardize : bool, default=True
+    orthogonalize : bool, default=True
+        Orthogonalize each penalized group within itself, so the penalty is
+        the standardized group lasso R's ``grplasso`` fits.  ``False`` fits
+        the plain group lasso on the standardized columns.
     fit_intercept : bool, default=True
     use_active_set : bool, default=True
     max_outer_iter : int, default=100
@@ -179,15 +183,9 @@ class GroupLassoLogistic(ProviderModel):
         groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
             groups_fit, p_fit,
         )
-        gw_fit = rescale_group_multipliers(
-            None, group_sizes_fit, n_groups_fit,
-        )  # recompute default sqrt(size) for the reduced set
-        if self.group_multiplier is not None:
-            # User-supplied multipliers: keep them but they must still
-            # map correctly.  For now, use sqrt(size) for safety.
-            gw_fit = rescale_group_multipliers(
-                None, group_sizes_fit, n_groups_fit,
-            )
+        # Multipliers of the groups that still have columns: the user's, or
+        # sqrt(remaining size) by default.
+        gw_fit = fit_group_multipliers(self.group_multiplier, groups_full, fit_cols)
 
         # Penalty factors.
         pf_input = self.penalty_factor
@@ -200,17 +198,18 @@ class GroupLassoLogistic(ProviderModel):
         c = 1.0 / float(np.sum(weight))
 
         # C2: within-group orthogonalization (R/grplasso convention).
-        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I,
-        # which is what makes the block coordinate update exact -- see the
-        # scale-correction note in the group CD kernel.  The unpenalized
+        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I;
+        # with the 1/4 majorizer below every group block is then 0.25*I and
+        # the block update takes its one-pass form.  The unpenalized
         # pseudo-group (label 0) is left untouched, as in R.
         #
         # NOTE: this changes the ESTIMATOR, not just the algorithm.  In the
         # original coordinates the penalty becomes
         #     lam * sqrt(K_g) * sqrt( beta_g' (X_g' W X_g / sum w) beta_g )
         # i.e. the standardized group lasso (Simon & Tibshirani 2012), which
-        # is what R/grplasso fits.  Set orthogonalize=False only to reproduce
-        # pre-change results; that path is NOT a validated alternative.
+        # is what R/grplasso fits.  orthogonalize=False fits the plain group
+        # lasso on the standardized columns (the block update is exact for
+        # any Hessian block); R has no counterpart for it.
         QL_blocks = None
         if self.orthogonalize:
             X_fit, QL_blocks = within_group_orthogonalize(

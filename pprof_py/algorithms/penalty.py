@@ -376,6 +376,45 @@ def rescale_group_multipliers(
     return gm
 
 
+
+def fit_group_multipliers(
+    group_multiplier: Optional[np.ndarray],
+    groups: np.ndarray,
+    fit_cols: np.ndarray,
+) -> np.ndarray:
+    """Group multipliers for the groups left after degenerate-column exclusion.
+
+    Parameters
+    ----------
+    group_multiplier : ndarray or None, shape (G,)
+        User multipliers, one per penalized group of the full design, in
+        canonical label order.  ``None`` gives ``sqrt`` of each group's
+        remaining size (grplasso's default).
+    groups : ndarray of int, shape (p,)
+        Canonical labels of the full design (from ``validate_groups``).
+    fit_cols : ndarray of bool, shape (p,)
+        Columns kept for fitting.
+
+    Returns
+    -------
+    ndarray, shape (G_fit,)
+        One multiplier per group that still has columns, in the order of
+        the canonical labels ``validate_groups`` assigns to the kept columns.
+        A group left without columns drops out with its multiplier.
+    """
+    kept = groups[fit_cols]
+    surviving = np.unique(kept[kept > 0])
+    if group_multiplier is None:
+        sizes = np.array([np.sum(kept == g) for g in surviving], dtype=np.intp)
+        return np.sqrt(sizes.astype(np.float64))
+    n_groups = int(groups.max())
+    sizes_full = np.array(
+        [np.sum(groups == g) for g in range(1, n_groups + 1)], dtype=np.intp,
+    )
+    gm = rescale_group_multipliers(group_multiplier, sizes_full, n_groups)
+    return gm[surviving - 1]
+
+
 def sparse_group_lasso_penalty_value(
     beta: np.ndarray,
     alpha: float,

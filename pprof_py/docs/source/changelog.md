@@ -86,6 +86,24 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   estimate.
 - The survival R-comparison results (`r_reference/results/`) are committed, so those tests run on a fresh clone.
 
+**Penalized group paths**
+
+- The group block solver is exact for every Hessian block. It was exact only when a group's block is a multiple of the
+  identity (orthogonalized groups with the 1/4 majorizer); elsewhere it converged to a point that solves neither the plain
+  nor the standardized group lasso. `GroupLassoLogistic` and `GroupLassoLinear` at their defaults are unchanged;
+  with `orthogonalize=False` they now fit the plain group lasso exactly.
+- `ProviderPenalizedLogistic` fits the standardized group lasso (`orthogonalize=True`, new), as `GroupLassoLogistic` and R's
+  `grp.lasso(prov.char=)` do, and matches R on identical data; with one provider its group path is `GroupLassoLogistic`'s.
+  Unpenalized (group 0) columns are refitted along the path; they stayed at their null-fit values.
+- `ProviderPenalizedLogistic.lambda_max_` is taken with the provider effects fitted, for every penalty type (R's
+  `set.lambda.grplasso` does the same). It was taken with them at zero, so on multi-provider data the automatic lambda path
+  moves; at or above `lambda_max_` the path returns the null point exactly.
+- `ProviderPenalizedLogistic`'s `alpha` defaults to `None` and follows the penalty type: the elastic net's mixing (1 when
+  `None`), `0` for `"group_lasso"` (any other value raises; the old default of 1 made it a lasso), and required for
+  `"sparse_group_lasso"`. An unknown `penalty_type` raises.
+- `group_multiplier` is used by `GroupLassoLogistic`, `GroupLassoLinear` and `ProviderPenalizedLogistic`; it was accepted
+  and ignored.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
