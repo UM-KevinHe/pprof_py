@@ -126,6 +126,17 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   default of `GroupLassoLogistic` and `GroupLassoLinear`), any group at zero sent the solver to `max_outer_iter` and the
   point was reported as not converged; `n_iter_path_` drops accordingly.
 
+**Fixed-effect fitting and survival references**
+
+- The fixed-effect Newton algorithms (`"Serbin"`, `"Ban"`) accept a step whose predicted gain is below the log-likelihood's
+  rounding level instead of backtracking it to zero. Near the optimum the Armijo test compared rounding noise, so the last
+  Serbin iteration shrank its step to exactly 0 over about 1,400 log-likelihood evaluations and the zero step read as
+  convergence, one Newton step short of the optimum. A Serbin fit now ends at the optimum (the score falls from about 1e-6
+  to 1e-11) with a dozen evaluations; fits and covariate LR and score tests run 4-7 times faster. Estimates move by at most
+  1e-8 (Serbin) and 2e-6 (Ban, which also stopped short).
+- The Fine-Gray R comparison checks `FineGrayPH`'s standard errors against R's cluster-robust SEs, with which they agree to
+  1e-14. It compared them with R's model-based `se(coef)`, 5% away; the two failures it reported were this mismatch.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.

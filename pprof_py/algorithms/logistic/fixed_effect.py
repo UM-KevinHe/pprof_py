@@ -171,7 +171,20 @@ class BaseAlgorithm(ABC):
         # Numerically stable log(1+exp(x)): avoids overflow when linear > 709
         # np.logaddexp(0, x) = log(exp(0) + exp(x)) = log(1 + exp(x)), stable for all x
         return np.sum(self.y * linear - self.N * np.logaddexp(0, linear))
-    
+
+    @staticmethod
+    def _below_noise(predicted: float, loglik: float) -> bool:
+        """Whether an Armijo target is below the log-likelihood's rounding level.
+
+        C3: near the optimum a Newton step's predicted gain (``s * v * lambda``)
+        falls below the rounding error of the log-likelihood sum, so the
+        Armijo test compares rounding noise and can fail at every step size;
+        backtracking then shrank the step to exactly 0 (about 1,400
+        evaluations with ``t = 0.6``) and the zero step read as convergence.
+        A step whose predicted gain is at that level is accepted as it is.
+        """
+        return 0.0 < predicted <= 1e-12 * (1.0 + abs(loglik))
+
 
     @abstractmethod
     def _backtrack(self) -> None:
@@ -323,7 +336,7 @@ class SerbinAlgorithm(BaseAlgorithm):
             d_loglkd = self._loglikelihood((self.gamma_prov + v * d_gamma_prov)[self._prov_indices], self.beta + v * d_beta) - loglkd
             lambda_ = np.concatenate([score_gamma, score_beta]) @ np.concatenate([d_gamma_prov, d_beta])
 
-            while d_loglkd < s * v * lambda_:
+            while d_loglkd < s * v * lambda_ and not self._below_noise(s * v * lambda_, loglkd):
                 v *= t
                 d_loglkd = self._loglikelihood((self.gamma_prov + v * d_gamma_prov)[self._prov_indices], self.beta + v * d_beta) - loglkd
 
@@ -450,7 +463,8 @@ class BanAlgorithm(BaseAlgorithm):
                     self.beta,
                 )
 
-                if ll_new - ll_old >= s * v * lambda_gamma:
+                if (ll_new - ll_old >= s * v * lambda_gamma
+                        or self._below_noise(s * v * lambda_gamma, ll_old)):
                     break
 
                 v *= t
@@ -500,7 +514,8 @@ class BanAlgorithm(BaseAlgorithm):
                     beta_candidate,
                 )
 
-                if ll_new - ll_old >= s * v * lambda_beta:
+                if (ll_new - ll_old >= s * v * lambda_beta
+                        or self._below_noise(s * v * lambda_beta, ll_old)):
                     break
 
                 v *= t
