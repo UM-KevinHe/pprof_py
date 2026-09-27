@@ -234,17 +234,17 @@ facility_table = (
     .groupby("facility_id").sum()
 )
 facility_table["SMR"] = facility_table["observed"] / facility_table["expected"]
-facility_table.head()
+print(facility_table.head())
 ```
 
 ```
-              observed   expected       SMR
+             observed  expected       SMR
 facility_id
-0                   11   7.579731  1.451239
-1                    8   7.736351  1.034079
-2                    7   4.249237  1.647355
-3                    4   7.573212  0.528177
-4                    9   6.273192  1.434676
+0                  11  7.579731  1.451239
+1                   8  7.736351  1.034079
+2                   7  4.249237  1.647355
+3                   4  7.573212  0.528177
+4                   9  6.273192  1.434676
 ```
 
 A useful sanity check that has nothing to do with any one facility:

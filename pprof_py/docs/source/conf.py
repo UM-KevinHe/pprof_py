@@ -51,7 +51,7 @@ bibtex_bibfiles = ['references.bib']
 bibtex_default_style = 'unsrt'
 bibtex_reference_style = 'author_year'
 
-autosummary_generate = True
+autosummary_generate = False  # no page uses autosummary directives
 
 # templates_path = ['_templates']  # No custom templates yet
 exclude_patterns = []

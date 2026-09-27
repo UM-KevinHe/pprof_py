@@ -101,9 +101,14 @@ cv = PenalizedCoxPHCV(alpha=1.0, n_folds=10, random_state=0).fit(
     X, duration=time, event=death,
 )
 
-cv.lambda_min_    # the lambda with the best average cross-validated performance
-cv.lambda_1se_    # the largest lambda within one standard error of that best performance
-cv.coef_          # coefficients at lambda_min_ -- ready to use directly
+print(f"lambda_min = {cv.lambda_min_:.6f}")   # best average cross-validated performance
+print(f"lambda_1se = {cv.lambda_1se_:.6f}")   # largest lambda within one SE of that best performance
+print(cv.coef_.round(4))                      # coefficients at the selected lambda (lambda_1se_ by default)
+```
+```
+lambda_min = 0.001075
+lambda_1se = 0.013253
+[0.0314 0.     0.     0.0138]
 ```
 
 `lambda_min_` and `lambda_1se_` embody a real judgment call, not just
@@ -115,18 +120,25 @@ standard error of the best observed performance — is the standard,
 deliberately more conservative choice when you want a **simpler**
 model that's statistically indistinguishable from the best one found,
 favoring interpretability and stability over chasing the single best
-cross-validated point estimate. Use `se_rule="1se"` in the
-constructor to make that the default `.coef_` instead:
+cross-validated point estimate. `se_rule="1se"` is the default, so
+`cv.coef_` above is at `lambda_1se_`; pass `se_rule="min"` to select
+`lambda_min_` instead:
 
 ```python
-cv_parsimonious = PenalizedCoxPHCV(alpha=1.0, se_rule="1se", random_state=0).fit(
+cv_min = PenalizedCoxPHCV(alpha=1.0, n_folds=10, random_state=0, se_rule="min").fit(
     X, duration=time, event=death,
 )
+print(cv_min.coef_.round(4))   # at lambda_min_
+```
+```
+[ 0.0458 -0.0257  0.1675  0.1698]
 ```
 
-`cv.model_` gives you the fully-fitted `PenalizedCoxPH`-style
-object at the selected lambda, if you need more than just `coef_` —
-the fitted deviance, the number of nonzero coefficients, and so on.
+`cv.model_` is the full-data `PenalizedCoxPH` fit at the selected
+lambda, if you need more than just `coef_` — the fitted deviance, the
+number of nonzero coefficients, and so on. It is fitted at that one
+lambda only, so read coefficients at the other lambda from a CV object
+built with the other `se_rule`, as above.
 
 ## 8.5 A worked comparison on the running cohort
 
@@ -149,23 +161,27 @@ candidates = ["age", "sex", "diabetes", "comorbidity_count", "vintage_years",
               "lab_a", "lab_b", "nursing_home", "bmi_low", "albumin_low"]
 X_wide = cohort[candidates]
 
-cv = PenalizedCoxPHCV(alpha=1.0, n_folds=10, random_state=0).fit(
+cv_min = PenalizedCoxPHCV(alpha=1.0, n_folds=10, random_state=0, se_rule="min").fit(
     X_wide, duration=cohort["time"], event=cohort["death"],
 )
-pd.Series(cv.coef_, index=candidates).round(4)
+cv_1se = PenalizedCoxPHCV(alpha=1.0, n_folds=10, random_state=0).fit(   # se_rule="1se"
+    X_wide, duration=cohort["time"], event=cohort["death"],
+)
+print(pd.DataFrame({"lambda_min": cv_min.coef_, "lambda_1se": cv_1se.coef_}, index=candidates).round(4))
 ```
 
 ```
-age                  0.0452
-sex                 -0.0169
-diabetes             0.1565
-comorbidity_count    0.1646
-vintage_years       -0.0292
-lab_a                0.0000
-lab_b                0.0826
-nursing_home        -0.1864
-bmi_low             -0.1691
-albumin_low          0.1374
+                   lambda_min  lambda_1se
+age                    0.0453      0.0298
+sex                   -0.0211      0.0000
+diabetes               0.1607      0.0000
+comorbidity_count      0.1663      0.0000
+vintage_years         -0.0304      0.0000
+lab_a                  0.0000      0.0000
+lab_b                  0.0847      0.0000
+nursing_home          -0.1950      0.0000
+bmi_low               -0.1759      0.0000
+albumin_low            0.1422      0.0000
 ```
 
 `lab_a` — one of the two variables built with genuinely zero effect —
@@ -179,9 +195,8 @@ selection is a statistical procedure with its own sampling variability,
 not a deterministic oracle — it will occasionally keep a coefficient
 that isn't real, and occasionally shrink one that is (`vintage_years`
 here ends up smaller than the unpenalized fit from Chapter 4 would
-suggest). Switching to the more conservative `se_rule="1se"` on
-this same data pushes the penalty hard enough to zero out *every*
-covariate except age — illustrating the real tension Section 8.4
+suggest). The default `se_rule="1se"` (the second column) pushes the
+penalty hard enough to zero out *every* covariate except age — illustrating the real tension Section 8.4
 described: `lambda_1se_` buys simplicity and stability at a real risk
 of discarding genuine, if modest, signal. Neither choice is "wrong";
 they trade off differently, and knowing which one you got is exactly

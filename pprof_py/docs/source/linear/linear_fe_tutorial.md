@@ -94,20 +94,20 @@ print(model.summary())
 
 ```
              estimate  std_error       stat  p_value  ci_lower  ci_upper
-age          0.147454   0.005248  28.095648      0.0  0.137162  0.157745
-severity     1.806502   0.054480  33.159188      0.0  1.699671  1.913333
-comorbidity  3.226398   0.132513  24.347734      0.0  2.966548  3.486248
+age          0.146507   0.005250  27.905120      0.0  0.136212  0.156803
+severity     1.799315   0.054464  33.037020      0.0  1.692515  1.906115
+comorbidity  3.208928   0.132385  24.239448      0.0  2.949331  3.468525
 ```
 
 All three covariates are highly significant (t > 24, $p < 10^{-7}$):
 
 - **Age:** each additional year adds 0.147 days to LOS (true = 0.15).
-- **Severity:** each unit on the 1–5 scale adds 1.81 days (true = 1.8).
-- **Comorbidity:** the presence of a comorbid condition adds 3.23 days
+- **Severity:** each unit on the 1–5 scale adds 1.80 days (true = 1.8).
+- **Comorbidity:** the presence of a comorbid condition adds 3.21 days
   (true = 3.5).
 
 The residual standard deviation is $\hat{\sigma} = 3.098$
-(true = 3.0). AIC = 12670.71, BIC = 12868.43.
+(true = 3.0). AIC = 12670.64, BIC = 12868.36.
 
 ## 5. Provider effects ($\hat{\gamma}_i$)
 
@@ -115,27 +115,26 @@ The model estimates a separate intercept $\hat{\gamma}_i$ for each of
 the 30 hospitals. These live in `model.coefficients_['gamma']`:
 
 ```python
-gammas = model.coefficients_['gamma'].flatten()
+gammas = pd.Series(model.coefficients_['gamma'].ravel(), index=model.provider_ids_)
+print(gammas.sort_values().round(3).iloc[[0, 1, 2, -3, -2, -1]].to_string())
+print(f"median {gammas.median():.3f}, range [{gammas.min():.3f}, {gammas.max():.3f}]")
 ```
 
 ```
-Hospital_1  6.273    Hospital_11  5.824    Hospital_21  6.213
-Hospital_2  4.630    Hospital_12  6.977    Hospital_22  1.716
-Hospital_3  5.824    Hospital_13  6.997    Hospital_23  6.523
-Hospital_4  8.208    Hospital_14  4.077    Hospital_24  4.423
-Hospital_5  6.882    Hospital_15  1.517    Hospital_25  8.207
-Hospital_6  1.077    Hospital_16  2.623    Hospital_26  3.183
-Hospital_7  4.511    Hospital_17  4.511    Hospital_27  5.213
-Hospital_8  2.871    Hospital_18  2.871    Hospital_28  4.649
-Hospital_9  4.451    Hospital_19  7.382    Hospital_29  5.111
-Hospital_10 4.630    Hospital_20  2.775    Hospital_30  4.543
+Hospital_15    1.606
+Hospital_22    1.805
+Hospital_6     2.163
+Hospital_19    7.474
+Hospital_4     8.287
+Hospital_25    8.299
+median 4.620, range [1.606, 8.299]
 ```
 
-The median $\hat{\gamma}$ is **4.533**. The range is $[1.517, 8.208]$,
-spanning about 6.7 days — hospitals differ substantially in baseline
-LOS even after adjusting for patient severity, age, and comorbidity.
-Hospital 4 and Hospital 25 are the highest ($\hat{\gamma} \approx 8.2$);
-Hospital 15 and Hospital 6 are the lowest ($\hat{\gamma} \approx 1.1$–$1.5$).
+The three lowest and three highest estimates are shown. The range spans
+about 6.7 days: hospitals differ substantially in baseline LOS even
+after adjusting for patient severity, age, and comorbidity. Hospitals 25
+and 4 are the highest ($\hat{\gamma} \approx 8.3$); Hospitals 15 and 22
+are the lowest ($\hat{\gamma} \approx 1.6$–$1.8$).
 
 ## 6. Standardized differences
 
@@ -156,22 +155,22 @@ print(sm['indirect'].head(10))
 ```
 
 ```
-      provider_id  indirect_difference     observed     expected
-0   Hospital_1             1.739358  2030.804766  1872.523173
-1  Hospital_10             0.097102  1220.432760  1214.509551
-2  Hospital_11             1.290467  2026.653917  1907.930979
-3  Hospital_12             2.444269   940.652738   840.437712
-4  Hospital_13             2.463688  1616.331450  1446.336947
-5  Hospital_14            -0.455865  1548.012485  1583.114098
-6  Hospital_15            -3.015680   723.848638   847.491501
-7  Hospital_16            -1.910473  1896.296234  2093.074909
-8  Hospital_17            -0.021679  2000.426136  2002.572392
-9  Hospital_18            -1.661712  1151.845892  1251.548638
+   provider_id  indirect_difference     observed     expected
+0   Hospital_1             1.742047  2030.804766  1872.278526
+1  Hospital_10             0.096085  1220.432760  1214.571586
+2  Hospital_11             1.293374  2026.653917  1907.663469
+3  Hospital_12             2.446356   940.652738   840.352128
+4  Hospital_13             2.468400  1616.331450  1446.011844
+5  Hospital_14            -0.453539  1548.012485  1582.934954
+6  Hospital_15            -3.013459   723.848638   847.400459
+7  Hospital_16            -1.909094  1896.296234  2092.932920
+8  Hospital_17            -0.021416  2000.426136  2002.546347
+9  Hospital_18            -1.658501  1151.845892  1251.355974
 ```
 
-Hospital 13's ISDiff of +2.46 means its patients stay 2.46 days
+Hospital 13's ISDiff of +2.47 means its patients stay 2.47 days
 *longer* on average than the median hospital, after case-mix adjustment.
-Hospital 15's ISDiff of −3.02 means patients stay about 3 days *less*.
+Hospital 15's ISDiff of −3.01 means patients stay about 3 days *less*.
 
 ## 7. Hypothesis testing
 
@@ -212,7 +211,7 @@ interval follow the t distribution. $T_i$ itself is
 and 8 low (flag = −1). This is expected: with a true provider SD of 2.0
 and a residual SD of 3.0, the signal-to-noise ratio is strong enough
 that most hospitals show statistically distinguishable effects. The most
-extreme are Hospital 4 ($T = 7.35$, $p < 10^{-7}$) and Hospital 6
+extreme are Hospital 4 ($T = 7.36$, $p < 10^{-12}$) and Hospital 6
 ($T = -5.17$, $p < 10^{-6}$).
 
 ## 8. Confidence intervals
@@ -227,22 +226,22 @@ print(gamma_ci['gamma_ci'].head(10))
 ```
 
 ```
-      provider_id     gamma     lower     upper
-0   Hospital_1  6.272529  5.289452  7.255605
-1  Hospital_10  4.630272  3.565612  5.694933
-2  Hospital_11  5.823637  4.841330  6.805945
-3  Hospital_12  6.977439  5.768055  8.186823
-4  Hospital_13  6.996859  5.933929  8.059788
-5  Hospital_14  4.077305  3.056328  5.098283
-6  Hospital_15  1.517491  0.310405  2.724576
-7  Hospital_16  2.622698  1.662727  3.582669
-8  Hospital_17  4.511491  3.557771  5.465211
-9  Hospital_18  2.871458  1.779411  3.963505
+   provider_id     gamma     lower     upper
+0   Hospital_1  6.361710  5.378491  7.344929
+1  Hospital_10  4.715748  3.650933  5.780563
+2  Hospital_11  5.913038  4.930575  6.895501
+3  Hospital_12  7.066020  5.856502  8.275538
+4  Hospital_13  7.088063  6.024972  8.151155
+5  Hospital_14  4.166125  3.144987  5.187262
+6  Hospital_15  1.606204  0.398992  2.813417
+7  Hospital_16  2.710569  1.750401  3.670737
+8  Hospital_17  4.598247  3.644361  5.552134
+9  Hospital_18  2.961162  1.868946  4.053378
 ```
 
-Hospital 4's CI is $[5.77, 8.19]$ — entirely above the median of 4.53,
+Hospital 4's CI is $[7.31, 9.26]$ — entirely above the median of 4.62,
 confirming it as a high-LOS outlier. Hospital 15's CI is
-$[0.31, 2.72]$ — entirely below the median.
+$[0.40, 2.81]$ — entirely below the median.
 
 ### CIs for standardized differences
 
@@ -251,21 +250,21 @@ sm_ci = model.calculate_confidence_intervals(
     option='SM', stdz='indirect', reference='median',
     level=0.95, alternative='two_sided',
 )
-print(sm_ci['indirect_ci'].head(10))
+print(sm_ci['indirect_ci'].head(10).to_string())
 ```
 
 ```
-      provider_id  indirect_difference     observed     expected     lower     upper
-0   Hospital_1             1.739358  2030.804766  1872.523173  0.756282  2.722434
-1  Hospital_10             0.097102  1220.432760  1214.509551 -0.967558  1.161763
-2  Hospital_11             1.290467  2026.653917  1907.930979  0.308160  2.272774
-3  Hospital_12             2.444269   940.652738   840.437712  1.234885  3.653653
-4  Hospital_13             2.463688  1616.331450  1446.336947  1.400759  3.526618
-5  Hospital_14            -0.455865  1548.012485  1583.114098 -1.476842  0.565112
-6  Hospital_15            -3.015680   723.848638   847.491501 -4.222766 -1.808595
-7  Hospital_16            -1.910473  1896.296234  2093.074909 -2.870443 -0.950502
-8  Hospital_17            -0.021679  2000.426136  2002.572392 -0.975399  0.932041
-9  Hospital_18            -1.661712  1151.845892  1251.548638 -2.753759 -0.569666
+   provider_id  indirect_difference     observed     expected     lower     upper
+0   Hospital_1             1.742047  2030.804766  1872.278526  0.758828  2.725265
+1  Hospital_10             0.096085  1220.432760  1214.571586 -0.968730  1.160900
+2  Hospital_11             1.293374  2026.653917  1907.663469  0.310912  2.275837
+3  Hospital_12             2.446356   940.652738   840.352128  1.236839  3.655874
+4  Hospital_13             2.468400  1616.331450  1446.011844  1.405308  3.531492
+5  Hospital_14            -0.453539  1548.012485  1582.934954 -1.474676  0.567599
+6  Hospital_15            -3.013459   723.848638   847.400459 -4.220672 -1.806247
+7  Hospital_16            -1.909094  1896.296234  2092.932920 -2.869262 -0.948926
+8  Hospital_17            -0.021416  2000.426136  2002.546347 -0.975303  0.932470
+9  Hospital_18            -1.658501  1151.845892  1251.355974 -2.750718 -0.566285
 ```
 
 Note that Hospital 17's CI $[-0.98, 0.93]$ spans zero — consistent
@@ -331,11 +330,11 @@ model.plot_qq()
 | Quantity | Scale | This cohort |
 |---|---|---|
 | $\hat{\beta}_{\text{age}}$ | days / year | 0.147 |
-| $\hat{\beta}_{\text{severity}}$ | days / unit | 1.807 |
-| $\hat{\beta}_{\text{comorbidity}}$ | days (binary) | 3.226 |
-| $\hat{\gamma}_i$ | days (intercept) | range $[1.5, 8.2]$ |
+| $\hat{\beta}_{\text{severity}}$ | days / unit | 1.799 |
+| $\hat{\beta}_{\text{comorbidity}}$ | days (binary) | 3.209 |
+| $\hat{\gamma}_i$ | days (intercept) | range $[1.6, 8.3]$ |
 | $\hat{\sigma}$ | days (residual SD) | 3.098 |
-| ISDiff | days above/below median | range $[-3.5, +3.7]$ |
+| ISDiff | days above/below median | range $[-3.0, +3.7]$ |
 | Flagged hospitals | — | 18 of 30 at $\alpha = 0.05$ |
 
 ### When to use linear FE vs. RE?

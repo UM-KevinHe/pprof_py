@@ -97,6 +97,7 @@ PenalizedLinear(
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 
@@ -117,6 +118,7 @@ PenalizedLinearCV(
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 
@@ -219,6 +221,7 @@ PenalizedLogisticCV(
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 

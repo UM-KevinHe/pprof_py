@@ -65,13 +65,12 @@ cohort["ever_waitlisted"] = got_waitlisted.astype(int)
 X_naive = cohort[["age", "sex", "diabetes", "comorbidity_count", "ever_waitlisted"]]
 
 naive_model = CoxPH(ties="efron").fit(X_naive, duration=cohort["time"], event=cohort["death"])
-naive_model.summary().loc["ever_waitlisted"]
+row = naive_model.summary().loc["ever_waitlisted"]
+print(f"coef {row['coef']:.3f}, exp(coef) {row['exp(coef)']:.3f}, p {row['p']:.2g}")
 ```
 
 ```
-coef        -1.429
-exp(coef)    0.240
-p            4.5e-29
+coef -1.429, exp(coef) 0.240, p 4.5e-29
 ```
 
 A hazard ratio of 0.24 — an apparent **76% reduction in mortality risk**,
@@ -101,14 +100,16 @@ which is exactly what this chapter's two new functions are for.
 from pprof_py.data.timedep import build_skeleton
 
 skeleton = build_skeleton(id=cohort["patient_id"].to_numpy(), tstop=cohort["time"].to_numpy())
-skeleton.head()
+print(skeleton.head())
 ```
 
 ```
-   id  tstart   tstop
-0   0     0.0  1.442
-1   1     0.0  0.187
-2   2     0.0  2.664
+   id  tstart  tstop
+0   0     0.0  3.604
+1   1     0.0  1.881
+2   2     0.0  1.509
+3   3     0.0  2.630
+4   4     0.0  2.463
 ```
 
 One row per patient, `(0, their own total follow-up time]` — the
@@ -184,13 +185,12 @@ X_td = merged[["age", "sex", "diabetes", "comorbidity_count", "waitlisted"]]
 td_model = CoxPH(ties="efron").fit(
     X_td, start=merged["tstart"], stop=merged["tstop"], event=merged["death"],
 )
-td_model.summary().loc["waitlisted"]
+row = td_model.summary().loc["waitlisted"]
+print(f"coef {row['coef']:.3f}, exp(coef) {row['exp(coef)']:.3f}, p {row['p']:.2g}")
 ```
 
 ```
-coef        -0.135
-exp(coef)    0.874
-p            0.356
+coef -0.135, exp(coef) 0.874, p 0.36
 ```
 
 The dramatic, spurious effect is gone. A p-value of 0.36 correctly

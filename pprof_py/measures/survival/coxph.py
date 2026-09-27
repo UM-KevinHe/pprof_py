@@ -10,9 +10,9 @@ fitted risk score ``exp(eta_i)``, ``eta_i = Z_i beta_hat + offset_i``:
   unstratified fit it is the pooled model's baseline;
 * provider ``j``'s baseline ``Lambda_0j`` is the Breslow estimator over provider ``j``'s rows at the same
   ``beta_hat`` -- the stratified model's baseline for that provider;
-* indirect: ``O_j / E_j`` with ``O_j`` provider j's events and ``E_j = sum_{i in j} exp(eta_i) [Lambda_0(X_i) -
+* indirect: ``O_j / E_j`` with ``O_j`` provider j's events and ``E_j = ````sum_````{i in j} exp(eta_i) [Lambda_0(X_i) -
   Lambda_0(B_i)]``, its expected events at the national baseline;
-* direct: ``E^(j) / O`` with ``O`` the total events and ``E^(j) = sum_{all i} exp(eta_i) [Lambda_0j(X_i) -
+* direct: ``E^(j) / O`` with ``O`` the total events and ``E^(j) = ````sum_````{all i} exp(eta_i) [Lambda_0j(X_i) -
   Lambda_0j(B_i)]``, the events expected if every patient had provider j's baseline.
 
 Because each Breslow increment at an event time ``t`` of provider ``j`` is ``1 / RS_j(t)`` per event, ``E^(j)``
@@ -51,7 +51,7 @@ def cox_standardized_expectations(eta, entry, exit_, event, provider_codes, n_pr
     ----------
     eta : ndarray, shape (n,)
         Fitted linear predictor ``Z beta_hat + offset``.
-    entry, exit_ : ndarray, shape (n,)
+    entry, ``exit_`` : ndarray, shape (n,)
         At-risk interval ``(entry, exit]`` of each row.
     event : ndarray, shape (n,)
         Event indicator (0/1) at ``exit_``.

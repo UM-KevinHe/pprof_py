@@ -4,9 +4,9 @@
 
 ## 1. Introduction
 
-Evaluating and comparing the performance of healthcare providers is essential for quality improvement initiatives, cost management, and informed patient decision-making {cite}`Shahian2011Public,Krumholz2013Administrative`. Provider performance is often assessed using quantitative patient outcomes, such as length of stay, cost of care, or clinical measurements like blood pressure or estimated glomerular filtration rate (eGFR). However, direct comparison of raw outcomes can be misleading due to differences in patient populations served by different providers. Robust risk adjustment methods are therefore necessary to account for patient case mix before drawing conclusions about provider performance {cite}`Iezzoni2001Risk`.
+Evaluating and comparing the performance of healthcare providers is essential for quality improvement initiatives, cost management, and informed patient decision-making {cite}`linfe-Shahian2011Public,linfe-Krumholz2013Administrative`. Provider performance is often assessed using quantitative patient outcomes, such as length of stay, cost of care, or clinical measurements like blood pressure or estimated glomerular filtration rate (eGFR). However, direct comparison of raw outcomes can be misleading due to differences in patient populations served by different providers. Robust risk adjustment methods are therefore necessary to account for patient case mix before drawing conclusions about provider performance {cite}`linfe-Iezzoni2001Risk`.
 
-Linear regression models are frequently used for risk adjustment when the outcome of interest is quantitative. When data are clustered within providers, incorporating provider-specific effects is crucial. Similar to binary outcomes, two main approaches exist: random effects (RE) and fixed effects (FE) models. RE models assume provider effects follow a distribution and can be efficient but rest on the strong assumption that provider effects are uncorrelated with patient characteristics {cite}`Neuhaus1991Comparison`. Fixed effects models treat each provider effect as a distinct parameter, offering robustness against potential confounding between provider effects and patient covariates {cite}`Kalbfleisch2013Monitoring`. This robustness makes the FE approach particularly suitable for provider profiling where unbiased estimation of individual provider performance relative to peers is paramount.
+Linear regression models are frequently used for risk adjustment when the outcome of interest is quantitative. When data are clustered within providers, incorporating provider-specific effects is crucial. Similar to binary outcomes, two main approaches exist: random effects (RE) and fixed effects (FE) models. RE models assume provider effects follow a distribution and can be efficient but rest on the strong assumption that provider effects are uncorrelated with patient characteristics {cite}`linfe-Neuhaus1991Comparison`. Fixed effects models treat each provider effect as a distinct parameter, offering robustness against potential confounding between provider effects and patient covariates {cite}`linfe-Kalbfleisch2013Monitoring`. This robustness makes the FE approach particularly suitable for provider profiling where unbiased estimation of individual provider performance relative to peers is paramount.
 
 Fitting FE models, especially linear ones, can be computationally streamlined compared to their logistic counterparts, but still requires careful implementation. This paper details the statistical methodology implemented in our software for fitting linear fixed effect models. We focus on:
 
@@ -430,7 +430,7 @@ The linear fixed effects model, as implemented in the `LinearFixedEffectModel`` 
 ## References
 
 ```{bibliography} ../references.bib
-:list: enumerated
 :filter: docname in docnames
 :keyprefix: linfe-
+:labelprefix: LFE
 ```

@@ -118,8 +118,8 @@ class PenalizedLogistic(ProviderModel):
         When True, only variables with nonzero coefficients are updated
         in most inner iterations.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     coef_path_ : ndarray, shape (n_lambda, p)
         Coefficient path.
     intercept_path_ : ndarray, shape (n_lambda,)
@@ -544,14 +544,14 @@ class PenalizedLogisticCV(ProviderModel):
         Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     lambda_min_ : float
         Lambda that minimizes CV deviance.
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda_1se_ if se_rule == "1se", else lambda_min_).
+        Selected lambda (``lambda_1se_`` if se_rule == "1se", else ``lambda_min_``).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean cross-validated deviance at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)
@@ -559,9 +559,9 @@ class PenalizedLogisticCV(ProviderModel):
     cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV deviance.
     lambda_min_idx_ : int
-        Index of lambda_min_ in lambda_path_.
+        Index of ``lambda_min_`` in ``lambda_path_``.
     lambda_1se_idx_ : int
-        Index of lambda_1se_ in lambda_path_.
+        Index of ``lambda_1se_`` in ``lambda_path_``.
     model_ : PenalizedLogistic
         Full-data model fitted at the selected lambda path.
     coef_ : ndarray, shape (p,)

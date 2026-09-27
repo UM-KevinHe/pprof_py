@@ -72,14 +72,14 @@ class CoxPH(CoxPHMeasuresMixin, CoxPHInferenceMixin, ProviderModel):
         data with multiple rows per subject, supply the subject identifier
         as `cluster` so those rows are treated as one independent unit.
 
-    Attributes (set by `fit`)
-    -------------------------
-    coef_, standard_errors_, covariance_, z_scores_, p_values_,
-    confidence_intervals_, log_likelihood_, log_likelihood_null_,
-    n_iter_, converged_, convergence_message_, n_obs_, n_events_, n_features_in_,
-    feature_names_in_, baseline_hazard_, martingale_residuals_,
-    naive_covariance_, naive_standard_errors_, robust_covariance_,
-    robust_, n_clusters_, cluster_labels_
+    Notes
+    -----
+    Fitted attributes: ``coef_``, ``standard_errors_``, ``covariance_``, ``z_scores_``, ``p_values_``,
+    ``confidence_intervals_``, ``log_likelihood_``, ``log_likelihood_null_``,
+    ``n_iter_``, ``converged_``, ``convergence_message_``, ``n_obs_``, ``n_events_``, ``n_features_in_``,
+    ``feature_names_in_``, ``baseline_hazard_``, ``martingale_residuals_``,
+    ``naive_covariance_``, ``naive_standard_errors_``, ``robust_covariance_``,
+    ``robust_``, ``n_clusters_``, ``cluster_labels_``
     """
 
     def __init__(

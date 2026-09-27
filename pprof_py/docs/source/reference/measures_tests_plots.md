@@ -3,7 +3,7 @@
 
 The fixed-effect, random-effect and mixed-effect classes share a provider-profiling workflow: estimate provider effects → standardize them →
 test them against a null → build intervals → plot. The theory (direct versus indirect standardization) is in
-[Direct vs indirect standardization](direct_vs_indirect_standardization); this page lists the methods and what they return.
+[Direct vs indirect standardization](../direct_vs_indirect_standardization); this page lists the methods and what they return.
 
 ```python
 import numpy as np
@@ -40,12 +40,12 @@ lin.plot_funnel(); lin.plot_provider_effects(); lin.plot_coefficient_forest()
 log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wald")
 ```
 
-## `reference`, `reference`, `stdz`, `alternative`
+## `reference`, `stdz`, `alternative`
 
-- `reference` (standardized measures, confidence intervals and plots): `"median"` (the median provider effect, γ or α), `"mean"` (the
-  group-size-weighted mean effect) or a number on the effect scale.
-- `reference` (`test` and `test_standardized`): the reference effect γ₀ the tests compare against, in the same three forms. The default is
-  `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
+- `reference`: the reference effect γ₀ — `"median"` (the median provider effect, γ or α), `"mean"` (the group-size-weighted mean
+  effect) or a number on the effect scale. For standardized measures, confidence intervals and plots the default is `"median"`; for
+  `test` and `test_standardized` it is `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
+  `LinearRandomEffectModel`'s standardized measures currently use 0 whatever `reference` is (an open item).
 - `stdz`: `"indirect"`, `"direct"` or a list of both.
 - `alternative`: `"two_sided"` (or `"two-sided"`), `"less"` or `"greater"`. Confidence intervals for the provider effects themselves (`option="gamma"` / `"alpha"`) are two-sided only.
 
@@ -70,7 +70,7 @@ LogisticFixedEffectModel.calculate_confidence_intervals(
     level: 'float' = 0.95,
     option: 'str' = 'SM',
     stdz: 'Union[str, list]' = 'indirect',
-    null: 'Union[str, float]' = 'median',
+    reference: 'Union[str, float]' = 'median',
     measure: 'Union[str, list]' = ('rate', 'ratio'),
     alternative: 'str' = 'two_sided',
     test_method: 'str' = 'exact',
@@ -79,12 +79,11 @@ LogisticFixedEffectModel.calculate_confidence_intervals(
 
 ```text
 LogisticRandomEffectModel.calculate_confidence_intervals(
-    provider_var: 'Optional[str]' = None,
     providers: 'Optional[Union[List, Array]]' = None,
     level: 'float' = 0.95,
     option: 'str' = 'SM',
     stdz: 'Union[str, List[str]]' = 'indirect',
-    null: 'Union[str, float]' = 'median',
+    reference: 'Union[str, float]' = 'median',
     measure: 'Union[str, List[str]]' = ('rate', 'ratio'),
     alternative: 'str' = 'two_sided',
 )
@@ -148,7 +147,6 @@ LogisticFixedEffectModel.test_standardized(
 LogisticRandomEffectModel.test(
     providers=None,
     *,
-    provider_var: 'Optional[str]' = None,
     test_method: 'str' = 'wald',
     reference=0.0,
     null_model=None,

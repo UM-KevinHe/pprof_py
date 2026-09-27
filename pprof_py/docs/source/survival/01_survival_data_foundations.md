@@ -44,23 +44,23 @@ package, this pair — a time and a 0/1 event flag — is the basic unit of
 data. In our running cohort, that's the `time` and `death` columns:
 
 ```python
-cohort[["patient_id", "time", "death"]].head()
+print(cohort[["patient_id", "time", "death"]].head())
 ```
 
 ```
    patient_id   time  death
-0           0  1.442      1
-1           1  0.187      0
-2           2  2.664      0
-3           3  0.940      1
-4           4  0.501      1
+0           0  3.604      0
+1           1  1.881      0
+2           2  1.509      0
+3           3  2.630      0
+4           4  2.463      0
 ```
 
-Patient 1 was followed for only 0.187 years and did not die in that
+Patient 1 was followed for only 1.881 years and did not die in that
 window (`death=0`) — maybe the study simply ended for them there, maybe
 they transferred care elsewhere. We don't know what would have happened
 to them at year 1 or year 5. What we *do* know is that they survived at
-least 0.187 years, and a correct analysis has to use exactly that much
+least 1.881 years, and a correct analysis has to use exactly that much
 information — no more, no less.
 
 **Why can't you just drop the censored people, or treat `time` as a
@@ -73,7 +73,7 @@ both cause real, directional bias, not just lost precision:
   becomes sicker than reality, and any estimate of average survival
   will be biased *downward*.
 - **Treating the censored time as if it were the true survival time**
-  (i.e., pretending patient 1 "survived" exactly 0.187 years and
+  (i.e., pretending patient 1 "survived" exactly 1.881 years and
   nothing more) understates how long people actually live, in the
   opposite but equally wrong way — it treats "still alive" as
   equivalent to "died right now."

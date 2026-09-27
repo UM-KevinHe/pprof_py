@@ -2,19 +2,8 @@
 # Inter-Unit Reliability (IUR)
 
 ```{note}
-This page isn't part of the original documentation task's six-item
-list for this deliverable — `measures.iur` isn't named in any
-deliverable's class list, and none of its four public names
-(`BootstrapIUR`, `SplitHalfIUR`, `DirectIUR`, `ratio_measure`) appear
-in `pprof_py.__all__`. It's added here because the package's own
-repository-structure notes list "SMR, SHR, IUR" together as the scope
-of the `measures/` module, and
-[survival Chapter 4 §4.9](../survival/04_indirect_standardization_smr_shr)
-already introduces the *concept* of inter-unit reliability without a
-worked implementation — this page is that missing implementation.
-Since it isn't re-exported at the package root, import it from
-`pprof_py.measures.iur` explicitly, e.g.
-`from pprof_py.measures.iur import BootstrapIUR`.
+The IUR estimators are not exported at the package root; import them
+from `pprof_py.measures.iur`, e.g. `from pprof_py.measures.iur import BootstrapIUR`.
 ```
 
 ## The question this answers
@@ -38,21 +27,41 @@ component without touching the signal component) is the standard fix
 behind it. Three estimators compute this decomposition three different
 ways, plus a `ratio_measure` helper shared by two of them.
 
+## The running example
+
+The examples use the 60-facility mortality cohort of
+[Penalized Logistic Regression](../logistic/penalized_logistic)
+(`cohort`, `X`, `candidates`): each patient's observed death and the
+probability expected from a covariate-only risk model, with no facility
+term.
+
+```python
+import numpy as np
+from pprof_py import PenalizedLogistic, LogisticFixedEffectModel
+
+obs = cohort["death_30d"].to_numpy(dtype=float)
+groups = cohort["facility_id"].to_numpy()
+risk = PenalizedLogistic(alpha=1.0).fit(X, obs)                # covariates only: no facility term
+exp = risk.predict_proba(X.to_numpy(), lambda_value=risk.lambda_path_[-1])   # expected probability per patient
+print(f"{obs.sum():.0f} deaths, {exp.sum():.1f} expected, {np.unique(groups).size} facilities")
+```
+```
+363 deaths, 363.0 expected, 60 facilities
+```
+
 ## `ratio_measure`: the standard measure being decomposed
 
 ```python
 from pprof_py.measures.iur import ratio_measure
-import numpy as np
 
-# sort by group FIRST -- see the note below
-sort_idx = np.argsort(groups, kind="stable")
-obs_s, exp_s, groups_s = obs[sort_idx], exp[sort_idx], groups[sort_idx]
-ratio_measure(obs_s, exp_s, groups_s)   # sum(obs_g) / sum(exp_g) per group
+print(ratio_measure(obs, exp, groups)[:5].round(3))   # sum(obs_g) / sum(exp_g) per facility
+```
+```
+[1.02  1.055 1.377 0.748 0.929]
 ```
 
-`ratio_measure` now sorts by group internally, so callers no longer
-need to pre-sort.  The explicit sort above is harmless but not
-required.
+`ratio_measure` sorts by group internally, so the inputs need not be
+sorted.
 
 Any custom `measure_fn(obs, exp, groups) -> measures` with this same
 signature can be substituted into any of the three estimators below —
@@ -65,11 +74,12 @@ just the built-in default.
 from pprof_py.measures.iur import BootstrapIUR
 
 model = BootstrapIUR(n_boot=200, seed=42)
-model.fit(obs, exp, groups)   # sorts internally -- raw obs/exp/groups are fine
-
-model.iur_            # -0.189
-model.s2_between_     # -0.0237 (signal)
-model.s2_within_      # 14.93   (noise, scaled by n_prime_)
+model.fit(obs, exp, groups)
+print(f"iur_ = {model.iur_:.3f}, s2_between_ = {model.s2_between_:.4f} (signal), "
+      f"s2_within_ = {model.s2_within_:.2f} (noise, scaled by n_prime_)")
+```
+```
+iur_ = -0.194, s2_between_ = -0.0243 (signal), s2_within_ = 14.94 (noise, scaled by n_prime_)
 ```
 
 Stratified bootstrap: resample within each group, recompute
@@ -93,8 +103,8 @@ sizes (using the fitted variance components, not the raw data again)
 this measure becomes reliable?" without refitting. `stratified_iur()`
 recomputes the full decomposition within subgroups of facilities (by
 size, by default) — worth treating with real caution at the far ends:
-on the same cohort, splitting 60 facilities into size deciles produced
-subgroup IUR values as extreme as $-3.5$, an artifact of estimating a
+on the same cohort, the default size groups hold 4 to 8 facilities each
+and give subgroup IUR values as extreme as $-3.4$, an artifact of estimating a
 variance-of-a-variance from a handful of facilities per bucket, not a
 sign the method is misbehaving on this particular data.
 
@@ -103,10 +113,21 @@ sign the method is misbehaving on this particular data.
 ```python
 from pprof_py.measures.iur import DirectIUR
 
+fe = LogisticFixedEffectModel().fit(cohort, y_var="death_30d", x_vars=candidates, provider_var="facility_id")
 model = DirectIUR()
-model.fit(sizes=group_sizes, estimates=group_estimates, standard_errors=group_ses)
-model.iur_
+model.fit(sizes=fe.provider_sizes_, estimates=fe.coefficients_["gamma"],
+          standard_errors=np.sqrt(fe.variances_["gamma"]))
+print(f"iur_ = {model.iur_:.3f}")
 ```
+```
+iur_ = -2.188
+```
+
+On the log-odds scale of $\hat\gamma_k$ the estimated between-facility
+variance is again negative, and much larger in magnitude relative to the
+within-facility variances (the facility effects' true SD is 0.2, while
+their median standard error is 0.74), so this IUR falls well
+below zero.
 
 No patient-level data or resampling — if you already have per-facility
 estimates and standard errors (`LogisticFixedEffectModel`'s
@@ -122,11 +143,11 @@ from pprof_py.measures.iur import SplitHalfIUR
 
 model = SplitHalfIUR(n_iter=20, seed=42)
 model.fit(obs, exp, groups)
-model.summary()
+print(model.summary().round(4).to_string())
 ```
 ```
    iur_kappa  iur_kendall_cat  iur_spearman_cat  iur_pearson  iur_kendall  iur_spearman  n_groups
-0    -0.1048          -0.1266             ...          ...          ...        -0.185        60
+0    -0.1051          -0.1313           -0.1696      -0.1809      -0.1079       -0.1731        60
 ```
 
 A different philosophy from the other two: repeatedly split each
@@ -135,9 +156,10 @@ half independently, and correlate the two halves' results across
 groups — six ways (weighted Cohen's kappa and Kendall/Spearman on
 ordinal-binned measures; Pearson, Kendall, and Spearman on the
 continuous measure directly), each converted to an IUR-scale number
-via the Spearman-Brown formula, $\text{IUR} = 2r/(1+r)$. No variance
-decomposition, no negative values by construction (correlations are
-bounded, so Spearman-Brown-transformed values are too) — a useful
+via the Spearman-Brown formula, $\text{IUR} = 2r/(1+r)$. There is no
+variance decomposition, but the values can still be negative: a
+negative split-half correlation gives a negative IUR, as every variant
+does on this cohort — a useful
 cross-check against `BootstrapIUR`'s ANOVA-style estimate precisely
 because it fails differently when the data doesn't cooperate, not
 because one is more "correct" than the other in general.

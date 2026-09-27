@@ -49,9 +49,8 @@ weighted residual sum of squares. "Deviance" for this family (what
 `deviance_path_`, `null_deviance_`, and `deviance_ratio_path_` report)
 *is* that weighted RSS, $\sum_i w_i(y_i - \eta_i)^2$ — there's no
 extra transformation the way there is between log-odds and probability
-for logistic. That equivalence matters later in Section 8, where a
-cross-validation attribute turns out to be this exact quantity under a
-misleading name.
+for logistic. The cross-validated deviance in Section 7 is the same
+quantity on the held-out folds.
 
 ## 3. The running example: a 30-day cost cohort
 
@@ -111,6 +110,7 @@ candidates = ["age", "sex", "diabetes", "chf", "comorbidity_count",
               "prior_admissions", "albumin", "bmi", "lab_c", "lab_d"]
 X = cohort[candidates]
 y = cohort["cost_30d"].values
+print(cohort.head().to_string())
 ```
 
 ```
@@ -132,9 +132,12 @@ from pprof_py import PenalizedLinear
 lasso = PenalizedLinear(alpha=1.0)
 lasso.fit(X, y)
 
-lasso.lambda_max_          # 3.6976337628046547
-lasso.n_nonzero_path_[[0, 10, 30, 50, 70, 99]]
-# array([ 0,  4,  7,  7,  9, 10])
+print(f"lambda_max = {lasso.lambda_max_:.6f}")
+print(lasso.n_nonzero_path_[[0, 10, 30, 50, 70, 99]])
+```
+```
+lambda_max = 3.697634
+[ 0  4  7  7  9 10]
 ```
 
 The mechanics are identical to the logistic case: `coef_` doesn't
@@ -143,18 +146,20 @@ for a single-lambda fit), so pull coefficients from `coef_path_` by
 position or from `coef_at()` by an arbitrary lambda:
 
 ```python
-lam = lasso.lambda_path_[70]   # 0.005490868783205466
-lasso.coef_at(lam)
+lam = lasso.lambda_path_[70]
+print(f"lambda = {lam:.6f}")
+print(pd.Series(lasso.coef_at(lam), index=candidates).round(4).to_string())
 ```
 ```
+lambda = 0.005491
 age                  0.1072
 sex                 -0.0593
-diabetes             4.4017
+diabetes             4.4018
 chf                  8.0040
 comorbidity_count    3.1146
 prior_admissions     2.5454
-albumin             -2.1096
-bmi                  0.0619
+albumin             -2.1092
+bmi                  0.0620
 lab_c                0.0061
 lab_d                0.0000
 ```
@@ -164,74 +169,32 @@ These are already on the natural, dollar scale — a coefficient of
 other retained covariates fixed. No exponentiation step, unlike the
 odds ratios the logistic chapter needed.
 
-```{note}
-As with `PenalizedLogistic`, the attributes actually set by `fit()`
-run well beyond what either class's docstring documents (in fact
-`PenalizedLinear` and `PenalizedLinearCV` have no "Attributes" section
-in their docstrings at all). Everything shown in this chapter —
-`column_scale_`, `converged_path_`, `deviance_path_`,
-`lambda_min_ratio_`, `log_likelihood_path_`, `n_nonzero_path_`,
-`null_deviance_`, `penalty_factor_`, alongside the documented
-`coef_path_`/`intercept_path_`/`lambda_path_`/`lambda_max_`/
-`deviance_ratio_path_` — is real and was confirmed on a fitted
-instance.
-```
+Besides `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`
+and `deviance_ratio_path_`, a path fit sets `column_scale_`,
+`converged_path_`, `deviance_path_`, `lambda_min_ratio_`,
+`log_likelihood_path_`, `n_iter_path_`, `n_nonzero_path_`,
+`null_deviance_` and `penalty_factor_`.
 
-## 5. Two parameters `PenalizedLogistic` has that this class doesn't
-
-Two gaps are worth flagging explicitly rather than letting you
-discover them by a `TypeError` or a silent difference in behavior:
-
-- **`use_active_set`.** `PenalizedLogistic` accepts
-  `use_active_set=True` to accelerate coordinate descent by skipping
-  variables that are already zero and satisfy the KKT condition.
-  `PenalizedLinear` has no such parameter — every fit runs the full
-  (non-active-set) coordinate descent, regardless of how sparse the
-  solution ends up being.
-- **`n_iter_path_`.** `PenalizedLogistic` records outer-loop iteration
-  counts per lambda; `PenalizedLinear` does not store this at all
-  (`hasattr(lasso, "n_iter_path_")` is `False`). `converged_path_`
-  (a per-lambda boolean) is still available on both classes.
-
-Both gaps reflect wiring differences between the two classes rather
-than a fundamental limitation of the underlying solver.
-
-## 6. The outer loop: usually one step, with one wrinkle
+## 5. The outer loop takes one step
 
 Section 2 noted that maximizing the Gaussian log-likelihood is exactly
-weighted least squares. Unlike the logistic case, the curvature here —
-`linear_information(X, weight) = X.T @ diag(weight) @ X` — does not
-depend on $\beta$ at all, so the quadratic model the outer loop builds
-is *exact*, not a local approximation. Calling the package's own
-solver directly, bypassing the class for a moment, confirms this: with
-a plain (non-intercept-tracking) Gaussian objective, every one of 100
-lambdas converges in exactly one outer iteration:
+weighted least squares. Unlike the logistic case, the curvature here,
+$\mathbf{X}^\top \operatorname{diag}(w)\,\mathbf{X}$, does not depend on
+$\beta$, so the quadratic model the outer (proximal Newton) loop
+builds is *exact*, not a local approximation, and each lambda needs a
+single outer iteration:
 
 ```python
-from pprof_py.algorithms.coordinate_descent import fit_regularization_path
-from pprof_py.algorithms.linear.likelihood import build_linear_objective
-# ... (X_fit, pf, lambda sequence set up as in Section 4) ...
-results = fit_regularization_path(
-    build_linear_objective(X_fit, y, weight), p, c, alpha=1.0,
-    lambda_sequence=lam_seq, penalty_factor=pf,
-)
-[r.n_outer_iter for r in results][:5]   # [1, 1, 1, 1, 1]
-[r.converged for r in results].count(True)   # 100
+print(np.bincount(lasso.n_iter_path_), int(lasso.converged_path_.sum()))   # iterations per lambda; converged
+```
+```
+[  0 100] 100
 ```
 
-`PenalizedLinear.fit()` itself doesn't call the solver quite this
-plainly, though — it wraps the objective in a closure that also
-updates the (unpenalized) intercept by its own Newton step every time
-the objective is evaluated, the same design
-[the logistic chapter's Section 5](../logistic/penalized_logistic)
-described. The same consequence follows here: `converged_path_` on the
-fit from Section 4 is `True` for only 11 of the 100 lambdas, even
-though refitting with `fit_intercept=False` converges cleanly at every
-one (100/100). This intercept-tracking wrinkle affects
-the convergence *flag* but not the actual coefficients — the
-coefficients this chapter reports are stable regardless of the flag.
+All 100 lambdas take one outer iteration and are converged.
+`PenalizedLinear` accepts `use_active_set` as `PenalizedLogistic` does.
 
-## 7. Standardization
+## 6. Standardization
 
 `standardize=True` behaves exactly as
 [described for the logistic model](../logistic/penalized_logistic):
@@ -240,67 +203,60 @@ leave centering to the (unpenalized) intercept, and transform
 `coef_path_` back to the original scale before storing it — that
 mechanism is family-agnostic and isn't repeated here. One difference
 worth knowing about: if every candidate column happens to be
-degenerate (zero weighted variance — e.g. a constant column), the
-error `PenalizedLinear` raises is `"penalty_factor cannot be all-zero
-(nothing would be penalized)"`, which is technically true but blames
-the wrong thing — `PenalizedLogistic` catches the same situation
-earlier and reports the actual cause, `"All predictors have zero
-weighted variance"`. This won't come up with real covariates that vary at all, so
-it doesn't affect the cohort in this chapter.
+degenerate (zero weighted variance — e.g. a constant column), `fit()` raises
+`ValueError: All predictors have zero weighted variance`, as
+`PenalizedLogistic` does.
 
-## 8. Cross-validation with `PenalizedLinearCV`
+## 7. Cross-validation with `PenalizedLinearCV`
 
 ```python
+from pprof_py import PenalizedLinearCV
+
 cv = PenalizedLinearCV(alpha=1.0, n_folds=10, random_state=0)
 cv.fit(X, y)
-
-cv.lambda_min_   # 0.03216013277245188
-cv.lambda_1se_   # 0.29992647459797356
-cv.lambda_       # 0.29992647459797356 -- lambda_1se_, se_rule="1se" default
+print(f"lambda_min = {cv.lambda_min_:.6f}, lambda_1se = {cv.lambda_1se_:.6f}, "
+      f"lambda_ = {cv.lambda_:.6f}")              # lambda_ is lambda_1se_ (se_rule="1se", the default)
+print(pd.Series(cv.coef_, index=candidates).round(4).to_string())   # at lambda_1se_
 ```
-
-`cv.coef_` (at `lambda_1se_`):
-
 ```
-age                  0.0843
+lambda_min = 0.035296, lambda_1se = 0.299926, lambda_ = 0.299926
+age                  0.0844
 sex                  0.0000
-diabetes             3.7647
-chf                  7.3234
-comorbidity_count    2.8734
-prior_admissions     2.1690
-albumin             -1.5346
+diabetes             3.7649
+chf                  7.3237
+comorbidity_count    2.8735
+prior_admissions     2.1692
+albumin             -1.5323
 bmi                  0.0000
 lab_c                0.0000
 lab_d                0.0000
 ```
 
 Both `lab_c` and `lab_d` are correctly zeroed, along with `sex` and
-`bmi` — five covariates survive, the same variable-selection story
+`bmi` — six covariates survive, the same variable-selection story
 Section 7 of the logistic chapter told, for the same reason (LASSO at
 `lambda_1se_` prefers the simpler model whenever cross-validated
 performance can't statistically tell the difference). At
-`lambda_min_` (via `cv.model_.coef_at(cv.lambda_min_)`), `lab_c` and
-`lab_d` are still correctly zero here, though `sex` picks up a small
-nonzero coefficient (-0.0049) that isn't really there in the
-data-generating process — the same finite-sample noise Chapter 8 warns
-about, just landing on a different covariate than it did for the
-logistic fit on this cohort's own noise.
+`lambda_min_` (`cv.model_` holds the full path, so
+`cv.model_.coef_at(cv.lambda_min_)` reads it there) `bmi` re-enters,
+while `sex`, `lab_c` and `lab_d` stay at zero.
 
-## 9. Ridge, LASSO, and elastic net on the same cohort
+## 8. Ridge, LASSO, and elastic net on the same cohort
 
-Each read at its own cross-validated `lambda_min_`, as in the logistic
-chapter:
+Each read at its own cross-validated `lambda_min_`
+(`PenalizedLinearCV(alpha=..., n_folds=10, random_state=0, se_rule="min").coef_`),
+as in the logistic chapter:
 
 | | ridge ($\alpha{=}0$) | elastic net ($\alpha{=}0.5$) | lasso ($\alpha{=}1$) |
 |---|---:|---:|---:|
-| age | 0.0790 | 0.1065 | 0.1051 |
-| sex | -0.0275 | -0.0571 | -0.0049 |
-| diabetes | 3.1647 | 4.3724 | 4.3431 |
-| chf | 5.8147 | 7.9536 | 7.9405 |
-| comorbidity_count | 2.2784 | 3.0955 | 3.0927 |
-| prior_admissions | 1.8647 | 2.5295 | 2.5117 |
-| albumin | -1.5987 | -2.0978 | -2.0596 |
-| bmi | 0.0418 | 0.0613 | 0.0561 |
+| age | 0.0793 | 0.1065 | 0.1049 |
+| sex | -0.0261 | -0.0570 | 0.0000 |
+| diabetes | 3.1661 | 4.3726 | 4.3364 |
+| chf | 5.8160 | 7.9537 | 7.9333 |
+| comorbidity_count | 2.2792 | 3.0956 | 3.0903 |
+| prior_admissions | 1.8656 | 2.5296 | 2.5079 |
+| albumin | -1.5863 | -2.0967 | -2.0513 |
+| bmi | 0.0427 | 0.0614 | 0.0556 |
 | lab_c | 0.0017 | 0.0053 | 0.0000 |
 | lab_d | -0.0112 | 0.0000 | 0.0000 |
 

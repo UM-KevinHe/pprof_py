@@ -109,37 +109,44 @@ from pprof_py import GroupLassoCoxPH
 m = GroupLassoCoxPH(groups=groups, alpha=0.0)
 m.fit(X, duration=time, event=death)
 
-m.lambda_max_     # 0.01864441735179914
-m.n_groups_        # 5 -- the four penalized groups plus the two singletons
-m.group_sizes_     # array([2, 2, 2, 1, 1])
+print(f"lambda_max = {m.lambda_max_:.6f}")
+print("penalized groups:", m.n_groups_, " sizes:", m.group_sizes_)   # age (group 0) is unpenalized
+```
+```
+lambda_max = 0.018644
+penalized groups: 5  sizes: [2 2 2 1 1]
 ```
 
 Cox has no intercept, so `coef_at()`, `predict_linear()`, and
 `predict_partial_hazard()` work without any intercept-interpolation
-concern, and this was confirmed directly:
+concern:
 
 ```python
 lam = m.lambda_path_[60]
-m.predict_partial_hazard(X.values[:3], lambda_value=lam)
-# [33.198, 6.705, 31.967], confirmed equal to exp(X @ coef_at(lam))
-# computed independently, to full floating-point precision.
+hazard = m.predict_partial_hazard(X.values[:3], lambda_value=lam)
+print(hazard.round(3), bool(np.allclose(hazard, np.exp(X.values[:3] @ m.coef_at(lam)))))
+```
+```
+[33.198  6.705 31.967] True
 ```
 
 Group entry order tells you which groups this cohort's data actually
 supports:
 
 ```python
+names = ["access type", "diabetes + comorbidity", "noise lab panel",
+         "sex, singleton", "vintage_years, singleton"]
 for g in range(1, m.n_groups_ + 1):
     active = np.array([ag[g - 1] for ag in m.active_groups_])
-    first = np.argmax(active) if active.any() else None
-    print(g, first, m.lambda_path_[first] if first is not None else None)
+    first = int(np.argmax(active))
+    print(f"group {g} ({names[g - 1]}): first active at index {first}, lambda={m.lambda_path_[first]:.5f}")
 ```
 ```
-group 1 (access type)          first active at index  7, lambda=0.00972
-group 2 (diabetes + comorbidity) first active at index  1, lambda=0.01699
-group 3 (noise lab panel)      first active at index 25, lambda=0.00182
-group 4 (sex, singleton)       first active at index 36, lambda=0.00065
-group 5 (vintage_years, singleton) first active at index 21, lambda=0.00264
+group 1 (access type): first active at index 7, lambda=0.00972
+group 2 (diabetes + comorbidity): first active at index 1, lambda=0.01699
+group 3 (noise lab panel): first active at index 25, lambda=0.00182
+group 4 (sex, singleton): first active at index 36, lambda=0.00065
+group 5 (vintage_years, singleton): first active at index 21, lambda=0.00264
 ```
 
 The comorbidity group enters first, access type not far behind — both
@@ -170,21 +177,21 @@ any stratum is entirely missing from a training fold.
 ```python
 from pprof_py import GroupLassoCoxPHCV
 
-cv = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5, random_state=0)
-cv.fit(X, duration=time, event=death)   # se_rule='min' by default
-
-cv.lambda_min_   # 0.002365958818367196
-cv.lambda_1se_   # 0.01870537265323917
-cv.coef_          # at lambda_min_, the default
+cv = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5, random_state=0,
+                       se_rule="min")
+cv.fit(X, duration=time, event=death)
+print(f"lambda_min = {cv.lambda_min_:.6f}, lambda_1se = {cv.lambda_1se_:.6f}")
+print(pd.Series(cv.coef_, index=X.columns).round(4).to_string())   # at lambda_min_
 ```
 ```
-age                  0.0412
+lambda_min = 0.002846, lambda_1se = 0.018644
+age                  0.0420
 sex                  0.0000
-diabetes             0.2435
-comorbidity_count    0.2511
-vintage_years       -0.0021
-access_graft         0.1482
-access_catheter      0.4426
+diabetes             0.2062
+comorbidity_count    0.2197
+vintage_years        0.0000
+access_graft         0.1054
+access_catheter      0.3333
 lab_g                0.0000
 lab_h                0.0000
 ```
@@ -202,9 +209,9 @@ correctly.
 
 ```python
 cv_1se = GroupLassoCoxPHCV(groups=groups, alpha=0.0, n_lambda=50, n_folds=5,
-                            random_state=0, se_rule="1se")
+                            random_state=0)   # se_rule="1se", the default
 cv_1se.fit(X, duration=time, event=death)
-cv_1se.coef_
+print(pd.Series(cv_1se.coef_, index=X.columns).round(4).to_string())
 ```
 ```
 age                  0.0412
@@ -222,10 +229,8 @@ Every penalized group is zeroed at `lambda_1se_` — only the
 unpenalized `age` coefficient survives. This is a striking, exact
 echo of what
 [Chapter 8 §8.5](08_penalized_regression) found for plain
-element-wise `PenalizedCoxPHCV` on a similarly-sized cohort:
-*"Switching to the more conservative `se_rule='1se'` on this
-same data pushes the penalty hard enough to zero out every covariate
-except age."* With roughly 300 events spread across a 4,000-patient
+element-wise `PenalizedCoxPHCV` on a similarly-sized cohort: at
+`lambda_1se_` every covariate except age is zeroed. With roughly 300 events spread across a 4,000-patient
 cohort, the same event-count scarcity Chapter 8 and this guide's
 logistic chapter both point to shows up a third time here, for a third
 penalty shape — `lambda_1se_`'s one-standard-error margin is

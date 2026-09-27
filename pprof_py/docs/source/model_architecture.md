@@ -86,7 +86,7 @@ runtime if needed.
 
 Models that provide a `summary()` method satisfy this protocol.
 
-```python
+```{code-block} python
 class SummaryMixin(Protocol):
     def summary(
         self,
@@ -107,10 +107,17 @@ $$
 
 Models that provide a `test()` method for hypothesis testing.
 
-```python
+```{code-block} python
 class TestMixin(Protocol):
-    def test(self, *args, **kwargs) -> Any: ...
+    def test(self, providers: Any = None, *, reference: Any = ..., null_model: Any = None,
+             alternative: str = "two_sided", level: float = 0.95, critical: Any = None,
+             **kwargs: Any) -> Any: ...
 ```
+
+Every `test()` returns a `DataFrame` indexed by provider with the columns
+`pprof_py.inference.PROVIDER_TEST_COLUMNS`, where `flag` is +1 above the
+reference, −1 below, 0 not significant and NA not tested; the family
+adds its own statistics (`test_method=`).
 
 Common tests include the Wald Z-test:
 
@@ -126,7 +133,7 @@ Wald tests for survival models).
 
 Models that provide standard diagnostic and summary plots.
 
-```python
+```{code-block} python
 class PlotMixin(Protocol):
     def plot_funnel(self, *args, **kwargs) -> None: ...
     def plot_residuals(self, *args, **kwargs) -> None: ...
@@ -178,13 +185,16 @@ The naming conventions differ slightly between families.
 | `residuals_` | Residuals (response scale) |
 | `converged_` | Boolean convergence flag |
 
-This table describes the random-effect classes. The fixed-effect classes have `coefficients_['gamma']` (provider effects) instead of `'alpha'`, `variances_['gamma']`, no `loglike_` or `converged_`, and `LogisticFixedEffectModel` adds `auc_`. Exact shapes and the different `summary()` layouts are listed in the reference ({ref}`ll_ref_conventions`).
+This table describes the random-effect classes. The fixed-effect classes have `coefficients_['gamma']` (provider effects) instead of `'alpha'`, `variances_['gamma']`, no `loglike_` or `converged_`, and `LogisticFixedEffectModel` adds `auc_`. Exact shapes and the different `summary()` layouts are listed in the reference pages ({ref}`ll_ref_linear`, {ref}`ll_ref_logistic`).
 
 ## Typical Workflow
 
+These are templates on your own data (`X`, `time`, `event`, `df`, ...), not
+runnable examples; each model's chapter has a complete one.
+
 **Survival model:**
 
-```python
+```{code-block} python
 from pprof_py import CoxPH
 
 # 1. Configure
@@ -208,7 +218,7 @@ model.predict_survival_function(X_new)
 
 **Logistic fixed-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LogisticFixedEffectModel
 
 model = LogisticFixedEffectModel()
@@ -220,7 +230,7 @@ model.calculate_standardized_measures()
 
 **Linear random-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LinearRandomEffectModel
 
 model = LinearRandomEffectModel(verbose=False)
@@ -238,7 +248,7 @@ model.plot_provider_effects()
 
 **Logistic random-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LogisticRandomEffectModel
 
 model = LogisticRandomEffectModel(verbose=False)

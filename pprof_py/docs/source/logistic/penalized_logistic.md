@@ -132,6 +132,7 @@ candidates = ["age", "sex", "diabetes", "chf", "comorbidity_count",
               "prior_admissions", "albumin", "bmi", "lab_c", "lab_d"]
 X = cohort[candidates]
 y = cohort["death_30d"].values
+print(cohort.head().to_string())
 ```
 
 ```
@@ -194,7 +195,10 @@ This is worth stating plainly because it's easy to trip over:
 `lasso.coef_` does not exist after the call above.
 
 ```python
-hasattr(lasso, "coef_")   # False
+print(hasattr(lasso, "coef_"))
+```
+```
+False
 ```
 
 `coef_`, `intercept_`, and `lambda_` are only set when `fit()` produces
@@ -207,14 +211,16 @@ in $\log\lambda$ between the two bracketing path points — and its
 counterpart `intercept_at()`:
 
 ```python
-lam = lasso.lambda_path_[70]          # 3.2506e-05, near the unpenalized end
-lasso.coef_at(lam)
+lam = lasso.lambda_path_[70]          # near the unpenalized end
+print(f"lambda = {lam:.4e}")
+print(pd.Series(lasso.coef_at(lam), index=candidates).round(4).to_string())
 ```
 ```
+lambda = 3.2506e-05
 age                  0.0316
 sex                  0.1036
-diabetes             0.4412
-chf                  0.4177
+diabetes             0.4413
+chf                  0.4178
 comorbidity_count    0.2293
 prior_admissions     0.0552
 albumin             -0.5476
@@ -223,7 +229,10 @@ lab_c                0.1154
 lab_d               -0.0866
 ```
 ```python
-lasso.intercept_at(lam)   # -3.8759149577528182
+print(round(lasso.intercept_at(lam), 4))
+```
+```
+-3.8763
 ```
 
 Coefficients come back on the *original* covariate scale — a raw log-odds
@@ -231,17 +240,14 @@ per year of age, per g/dL of albumin, and so on — even though fitting
 happens internally on standardized columns (Section 6). There's no
 manual rescaling step for you to get wrong.
 
-```{note}
-The full attribute surface after `fit()` is broader than the class
-docstring lists: alongside `coef_path_`, `intercept_path_`,
-`lambda_path_`, `lambda_max_`, and `deviance_ratio_path_`, a fitted
-`PenalizedLogistic` also carries `column_scale_`, `converged_path_`,
-`deviance_path_`, `feature_names_in_`, `lambda_min_ratio_`,
-`log_likelihood_path_`, `n_iter_path_`, `n_nonzero_path_`,
-`null_deviance_`, and `penalty_factor_` — all used in this chapter.
-```
+Alongside `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`
+and `deviance_ratio_path_`, a fitted `PenalizedLogistic` carries
+`column_scale_`, `converged_path_`, `deviance_path_`, `feature_names_in_`,
+`lambda_min_ratio_`, `log_likelihood_path_`, `n_iter_path_`,
+`n_nonzero_path_`, `null_deviance_` and `penalty_factor_`; this chapter
+uses most of them.
 
-## 5. Why fitting takes so many iterations here
+## 5. Why fitting takes more than one iteration here
 
 `PenalizedLogistic` and `PenalizedCoxPH` share the same outer-loop
 solver (proximal Newton, cycling coordinate descent on the penalized
@@ -256,34 +262,20 @@ before it can trust the next step. `n_iter_path_` records how many
 outer steps each lambda actually took:
 
 ```python
-lasso.n_iter_path_.min(), lasso.n_iter_path_.max(), lasso.n_iter_path_.mean()
-# (1, 100, 99.01)
-lasso.n_iter_path_[:5]
-# array([  1, 100, 100, 100, 100])
+it = lasso.n_iter_path_
+print(it.min(), it.max(), it.mean(), it[:5], int(lasso.converged_path_.sum()))
+```
+```
+1 7 5.02 [1 2 3 3 3] 100
 ```
 
-```{note}
-Almost every lambda in the default path runs all the way to
-`max_outer_iter` (100) without the solver's own convergence flag
-(`converged_path_`) ever firing — only the trivial, all-zero first
-lambda formally converges. This traces to how the (unpenalized)
-intercept is updated: it's folded into the same objective evaluation
-the outer loop uses for its convergence check, as a side effect, which
-keeps nudging that check just enough to prevent it from settling under
-the default `outer_tol=1e-9`. Refitting with `fit_intercept=False`
-converges cleanly at every lambda (100/100, mean 2.4 iterations), which
-isolates the cause. The **coefficients themselves are stable** —
-loosening `outer_tol` to `1e-6` changes `coef_path_` by at most 2e-4
-while needing far fewer iterations — so treat `n_iter_path_` sitting at
-100 as a (currently unresolved) reporting quirk rather than evidence
-the fit failed.
-```
+Every lambda converges (`converged_path_`), in at most seven outer
+steps; the first, all-zero point needs one.
 
 The [penalized linear chapter](../linear/penalized_linear) that
 follows this one shows the other end of this contrast: a continuous
-outcome under Gaussian errors has *constant* curvature, so its outer
-loop is structurally simpler — when the same intercept-update wrinkle
-isn't in play, one step suffices.
+outcome under Gaussian errors has *constant* curvature, so one outer
+step suffices at every lambda.
 
 ## 6. Standardization and the intercept
 
@@ -291,6 +283,9 @@ isn't in play, one step suffices.
 common scale before penalizing, by dividing by its weighted population
 standard deviation — `column_scale_` after the fit above:
 
+```python
+print(pd.Series(lasso.column_scale_, index=candidates).round(3).to_string())
+```
 ```
 age                  12.980
 sex                   0.499
@@ -343,10 +338,13 @@ from pprof_py import PenalizedLogisticCV
 cv = PenalizedLogisticCV(alpha=1.0, n_folds=10, random_state=0)
 cv.fit(X, y)
 
-cv.lambda_min_   # 2.961845624722433e-05
-cv.lambda_1se_   # 0.007866921978799356
-cv.lambda_       # 0.007866921978799356  -- lambda_1se_, since se_rule="1se" by default
+print(f"lambda_min = {cv.lambda_min_:.4e}, lambda_1se = {cv.lambda_1se_:.6f}, lambda_ = {cv.lambda_:.6f}")
 ```
+```
+lambda_min = 2.6987e-05, lambda_1se = 0.007867, lambda_ = 0.007867
+```
+
+`lambda_` is `lambda_1se_`, since `se_rule="1se"` is the default.
 
 Folds are assigned by `_stratified_fold_assignment`, which splits the
 death and non-death groups into folds separately before combining
@@ -357,7 +355,7 @@ per-fold deviance unstable in exactly the way Section 1 warned about.
 `cv.coef_` — the sparse, default answer — sits at `lambda_1se_`:
 
 ```python
-cv.coef_   # a pandas Series here for readability; coef_ itself is a plain ndarray
+print(pd.Series(cv.coef_, index=candidates).round(4).to_string())   # coef_ itself is a plain ndarray
 ```
 ```
 age                  0.0196
@@ -366,13 +364,16 @@ diabetes             0.1450
 chf                  0.0926
 comorbidity_count    0.1249
 prior_admissions     0.0000
-albumin             -0.2399
+albumin             -0.2398
 bmi                  0.0000
 lab_c                0.0000
 lab_d                0.0000
 ```
 ```python
-cv.intercept_   # -3.3997566856995496
+print(round(cv.intercept_, 4))
+```
+```
+-3.4003
 ```
 
 Both pure-noise covariates — `lab_c` and `lab_d` — are correctly
@@ -382,17 +383,20 @@ zeroed out at `lambda_1se_`, along with `sex`, `prior_admissions`, and
 — `cv.model_` is the same full-path `PenalizedLogistic` object the CV
 loop already fit on all the data):
 
+```python
+print(pd.Series(cv.model_.coef_at(cv.lambda_min_), index=candidates).round(4).to_string())
+```
 ```
 age                  0.0316
-sex                  0.1037
-diabetes             0.4414
-chf                  0.4179
+sex                  0.1038
+diabetes             0.4415
+chf                  0.4180
 comorbidity_count    0.2293
-prior_admissions     0.0552
-albumin             -0.5477
+prior_admissions     0.0553
+albumin             -0.5478
 bmi                  0.0107
-lab_c                0.1154
-lab_d               -0.0866
+lab_c                0.1155
+lab_d               -0.0867
 ```
 
 At `lambda_min_`, nothing is zero — both noise variables carry small
@@ -407,23 +411,18 @@ for a model that's actively sparse, which is why it's this class's
 default (`se_rule="1se"`):
 
 ```python
-cv.cv_mean_deviance_[cv.lambda_min_idx_], cv.cv_mean_deviance_[cv.lambda_1se_idx_]
-# (262.31096721525..., 265.45426807974...)
-cv.cv_se_deviance_[cv.lambda_min_idx_]
-# 3.626404928283607
+dev = cv.cv_mean_deviance_
+print(round(dev[cv.lambda_min_idx_], 2), round(dev[cv.lambda_1se_idx_], 2),
+      round(cv.cv_se_deviance_[cv.lambda_min_idx_], 2))
+```
+```
+262.31 265.45 3.63
 ```
 
-265.45 sits well inside one standard error (3.63) of 262.31 — the
+265.45 sits within one standard error (3.63) of 262.31 — the
 1se rule's entire premise is that this difference in cross-validated
 deviance is not distinguishable from noise, so there's no real cost to
 preferring the simpler, five-covariate model.
-
-```{note}
-`cv_se_deviance_` — the quantity `lambda_1se_` is actually computed
-from — isn't listed in `PenalizedLogisticCV`'s docstring, which
-mentions only `cv_mean_deviance_` and `cv_std_deviance_`. It exists and
-behaves as shown here.
-```
 
 ## 8. Ridge, LASSO, and elastic net on the same cohort
 
@@ -557,23 +556,27 @@ prediction, `summary()` gives a small DataFrame plus metadata in
 `.attrs`:
 
 ```python
-lasso.summary(which=cv.lambda_1se_idx_)
+point = lasso.summary(which=cv.lambda_1se_idx_)
+print(point)
 ```
 ```
              feature      coef  nonzero
-0                age  0.019552     True
+0                age  0.019554     True
 1                sex  0.000000    False
-2           diabetes  0.144984     True
-3                chf  0.092598     True
-4  comorbidity_count  0.124900     True
+2           diabetes  0.144995     True
+3                chf  0.092606     True
+4  comorbidity_count  0.124905     True
 5   prior_admissions  0.000000    False
-6            albumin -0.239915     True
+6            albumin -0.239824     True
 7                bmi  0.000000    False
 8              lab_c  0.000000    False
 9              lab_d  0.000000    False
 ```
 ```python
-# .attrs: {'lambda': 0.0079, 'deviance_ratio': 0.035, 'n_nonzero': 5}
+print({k: round(float(v), 4) for k, v in point.attrs.items()}, round(lasso.deviance_ratio_path_[-1], 3))
+```
+```
+{'lambda': 0.0079, 'deviance_ratio': 0.035, 'n_nonzero': 5.0} 0.051
 ```
 
 `deviance_ratio` (0.035 here) is the fraction of null deviance this

@@ -9,8 +9,8 @@ beta-independent recentering of the partial log-likelihood onto a
   the raw log-likelihood's units.
 * Cross-validation: `PenalizedCoxPHCV` computes, per fold, the
   Verweij & Van Houwelingen (1993) grouped deviance residual
-  `deviance(all data; beta_hat_-k) - deviance(training-only data;
-  beta_hat_-k)`, exactly matching glmnet's `cv.glmnet(family="cox")`
+  `deviance(all data; ``beta_hat_``-k) - deviance(training-only data;
+  ``beta_hat_``-k)`, exactly matching glmnet's `cv.glmnet(family="cox")`
   default (`grouped=TRUE`) -- confirmed against glmnet 4.1-8's actual
   ``R/buildPredmat.coxnetlist.R`` and ``R/cv.coxnet.R``, not the paper
   or vignette alone (see ``docs/R_COMPATIBILITY.md``).

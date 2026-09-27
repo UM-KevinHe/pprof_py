@@ -411,7 +411,7 @@ class _ConfidenceIntervalMethods:
         return results
     
     def _sum_logistic_for_provider(self, gid, gamma_val):
-        """Sum logistic(gamma_val + xbeta_) for the observations belonging to provider gid."""
+        """Sum logistic(gamma_val + ``xbeta_``) for the observations belonging to provider gid."""
         idx = np.where(self.provider_ids_ == gid)[0]
         if len(idx) == 0: return np.nan
         group_idx = idx[0]
@@ -421,7 +421,7 @@ class _ConfidenceIntervalMethods:
         return pvals.sum()
 
     def _sum_logistic_overall(self, gamma_val):
-        """Sum logistic(gamma_val + xbeta_) over the entire dataset (for direct approach)."""
+        """Sum logistic(gamma_val + ``xbeta_``) over the entire dataset (for direct approach)."""
         pvals = 1.0/(1.0 + np.exp(-(gamma_val + self.xbeta_)))
         return pvals.sum()
 

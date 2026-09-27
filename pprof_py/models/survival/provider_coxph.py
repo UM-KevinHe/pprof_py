@@ -246,26 +246,26 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     max_inner_iter : int, default 1000
     inner_tol : float, default 1e-10
 
-    Attributes (set by ``fit``)
-    ---------------------------
-    coef_path_ : ndarray, shape ``(n_lambda_, n_features)``
+    Attributes
+    ----------
+    coef_path_ : ndarray, shape ``(``n_lambda_``, n_features)``
         Covariate coefficients β (original units) at each λ.
-    gamma_path_ : ndarray, shape ``(n_lambda_, n_providers_)``
+    gamma_path_ : ndarray, shape ``(``n_lambda_``, ``n_providers_``)``
         Provider effects γ at each λ.
-    lambda_path_ : ndarray, shape ``(n_lambda_,)``
+    lambda_path_ : ndarray, shape ``(``n_lambda_``,)``
     lambda_max_ : float
     provider_labels_ : ndarray
         Sorted unique provider labels from ``fit``.
     n_providers_ : int
-    n_provider_iter_path_ : ndarray of int, shape ``(n_lambda_,)``
+    n_provider_iter_path_ : ndarray of int, shape ``(``n_lambda_``,)``
         Two-layer iterations per λ.
-    provider_converged_path_ : ndarray of bool, shape ``(n_lambda_,)``
-    log_likelihood_path_, deviance_ratio_path_, n_nonzero_path_ :
+    provider_converged_path_ : ndarray of bool, shape ``(``n_lambda_``,)``
+    ``log_likelihood_path_``, ``deviance_ratio_path_``, ``n_nonzero_path_`` :
         From ``_PenalizedCoxPHBase``.
-    groups_, n_groups_, group_weights_, kkt_violation_path_ : (group penalties only)
+    ``groups_``, ``n_groups_``, ``group_weights_``, ``kkt_violation_path_`` : (group penalties only)
     alpha_ : float
         The mixing parameter used (see ``alpha``).
-    gamma_, coef_, lambda_ : set when ``lambda_path_`` has length 1.
+    ``gamma_``, ``coef_``, ``lambda_`` : set when ``lambda_path_`` has length 1.
     """
 
     def __init__(

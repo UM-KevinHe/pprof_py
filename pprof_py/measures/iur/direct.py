@@ -33,7 +33,7 @@ class DirectIUR(ProviderModel):
         Within-group variance component (noise), scaled by ``n_prime_``.
     n_prime_ : float
         Effective sample size per group.
-    sizes_ : ndarray of shape (n_groups_,)
+    sizes_ : ndarray of shape (``n_groups_``,)
         Group sizes used during fitting.
 
     Examples

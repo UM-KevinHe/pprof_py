@@ -61,7 +61,7 @@ class LogisticFixedEffectMeasuresMixin:
         reference : {'median', 'mean'} or float, default="median"
             Defines the population norm if "direct" standardization is requested.
             - 'median': uses median(gamma)
-            - 'mean': uses weighted mean(gamma, weights=provider_sizes_)
+            - 'mean': uses weighted mean(gamma, weights=``provider_sizes_``)
             - float: uses a user-specified numeric reference level.
         include_extreme_obs : bool, default=False
             If True, include extreme provider observations (with xbeta=0) in the

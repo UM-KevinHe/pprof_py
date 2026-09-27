@@ -594,8 +594,9 @@ class PenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     Reuses the exact same (Breslow/Efron) partial-likelihood engine as
     `CoxPH`, so every non-penalization capability -- strata, offset,
     sample weights, start/stop (left-truncated) data -- carries over
-    unchanged.  See ``docs/R_COMPATIBILITY.md`` for the numerical
-comparison against the package's pinned glmnet reference version. Current glmnet releases support additional Cox options;
+    unchanged.  See the survival guide's R compatibility notes for the
+    numerical comparison against the package's pinned glmnet reference
+    version. Current glmnet releases support additional Cox options;
     compatibility claims here refer to the explicitly pinned reference
     used by the regression suite. Efron-tie penalized fits use the same
     engine and are validated by self-consistency against this
@@ -641,20 +642,20 @@ comparison against the package's pinned glmnet reference version. Current glmnet
         control the proximal-Newton outer loop and coordinate-descent
         inner loop (`algorithms/coordinate_descent.py`).
 
-    Attributes (set by `fit`)
-    -------------------------
-    coef_path_ : ndarray, shape (n_lambda_, n_features)
+    Attributes
+    ----------
+    coef_path_ : ndarray, shape (``n_lambda_``, n_features)
         Fitted coefficients (original units) at every lambda in
         `lambda_path_`, in the same order.
-    lambda_path_ : ndarray, shape (n_lambda_,)
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
         The lambda values actually fit, descending.
     lambda_max_ : float
         Smallest lambda at which every penalized coefficient is 0
         (see `algorithms/coordinate_descent.py::compute_lambda_max`).
         0 if every feature is unpenalized.
-    log_likelihood_path_, deviance_ratio_path_, n_nonzero_path_ : ndarray, shape (n_lambda_,)
+    ``log_likelihood_path_``, ``deviance_ratio_path_``, ``n_nonzero_path_`` : ndarray, shape (``n_lambda_``,)
         Per-lambda partial log-likelihood, glmnet-style deviance ratio
-        (`statistics/deviance.py`), and count of exactly-nonzero
+        (`utils/deviance.py`), and count of exactly-nonzero
         coefficients (glmnet's `df`).
     log_likelihood_null_ : float
         Partial log-likelihood at beta=0 (all features), the
@@ -662,13 +663,13 @@ comparison against the package's pinned glmnet reference version. Current glmnet
     column_scale_ : ndarray, shape (n_features,)
         The `xs` divisor applied to each column before fitting
         (all 1s if `standardize=False`).
-    coef_, lambda_ : ndarray / float
+    ``coef_``, ``lambda_`` : ndarray / float
         Only set when the resolved `lambda_path_` has exactly one
         value (a single explicit `lambda_path` scalar, or a
         user-supplied length-1 sequence) -- the natural case of "just
         fit one penalized model". Use `coef_at()` or index
         `coef_path_` directly otherwise.
-    n_obs_, n_events_, n_features_in_, feature_names_in_, converged_path_, n_iter_path_ :
+    ``n_obs_``, ``n_events_``, ``n_features_in_``, ``feature_names_in_``, ``converged_path_``, ``n_iter_path_`` :
         See `CoxPH` for the analogous non-path attributes.
     """
 
@@ -1035,13 +1036,13 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     Remaining parameters are passed through to the underlying
     `PenalizedCoxPH` fits -- see that class.
 
-    Attributes (set by `fit`)
-    -------------------------
-    lambda_path_, cv_mean_deviance_, cv_se_deviance_ : ndarray, shape (n_lambda_,)
+    Attributes
+    ----------
+    ``lambda_path_``, ``cv_mean_deviance_``, ``cv_se_deviance_`` : ndarray, shape (``n_lambda_``,)
         The fitted lambda grid and, per lambda, the cross-validated
         mean (and standard error of the mean, across folds) deviance
         per event -- glmnet's `cvm`/`cvsd`.
-    lambda_min_, lambda_1se_ : float
+    ``lambda_min_``, ``lambda_1se_`` : float
         The lambda with minimum cross-validated deviance, and the
         largest lambda within one standard error of that minimum
         (glmnet's 1-SE rule).

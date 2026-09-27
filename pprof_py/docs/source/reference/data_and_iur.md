@@ -27,7 +27,7 @@ X_COLS = ["x1", "x2", "x3"]
 from pprof_py.data import validate_and_convert_inputs, check_missingness, check_variation, run_structural_checks
 
 v = validate_and_convert_inputs(df, x_vars=X_COLS, y_var="event", provider_var="provider")
-v.X.shape, v.y.shape, v.groups.shape, v.covariate_names
+v.X.shape, v.y.shape, v.provider_id.shape, v.covariate_names
 ```
 
 ```text
@@ -35,7 +35,7 @@ validate_and_convert_inputs(X, y=None, provider_id=None, x_vars=None, y_var=None
                             n_var=None, obs_id_var=None, use_dataprep=False, dataprep_options=None) -> ValidatedInputs
 ```
 
-The returned `ValidatedInputs` has `X`, `y`, `groups`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — and `covariate_names`. The structural checks in `pprof_py.data`
+The returned `ValidatedInputs` has `X`, `y`, `provider_id`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — and `covariate_names`. The structural checks in `pprof_py.data`
 take a `DataFrame` and column names:
 
 | Function | Behaviour |
@@ -46,7 +46,7 @@ take a `DataFrame` and column names:
 | `check_vif(data, x_columns, threshold=10)` | logs a warning for covariates above the threshold |
 | `run_structural_checks(data, y_col, x_cols, group_col, *, threshold_cor=0.9)` | runs the default pipeline; returns `None` |
 
-The logging-only checks accept a keyword-only `_logger`; `tests/test_infrastructure.py` still passes a logger positionally, which is why several of its tests fail.
+The logging-only checks accept a keyword-only `_logger`.
 
 ## `DataPrep`
 
@@ -68,7 +68,7 @@ passes it, so binomial fits can use `DataPrep`.
 ```python
 from pprof_py.data import glmm_data_prep
 
-prep = glmm_data_prep(df, y_var="readmit", provider_var="facility", cluster_var="hospital", cutoff=10)
+prep = glmm_data_prep(df, y_var="event", provider_var="provider", cluster_var="cluster", cutoff=10)
 prep.data           # screened records with provider_size, y_adj, cell_id, included
 prep.cell_sizes     # records in every provider x cluster combination, cluster-major
 ```

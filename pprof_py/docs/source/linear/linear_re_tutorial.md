@@ -111,13 +111,20 @@ All covariates are highly significant:
 
 Variance components:
 
+```python
+sigma_u = model.random_effect_sd_['hospital']
+print(f"sigma_e (residual SD):      {model.sigma_:.4f}   (true = 3.5)")
+print(f"sigma_u (random-effect SD): {sigma_u:.4f}   (true = 1.5)")
+print(f"sigma_u^2:                  {sigma_u ** 2:.4f}")
+print(f"AIC = {model.aic_:.2f}, BIC = {model.bic_:.2f}, log-likelihood = {model.loglike_:.2f}")
+```
+
 ```
 sigma_e (residual SD):      3.5234   (true = 3.5)
 sigma_u (random-effect SD): 1.1704   (true = 1.5)
 sigma_u^2:                  1.3698
+AIC = 8965.44, BIC = 8997.93, log-likelihood = -4476.72
 ```
-
-AIC = 8965.44, BIC = 8997.93, Log-likelihood = −4476.72.
 
 The estimated $\hat{\sigma}_u = 1.17$ is moderately shrunk from the
 true 1.5. This is common with 25 groups and moderate group sizes —
@@ -155,6 +162,7 @@ Hospital_15   -1.391879
 Hospital_16   -0.087237
 Hospital_17    0.428253
 Hospital_18   -2.540525
+dtype: float64
 ```
 
 The BLUP range is $[-2.54, 2.33]$ with SD 1.09. Hospital 18 has the
@@ -164,39 +172,43 @@ has the highest BLUP.
 
 ## 6. Standardized differences
 
-The **Indirect Standardized Difference** (ISDiff) is:
+The **Indirect Standardized Difference** (ISDiff) compares each
+hospital's total fitted LOS with the total expected from its case mix
+alone ($\mathbf{X}^\top\hat{\boldsymbol\beta}$), per patient:
 
 $$
-\text{ISDiff}_i = \hat{u}_i - u_0
+\text{ISDiff}_i = \frac{O_i - E_i}{n_i}
+= \frac{1}{n_i}\sum_{j}\left(\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta} + \hat{u}_i\right)
+- \frac{1}{n_i}\sum_{j}\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta} = \hat{u}_i .
 $$
 
-where $u_0$ is the baseline random effect (here, the median BLUP =
-$-0.054$). For the linear model, ISDiff reduces to the BLUP minus the
-baseline — on the original outcome scale (days).
+For the linear model it is therefore the BLUP itself, on the outcome
+scale (days), measured from the random-effect mean 0. The `reference`
+argument does not change this measure (it does change the tests below).
 
 ```python
 sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
-print(sm['indirect'].head(10))
+print(sm['indirect'].head(10).to_string())
 ```
 
 ```
-      provider_id  indirect_difference     observed     expected
+   provider_id  indirect_difference     observed     expected
 0   Hospital_1             0.213653  1955.235135  1937.929217
-1  Hospital_10             0.488747  2216.366011  2170.912568
-2  Hospital_11            -0.639378  2133.990591  2194.731545
-3  Hospital_12            -1.003254  1215.984027  1270.159719
-4  Hospital_13            -0.486697  2033.396048  2075.738673
-5  Hospital_14            -1.581776   736.970909   790.751280
-6  Hospital_15            -1.391879  1371.589998  1459.278352
+1  Hospital_10             0.488747  2216.366012  2170.912568
+2  Hospital_11            -0.639378  2133.990590  2194.731545
+3  Hospital_12            -1.003254  1215.984026  1270.159718
+4  Hospital_13            -0.486697  2033.396047  2075.738672
+5  Hospital_14            -1.581776   736.970907   790.751280
+6  Hospital_15            -1.391879  1371.589996  1459.278352
 7  Hospital_16            -0.087237  2280.709964  2289.259209
-8  Hospital_17             0.428253  2271.276013  2229.735491
-9  Hospital_18            -2.540525   624.726896   703.483178
+8  Hospital_17             0.428253  2271.276014  2229.735491
+9  Hospital_18            -2.540525   624.726892   703.483178
 ```
 
 `observed` is the sum of fitted values (including BLUPs) for that
 hospital; `expected` is the sum under the baseline effect. Hospital 18's
-patients total 625 vs. an expected 703 — consistent with its strongly
-negative BLUP.
+patients total 625 fitted days vs. an expected 703, a difference of
+$-2.54$ days per patient: its BLUP.
 
 ## 7. Hypothesis testing
 
@@ -214,7 +226,7 @@ print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'c
 
 ```
              estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
-provider
+provider_id
 Hospital_1   0.213653  0.371274  0.721401  0.470663     0 -0.514031  0.941337
 Hospital_10  0.488747  0.348766  1.556721  0.119537     0 -0.194821  1.172315
 Hospital_11 -0.639378  0.345398 -1.694261  0.090216     0 -1.316346  0.037589
@@ -227,8 +239,10 @@ Hospital_17  0.428253  0.342126  1.410116  0.158506     0 -0.242302  1.098807
 Hospital_18 -2.540525  0.556668 -4.466468  0.000008    -1 -3.631575 -1.449476
 ```
 
-`reference='median'` uses the median BLUP directly; without it the
-reference is 0, the random-effect mean.
+`reference='median'` tests each BLUP against the median BLUP
+($u_0 = -0.054$), so `z_raw` is $(\hat{u}_i - u_0)/\widehat{\text{se}}$
+while `estimate` and the interval are for $\hat{u}_i$ itself; without it
+the reference is 0, the random-effect mean.
 
 **11 of 25** hospitals are flagged at the 5 % level (5 high, 6 low).
 Hospital 2 has the strongest positive signal ($Z = 4.93$, $p < 10^{-6}$)
@@ -249,7 +263,7 @@ print(alpha_ci['alpha_ci'].head(10))
 ```
 
 ```
-                provider_id     alpha  alpha_lower  alpha_upper
+             provider_id     alpha  alpha_lower  alpha_upper
 Hospital_1    Hospital_1  0.213653    -0.514031     0.941337
 Hospital_10  Hospital_10  0.488747    -0.194821     1.172315
 Hospital_11  Hospital_11 -0.639378    -1.316346     0.037589
@@ -259,7 +273,7 @@ Hospital_14  Hospital_14 -1.581776    -2.634135    -0.529416
 Hospital_15  Hospital_15 -1.391879    -2.205383    -0.578374
 Hospital_16  Hospital_16 -0.087237    -0.754653     0.580178
 Hospital_17  Hospital_17  0.428253    -0.242302     1.098807
-Hospital_18  Hospital_18 -2.540525    -3.631575    -1.449475
+Hospital_18  Hospital_18 -2.540525    -3.631575    -1.449476
 ```
 
 Hospital 18's CI is $[-3.63, -1.45]$ — entirely below zero, confirming
@@ -273,21 +287,21 @@ sm_ci = model.calculate_confidence_intervals(
     option='SM', stdz='indirect', reference=median_blup,
     level=0.95, alternative='two_sided',
 )
-print(sm_ci['indirect_ci'].head(10))
+print(sm_ci['indirect_ci'].head(10).to_string())
 ```
 
 ```
-      provider_id  indirect_difference     observed     expected     lower     upper
+   provider_id  indirect_difference     observed     expected     lower     upper
 0   Hospital_1             0.213653  1955.235135  1937.929217 -0.514031  0.941337
-1  Hospital_10             0.488747  2216.366011  2170.912568 -0.194821  1.172315
-2  Hospital_11            -0.639378  2133.990591  2194.731545 -1.316922  0.037589
-3  Hospital_12            -1.003254  1215.984027  1270.159719 -1.872872 -0.133635
-4  Hospital_13            -0.486697  2033.396048  2075.738673 -1.191289  0.217896
-5  Hospital_14            -1.581776   736.970909   790.751280 -2.634135 -0.529416
-6  Hospital_15            -1.391879  1371.589998  1459.278352 -2.205383 -0.578374
+1  Hospital_10             0.488747  2216.366012  2170.912568 -0.194821  1.172315
+2  Hospital_11            -0.639378  2133.990590  2194.731545 -1.316346  0.037589
+3  Hospital_12            -1.003254  1215.984026  1270.159718 -1.872872 -0.133635
+4  Hospital_13            -0.486697  2033.396047  2075.738672 -1.191289  0.217896
+5  Hospital_14            -1.581776   736.970907   790.751280 -2.634135 -0.529416
+6  Hospital_15            -1.391879  1371.589996  1459.278352 -2.205383 -0.578374
 7  Hospital_16            -0.087237  2280.709964  2289.259209 -0.754653  0.580178
-8  Hospital_17             0.428253  2271.276013  2229.735491 -0.242302  1.098807
-9  Hospital_18            -2.540525   624.726896   703.483178 -3.631575 -1.449475
+8  Hospital_17             0.428253  2271.276014  2229.735491 -0.242302  1.098807
+9  Hospital_18            -2.540525   624.726892   703.483178 -3.631575 -1.449476
 ```
 
 ## 9. Visualizing the results

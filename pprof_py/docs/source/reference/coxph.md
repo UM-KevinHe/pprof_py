@@ -73,7 +73,7 @@ CoxPH.fit(X, duration=None, event=None, start=None, stop=None,
 | `cluster` | no | Cluster label per row. **Implies robust variance**, regardless of the constructor's `robust`. |
 
 Rows may be in any order. The full list of input checks, and the exception raised by each, is in
-{ref}`survival_ref_data`.
+{ref}`data-preparation-guide`.
 
 ## Fitted attributes
 

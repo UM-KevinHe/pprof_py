@@ -107,10 +107,14 @@ integrated out by Gauss–Hermite quadrature; the provider effects are updated b
 
 ```python
 from pprof_py import LogisticFERandomClusterModel
+from pprof_py.data import glmm_data_prep
 
+prep = glmm_data_prep(df, y_var="event", provider_var="provider", cluster_var="cluster").data   # adds y_adj
+re2 = LogisticRandomEffectModel(verbose=False).fit(prep, y_var="y_adj", x_vars=X_COLS, provider_var="provider",
+                                                   cluster_vars=["cluster"])            # provider + one cluster factor
 stage3 = LogisticFERandomClusterModel()
-stage3.fit(df, y_var="y_adj", x_vars=X_COLS, provider_var="provider", cluster_var="cluster",
-           stage1=fe, stage2=re, obs_var="event", verbose=False)   # re: provider + one cluster factor
+stage3.fit(prep, y_var="y_adj", x_vars=X_COLS, provider_var="provider", cluster_var="cluster",
+           stage1=fe, stage2=re2, obs_var="event", verbose=False)
 stage3.summary()                                                 # the Stage 1 Wald table for beta
 stage3.test().head()
 ```
@@ -147,7 +151,7 @@ and the offset `Xβ`, on the adjusted outcome; Stage 3, `LogisticFERandomCluster
 ```python
 from pprof_py import LogisticThreeStageModel
 
-model = LogisticThreeStageModel(cutoff=10).fit(df, y_var="readmit", x_vars=X_COLS, provider_var="facility", cluster_var="hospital")
+model = LogisticThreeStageModel(cutoff=10).fit(df, y_var="event", x_vars=X_COLS, provider_var="provider", cluster_var="cluster")
 model.stage1_, model.stage2_, model.stage3_    # the fitted stages
 model.test().head()                            # Stage 3's tests; also its measures, intervals and summary()
 ```

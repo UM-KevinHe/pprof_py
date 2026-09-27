@@ -171,10 +171,10 @@ class BreslowTies(TieMethod):
     Weighted log partial likelihood (see docs/R_COMPATIBILITY.md,
     question 5, for the weight semantics this matches):
 
-        LL = sum_{i: event} w_i * eta_i  -  sum_j d*_j * log( S0(t_j) )
+        LL = ``sum_``{i: event} w_i * eta_i  -  sum_j d*_j * log( S0(t_j) )
 
     where d*_j = sum of weights of the observations with an event at
-    t_j, and S0(t_j) = sum_{i in R(t_j)} w_i * exp(eta_i).
+    t_j, and S0(t_j) = ``sum_``{i in R(t_j)} w_i * exp(eta_i).
 
     Score and (observed) information follow by differentiating this
     expression w.r.t. beta once and twice respectively; see
@@ -498,10 +498,10 @@ class EfronTies(TieMethod):
     weighted) and weighted death mass `d*_j = sum_{i in D_j} w_i`:
 
         meanwt_j = d*_j / d_j
-        S0_{R\\D} = S0(risk set) - S0(D_j)   (and likewise S1, S2)
+        ``S0_``{R\\D} = S0(risk set) - S0(D_j)   (and likewise S1, S2)
 
-        LL_j = sum_{i in D_j} w_i*eta_i
-               - meanwt_j * sum_{k=1}^{d_j} log(S0_{R\\D} + (k/d_j)*S0(D_j))
+        LL_j = ``sum_``{i in D_j} w_i*eta_i
+               - meanwt_j * ``sum_``{k=1}^{d_j} log(``S0_``{R\\D} + (k/d_j)*S0(D_j))
 
     with the score and information the first and second derivatives of
     that expression, in the same S0/S1/S2 terms as BreslowTies. When
@@ -699,7 +699,7 @@ class EfronTies(TieMethod):
         of `d_j` reciprocals taken over the same fractional risk-set
         reductions used in the likelihood above:
 
-            dH0(t_j) = meanwt_j * sum_{k=0}^{d_j-1} 1 / (S0_R - (k/d_j)*S0_D)
+            dH0(t_j) = meanwt_j * ``sum_``{k=0}^{d_j-1} 1 / (S0_R - (k/d_j)*S0_D)
 
         Matched to R's `agsurv5.c` (the C routine `survival:::agsurv`
         calls for `ctype=2`, which `survfit.coxph` selects automatically

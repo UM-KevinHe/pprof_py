@@ -181,7 +181,7 @@ class LogisticFERandomClusterModel(ProviderModel, LogisticFERandomClusterInferen
         ``glmm.fac.hosp`` does; only providers at the bound differ.
     convergence_criterion : {"max_delta_gamma", "relative"}, default="max_delta_gamma"
         ``"max_delta_gamma"``: the largest absolute change in gamma, which does
-        not depend on the starting value. ``"relative"``: ``|obj_t - obj_{t-1}| /
+        not depend on the starting value. ``"relative"``: ``|obj_t - ````obj_````{t-1}| /
         |obj_t - obj_1|`` for the objective below, as in R (a zero denominator
         counts as converged when the numerator is also zero, and otherwise does
         not stop the fit); it can stop well short of the fixed point, so use it

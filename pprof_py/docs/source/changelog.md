@@ -24,7 +24,8 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   facility effects matched by ID, plus its intercept); or explicit `beta`, `sigma` and `gamma_init`,
   which replace `beta_init` and `sigma_init`. `summary(stage1=...)` replaces `stage1_model=`.
 - `estimator="marginal"` maximizes the marginal likelihood (unique and start-independent) by adaptive
-  Gauss–Hermite quadrature; `"he2013"` stays the default. `loglik_` reports the marginal
+  Gauss–Hermite quadrature, and is the default (see the consistency decisions below); `"he2013"` is R's
+  iteration. `loglik_` reports the marginal
   log-likelihood under either estimator.
 - `pprof_py.data.glmm_data_prep` reproduces R's `glmm.data.prep`.
 
@@ -167,6 +168,19 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - `CoxPH.test` tests each provider's indirect standardized ratio against 1 with the SMR tutorial's inference: the mid-p
   test calibrated by the theoretical or an empirical null (grouped by person-time), with limits that invert it, or the
   exact Poisson test with Byar and chi-square limits. Survival Chapter 4 shows both.
+
+**Documentation**
+
+- Every chapter's printed output is now what its code prints (in an 80-column terminal; wide tables use
+  `to_string()`), checked by running each page. Pages that continue from another say so, and survival Chapters 13
+  and 14 build their annual `time_year` cohort. Tutorials, penalized and group-lasso chapters, survival Chapters 1, 3,
+  6, 8 and 10–14, and the reference pages were corrected where the text had drifted from the code; survival
+  Chapter 10's report no longer flags a facility its own interval does not exclude.
+- Signature listings are regenerated from the code, stale module paths and attribute names are updated, and the
+  bibliography, cross-reference and docstring markup errors are fixed: the docs build has 4 warnings (intersphinx
+  inventories, which need network access), down from 174.
+- `LinearRandomEffectModel`'s standardized measures use the random-effect mean 0 whatever `reference` is; the linear
+  random-effect pages now say so.
 
 **Internals**
 

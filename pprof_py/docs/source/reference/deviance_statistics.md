@@ -26,17 +26,23 @@ log-likelihood a hypothetical model that fits every tied-event-time
 group *perfectly* would achieve — a fixed, beta-independent ceiling,
 one term per distinct event time (summed within strata), depending
 only on how much weight $w_{d_k}$ sits at each tied event time, not on
-any covariate or coefficient:
+any covariate or coefficient. The examples use the survival guide's
+`cohort` and shared variables ([Chapter 0](../survival/00_start_here))
+and a plain Cox fit:
 
 ```python
-from pprof_py.statistics.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio
+import numpy as np
+from pprof_py import CoxPH
+from pprof_py.utils.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio
 
+model = CoxPH().fit(X, duration=time, event=death)
 lsat = saturated_log_likelihood(cohort["time"].values, cohort["death"].values,
-                                  weight=np.ones(len(cohort)), strata_codes=np.zeros(len(cohort), dtype=int))
-# -24.95
-
+                                weight=np.ones(len(cohort)), strata_codes=np.zeros(len(cohort), dtype=int))
 dev = cox_deviance(model.log_likelihood_, lsat)
-# cox_deviance(-1985.46, -24.95) = 3921.02
+print(f"lsat = {lsat:.2f}; cox_deviance({model.log_likelihood_:.2f}, {lsat:.2f}) = {dev:.2f}")
+```
+```
+lsat = -24.95; cox_deviance(-1985.46, -24.95) = 3921.02
 ```
 
 `cox_deviance(log_likelihood, lsat)` is just `2 * (lsat -
@@ -52,8 +58,10 @@ deviance routine.
 ## `deviance_ratio`: the scale-free version
 
 ```python
-deviance_ratio(model.log_likelihood_, model.log_likelihood_null_, lsat)
-# 0.0296
+print(round(deviance_ratio(model.log_likelihood_, model.log_likelihood_null_, lsat), 4))
+```
+```
+0.0296
 ```
 
 `glmnet`'s `dev.ratio` — `1 - deviance(fit) / deviance(null)`. `1.0`

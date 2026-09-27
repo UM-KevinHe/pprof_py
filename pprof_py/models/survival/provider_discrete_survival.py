@@ -10,7 +10,7 @@ Three-layer architecture:
 
 The linear predictor for observation i at time t is:
 
-    eta_{i,t} = gamma_{prov(i)} + alpha_t + X_i @ beta
+    ``eta_``{i,t} = ``gamma_``{prov(i)} + alpha_t + X_i @ beta
 
 R reference: grplasso/R/pp_DiscSurv.R, grplasso/src/pp_DiscSurv_lasso.cpp.
 
@@ -69,11 +69,11 @@ def _provider_newton_from_loglik(
 
     The per-provider score and information are:
 
-        score_k = - sum_{i in k} score_beta_i
-                = sum_{i in k} (delta_i - sum_t p_{it})
+        score_k = - ``sum_``{i in k} score_beta_i
+                = ``sum_``{i in k} (delta_i - sum_t p_{it})
 
-        info_k  = sum_{i in k} working_weights_i
-                = sum_{i in k} sum_t p_{it} * (1 - p_{it})
+        info_k  = ``sum_``{i in k} working_weights_i
+                = ``sum_``{i in k} sum_t p_{it} * (1 - p_{it})
 
     where ``score_beta`` from ``discrete_loglik`` is the gradient of
     the *negative* log-likelihood, hence the sign flip.
@@ -164,8 +164,8 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
     use_active_set : bool, default=True
         Active-set screening for the CD solver.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     coef_path_ : ndarray, shape (n_lambda, p)
     baseline_hazard_path_ : ndarray, shape (n_lambda, n_timepoints)
     gamma_path_ : ndarray, shape (n_lambda, K)
@@ -233,8 +233,8 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
         -------
         self
 
-        Algorithm
-        ---------
+        Notes
+        -----
         For each lambda in the path (warm-started):
 
         1. **Provider step:** Newton update for gamma_k using the
@@ -249,8 +249,8 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
            person-period expanded working response, using
            ``discrete_coordinate_descent_step()``.
 
-        4. Convergence check: max |delta_beta| + max |delta_gamma|
-           + max |delta_alpha| < outer_tol.
+        4. Convergence check: ``max(max|delta_beta|, max|delta_gamma|,
+           max|delta_alpha|) < outer_tol``.
         """
         # =============================================================
         # 1. Input validation and feature names
@@ -704,8 +704,8 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         used for the full-data fit; fold models inherit the full-data
         lambda sequence.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     lambda_min_ : float
         Lambda with minimum mean CV error.
     lambda_1se_ : float
@@ -715,9 +715,9 @@ class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
         ``lambda_min_``).
     lambda_min_idx_ : int
     lambda_1se_idx_ : int
-    cv_mean_ : ndarray, shape (n_lambda,)
+    cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean CV error per lambda.
-    cv_se_ : ndarray, shape (n_lambda,)
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV error per lambda.
     model_ : ProviderPenalizedDiscreteSurvival
         Full-data fit.

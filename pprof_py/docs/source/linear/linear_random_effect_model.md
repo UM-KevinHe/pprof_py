@@ -9,9 +9,9 @@
 
 ## 1. Introduction
 
-When evaluating provider performance using quantitative outcomes, linear mixed-effects models, often called linear random effect (RE) models, offer an alternative to fixed effect (FE) models {cite}`Wooldridge2010Econometric`. RE models are particularly useful when we assume providers are a sample from a larger population of providers and we wish to make inferences about this population or predict effects for individual providers, potentially "borrowing strength" across providers.
+When evaluating provider performance using quantitative outcomes, linear mixed-effects models, often called linear random effect (RE) models, offer an alternative to fixed effect (FE) models {cite}`linre-Wooldridge2010Econometric`. RE models are particularly useful when we assume providers are a sample from a larger population of providers and we wish to make inferences about this population or predict effects for individual providers, potentially "borrowing strength" across providers.
 
-Unlike FE models that estimate a distinct parameter for each provider, RE models treat provider effects as random variables drawn from a common distribution. This approach can lead to more efficient estimates, especially when the number of observations per provider is small. However, a key assumption is that the random effects are uncorrelated with the covariates in the model. If this assumption is violated, estimates of covariate effects ($\boldsymbol\beta$) can be biased {cite}`Wooldridge2010Econometric`.
+Unlike FE models that estimate a distinct parameter for each provider, RE models treat provider effects as random variables drawn from a common distribution. This approach can lead to more efficient estimates, especially when the number of observations per provider is small. However, a key assumption is that the random effects are uncorrelated with the covariates in the model. If this assumption is violated, estimates of covariate effects ($\boldsymbol\beta$) can be biased {cite}`linre-Wooldridge2010Econometric`.
 
 This document details the statistical methodology for linear random effect models as implemented in the `LinearRandomEffectModel` class, which uses a pure-Python lme4-style (Restricted) Maximum Likelihood solver. We cover:
 
@@ -72,6 +72,15 @@ The implementation stores:
 For linear random effects models, standardized measures quantify how much a provider's total or average outcome differs from what would be expected under a baseline scenario, after adjusting for case mix. These measures are calculated either by comparing observed outcomes to expected outcomes under a baseline random effect (indirect standardization), or by comparing expected outcomes for the entire population under each provider's random effect to those under the baseline (direct standardization).
 
 Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `reference` parameter in `LinearRandomEffectModel.calculate_standardized_measures`).
+
+```{note}
+In the current implementation `calculate_standardized_measures` (and the
+`'SM'` option of `calculate_confidence_intervals`) computes the expected
+outcomes at $\alpha_0 = 0$, the random-effect mean, whatever `reference`
+is: the indirect difference is $\hat{\alpha}_i$ itself. `test()` does use
+`reference`. This is recorded as an open item; the formulas below give
+the measure as defined.
+```
 
 #### 2.3.1. Indirect Standardization
 
@@ -306,7 +315,7 @@ print(f"\nFirst 5 predictions (fixed effects only): {predictions_fe_only}")
 predictions_with_re = lre_model.predict(
     data_df,
     x_vars=['Covariate1', 'Covariate2'],
-    provider_var='ProviderID',
+    re_vars='ProviderID',
     use_re=True
 )
 print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
@@ -320,7 +329,7 @@ print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
 # Calculate Indirect Standardized Difference vs median random effect
 sm_results_lre = lre_model.calculate_standardized_measures(
     stdz='indirect', # Can be 'direct' or ['indirect', 'direct']
-    reference='median'    # Baseline for random effects: 'median', 'mean', or a float
+    reference='median'    # accepted, but the indirect difference is the BLUP itself (from 0)
 )
 print("\n--- Linear RE Indirect Measures (vs Median Random Effect) ---")
 if 'indirect' in sm_results_lre:
@@ -424,7 +433,7 @@ The `LinearRandomEffectModel`` class offers a comprehensive tool for provider pr
 ## 6. References
 
 ```{bibliography} ../references.bib
-:list: enumerated
 :filter: docname in docnames
 :keyprefix: linre-
+:labelprefix: LRE
 ```

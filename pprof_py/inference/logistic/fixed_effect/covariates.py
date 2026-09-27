@@ -111,7 +111,7 @@ class _CovariateInferenceMethods:
             robust_var(gamma_j) = (1/I_j)^2 * A0_j
         where:
             I_j = sum(p_i * (1 - p_i)) for observations i in group j
-            A0_j = sum_k[ (sum_{i in cluster k}(Y_i - p_i))^2 ] within group j
+            A0_j = sum_k[ (``sum_``{i in cluster k}(Y_i - p_i))^2 ] within group j
 
         For beta (covariate coefficients), the full joint sandwich is:
             V_beta = S^{-1} @ M_eff @ S^{-1}

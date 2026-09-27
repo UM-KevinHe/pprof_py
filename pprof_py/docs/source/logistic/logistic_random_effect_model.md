@@ -8,9 +8,9 @@
 
 ## 1. Introduction
 
-When analyzing binary patient outcomes (e.g., mortality, readmission) clustered within healthcare providers, logistic random effect models, also known as Generalized Linear Mixed Models (GLMMs) with a logit link, are a common approach {cite}`Bates2015lme4,McCulloch2001GLMM,Stroup2013GLMM`. These models account for the correlation of outcomes within providers by incorporating provider-specific random effects, typically random intercepts. This allows for provider comparisons while adjusting for patient-level covariates.
+When analyzing binary patient outcomes (e.g., mortality, readmission) clustered within healthcare providers, logistic random effect models, also known as Generalized Linear Mixed Models (GLMMs) with a logit link, are a common approach {cite}`logre-Bates2015lme4,logre-McCulloch2001GLMM,logre-Stroup2013GLMM`. These models account for the correlation of outcomes within providers by incorporating provider-specific random effects, typically random intercepts. This allows for provider comparisons while adjusting for patient-level covariates.
 
-The `LogisticRandomEffectModel` class implements such a model using a pure-Python reimplementation of the `lme4` {cite}`Bates2015lme4` fitting algorithm (PIRLS + Laplace approximation). No R or `pymer4` dependency is required.
+The `LogisticRandomEffectModel` class implements such a model using a pure-Python reimplementation of the `lme4` {cite}`logre-Bates2015lme4` fitting algorithm (PIRLS + Laplace approximation). No R or `pymer4` dependency is required.
 
 This document outlines the statistical methodology underpinning the `LogisticRandomEffectModel`, covering:
 
@@ -355,7 +355,7 @@ The `LogisticRandomEffectModel` offers a valuable tool for provider profiling wi
 ## References
 
 ```{bibliography} ../references.bib
-:list: enumerated
 :filter: docname in docnames
 :keyprefix: logre-
+:labelprefix: GRE
 ```

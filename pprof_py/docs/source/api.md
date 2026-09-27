@@ -304,7 +304,6 @@ All primary model classes are importable directly from `pprof_py`.
 
 ```{eval-rst}
 .. autoclass:: pprof_py.measures.iur._core.IURDecomposition
-   :members:
 ```
 
 ```{eval-rst}

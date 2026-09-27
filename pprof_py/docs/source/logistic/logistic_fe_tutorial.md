@@ -71,7 +71,12 @@ data['readmitted'] = (np.random.rand(n_total) < 1/(1+np.exp(-log_odds))).astype(
 
 That gives us 9,888 patients across 100 clinics, with an overall
 readmission rate of 13.8 %. Clinic sizes range from 50 to 149
-patients (median 98). The first few rows:
+patients (median 98.5). The first few rows:
+
+```python
+cols = ['provider_id', 'age', 'chronic_conditions', 'prior_admission', 'readmitted']
+print(data[cols].head().to_string(index=False))
+```
 
 ```
 provider_id       age  chronic_conditions  prior_admission  readmitted
@@ -120,7 +125,8 @@ model.fit(
 ```
 
 `algorithm='Serbin'` uses the block-diagonal Schur-complement trick
-described in {cite}`logfe-Wu2022Improving`, which keeps the per-iteration
+described by Wu et al. (2022; see the
+[methodology page](logistic_fixed_effect_model.md)), which keeps the per-iteration
 cost at $O(mp^2)$ instead of $O((m+p)^3)$. `cutoff=10` drops any
 clinic with 10 or fewer patients — none are dropped here because the
 smallest clinic has 50. All 100 providers are retained.
@@ -129,7 +135,7 @@ smallest clinic has 50. All 100 providers are retained.
 
 ```python
 summary = model.summary(test_method='wald')
-print(summary)
+print(summary.to_string())
 ```
 
 ```
@@ -213,11 +219,13 @@ print(f"SE range: [{se_gamma.min():.4f}, {se_gamma.max():.4f}]")
 ```
 
 ```
-SE range: [0.2924, 0.6389]
+SE range: [0.3147, 1.0451]
 ```
 
-Smaller clinics have larger standard errors — more uncertainty about
-their true performance — which is exactly the signal the funnel plot
+Smaller clinics, and clinics with few events, have larger standard
+errors — more uncertainty about their true performance. The largest
+(1.05) belongs to Clinic_54, which has the lowest $\hat{\gamma}$
+($-5.73$) and one readmission in 55 patients. This is exactly the signal the funnel plot
 (Section 8) is designed to visualize.
 
 ## 5. Predictions
@@ -256,7 +264,7 @@ print(sm_df.head(10))
 ```
 
 ```
-     provider_id  indirect_ratio  indirect_rate  observed   expected
+  provider_id  indirect_ratio  indirect_rate  observed   expected
 0    Clinic_1        1.257097      17.353737        17  13.523219
 1   Clinic_10        0.895757      12.365584        14  15.629231
 2  Clinic_100        0.579154       7.995002        11  18.993208
@@ -379,7 +387,7 @@ print(gamma_ci['gamma_ci'].head(10))
 ```
 
 ```
-     provider_id     gamma  gamma_lower  gamma_upper
+  provider_id     gamma  gamma_lower  gamma_upper
 0    Clinic_1 -3.249995    -3.978365    -2.521626
 1   Clinic_10 -3.656766    -4.406950    -2.906583
 2  Clinic_100 -4.153595    -4.953717    -3.353474
@@ -420,11 +428,11 @@ sm_ci = model.calculate_confidence_intervals(
     test_method='wald',
     alternative='two_sided',
 )
-print(sm_ci['indirect_ratio'].head(10))
+print(sm_ci["indirect_ratio"].head(10).to_string())
 ```
 
 ```
-     provider_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
+  provider_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
 0    Clinic_1        1.257097      17.353737        17  13.523219        0.677407        2.157349
 1   Clinic_10        0.895757      12.365584        14  15.629231        0.455720        1.653704
 2  Clinic_100        0.579154       7.995002        11  18.993208        0.274811        1.155800

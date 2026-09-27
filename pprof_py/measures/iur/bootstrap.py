@@ -42,7 +42,7 @@ class BootstrapIUR(ProviderModel):
         Overall (national) IUR.
     n_groups_ : int
         Number of groups.
-    iur_groups_ : ndarray of shape (n_groups_,)
+    iur_groups_ : ndarray of shape (``n_groups_``,)
         Per-group IUR.
     s2_between_ : float
         Between-group variance component (signal).
@@ -51,13 +51,13 @@ class BootstrapIUR(ProviderModel):
         ``n_prime_``.
     n_prime_ : float
         Effective sample size per group.
-    measure_ : ndarray of shape (n_groups_,)
+    measure_ : ndarray of shape (``n_groups_``,)
         Original (non-bootstrapped) measure per group.
-    group_labels_ : ndarray of shape (n_groups_,)
+    group_labels_ : ndarray of shape (``n_groups_``,)
         Sorted unique group identifiers.
-    group_sizes_ : ndarray of shape (n_groups_,)
+    group_sizes_ : ndarray of shape (``n_groups_``,)
         Number of observations per group.
-    measure_bootstrap_ : ndarray of shape (n_groups_, n_boot)
+    measure_bootstrap_ : ndarray of shape (``n_groups_``, n_boot)
         Bootstrap measure matrix (groups × iterations).
 
     Examples
@@ -168,7 +168,7 @@ class BootstrapIUR(ProviderModel):
 
         Parameters
         ----------
-        stratify_var : array-like of shape (n_groups_,) or None
+        stratify_var : array-like of shape (``n_groups_``,) or None
             Variable to stratify groups by (already aggregated to
             group level, e.g., summed patient-years per facility).
             If *None*, group sizes are used.
@@ -262,7 +262,7 @@ class BootstrapIUR(ProviderModel):
 
         Parameters
         ----------
-        stratify_var : array-like of shape (n_groups_,) or None
+        stratify_var : array-like of shape (``n_groups_``,) or None
             Variable to determine size grouping.  If *None*, group
             sizes are used.
         n_quantiles : int, default=10

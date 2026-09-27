@@ -331,7 +331,8 @@ class LogisticFixedEffectModel(
         model fitting.
 
         The added providers' standardized measures (direct rate, etc.) are
-        computed using the same patient-level xbeta as fitted providers:
+        computed using the same patient-level xbeta as fitted providers::
+
             direct_rate_j = sum(sigmoid(gamma_j + xbeta_i)) / N
 
         Parameters

@@ -454,7 +454,7 @@ class PenalizedLinearCV(ProviderModel):
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda_1se_ if se_rule == "1se", else lambda_min_).
+        Selected lambda (``lambda_1se_`` if se_rule == "1se", else ``lambda_min_``).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean cross-validated deviance (weighted RSS) at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)

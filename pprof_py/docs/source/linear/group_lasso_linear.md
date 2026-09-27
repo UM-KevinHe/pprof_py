@@ -68,62 +68,67 @@ from pprof_py import GroupLassoLinear
 
 m = GroupLassoLinear(groups=groups, alpha=0.0)
 m.fit(X, y)
-m.lambda_max_   # 2.7054600438376712
+print(f"lambda_max = {m.lambda_max_:.6f}")
+```
+```
+lambda_max = 2.727163
 ```
 
-Unlike the logistic fit, this path doesn't run into the floating-point
-issue from the [logistic chapter's Section 7](group_lasso_logistic) —
-`active_groups_path_[0]` really is `[False, False, False]` here — so
-the group-level selection story comes through directly:
+`age` is group 0: it carries no penalty, so it is fitted at every point
+of the path, including the null point at $\lambda_{\max}$, the smallest
+$\lambda$ at which every penalized group is zero.
+
+At $\lambda_{\max}$ every penalized group is exactly zero
+(`active_groups_path_[0]` is `[False, False, False]`), as in the
+[logistic chapter](group_lasso_logistic), and the group-level selection
+story comes through directly:
 
 ```python
+names = ["admission source", "comorbidity panel", "noise lab panel"]
 for g in range(3):
-    active = m.active_groups_path_[:, g]
-    first = np.argmax(active)
-    print(g + 1, first, m.lambda_path_[first])
+    first = int(np.argmax(m.active_groups_path_[:, g]))
+    print(f"group {g + 1} ({names[g]}): first active at index {first}, lambda={m.lambda_path_[first]:.4f}")
 ```
 ```
-group 1 (admission source)   first active at index  7, lambda=1.4106
-group 2 (comorbidity panel)  first active at index  8, lambda=1.2853
-group 3 (noise lab panel)    first active at index 41, lambda=0.0597
+group 1 (admission source): first active at index 1, lambda=2.4849
+group 2 (comorbidity panel): first active at index 1, lambda=2.4849
+group 3 (noise lab panel): first active at index 42, lambda=0.0548
 ```
 
-Both real-signal groups enter within one step of each other near the
-top of the path; the noise group doesn't enter until 33 steps later,
-at a lambda roughly 24 times smaller. This is the group-lasso
+Both real-signal groups enter at the first point below $\lambda_{\max}$;
+the noise group doesn't enter until 41 steps later, at a lambda about
+45 times smaller. This is the group-lasso
 selection property working as intended: it isn't just shrinking two
 individually-noisy coordinates independently (the way element-wise
 lasso would, potentially at two different, unrelated lambdas) — it's
 recognizing that `lab_e` and `lab_f` carry no *collective* signal as a
 unit and excluding the whole unit together, over a wide stretch of the
-path, before either one is allowed to enter alongside `age`, whose
-own coefficient — as the next section explains — isn't actually being
-fit here at all.
+path, before either one is allowed to enter.
 
 `coef_` doesn't exist for this fit (`hasattr(m, "coef_")` is `False`,
 same single-lambda-only condition as every other path-fitting class in
 this package); use `coef_at()` for an arbitrary lambda:
 
 ```python
-m.coef_at(m.lambda_path_[50])
+print(pd.Series(m.coef_at(m.lambda_path_[50]), index=candidates).round(4).to_string())
 ```
 ```
-age               0.0000
-src_emergency     9.0999
-src_transfer     10.8731
-src_urgent        5.2455
-diabetes          4.5500
-chf               7.6851
-ckd               4.7119
-lab_e             0.0025
-lab_f             0.0481
+age               0.1213
+src_emergency     9.2163
+src_transfer     10.9857
+src_urgent        5.3311
+diabetes          4.5784
+chf               7.7336
+ckd               4.7874
+lab_e             0.0026
+lab_f             0.0437
 ```
 
 Both real groups already carry substantial coefficients by this point
-on the path; the noise group's two coordinates are still an order of
+on the path; the noise group's two coordinates are still two orders of
 magnitude smaller, consistent with it having only just become active
-nine steps earlier. `age` stays at `0.0000` — not because it lacks a
-real effect, but for the reason the next section explains.
+eight steps earlier. `age` (true effect 0.12) is unpenalized and fitted
+throughout.
 
 ## 3. Sparse group lasso
 
@@ -134,25 +139,27 @@ group itself is still selected as a unit at the group-norm level.
 ```python
 m_sparse = GroupLassoLinear(groups=groups, alpha=0.7)
 m_sparse.fit(X, y)
-m_sparse.coef_at(m_sparse.lambda_path_[40])
+print(pd.Series(m_sparse.coef_at(m_sparse.lambda_path_[40]), index=candidates).round(4).to_string())
 ```
 ```
-age               0.0000
-src_emergency     8.9363
-src_transfer     10.6314
-src_urgent        5.0306
-diabetes          4.4646
-chf               7.6041
-ckd               4.6343
+age               0.1212
+src_emergency     9.0322
+src_transfer     10.7437
+src_urgent        5.3909
+diabetes          4.5667
+chf               7.5993
+ckd               4.5951
 lab_e             0.0000
-lab_f             0.0094
+lab_f             0.0000
 ```
 
-At `alpha=0.7`, `lab_e` has already been individually zeroed within
-the (still nominally "active," per `lab_f`'s nonzero value) noise
-group — a within-group selection pure group lasso (`alpha=0.0`)
-cannot do, since it moves a whole group's coordinates by one shared
-factor.
+At `alpha=0.7` the noise group is still entirely zero at this point
+(index 40, $\lambda = 0.0880$) and enters at index 45, both coordinates
+at once. The sparse group lasso *can* zero a coordinate inside an active
+group, because its L1 term thresholds each coordinate separately, but on
+this cohort it has nothing to separate: `lab_e` and `lab_f` are
+exchangeable pure noise. Pure group lasso (`alpha=0.0`) cannot do it at
+all, since it moves a whole group's coordinates by one shared factor.
 
 ## 4. There is no `GroupLassoLinearCV`
 
@@ -190,21 +197,23 @@ threshold = cv_mean[idx_min] + cv_se[idx_min]
 idx_1se = int(np.where(cv_mean <= threshold)[0][0])
 
 lambda_min, lambda_1se = lambda_path[idx_min], lambda_path[idx_1se]
-full.coef_at(lambda_1se)
+print(f"lambda_min = {lambda_min:.5f}, lambda_1se = {lambda_1se:.4f}")
+print(pd.Series(full.coef_at(lambda_1se), index=candidates).round(4).to_string())
 ```
 ```
-age              0.0000
-src_emergency    8.2161
-src_transfer     9.8876
-src_urgent       4.5769
-diabetes         4.1207
-chf              6.9900
-ckd              4.0451
+lambda_min = 0.01490, lambda_1se = 0.2924
+age              0.1209
+src_emergency    8.2755
+src_transfer     9.8468
+src_urgent       4.8287
+diabetes         4.1310
+chf              6.9691
+ckd              4.3117
 lab_e            0.0000
 lab_f            0.0000
 ```
 
-`lambda_min` here is `0.00583`, `lambda_1se` is `0.166`. Notice `lab_e`
+Notice `lab_e`
 and `lab_f` land on exactly the same value (`0.0000`) at `lambda_1se`
 — they're zeroed *together*, as a group, which is the property this
 whole chapter is about. This loop follows exactly the same fold-then-

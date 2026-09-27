@@ -100,15 +100,15 @@ model.fit(
 
 ```python
 summary = model.summary()
-print(summary)
+print(summary.to_string())
 ```
 
 ```
              Estimate  Std.Error    z value      Pr(>|z|)
-(Intercept) -4.744732   0.384863 -12.328360  6.373025e-35
-age          0.042402   0.005639   7.520125  5.472391e-14
-severity     0.248302   0.027888   8.903560  5.408364e-19
-urgent       0.504732   0.117978   4.278187  1.884214e-05
+(Intercept) -4.744732   0.384863 -12.328360  6.373068e-35
+age          0.042402   0.005639   7.520124  5.472424e-14
+severity     0.248302   0.027888   8.903560  5.408338e-19
+urgent       0.504732   0.117978   4.278187  1.884215e-05
 ```
 
 The columns mirror what `lme4::summary()` shows in R:
@@ -161,6 +161,7 @@ Hospital_15    0.359097
 Hospital_16    0.738506
 Hospital_17    0.079881
 Hospital_18    0.051852
+dtype: float64
 ```
 
 The BLUPs range from $-0.641$ to $+0.739$ (SD = 0.279). This is
@@ -203,14 +204,14 @@ print(sm_df.head(10))
 ```
 
 ```
-      provider_id  indirect_ratio  indirect_rate  observed   expected
+   provider_id  indirect_ratio  indirect_rate  observed   expected
 0   Hospital_1        0.801878      19.265898      17.0  21.200234
 1  Hospital_10        1.432589      34.419342      19.0  13.262703
 2  Hospital_11        1.102326      26.484456      30.0  27.215180
 3  Hospital_12        0.851397      20.455654      23.0  27.014409
-4  Hospital_13        0.800663      19.236709      21.0  26.228262
+4  Hospital_13        0.800663      19.236709      21.0  26.228263
 5  Hospital_14        1.034282      24.849631      16.0  15.469670
-6  Hospital_15        1.331996      32.002506      32.0  24.024093
+6  Hospital_15        1.331996      32.002506      32.0  24.024092
 7  Hospital_16        1.721810      41.368153      51.0  29.620000
 8  Hospital_17        1.065650      25.603279      12.0  11.260733
 9  Hospital_18        1.014591      24.376529      17.0  16.755526
@@ -223,7 +224,7 @@ of each patient's true risk at their hospital. `expected` uses the
 median BLUP as the reference.
 
 Hospital 16 stands out: ISR = 1.72, meaning 72 % more complications
-than expected at the median level. Hospital 25 is at the other extreme
+than expected at the median level. Hospital 19 is at the other extreme
 with ISR = 0.40. The full ISR range is $[0.402, 1.722]$.
 
 ## 6. Hypothesis testing
@@ -261,7 +262,8 @@ reports a 95 % interval for each BLUP (`ci_lower`, `ci_upper`), which
 excludes the reference exactly when the hospital is flagged.
 
 Only **2 of 25** hospitals are flagged at the 5 % level: Hospital 16
-(flag = +1, $p = 0.0001$, $Z = 3.88$) and one flagged low. With
+(flag = +1, $p = 0.0001$, $Z = 3.88$) and Hospital 19 (flag = $-1$,
+$p = 0.001$, $Z = -3.23$). With
 25 providers and BLUPs already shrunk toward the mean, the test is
 conservative — only the strongest deviations survive. This is by
 design: RE models trade power for stability.
@@ -277,7 +279,7 @@ print(alpha_ci_df.head(10))
 ```
 
 ```
-      provider_id     alpha  alpha_lower  alpha_upper
+   provider_id     alpha  alpha_lower  alpha_upper
 0   Hospital_1 -0.143147    -0.562868     0.276575
 1  Hospital_10  0.355628    -0.098824     0.810079
 2  Hospital_11  0.151774    -0.227760     0.531308
@@ -301,11 +303,11 @@ sm_ci = model.calculate_confidence_intervals(
     option='SM', stdz='indirect', reference='median',
     measure=['ratio'], level=0.95,
 )
-print(sm_ci['indirect_ratio'].head(10))
+print(sm_ci["indirect_ratio"].head(10).to_string())
 ```
 
 ```
-      provider_id  indirect_ratio     lower     upper
+   provider_id  indirect_ratio     lower     upper
 0   Hospital_1        0.801878  0.527018  1.220088
 1  Hospital_10        1.432589  0.909402  2.256771
 2  Hospital_11        1.102326  0.754190  1.611163

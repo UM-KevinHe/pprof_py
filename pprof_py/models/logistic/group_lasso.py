@@ -432,8 +432,8 @@ class GroupLassoLogisticCV(ProviderModel):
     ----------
     groups : array-like, shape (p,)
     alpha : float, default=0.0
-    n_lambda, lambda_min_ratio, lambda_path, penalty_factor,
-    group_multiplier, standardize, fit_intercept, use_active_set
+    n_lambda, lambda_min_ratio, lambda_path, penalty_factor, group_multiplier, standardize, fit_intercept, use_active_set
+        As in ``GroupLassoLogistic``.
     n_folds : int, default=10
     fold_id : array-like or None
     se_rule : {"1se", "min"}, default="1se"

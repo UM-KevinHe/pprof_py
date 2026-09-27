@@ -52,15 +52,15 @@ piece of that process is now available as an attribute on `model`.
 ## 3.3 Reading `summary()`
 
 ```python
-model.summary()
+print(model.summary().round(4).to_string())
 ```
 
 ```
-                        coef  exp(coef)  se(coef)         z             p  lower_95%  upper_95%
-age                   0.0447     1.0457    0.0021   21.286  1.780000e-100     0.0406     0.0489
-sex                  -0.0523     0.9491    0.0631   -0.829  4.070000e-01    -0.1760     0.0714
-diabetes              0.3691     1.4465    0.0625    5.906  3.510000e-09     0.2467     0.4916
-comorbidity_count     0.2103     1.2341    0.0271    7.760  8.470000e-15     0.1572     0.2634
+                     coef  exp(coef)  se(coef)        z       p  lower_95%  upper_95%
+age                0.0471     1.0482    0.0047  10.0650  0.0000     0.0379     0.0562
+sex               -0.0577     0.9439    0.1253  -0.4608  0.6449    -0.3032     0.1878
+diabetes           0.1989     1.2200    0.1244   1.5985  0.1099    -0.0450     0.4428
+comorbidity_count  0.1823     1.1999    0.0505   3.6129  0.0003     0.0834     0.2812
 ```
 
 Every column, in plain language:
@@ -68,9 +68,9 @@ Every column, in plain language:
 - **`coef`** — the estimated $\hat\beta$ from Section 2.3: the change
   in *log*-hazard per one-unit increase in the covariate.
 - **`exp(coef)`** — the hazard ratio, Section 2.2's whole point:
-  diabetes multiplies the hazard of death by about 1.45, i.e. a 45%
-  higher instantaneous risk of death, holding age, sex, and
-  comorbidity count fixed.
+  each additional comorbidity multiplies the hazard of death by about
+  1.20, i.e. a 20% higher instantaneous risk of death, holding age,
+  sex, and diabetes fixed.
 - **`se(coef)`** — the standard error of $\hat\beta$: how much this
   estimate would plausibly wobble if you repeated the study on a new
   sample from the same population. Smaller is more precise. (Chapter 5
@@ -79,12 +79,15 @@ Every column, in plain language:
 - **`z`** and **`p`** — the Wald test $z = \hat\beta / \text{se}(\hat\beta)$
   and its two-sided p-value: how many standard errors is this estimate
   away from zero, and how surprising would that be if the true effect
-  were actually zero? A p-value near 0 (like diabetes and
-  comorbidity count here) means "this effect is very unlikely to be
-  pure noise"; sex's p-value of 0.41 means "we cannot distinguish this
-  estimate from zero with the data we have" — which, since our
-  synthetic cohort was built with no true sex effect, is exactly the
-  right conclusion for the model to reach.
+  were actually zero? A p-value near 0 (like age and comorbidity count
+  here) means "this effect is very unlikely to be pure noise"; sex's
+  p-value of 0.64 means "we cannot distinguish this estimate from zero
+  with the data we have" — which, since our synthetic cohort was built
+  with no true sex effect, is the right conclusion. Diabetes is the
+  instructive case: the cohort was built with a real diabetes effect
+  (0.35 on the log-hazard scale), yet with 259 deaths the estimate,
+  0.20, has p = 0.11 and an interval that includes zero. Failing to
+  reject is not evidence of no effect.
 - **`lower_95%`/`upper_95%`** — the 95% confidence interval on `coef`
   (not `exp(coef)` — exponentiate the endpoints yourself if you want
   the hazard-ratio-scale interval). Widen or narrow it with
@@ -93,7 +96,10 @@ Every column, in plain language:
 ## 3.4 The rest of the fitted attributes
 
 ```python
-model.log_likelihood_, model.log_likelihood_null_
+print(round(model.log_likelihood_, 2), round(model.log_likelihood_null_, 2))
+```
+```
+-1985.45 -2045.19
 ```
 
 `log_likelihood_null_` is the partial log-likelihood of a model with
@@ -110,16 +116,23 @@ from scipy import stats
 
 lr_statistic = 2 * (model.log_likelihood_ - model.log_likelihood_null_)
 p_value = stats.chi2.sf(lr_statistic, df=len(model.coef_))
+print(f"LR = {lr_statistic:.1f} on {len(model.coef_)} df, p = {p_value:.1e}")
+```
+```
+LR = 119.5 on 4 df, p = 6.9e-25
 ```
 
 A few more attributes worth knowing:
 
 ```python
-model.n_obs_          # 4000 -- rows fit on
-model.n_events_       # how many were actual deaths, not censored
-model.converged_      # True if Newton-Raphson found a stationary point
-model.n_iter_         # how many iterations it took (usually well under 10)
-model.feature_names_in_   # the column names, in order, matching coef_
+print(model.n_obs_, model.n_events_)   # rows fit on; how many were deaths, not censored
+print(model.converged_, model.n_iter_)  # Newton-Raphson reached a stationary point; iterations taken
+print(model.feature_names_in_)          # the column names, in order, matching coef_
+```
+```
+4000 259
+True 4
+['age' 'sex' 'diabetes' 'comorbidity_count']
 ```
 
 Always glance at `converged_` before trusting anything else — an
@@ -134,14 +147,16 @@ assumption on its shape. `coxph` estimates it using the **Breslow
 estimator** for the cumulative baseline hazard:
 
 ```python
-model.baseline_hazard_.head()
+print(model.baseline_hazard_.head())
 ```
 
 ```
-   stratum      time    hazard  survival
-0        0  0.031000  0.000210  0.999790
-1        0  0.052000  0.000431  0.999569
-2        0  0.077000  0.000657  0.999343
+   stratum   time    hazard  survival
+0        0  0.009  0.000008  0.999992
+1        0  0.016  0.000016  0.999984
+2        0  0.017  0.000023  0.999977
+3        0  0.018  0.000031  0.999969
+4        0  0.019  0.000039  0.999961
 ```
 
 `hazard` here is the *cumulative* baseline hazard $\hat\Lambda_0(t)$ up
@@ -181,28 +196,28 @@ new_patients = pd.DataFrame({
     "age": [55, 75], "sex": [0, 1], "diabetes": [0, 1], "comorbidity_count": [0, 3],
 })
 
-model.predict_linear(new_patients)           # X @ coef_  -- the raw linear predictor
-model.predict_partial_hazard(new_patients)   # exp(X @ coef_)  -- relative risk vs. baseline
-model.predict_cumulative_hazard(new_patients)   # a full curve, one column per patient
-model.predict_survival_function(new_patients)   # exp(-cumulative hazard) -- the survival curve
+print(model.predict_linear(new_patients).round(3))           # X @ coef_ -- the raw linear predictor
+print(model.predict_partial_hazard(new_patients).round(3))   # exp(X @ coef_) -- relative risk vs. baseline
+cumulative = model.predict_cumulative_hazard(new_patients)   # a full curve, one column per patient
+survival = model.predict_survival_function(new_patients)     # exp(-cumulative hazard) -- the survival curve
+print(cumulative.head(2))
+```
+```
+[2.589 4.218]
+[13.31  67.885]
+              0         1
+time
+0.009  0.000104  0.000529
+0.016  0.000208  0.001058
 ```
 
 `predict_cumulative_hazard`/`predict_survival_function` return a
-DataFrame indexed by time, one column per row of the input:
-
-```
-        0         1
-time
-0.031  0.00007  0.00089
-0.052  0.00014  0.00183
-...
-```
-
-Reading it: patient 0 (age 55, no diabetes, no comorbidities) has an
-estimated 0.007% cumulative chance of death by time 0.031, versus 0.09%
-for patient 1 (age 75, diabetic, 3 comorbidities) — already, at the
-very first observed event time in the data, several times the risk,
-compounding further as time goes on. Plot it directly:
+DataFrame indexed by time, one column per row of the input. Reading it:
+patient 0 (age 55, no diabetes, no comorbidities) has an estimated
+cumulative hazard of 0.0001 (a 0.01% chance of death) by time 0.009,
+the first death time in the data, versus 0.0005 for patient 1 (age 75,
+diabetic, 3 comorbidities) — about five times the risk, the ratio of
+their partial hazards, at every time. Plot it directly:
 
 ```python
 import matplotlib.pyplot as plt
@@ -219,7 +234,10 @@ Every fitted model comes with **martingale residuals** already
 computed:
 
 ```python
-model.martingale_residuals_[:5]
+print(model.martingale_residuals_[:5].round(4))
+```
+```
+[-0.085  -0.0131 -0.0409 -0.0562 -0.0396]
 ```
 
 Conceptually, a martingale residual answers: *for this specific

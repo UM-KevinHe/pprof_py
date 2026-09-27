@@ -108,7 +108,7 @@ def _validate_group_parameters(
 class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Group lasso / sparse group lasso penalized Cox regression.
 
-    Fits a regularization path for the penalty:
+    Fits a regularization path for the penalty::
 
         lambda * [(1-alpha) * sum_g m_g * ||beta_g||_2
                   + alpha * sum_j pf_j * |beta_j|]
@@ -130,6 +130,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
         sorted (after internal remapping to 1..G).
     alpha : float, default 0.0
         Sparse group lasso mixing parameter:
+
         * ``alpha=0.0``: pure group lasso (entire groups in/out).
         * ``0 < alpha < 1``: sparse group lasso (group selection
           plus within-group sparsity).
@@ -175,33 +176,33 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     fit_intercept : bool, default False
         Must be ``False`` (Cox PH has no intercept).
 
-    Attributes (set by ``fit``)
-    ---------------------------
-    coef_path_ : ndarray, shape (n_lambda_, n_features)
+    Attributes
+    ----------
+    coef_path_ : ndarray, shape (``n_lambda_``, n_features)
         Coefficient matrix along the regularization path.
-    lambda_path_ : ndarray, shape (n_lambda_,)
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
         Lambda values actually used (descending).
     lambda_max_ : float
-    log_likelihood_path_ : ndarray, shape (n_lambda_,)
-    deviance_ratio_path_ : ndarray, shape (n_lambda_,)
-    n_nonzero_path_ : ndarray of int, shape (n_lambda_,)
-    converged_path_ : ndarray of bool, shape (n_lambda_,)
-    n_iter_path_ : ndarray of int, shape (n_lambda_,)
-    group_norms_ : ndarray, shape (n_lambda_, n_groups)
+    log_likelihood_path_ : ndarray, shape (``n_lambda_``,)
+    deviance_ratio_path_ : ndarray, shape (``n_lambda_``,)
+    n_nonzero_path_ : ndarray of int, shape (``n_lambda_``,)
+    converged_path_ : ndarray of bool, shape (``n_lambda_``,)
+    n_iter_path_ : ndarray of int, shape (``n_lambda_``,)
+    group_norms_ : ndarray, shape (``n_lambda_``, n_groups)
         ``||beta_g||_2`` per group at each lambda, in the fitted
         (orthogonalized, when ``orthogonalize``) coordinates.
-    kkt_violation_path_ : ndarray, shape (n_lambda_,)
+    kkt_violation_path_ : ndarray, shape (``n_lambda_``,)
         Relative KKT residual at each lambda (``converged_path_`` is True
         where it falls below the solver's threshold).
     active_groups_ : list of ndarray of bool
         Boolean mask of active groups at each lambda.
-    df_path_ : ndarray, shape (n_lambda_,)
+    df_path_ : ndarray, shape (``n_lambda_``,)
         Degrees of freedom (number of nonzero coefficients) per lambda.
     groups_ : ndarray of int, shape (n_features,)
         Canonicalized group labels (after validation).
     group_sizes_ : ndarray of int
     n_groups_ : int
-    group_weights_ : ndarray, shape (n_groups_,)
+    group_weights_ : ndarray, shape (``n_groups_``,)
     column_scale_ : ndarray, shape (n_features,)
     """
 
@@ -492,11 +493,11 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     se_rule : str, default '1se'
         ``'min'`` or ``'1se'``.
 
-    Attributes (set by ``fit``)
-    ---------------------------
-    lambda_path_ : ndarray, shape (n_lambda_,)
-    cv_mean_deviance_ : ndarray, shape (n_lambda_,)
-    cv_se_deviance_ : ndarray, shape (n_lambda_,)
+    Attributes
+    ----------
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
+    cv_mean_deviance_ : ndarray, shape (``n_lambda_``,)
+    cv_se_deviance_ : ndarray, shape (``n_lambda_``,)
     lambda_min_ : float
     lambda_1se_ : float
     model_ : GroupLassoCoxPH

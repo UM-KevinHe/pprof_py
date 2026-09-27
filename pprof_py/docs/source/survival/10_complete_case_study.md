@@ -82,15 +82,15 @@ stage1 = CoxPH(ties="efron").fit(
     strata=records["facility_id"],
     cluster=records["patient_id"],
 )
-stage1.summary()
+print(stage1.summary().round(4).to_string())
 
 xbeta = stage1.predict_linear(X1)
 ```
 
 ```
-                       coef  exp(coef)  se(coef)  ...
-age                0.047316   1.048454    0.0047
-comorbidity_count  0.179186   1.196243    0.0479
+                     coef  exp(coef)  se(coef)       z       p  lower_95%  upper_95%
+age                0.0473     1.0485    0.0048  9.8741  0.0000     0.0379     0.0567
+comorbidity_count  0.1792     1.1962    0.0480  3.7326  0.0002     0.0851     0.2733
 ```
 
 ## 10.4 Stage 2: offset-only, unstratified, still clustered
@@ -182,26 +182,41 @@ report["flag"] = np.where(
     np.where(report["ci_upper"] < 1.0, "lower than expected", ""),
 )
 
-report.sort_values("SMR", ascending=False).round(3).head(10)
+print(report.sort_values("SMR", ascending=False).round(3).head(5).to_string())
+print()
+print(report[(report["p_value"] < 0.05) | (report["flag"] != "")].round(3).to_string())
 ```
 
 ```
-             observed  expected    SMR  p_value  ci_lower  ci_upper                  flag
+             observed  expected    SMR  p_value  ci_lower  ci_upper flag
 facility_id
-22.0             13.0     7.385  1.760    0.048     1.021     2.858  higher than expected
-21.0              9.0     5.264  1.710    0.108     0.895     3.084
-2.0               7.0     4.316  1.622    0.201     0.751     3.181
-23.0             12.0     7.625  1.574    0.107     0.907     2.612
-10.0              9.0     5.856  1.537    0.180     0.804     2.762
+22.0             13.0     7.385  1.760    0.058     0.937     3.010
+21.0              9.0     5.264  1.710    0.129     0.782     3.246
+2.0               7.0     4.316  1.622    0.218     0.652     3.342
+23.0             12.0     7.625  1.574    0.134     0.813     2.749
+10.0              9.0     5.856  1.537    0.213     0.703     2.917
+
+             observed  expected    SMR  p_value  ci_lower  ci_upper                 flag
+facility_id
+32.0              2.0     6.784  0.295    0.044     0.036     1.065
+33.0              2.0     8.252  0.242    0.014     0.029     0.876  lower than expected
 ```
 
-Facility 22 is the one entry on this list whose interval genuinely
-excludes 1.00 — a statistically credible outlier, not merely the
-facility with the single highest point estimate (facility 22's SMR of
-1.76 is not even the largest shown here in absolute terms — it's the
-one where the *combination* of the ratio and its own precision clears
-the bar, exactly the distinction Chapter 4 asked you to make rather
-than sorting by SMR alone and stopping there).
+The five highest SMRs are all within chance: no interval excludes 1.00.
+Facility 22 comes closest — 13 deaths against 7.4 expected, SMR 1.76,
+mid-p value 0.058 — and facility 2's SMR of 1.62 rests on only 7
+deaths, so its interval is wider still. Sorting by SMR and stopping
+there would have singled out facilities the data cannot distinguish
+from average, which is exactly the mistake Chapter 4 warned against.
+
+The one facility flagged is at the other end: facility 33, with 2 deaths
+against 8.3 expected, whose exact interval lies entirely below 1.00.
+Facility 32 shows why the flag is defined by one procedure: its mid-p
+value is 0.044, below 0.05, yet its exact chi-square interval
+(0.036 to 1.065) includes 1.00. The mid-p test is less conservative
+than the exact interval, so near the boundary the two can disagree;
+a report should flag by one of them, stated in advance (here, the
+interval).
 
 ## 10.7 Where the other chapters extend this
 

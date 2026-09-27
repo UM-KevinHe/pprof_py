@@ -35,9 +35,11 @@ replacement for it.
 Every test takes one through `null_model=`. A null model is used as
 given; a callable, such as `EmpiricalNull.fitter(...)`, is fitted on the
 test's own z-statistics (always on all providers, even when
-`providers=` restricts the rows reported):
+`providers=` restricts the rows reported). With `model` any fitted
+provider model and `sizes` its providers' sizes (a full example follows
+below):
 
-```python
+```{code-block} python
 from pprof_py.inference import EmpiricalNull, FixedNull
 
 model.test(null_model=FixedNull(sd=1.81))
@@ -165,13 +167,13 @@ print("flagged:", int((theoretical.flag != 0).sum()), "with the theoretical null
       int((empirical.flag != 0).sum()), "with the empirical null")
 ```
 ```text
-          z_raw  null_group  null_mean  null_sd  z_adjusted  p_value  flag
-provider
-0         0.161           1     -0.238    1.164       0.343    0.732     0
-1        -2.311           1     -0.238    1.164      -1.781    0.075     0
-2         1.986           1     -0.238    1.164       1.910    0.056     0
-3         4.109           3      0.507    2.710       1.329    0.184     0
-4         1.603           2      0.017    0.781       2.031    0.042     1
+             z_raw  null_group  null_mean  null_sd  z_adjusted  p_value  flag
+provider_id
+0            0.161           1     -0.238    1.164       0.343    0.732     0
+1           -2.311           1     -0.238    1.164      -1.781    0.075     0
+2            1.986           1     -0.238    1.164       1.910    0.056     0
+3            4.109           3      0.507    2.710       1.329    0.184     0
+4            1.603           2      0.017    0.781       2.031    0.042     1
 flagged: 26 with the theoretical null, 10 with the empirical null
 ```
 
@@ -187,9 +189,10 @@ interval excludes the null value exactly when the provider is flagged;
 
 R's `summary.glmm.fac` (the reference for `LogisticFERandomClusterModel.test`)
 fits `MASS::rlm` with its defaults within quartiles of a facility-size
-variable, setting missing sizes to 0:
+variable, setting missing sizes to 0. For a fitted
+`LogisticFERandomClusterModel` and its facilities' sizes `facility_size`:
 
-```python
+```{code-block} python
 from pprof_py.inference import HUBER_RLM
 
 model.test(null_model=EmpiricalNull.fitter(size=facility_size, n_groups=4, grouping="quantile",
@@ -198,9 +201,10 @@ model.test(null_model=EmpiricalNull.fitter(size=facility_size, n_groups=4, group
 
 Earlier versions of pprof_py instead applied an empirical null by default
 with a Huber fit in four equal-count groups of discharge counts. That
-configuration, which is not R's, is:
+configuration, which is not R's, is (for records `df` with a
+`facility_id` column):
 
-```python
+```{code-block} python
 sizes = df.groupby("facility_id", observed=True).size().loc[model.provider_ids_].to_numpy()
 model.test(null_model=EmpiricalNull.fitter(size=sizes, n_groups=4, grouping="rank",
                                            estimator=HUBER_RLM, small_group="theoretical"))

@@ -11,7 +11,7 @@ offsets, weights, left truncation and both tie methods carry over unchanged.
 | `ProviderPenalizedCoxPH` | Any of the above on β | Unpenalized provider effects γ |
 
 Chapter 8 of the tutorial explains penalization; this page lists what the classes accept and expose.
-Common names and defaults are compared across families in {ref}`survival_ref_conventions`.
+The logistic and linear penalized classes are listed in {ref}`ll_ref_penalized`.
 
 ```python
 import numpy as np, pandas as pd
@@ -154,4 +154,4 @@ requires it), `groups` (`0` = unpenalized, contiguous), `group_multiplier`, `pen
 | `GroupLassoCoxPH` / `CV` | R `grplasso::Strat.cox` without `prov.char` (one stratum) | Coefficient paths on R's λ path to 1e-8, λ_max to 1e-10 (`test_cox_group_paths.py`, goldens with an unpenalized column and custom multipliers); KKT residual below 1e-8 |
 | `ProviderPenalizedCoxPH` | `GroupLassoCoxPH` with the provider dummies as unpenalized columns (the same model) | Coefficients and provider-effect differences to 1e-8 (`test_cox_group_paths.py`); elastic net: internal tests |
 
-See {ref}`survival_validation_tools` for how to re-run the comparisons.
+See {ref}`diagnostics-guide` for how to re-run the comparisons.
