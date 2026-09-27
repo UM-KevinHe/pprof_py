@@ -31,9 +31,10 @@ from ...inference.survival.residuals import martingale_residuals
 from ...utils.numerical import col_means, safe_exp
 from ...exceptions import NotFittedError
 from ...measures.survival.coxph import CoxPHMeasuresMixin
+from ...inference.survival.provider_tests import CoxPHInferenceMixin
 
 
-class CoxPH(CoxPHMeasuresMixin, ProviderModel):
+class CoxPH(CoxPHMeasuresMixin, CoxPHInferenceMixin, ProviderModel):
     """Cox Proportional Hazards regression, fit by maximizing the
     (Breslow, by default) partial likelihood via Newton-Raphson.
 

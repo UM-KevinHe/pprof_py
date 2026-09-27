@@ -107,6 +107,7 @@ Rows may be in any order. The full list of input checks, and the exception raise
 | `score(X, duration=…, event=…, start=…, stop=…, strata=…, offset=…, sample_weight=…)` | The partial log-likelihood of the supplied data at the fitted coefficients (a `float`). |
 | `summary()` | `DataFrame` indexed by feature name with columns `coef`, `exp(coef)`, `se(coef)`, `z`, `p`, `lower_<level>%`, `upper_<level>%`. |
 | `calculate_standardized_measures(X, duration=…, event=…, start=…, stop=…, *, provider_id, offset=None, providers=None, stdz="indirect")` | Indirect and direct standardized ratios (SMR, SHR) per provider: a dict with an `"indirect"` table (`provider_id`, `indirect_ratio`, `observed`, `expected`, `person_time`) and/or a `"direct"` table (`provider_id`, `direct_ratio`, `observed`, `expected`, `n_pop`). See below. |
+| `test(X, duration=…, event=…, start=…, stop=…, *, provider_id, offset=None, providers=None, test_method="midp", null_model=None, level=0.95)` | Tests each provider's indirect ratio against 1 (the SMR tutorial's Section 4): a `DataFrame` indexed by provider with the provider-test columns plus `observed`, `expected`, `person_time`. See below. |
 
 `predict_cumulative_hazard` / `predict_survival_function` are evaluated **only at the stratum's
 event times** — there is no `times=` argument. To read the step function at arbitrary times, forward-fill:
@@ -182,6 +183,15 @@ These follow the SMR tutorial's definitions and match R's `survival` (`basehaz` 
 offset-only model) to 1e-14. Baselines are Breslow estimators whatever `ties` fitted the coefficients; rows are
 unweighted. A provider's baseline is flat after its last event, so its direct ratio understates a hazard that
 continues over the population's later follow-up.
+
+`test` treats `O_j` as Poisson with mean `E_j`. `test_method="midp"` (the default) is the two-sided mid-p test
+(tutorial Eq. 10), as a z-statistic (Eq. 14) that `null_model` calibrates: the theoretical null, or an empirical null
+such as the tutorial's, grouped by quartiles of person-time (`EmpiricalNull.fitter(size=person_time, n_groups=4,
+estimator=HUBER_RLM)`). Its limits invert the calibrated test (Section 4.2.2), so a provider is flagged exactly when its
+interval excludes 1; a side on which the calibrated test never rejects has limit 0 or infinity. `test_method="exact"` is
+the exact Poisson test (Eq. 9, the doubled tail capped at 0.999) with Byar's limits when `E_j >= 100` and the exact
+chi-square limits otherwise (Eq. 11-12), under the theoretical null. Remark 4.1's exact limits are reproduced; its
+"Byar" row is Eq. 11 evaluated at `O + 0.5` in both limits, not Eq. 11 as printed, which is what `test` uses.
 
 ## R parity cheat-sheet
 

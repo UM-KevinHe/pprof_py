@@ -427,6 +427,60 @@ why the CMS methodology this chapter is modeled on restricts published
 comparisons to facilities above a minimum expected-death threshold —
 below it, the ratio is simply too noisy to interpret on its own.
 
+### The same inference with `CoxPH.test`
+
+`CoxPH.test` runs this section's tests on the stage 1 fit, with the
+arguments of `calculate_standardized_measures`. Its default is the mid-p
+test, whose limits invert the test, so a facility is flagged exactly when
+its interval excludes 1; `test_method="exact"` gives the exact test with
+the Byar and chi-square limits above:
+
+```python
+tests = stage1.test(X1, duration=cohort["time"], event=cohort["death"],
+                    provider_id=cohort["facility_id"])
+print(tests[["estimate", "p_value", "flag", "ci_lower", "ci_upper"]].head().round(4).to_string())
+print(int((tests["flag"] != 0).sum()), "of", len(tests), "facilities flagged")
+```
+```
+             estimate  p_value  flag  ci_lower  ci_upper
+provider_id
+0              1.4512   0.2287     0    0.7631    2.5224
+1              1.0341   0.8804     0    0.4803    1.9637
+2              1.6474   0.2056     0    0.7205    3.2587
+3              0.5282   0.1832     0    0.1678    1.2740
+4              1.4347   0.2862     0    0.6997    2.6329
+2 of 40 facilities flagged
+```
+
+When the facilities' z-statistics are wider than N(0, 1), an empirical null
+calibrates them. The methodology groups facilities by quartiles of their
+patient-years at risk, the `person_time` column of the standardized measures:
+
+```python
+from pprof_py.inference import EmpiricalNull, HUBER_RLM
+
+person_time = stage1.calculate_standardized_measures(
+    X1, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"],
+)["indirect"]["person_time"]
+calibrated = stage1.test(
+    X1, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"],
+    null_model=EmpiricalNull.fitter(size=person_time, n_groups=4, estimator=HUBER_RLM),
+)
+print(calibrated[["null_mean", "null_sd"]].drop_duplicates().round(3).to_string(index=False))
+```
+```
+ null_mean  null_sd
+    -0.156    2.215
+     0.312    1.089
+    -0.190    1.050
+     0.074    1.445
+```
+
+With 40 facilities, each of the four groups holds ten, too few for reliable
+null estimates: the group SDs above range from 1.05 to 2.2. The empirical-null
+guide's operating characteristics show such small groups flagging too often;
+with this few facilities, prefer `n_groups=1`.
+
 ## 4.9 A note on reliability: how much of the variation is signal?
 
 One more question the source methodology asks, worth knowing even

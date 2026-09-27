@@ -162,6 +162,12 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   empirical null grouped by provider size holds about 0.05; one-sided outliers make it conservative, and groups of a dozen
   providers make it liberal. No code changes.
 
+**Provider tests for Cox standardized ratios**
+
+- `CoxPH.test` tests each provider's indirect standardized ratio against 1 with the SMR tutorial's inference: the mid-p
+  test calibrated by the theoretical or an empirical null (grouped by person-time), with limits that invert it, or the
+  exact Poisson test with Byar and chi-square limits. Survival Chapter 4 shows both.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
