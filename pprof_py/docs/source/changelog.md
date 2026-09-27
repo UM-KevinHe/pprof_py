@@ -145,6 +145,16 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   baseline applied to the whole population. It matches R's `survival` to 1e-14, left truncation and tied times included.
   Survival Chapter 4 shows it next to the two-stage computation by hand.
 
+**Uncertainty in the cluster SD**
+
+- `LogisticRandomEffectModel.profile_sigma` gives each random-effect SD's profile-likelihood interval, as lme4's
+  `confint(method = "profile")`, with the Laplace deviance evaluated at the conditional mode. On a crossed cohort it
+  matches that profile computed in R to 5e-8; lme4's own limits differ by up to 2e-4 because its deviance function
+  evaluates the log-determinant away from its mode.
+- `LogisticThreeStageModel.sigma_sensitivity` refits Stage 3 at both ends of the cluster SD's interval and reports which
+  provider flags change. Stage 2's σ carries more of the pipeline's uncertainty than Stage 1's β (REV-022); a
+  hospital-only Stage 2 overstates it, the production two-effect Stage 2 does not.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.

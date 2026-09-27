@@ -76,6 +76,7 @@ class LogisticThreeStageModel(ProviderModel):
         self.stage1_: Optional[LogisticFixedEffectModel] = None
         self.stage2_: Optional[LogisticRandomEffectModel] = None
         self.stage3_: Optional[LogisticFERandomClusterModel] = None
+        self._fit_args: Optional[dict] = None
 
     def fit(self, data: pd.DataFrame, y_var: str, x_vars: List[str], provider_var: str, cluster_var: str,
             verbose: bool = False) -> "LogisticThreeStageModel":
@@ -120,7 +121,52 @@ class LogisticThreeStageModel(ProviderModel):
                    verbose=verbose)
         self.prep_, self.data_ = prep, d
         self.stage1_, self.stage2_, self.stage3_ = stage1, stage2, stage3
+        self._fit_args = {"y_var": y_var, "x_vars": x_vars, "provider_var": provider_var, "cluster_var": cluster_var}
         return self
+
+    def sigma_sensitivity(self, level: float = 0.95, **test_kwargs) -> dict:
+        """Stage 3's provider flags across the profile interval of the cluster SD.
+
+        Stage 2's sigma carries sampling uncertainty that moves more flags than Stage 1's beta
+        (REV-022).  Stage 3 is refitted at both ends of sigma's profile-likelihood interval
+        (:meth:`LogisticRandomEffectModel.profile_sigma`), with Stage 1's beta and Stage 2's starting
+        values held fixed, and each fit is tested like ``test()``.
+
+        Parameters
+        ----------
+        level : float, default 0.95
+            Level of the profile interval.
+        **test_kwargs
+            Passed to Stage 3's ``test()`` (for example ``test_method``, ``null_model``, ``alpha``).
+
+        Returns
+        -------
+        dict
+            ``"sigma"``: Series with the interval's ``lower`` end, the ``estimate`` and the ``upper`` end.
+            ``"flags"``: DataFrame indexed by provider ID with each provider's flag at the three values and
+            ``stable`` (the same flag at all three).  ``"tests"``: the three ``test()`` tables.
+        """
+        stage3 = self._stage3()
+        a = self._fit_args
+        interval = self.stage2_.profile_sigma(a["cluster_var"], level=level).loc[a["cluster_var"]]
+        sigmas = pd.Series({"lower": interval["lower"], "estimate": interval["sigma"], "upper": interval["upper"]})
+        beta, _, start = stage3._values_from_stages(self.stage1_, self.stage2_, a["x_vars"], a["provider_var"],
+                                                    a["cluster_var"])
+        tests = {}
+        for key, sigma in sigmas.items():
+            if key == "estimate":
+                model = stage3
+            else:
+                model = LogisticFERandomClusterModel(n_nodes=self.n_nodes, max_iter=self.max_iter, tol=self.tol,
+                                                     bound=self.bound, bound_mode=self.bound_mode,
+                                                     convergence_criterion=self.convergence_criterion,
+                                                     estimator=self.estimator)
+                model.fit(self.data_, "y_adj", a["x_vars"], a["provider_var"], a["cluster_var"], beta=beta,
+                          sigma=float(sigma), gamma_init=start, obs_var=a["y_var"], verbose=False)
+            tests[key] = model.test(**test_kwargs)
+        flags = pd.DataFrame({key: t["flag"] for key, t in tests.items()})
+        flags["stable"] = flags.nunique(axis=1) == 1
+        return {"sigma": sigmas, "flags": flags, "tests": tests}
 
     def _stage3(self) -> LogisticFERandomClusterModel:
         if self.stage3_ is None:

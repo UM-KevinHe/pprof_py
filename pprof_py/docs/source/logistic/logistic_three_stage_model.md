@@ -260,6 +260,35 @@ Use `"he2013"` for output comparable with R (Section 10).
   the posterior hospital effects each iteration and drove it toward zero (R's `glmm.fac.hosp` does the
   same); it was removed.
 
+### How much the flags depend on $\sigma$
+
+Stage 3 takes $\sigma$ from Stage 2 as known, but with 20 hospitals it is estimated loosely, and it
+moves provider flags more than Stage 1's $\beta$ does. `profile_sigma` gives Stage 2's
+profile-likelihood interval for each SD, and `sigma_sensitivity` refits Stage 3 at both ends of the
+hospital SD's interval (with Stage 1's $\beta$ held fixed) and tests each fit:
+
+```python
+print(model.stage2_.profile_sigma("hospital_id").round(4))
+sens = model.sigma_sensitivity()
+print(sens["sigma"].round(4).to_string())
+print(int(sens["flags"]["stable"].sum()), "of", len(sens["flags"]), "flags are the same at all three values")
+```
+```
+              sigma   lower   upper
+group_var
+hospital_id  0.4244  0.3087  0.6139
+lower       0.3087
+estimate    0.4244
+upper       0.6139
+115 of 115 flags are the same at all three values
+```
+
+Here every flag survives the whole interval, 0.31 to 0.61. `sens["flags"]` holds each facility's flag
+at the three values of $\sigma$, and `sens["tests"]` the three test tables; `sigma_sensitivity` passes its keyword arguments to `test()`. The interval is lme4's
+`confint(method = "profile")`: the values at which the Laplace deviance, minimized over everything
+else, is within the chi-square(1) quantile of its minimum. The call costs the profile (about ten
+Stage 2 optimizations) plus two Stage 3 fits and three tests.
+
 ## 9. Covariate inference
 
 `summary()` reports inference for $\beta$ from Stage 1: $\beta$ is estimated there and held fixed here,

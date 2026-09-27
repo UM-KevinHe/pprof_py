@@ -490,6 +490,86 @@ class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRand
 
         return self
 
+    def profile_sigma(self, var: Optional[Union[str, Sequence[str]]] = None, level: float = 0.95) -> pd.DataFrame:
+        """Profile-likelihood confidence interval for each random-effect standard deviation.
+
+        With ``sigma_k`` held at a value, the Laplace deviance is minimized over the fixed effects and
+        the other standard deviations; the interval holds the values at which this profiled deviance
+        exceeds its minimum by at most the ``level`` quantile of chi-square(1).  That is the interval
+        lme4's ``confint(method = "profile")`` reports.  A lower limit of 0 means the deviance rises by
+        less than that at ``sigma_k = 0``.
+
+        Parameters
+        ----------
+        var : str or list of str, optional
+            Grouping variables to profile (default: all).
+        level : float, default 0.95
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by grouping variable, with columns ``sigma`` (the estimate), ``lower`` and ``upper``.
+        """
+        from scipy.optimize import brentq
+        from scipy.stats import chi2
+
+        self._check_is_fitted()
+        if not self.stage2:
+            raise ValueError("profile_sigma needs the Laplace (stage2=True) fit.")
+        if not 0.0 < float(level) < 1.0:
+            raise ValueError(f"level must be in (0, 1), got {level!r}")
+        names = list(self._group_vars)
+        wanted = names if var is None else ([var] if isinstance(var, str) else list(var))
+        unknown = [v for v in wanted if v not in names]
+        if unknown:
+            raise ValueError(f"Unknown grouping variables {unknown}; fitted: {names}")
+        n_sig = len(names)
+        crit = float(chi2.ppf(level, 1))
+        u_cache = {"u": self._u.copy()}
+
+        def deviance(sigma: Array, beta: Array) -> float:
+            state = self._pirls(sigma=sigma, beta0=beta, u0=u_cache["u"], update_beta=False)
+            u_cache["u"] = state.u.copy()
+            return self._laplace_deviance(sigma, beta, state.u)
+
+        rows = []
+        for gv in wanted:
+            k = names.index(gv)
+            x_cache = {"x": np.r_[np.delete(self._sigma, k), self._beta]}
+            bounds = [(0.0, self.sigma_upper)] * (n_sig - 1) + [(None, None)] * self._p
+
+            def profiled(s: float) -> float:
+                def objective(x: Array) -> float:
+                    sigma = np.insert(np.clip(x[: n_sig - 1], 0.0, self.sigma_upper), k, s)
+                    return deviance(sigma, x[n_sig - 1:])
+                if x_cache["x"].size == 0:
+                    return objective(x_cache["x"])
+                # Warm start from the previous profile point, with a small initial simplex; the deviance
+                # (not the nuisance parameters) is what needs to be accurate.
+                x0 = x_cache["x"]
+                simplex = np.vstack([x0, x0 + 0.01 * np.eye(x0.size) * np.maximum(np.abs(x0), 0.1)])
+                r = minimize(objective, x0, method="Nelder-Mead", bounds=bounds,
+                             options={"maxiter": self.max_iter_outer, "xatol": 1e-5, "fatol": 1e-8,
+                                      "adaptive": True, "initial_simplex": simplex})
+                x_cache["x"] = np.asarray(r.x, dtype=float)
+                return float(r.fun)
+
+            est = float(self._sigma[k])
+            dev_min = min(float(-2.0 * self.loglike_), profiled(est))
+            excess = lambda s: profiled(s) - dev_min - crit        # noqa: E731
+            hi = est + max(0.1, est)
+            while excess(hi) < 0.0:
+                if hi > 1e3:
+                    raise RuntimeError(f"No upper profile limit for {gv!r} below 1000.")
+                hi *= 2.0
+            upper = brentq(excess, est, hi, xtol=1e-7)
+            if est <= 0.0 or excess(0.0) <= 0.0:
+                lower = 0.0
+            else:
+                lower = brentq(excess, 0.0, est, xtol=1e-7)
+            rows.append({"sigma": est, "lower": float(lower), "upper": float(upper)})
+        return pd.DataFrame(rows, index=pd.Index(wanted, name="group_var"))
+
     def _optimize_stage1(self, fun, x0: Array) -> Dict:
         """Stage-1 optimizer matching glmer's default BOBYQA role."""
         if self.optimizer_stage1 == "bobyqa" and nlopt is None:

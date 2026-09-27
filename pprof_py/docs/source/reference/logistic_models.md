@@ -90,6 +90,12 @@ factors are accepted (`sigma_` then has one entry per factor); the measure metho
 **Methods:** `summary()`, `get_random_effects(var=None)`, `get_sigma(var=None)`, `predict(X, *, x_vars=None, re_vars=None,
 offset_var=None, use_re=False, type="response")`, `pearson_residuals()`, `deviance_residuals()`, and the methods in {ref}`ll_ref_measures`.
 
+**`profile_sigma(var=None, level=0.95)`** returns each SD's profile-likelihood interval (columns `sigma`, `lower`, `upper`): the
+values at which the Laplace deviance, minimized over the fixed effects and the other SDs, is within the chi-square(1) quantile of
+its minimum, as lme4's `confint(method = "profile")`. On a crossed cohort (60 facilities, 15 hospitals) it matches the same profile
+computed in R from lme4's conditional modes to 5e-8. lme4's own limits differ by up to 2e-4 there, because its deviance function
+evaluates the Laplace log-determinant away from the conditional mode it returns (by up to 7e-3 on the deviance).
+
 **Agreement with lme4.** On the synthetic dataset used for {ref}`ll_ref_linear` (binary outcome), `glmer(nAGQ = 1)` and this model agreed to
 about 2e-5 in β, the random-effect SD, the log-likelihood and the BLUPs — looser than the linear model, and not covered by any test in the repository.
 
@@ -151,6 +157,9 @@ model.test().head()                            # Stage 3's tests; also its measu
   `glmm.fac.hosp`.
 - **Attributes:** `prep_` (the `GLMMPreparedData`), `data_` (its data with the Stage 1 offset column `stage1_offset`), `stage1_`,
   `stage2_`, `stage3_`.
+- **`sigma_sensitivity(level=0.95, **test_kwargs)`:** refits Stage 3 at both ends of Stage 2's profile interval for the cluster SD,
+  with Stage 1's β and Stage 2's starting values fixed, and tests each fit (keyword arguments go to `test()`). Returns a dict: `"sigma"`
+  (the interval's ends and the estimate), `"flags"` (each provider's flag at the three values and `stable`) and `"tests"`.
 - **Agreement with R.** On a crossed synthetic cohort (40 facilities, 12 hospitals) and given the same β, Stage 2 matches `glmer`
   (σ to 7e-6, starting γ to 1e-5) and Stage 3 matches `glmm.fac.hosp` (γ to 2e-5, SRR to 1e-5). R's Stage 1 (`pprof::logis_fe`)
   could not be run.
