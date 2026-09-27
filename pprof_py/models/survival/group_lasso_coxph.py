@@ -40,7 +40,7 @@ from ...algorithms.survival.cox_likelihood import (
 from ...algorithms.survival.penalty import (
     validate_groups, rescale_group_multipliers,
 )
-from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs
+from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, unpenalized_columns
 from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.survival.ties import TieMethod
 from ...utils.deviance import saturated_log_likelihood, cox_deviance
@@ -323,10 +323,13 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
         X_design, objective_fn, QL_blocks = self._group_design(prep, groups_fit)
 
         # --- Null point for lambda_max ---
-        # Group-specific: unpenalized features are those with
-        # group label 0 (not pf == 0 as in elastic net).
+        # Group-specific: unpenalized features are those that carry no
+        # penalty -- group 0 (a zero penalty factor inside a penalized group
+        # removes only the column's L1 term).
         beta_null = np.zeros(prep.p_fit)
-        always_unpenalized = groups_fit == 0
+        always_unpenalized = unpenalized_columns(
+            groups_fit, group_weights_fit, prep.pf_fit, self.alpha,
+        )
         if (
             np.any(always_unpenalized)
             and not np.all(always_unpenalized)

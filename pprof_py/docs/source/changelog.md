@@ -115,6 +115,13 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   at the old default of 1); group-0 columns are fitted at the null point and along the path (they stayed at zero); at or
   above `lambda_max_` the path returns the null point exactly, for the elastic net too. With provider dummies as
   unpenalized columns, `GroupLassoCoxPH` gives the same path.
+- A group-penalty null point fits exactly the columns that carry no penalty: group 0, or a column whose group term and L1
+  term both vanish. `GroupLassoLogistic`, `GroupLassoLinear` and `ProviderPenalizedLogistic` also fitted columns with a zero
+  penalty factor inside a penalized group, which the group term still penalizes. `lambda_max` for a group with a zero
+  multiplier under the sparse group lasso divides by `alpha` (it was too small by that factor).
+- `DiscreteSurvival` and `DiscreteSurvivalCV` fit the lasso only: `penalty_type="group_lasso"` and `"sparse_group_lasso"`
+  raise, and the unused `groups`, `alpha` and `group_multiplier` arguments are removed. The group types were accepted but
+  fitted the lasso; R's `DiscSurv` is lasso-only.
 - The group paths' `converged_path_` is True wherever the KKT residual meets the tolerance. With the active set on (the
   default of `GroupLassoLogistic` and `GroupLassoLinear`), any group at zero sent the solver to `max_outer_iter` and the
   point was reported as not converged; `n_iter_path_` drops accordingly.

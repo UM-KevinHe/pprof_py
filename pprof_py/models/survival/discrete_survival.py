@@ -14,11 +14,10 @@ where ``alpha_k`` are baseline hazard parameters (one per distinct
 timepoint), ``gamma_i`` are optional provider effects (unpenalized),
 and ``beta`` are covariate coefficients (penalized).
 
-The model supports three penalty types:
-
-* ``'lasso'`` — individual L1 penalty
-* ``'group_lasso'`` — group L2 penalty
-* ``'sparse_group_lasso'`` — combined L1 + group L2
+The penalty is the lasso on the covariate coefficients, with per-feature
+penalty factors.  Group penalties are not implemented for discrete-time
+survival (R's ``grplasso::DiscSurv`` is lasso-only too); ``penalty_type``
+accepts ``'lasso'`` and raises for the group types.
 
 When ``provider`` is supplied, the model uses the two-layer
 architecture from ``grplasso``: provider effects are updated via
@@ -66,11 +65,15 @@ def _validate_discrete_params(
     standardize, max_iter, tol, bound,
 ):
     """Validate constructor parameters."""
-    valid_penalties = ('lasso', 'group_lasso', 'sparse_group_lasso')
-    if penalty_type not in valid_penalties:
+    if penalty_type in ('group_lasso', 'sparse_group_lasso'):
         raise ValueError(
-            f"penalty_type must be one of {valid_penalties}, got {penalty_type!r}"
+            f"penalty_type={penalty_type!r} is not available: DiscreteSurvival "
+            "fits the lasso only (group penalties are not implemented for "
+            "discrete-time survival, and R's DiscSurv is lasso-only too); use "
+            "penalty_type='lasso'"
         )
+    if penalty_type != 'lasso':
+        raise ValueError(f"penalty_type must be 'lasso', got {penalty_type!r}")
     if isinstance(n_lambda, (bool, np.bool_)) or int(n_lambda) != n_lambda or int(n_lambda) < 1:
         raise ValueError(f"n_lambda must be a positive integer, got {n_lambda!r}")
     if lambda_min_ratio is not None:
@@ -108,15 +111,9 @@ class DiscreteSurvival(ProviderModel):
     Parameters
     ----------
     penalty_type : str, default 'lasso'
-        One of ``'lasso'``, ``'group_lasso'``, ``'sparse_group_lasso'``.
-    groups : array-like or None, default None
-        Group labels per feature (required for group/sparse group).
-        0 = unpenalized.
-    alpha : float, default 1.0
-        Sparse group mixing: 0 = pure group lasso, 1 = lasso.
-        Only used when ``penalty_type='sparse_group_lasso'``.
-    group_multiplier : array-like or None, default None
-        Per-group multipliers; defaults to sqrt(group_size).
+        The lasso, the only penalty: ``'group_lasso'`` and
+        ``'sparse_group_lasso'`` raise (not implemented for discrete-time
+        survival; R's ``DiscSurv`` is lasso-only).
     penalty_factor : array-like or None, default None
         Per-feature penalty factors.  Rescaled to sum to p.
     n_lambda : int, default 100
@@ -172,9 +169,6 @@ class DiscreteSurvival(ProviderModel):
     def __init__(
         self,
         penalty_type: str = 'lasso',
-        groups=None,
-        alpha: float = 1.0,
-        group_multiplier=None,
         penalty_factor=None,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
@@ -190,9 +184,6 @@ class DiscreteSurvival(ProviderModel):
     ):
         """Discrete-time survival with penalized regression."""
         self.penalty_type = penalty_type
-        self.groups = groups
-        self.alpha = alpha
-        self.group_multiplier = group_multiplier
         self.penalty_factor = penalty_factor
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio

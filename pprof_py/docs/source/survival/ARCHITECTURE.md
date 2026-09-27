@@ -288,20 +288,20 @@ Added after Phase 4; each is a thin layer over an existing engine.
 ```
 GroupLassoCoxPH / GroupLassoCoxPHCV (models/survival/group_lasso_coxph.py)
     |── shares _PenalizedCoxPHBase / _PenalizedCoxPHCVBase with PenalizedCoxPH
-    |── sparse-group proximal operator and group utilities (algorithms/survival/penalty.py)
-    |── path solver (algorithms/survival/coordinate_descent.py::fit_group_regularization_path)
+    |── groups orthogonalized on their centered columns (algorithms/penalty.py)
+    |── the group solver every family shares (algorithms/coordinate_descent.py::fit_group_regularization_path)
     |
 cox_partial_likelihood (algorithms/survival/cox_likelihood.py)   <- UNCHANGED
 
 ProviderPenalizedCoxPH (models/survival/provider_coxph.py)
     |── outer layer: one-step Newton update of provider effects gamma
     |     (algorithms/survival/provider_effects.py), clamped to median(gamma) +/- bound
-    |── inner layer: the penalized beta solver above; both warm-started along the lambda path
+    |── inner layer: the elastic-net Cox solver or the shared group solver; both warm-started along the lambda path
 
 DiscreteSurvival / DiscreteSurvivalCV (models/survival/discrete_survival.py)
     |── person-period expansion, logistic hazard, baseline parameters alpha_k
     |     (algorithms/survival/discrete_survival.py)
-    |── penalty utilities from algorithms/survival/penalty.py
+    |── the lasso only (penalty utilities from algorithms/survival/penalty.py)
 
 ProviderPenalizedDiscreteSurvival (+CV) (models/survival/provider_discrete_survival.py)
     |── three layers: provider effects, baseline hazard, penalized covariates
@@ -309,8 +309,8 @@ ProviderPenalizedDiscreteSurvival (+CV) (models/survival/provider_discrete_survi
         and the family-independent algorithms/penalty.py
 ```
 
-None of these has an R reference in the test suite. The Cox-based ones inherit correctness of the likelihood from `CoxPH`; the
-penalty and provider layers are covered by internal tests only.
+`GroupLassoCoxPH` is checked against R's `grplasso::Strat.cox` without `prov.char` (one stratum), and `ProviderPenalizedCoxPH`
+against `GroupLassoCoxPH` with the provider dummies as unpenalized columns; the discrete-time estimators have internal tests only.
 
 ## Data preparation and diagnostics
 
@@ -324,9 +324,9 @@ penalty and provider layers are covered by internal tests only.
 
 - `algorithms/survival/cox_likelihood.py` and `algorithms/survival/partial_likelihood.py` are byte-identical. `CoxPH` and
   `algorithms/survival/__init__.py` import `cox_likelihood`; treat it as canonical and `partial_likelihood` as a redundant copy.
-- Two penalty / coordinate-descent implementations exist. The survival Cox estimators import `algorithms/survival/penalty.py` and
-  `algorithms/survival/coordinate_descent.py`; the logistic, linear and provider-discrete models use the family-independent
-  `algorithms/penalty.py` and `algorithms/coordinate_descent.py`.
+- The elastic-net Cox solver lives in `algorithms/survival/coordinate_descent.py` (with `algorithms/survival/penalty.py`); the
+  group-lasso solver is one copy for every family, in `algorithms/coordinate_descent.py`, as are the within-group
+  orthogonalization helpers in `algorithms/penalty.py`.
 - Numba-compiled kernels appear in `risk_sets.py`, `ties.py`, `inference/survival/residuals.py`, `inference/survival/robust.py`,
   `algorithms/survival/provider_effects.py` and the coordinate-descent modules, each with a pure-Python fallback.
 - Reference pages for every public estimator: `reference/` (start with `reference/coxph.md`).

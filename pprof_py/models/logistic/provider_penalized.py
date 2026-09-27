@@ -16,7 +16,7 @@ from ...base import ProviderModel
 from scipy.special import expit
 from ...inference.count_tests import PlugIn, count_test, rows_by_provider
 from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
-from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha)
+from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha, unpenalized_columns)
 from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic, add_unpenalized_block)
 from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit, logistic_intercept_update)
 from ...algorithms.logistic.provider_effects import compute_provider_indices, logistic_provider_newton_step
@@ -310,9 +310,10 @@ class ProviderPenalizedLogistic(ProviderModel):
 
         c = 1.0 / float(np.sum(weight))
 
-        unpen_mask = (pf_fit == 0.0)
-        if use_groups:
-            unpen_mask = unpen_mask | (groups_fit == 0)
+        unpen_mask = (
+            unpenalized_columns(groups_fit, gw_fit, pf_fit, alpha) if use_groups
+            else pf_fit == 0.0
+        )
         beta_null, gamma_null, intercept_null, score_null = (
             self._provider_null_point(
                 X_fit, y, weight, offset, prov_idx, n_providers, unpen_mask,

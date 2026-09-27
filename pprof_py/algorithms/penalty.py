@@ -416,6 +416,45 @@ def fit_group_multipliers(
 
 
 
+
+def unpenalized_columns(
+    groups: np.ndarray,
+    group_weights: np.ndarray,
+    penalty_factor: np.ndarray,
+    alpha: float,
+) -> np.ndarray:
+    """Columns that carry no penalty under the sparse group lasso.
+
+    The penalty is ``lam * [(1 - alpha) * m_g * ||beta_g|| + alpha * pf_j *
+    |beta_j|]``, so a column is unpenalized when it is in group 0, or when
+    both of its terms vanish: ``(1 - alpha) * m_g == 0`` and
+    ``alpha * pf_j == 0``.  With ``alpha < 1`` and positive multipliers that
+    is group 0 exactly: a zero penalty factor inside a penalized group
+    removes only the column's L1 term.  These are the columns fitted at the
+    null point that sets ``lambda_max``.
+
+    Parameters
+    ----------
+    groups : ndarray of int, shape (p,)
+        Canonical group labels (0 = unpenalized, 1..G).
+    group_weights : ndarray, shape (G,)
+        Group multipliers ``m_g``.
+    penalty_factor : ndarray, shape (p,)
+    alpha : float
+
+    Returns
+    -------
+    ndarray of bool, shape (p,)
+    """
+    groups = np.asarray(groups)
+    gw = np.asarray(group_weights, dtype=np.float64)
+    pf = np.asarray(penalty_factor, dtype=np.float64)
+    in_group = groups > 0
+    m = np.zeros(groups.shape[0], dtype=np.float64)
+    m[in_group] = gw[groups[in_group] - 1]
+    return ~in_group | (((1.0 - alpha) * m == 0.0) & (alpha * pf == 0.0))
+
+
 PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
 
 

@@ -65,7 +65,7 @@ from ...algorithms.coordinate_descent import (
     GroupPenalizedFitResult, fit_single_lambda_group, compute_group_lambda_max,
     add_unpenalized_block, drop_unpenalized_block, _compute_group_kkt_violation,
 )
-from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, resolve_penalty_alpha
+from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, resolve_penalty_alpha, unpenalized_columns
 from ...algorithms.survival.provider_effects import (
     validate_provider_ids,
     compute_provider_scores,
@@ -506,7 +506,9 @@ class ProviderPenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
              has_unpen) = add_unpenalized_block(
                 groups_fit, n_groups_fit, group_weights_fit, prep.pf_fit,
             )
-            unpenalized = groups_fit == 0
+            unpenalized = unpenalized_columns(
+                groups_fit, group_weights_fit, prep.pf_fit, alpha,
+            )
         else:
             unpenalized = prep.pf_fit == 0.0
 

@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns)
 from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
 from ...exceptions import NotFittedError
@@ -222,7 +222,7 @@ class GroupLassoLogistic(ProviderModel):
         # at the top of the path (mirrors the R reference's SerBIN.residuals).
         beta_null, score_null, intercept_null = logistic_unpenalized_null_fit(
             X_fit, y, weight,
-            unpenalized=((groups_fit == 0) | (pf_fit == 0.0)),
+            unpenalized=unpenalized_columns(groups_fit, gw_fit, pf_fit, self.alpha),
             offset=offset, fit_intercept=self.fit_intercept,
         )
 

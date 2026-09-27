@@ -48,10 +48,8 @@ period 3: no event); a patient who died in period 2 contributes 2 rows
 (period 1: no event, period 2: event). Fitting the model above is then
 exactly a penalized logistic regression on this expanded data, with
 one dummy-coded intercept per period standing in for $\alpha_k$ — the
-same elastic-net/group-lasso machinery
-[Chapter 1](../logistic/penalized_logistic) and
-[the group lasso chapter](../logistic/group_lasso_logistic) describe,
-applied to data reshaped this specific way, rather than a new
+same lasso machinery [Chapter 1](../logistic/penalized_logistic)
+describes, applied to data reshaped this specific way, rather than a new
 optimization method.
 
 ## 13.3 The running example: annual chart review
@@ -80,12 +78,11 @@ model.alpha_path_.shape # (100, 4)  -- one baseline parameter per timepoint, per
 ```
 
 4,000 patients, 40 facilities, 7.8% event rate, spread `711 / 1174 /
-1080 / 1035` across years 1 through 4. `penalty_type` is `'lasso'`,
-`'group_lasso'`, or `'sparse_group_lasso'` — one class covers all
-three, unlike the logistic and linear families, which use separate
-`Penalized*`/`GroupLasso*` classes for the same distinction; pass
-`groups=` when using either group option, exactly as
-[the group lasso chapter](../logistic/group_lasso_logistic) describes.
+1080 / 1035` across years 1 through 4. `penalty_type` is `'lasso'`, the
+only penalty here: group penalties are not implemented for discrete-time
+survival (R's `DiscSurv` is lasso-only too), and `'group_lasso'` or
+`'sparse_group_lasso'` raise an error. Per-feature `penalty_factor`
+values work as in [Chapter 1](../logistic/penalized_logistic).
 
 `coef_at(lambda_value)` interpolates continuously, the same way
 [Chapter 1's](../logistic/penalized_logistic) `coef_at()` does.

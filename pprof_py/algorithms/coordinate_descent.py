@@ -1057,9 +1057,10 @@ def compute_group_lambda_max(
         mw = group_weights[g - 1]
         K = len(g_abs_g)
         if mw <= 0 and alpha < 1.0:
+            # No group term: the group is zero iff every |g_j| <= lam*alpha*pf_j.
             pen_j = pf_g > 0
             if np.any(pen_j):
-                candidate = float(np.max(g_abs_g[pen_j] / pf_g[pen_j]))
+                candidate = float(np.max(g_abs_g[pen_j] / (alpha * pf_g[pen_j])))
                 if candidate > lam_max:
                     lam_max = candidate
             continue
