@@ -410,15 +410,24 @@ class LogisticFixedEffectModel(
                 gs_new = np.zeros(n_new, dtype=int)
             self.provider_sizes_ = np.concatenate([self.provider_sizes_, gs_new])
 
-        # Sort all arrays by provider ID (matches R: gamma_summary[order(rownames), ])
-        sort_idx = np.argsort(self.provider_ids_)
+        # Sort every per-provider array by provider ID (matches R: gamma_summary[order(rownames), ]),
+        # and remap provider_indices_ so each record still points at its own provider: added IDs can
+        # fall between existing ones, which moves the existing providers' positions.
+        sort_idx = np.argsort(self.provider_ids_, kind="stable")
+        new_position = np.empty_like(sort_idx)
+        new_position[sort_idx] = np.arange(sort_idx.size)
+        n_total = sort_idx.size
         self.provider_ids_ = self.provider_ids_[sort_idx]
         self.coefficients_["gamma"] = self.coefficients_["gamma"].flatten()[sort_idx]
         if self.variances_ is not None and "gamma" in self.variances_:
             self.variances_["gamma"] = self.variances_["gamma"].flatten()[sort_idx]
-        if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-            self.robust_variances_["gamma"] = self.robust_variances_["gamma"].flatten()[sort_idx]
+        if self.robust_variances_ is not None:
+            for key, value in self.robust_variances_.items():   # every per-provider entry, not the beta matrix
+                value = np.asarray(value)
+                if value.ndim == 1 and value.size == n_total:
+                    self.robust_variances_[key] = value[sort_idx]
         self.provider_sizes_ = self.provider_sizes_[sort_idx]
+        self.provider_indices_ = new_position[np.asarray(self.provider_indices_)]
 
         n_pos = int(np.sum(gamma > 0))
         n_neg = int(np.sum(gamma < 0))

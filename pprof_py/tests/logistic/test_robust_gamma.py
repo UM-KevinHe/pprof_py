@@ -58,3 +58,33 @@ def test_robust_variance_options_are_validated(fitted):
         fit.test_standardized(measure="gamma", variance="sandwich")
     with pytest.raises(ValueError, match="Indirect measures"):
         fit.test_standardized(measure="indirect_ratio", variance="robust_fixed_beta")
+
+
+@pytest.mark.filterwarnings("ignore:invalid value encountered in divide:RuntimeWarning")   # added providers have no records: 0/0
+def test_add_providers_keeps_every_provider_array_aligned(fitted):
+    """add_providers sorts by provider ID: every per-provider array (gamma, its model and robust variances,
+    sizes) moves with its provider, and provider_indices_ is remapped, so the existing providers' measures and
+    tests do not change when added IDs fall between existing ones."""
+    d, _ = fitted
+    d = d.assign(prov=d["prov"] * 10)                             # IDs 10, 20, ...: room for IDs in between
+
+    def fit():
+        return LogisticFixedEffectModel(use_dataprep=False).fit(d, y_var="y", x_vars=["x1", "x2"], provider_var="prov",
+                                                                n_var="n", obs_id_var="pid")
+    before, after = fit(), fit()
+    after.add_providers([15, 155, 999], gamma=[-17.0, 17.0, -17.0], se_gamma=[0.01, 0.02, 0.03])
+    ids = pd.Index(before.provider_ids_)
+    per_provider = {"gamma": lambda m: m.coefficients_["gamma"], "var": lambda m: m.variances_["gamma"],
+                    "size": lambda m: m.provider_sizes_,
+                    **{f"robust {k}": (lambda m, k=k: m.robust_variances_[k]) for k in ("gamma", "gamma_fixed_beta")}}
+    for name, get in per_provider.items():
+        moved = pd.Series(np.asarray(get(after)).ravel(), index=after.provider_ids_).reindex(ids)
+        np.testing.assert_array_equal(moved.to_numpy(), np.asarray(get(before)).ravel(), err_msg=name)
+    added = pd.Series(np.asarray(after.robust_variances_["gamma_fixed_beta"]).ravel(), index=after.provider_ids_)
+    np.testing.assert_allclose(added.loc[[15, 155, 999]].to_numpy(), [0.01**2, 0.02**2, 0.03**2])
+    sm_b = before.calculate_standardized_measures(stdz="indirect", reference=0.0)["indirect"].set_index("provider_id")
+    sm_a = after.calculate_standardized_measures(stdz="indirect", reference=0.0)["indirect"].set_index("provider_id")
+    np.testing.assert_allclose(sm_a.loc[ids, ["observed", "expected"]].to_numpy(), sm_b.loc[ids, ["observed", "expected"]].to_numpy())
+    t_b = before.test(reference=0.0)
+    t_a = after.test(reference=0.0)
+    np.testing.assert_allclose(t_a.loc[ids, "z_raw"].to_numpy(), t_b.loc[ids, "z_raw"].to_numpy())

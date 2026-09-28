@@ -56,7 +56,8 @@ binomial trials per row, with the response the number of events out of them.
 `summary(covariates=None, level=0.95, null=0, alternative="two_sided", test_method="wald", variance_type="model")`;
 `add_providers(provider_ids, gamma, se_gamma=0.01, group_sizes=None)` appends providers left out of the fit (for example zero-event
 providers, with γ = −17, or all-event providers, with γ = 17) so that they appear in standardized measures — this reproduces the R
-`PPPW` workflow; `get_fitted_params()`; the measure, test and plot methods in {ref}`ll_ref_measures`.
+`PPPW` workflow; afterwards every per-provider result (γ, its model and robust variances, sizes) is sorted by provider ID, aligned
+with `provider_ids_`; `get_fitted_params()`; the measure, test and plot methods in {ref}`ll_ref_measures`.
 
 ## `LogisticRandomEffectModel`
 

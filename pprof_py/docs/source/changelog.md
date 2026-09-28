@@ -195,6 +195,11 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   wrong rows while every total stayed the same, and Stage 1's beta moved. `cell_sizes` is counted from the
   category codes (cluster-major, provider-minor, as R's `n.fac.hosp`).
 
+- `LogisticFixedEffectModel.add_providers` reorders every per-provider result when it sorts by provider ID
+  (`robust_variances_["gamma_fixed_beta"]` stayed in the pre-sort order, so it no longer matched `provider_ids_`)
+  and remaps `provider_indices_`: when added IDs fall between existing ones, the existing providers' positions
+  move, and standardized measures, intervals and tests read the wrong records for them.
+
 **Random-effect measures and Cox cross-validation**
 
 - `LinearRandomEffectModel.calculate_standardized_measures` and its `'SM'` intervals use `reference`: the indirect
