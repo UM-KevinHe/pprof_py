@@ -109,12 +109,18 @@ class _CovariateInferenceMethods:
 
         For gamma (provider effects) two forms are returned:
 
-        - ``"gamma"``: the full sandwich, ``[I^-1 M I^-1]_jj``, with ``I`` the
-          information of ``(gamma, beta)`` and ``M`` the cluster meat of both
-          scores; with ``g_j = B_j / I_j`` and ``h_j = S^-1 g_j`` it is
+        - ``"gamma"``: the full sandwich of ``gamma_j + xbar' beta``, the provider
+          effect at the average case mix (``xbar`` the trials-weighted mean
+          covariate row), with ``I`` the information of ``(gamma, beta)`` and
+          ``M`` the cluster meat of both scores. It accounts for the estimation
+          of beta, as the beta sandwich below does, and does not depend on the
+          covariates' origin: the variance of ``gamma_j`` itself contains
+          ``xbar_j' Var(beta) xbar_j``, which the provider test does not need
+          (it compares ``gamma_j`` with the median ``gamma``, which carries the
+          same beta error) and which is large when covariates are uncentered.
+          With ``g_j = B_j / I_j`` and ``h_j = S^-1 (g_j - xbar)`` it is
           ``A0_j/I_j^2 + 2 (A0_j/I_j) g_j.h_j + h_j' (W - C - C' + A2) h_j - 2 A1_j.h_j / I_j``,
-          ``W = sum_k A0_k g_k g_k'``, ``C = sum_k g_k A1_k'``. It accounts for
-          the estimation of beta, as the beta sandwich below does.
+          ``W = sum_k A0_k g_k g_k'``, ``C = sum_k g_k A1_k'``.
         - ``"gamma_fixed_beta"``: ``(1/I_j)^2 * A0_j``, the sandwich with beta
           treated as known, which is R's ``test_aoh`` (``robust_wald_gamma``
           returns ``sqrt(1/I_j)``). It understates the variance for providers
@@ -144,7 +150,7 @@ class _CovariateInferenceMethods:
         -------
         dict
             Dictionary with keys:
-            - 'gamma': full-sandwich robust variances of the provider effects
+            - 'gamma': full-sandwich robust variances of the provider effects at the average case mix
             - 'gamma_fixed_beta': robust variances with beta treated as known (R's ``test_aoh``)
             - 'beta': robust covariance matrix for covariate coefficients (p x p)
 
@@ -257,13 +263,15 @@ class _CovariateInferenceMethods:
         # Robust covariance for beta: V = S^{-1} @ M_eff @ S^{-1}
         V_beta_robust = S_inv @ M_eff @ S_inv  # (p, p)
 
-        # --- Gamma robust variance via the full sandwich [I^-1 M I^-1]_jj ---
-        # Row j of I^-1 is (e_j / I_j + g_j' S^-1 G', -g_j' S^-1) with g_j = B_j / I_j;
-        # O(m p^2), without forming the m x m block.
+        # --- Gamma robust variance: full sandwich of gamma_j + xbar' beta (C25) ---
+        # The influence row of gamma_j + xbar' beta is (e_j / I_j + G h_j, -h_j) with
+        # g_j = B_j / I_j and h_j = S^-1 (g_j - xbar); O(m p^2), without the m x m block.
         valid = np.isfinite(robust_var_gamma)
         info = np.where(valid, 1.0 / D_inv, np.nan)
         G = np.where(valid[:, None], (info_beta_gamma * D_inv[np.newaxis, :]).T, 0.0)   # (m, p): g_j
-        H = G @ S_inv                                                                   # (m, p): h_j
+        trials = np.asarray(self.N_, dtype=float) if getattr(self, "N_", None) is not None else np.ones(self.X.shape[0])
+        xbar = trials @ self.X / trials.sum()                                           # the average case mix
+        H = np.where(valid[:, None], (G - xbar) @ S_inv, 0.0)                          # (m, p): h_j
         W = (G * A0[:, np.newaxis]).T @ G                                               # sum_k A0_k g_k g_k'
         C = G.T @ A1_t                                                                  # sum_k g_k A1_k'
         M_h = W - C - C.T + A2

@@ -212,8 +212,11 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - `GroupLassoCoxPH` returns the null point exactly at lambda >= `lambda_max_` (its penalized coefficients were about
   1e-17), as the provider classes do.
 - The cluster-robust variance of `LogisticFixedEffectModel`'s provider effects (`variance="robust"` in `test_standardized`
-  and `standardized_measure`) is the full sandwich of the joint (γ, β) fit; it was (1/I_j)² times the meat, which treats
-  β as known and understates the variance of providers with an unusual case mix. That form, which is R's `test_aoh`, is
+  and `standardized_measure`) is the full sandwich of the joint (γ, β) fit for the provider effect at the average case
+  mix, γ_j + x̄ᵀβ with x̄ the trials-weighted mean covariate row. It was (1/I_j)² times the meat, which treats β as known
+  and understates the variance of providers with an unusual case mix; the sandwich of γ_j itself would depend on the
+  covariates' origin (γ_j is the effect at x = 0) and overstate the variance the provider test needs by a factor of 50 or
+  more with uncentered covariates, whereas the average-case-mix form is origin-invariant. R's `test_aoh` form is
   `variance="robust_fixed_beta"` (it matches `test_aoh` to 2e-15).
 - `ProviderPenalizedLogistic` and `ProviderPenalizedDiscreteSurvival` have `coef_at` (and `ProviderPenalizedLogistic` and
   `GroupLassoLogistic` `intercept_at`), and every penalized path class interpolates the same way: linearly in log λ

@@ -1,6 +1,7 @@
-"""Cluster-robust variance of the provider effects (C13).
+"""Cluster-robust variance of the provider effects (C13, C25).
 
-``variance="robust"`` is the full sandwich of the joint (gamma, beta) fit; ``variance="robust_fixed_beta"``
+``variance="robust"`` is the full sandwich of the joint (gamma, beta) fit for the provider effect at the average
+case mix, gamma_j + xbar' beta (C25); ``variance="robust_fixed_beta"``
 treats beta as known and reproduces R's ``test_aoh`` (goldens in ``tests/data/aoh``, written by running
 ``test_aoh`` and ``robust_wald_gamma`` verbatim on these rows, fitted probabilities and estimates).
 """
@@ -35,8 +36,9 @@ def test_fixed_beta_form_matches_r_test_aoh(fitted):
     assert np.array_equal(t["flag"].to_numpy(dtype=int), r.flag.to_numpy())
 
 
-def test_robust_gamma_is_the_full_sandwich(fitted):
-    """[I^-1 M I^-1]_jj from the dense (m + p) information and the patient-clustered meat of both scores."""
+def test_robust_gamma_is_the_full_sandwich_at_the_average_case_mix(fitted):
+    """Var(gamma_j + xbar' beta) from the dense (m + p) information and the patient-clustered meat of both
+    scores, xbar the trials-weighted mean covariate row (C25)."""
     _, fit = fitted
     p = np.clip(fit.fitted_, 1e-10, 1 - 1e-10)
     q, r = fit.N_ * p * (1 - p), fit.outcome_ - fit.N_ * p
@@ -46,7 +48,9 @@ def test_robust_gamma_is_the_full_sandwich(fitted):
     key = pd.factorize(pd.Series(fit.provider_indices_).astype(str) + ":" + pd.Series(fit.obs_ids_).astype(str))[0]
     U = np.array([np.bincount(key, weights=Z[:, c] * r) for c in range(Z.shape[1])]).T
     V = info_inv @ (U.T @ U) @ info_inv
-    np.testing.assert_allclose(np.asarray(fit.robust_variances_["gamma"]).ravel(), np.diag(V)[:m], rtol=1e-10)
+    xbar = fit.N_ @ fit.X / fit.N_.sum()
+    T = np.c_[np.eye(m), np.tile(xbar, (m, 1))]                   # gamma_j + xbar' beta
+    np.testing.assert_allclose(np.asarray(fit.robust_variances_["gamma"]).ravel(), np.diag(T @ V @ T.T), rtol=1e-10)
     np.testing.assert_allclose(np.asarray(fit.robust_variances_["beta"]), V[m:, m:], rtol=1e-10)
     np.testing.assert_allclose(np.asarray(fit.robust_variances_["gamma_fixed_beta"]).ravel(),
                                np.diag(U.T @ U)[:m] / np.bincount(fit.provider_indices_, weights=q) ** 2, rtol=1e-12)
@@ -88,3 +92,20 @@ def test_add_providers_keeps_every_provider_array_aligned(fitted):
     t_b = before.test(reference=0.0)
     t_a = after.test(reference=0.0)
     np.testing.assert_allclose(t_a.loc[ids, "z_raw"].to_numpy(), t_b.loc[ids, "z_raw"].to_numpy())
+
+
+def test_robust_gamma_does_not_depend_on_the_covariate_origin(fitted):
+    """Shifting the covariates changes gamma_j (the effect at x = 0) but not the provider effect at the average
+    case mix, so "robust" is unchanged; the fixed-beta form is unchanged too. (The full sandwich of gamma_j itself,
+    C13's form, grew with the shift.)"""
+    d, fit = fitted
+    shifted = LogisticFixedEffectModel(use_dataprep=False).fit(d.assign(x1=d["x1"] + 5.0, x2=d["x2"] - 3.0), y_var="y",
+                                                               x_vars=["x1", "x2"], provider_var="prov", n_var="n", obs_id_var="pid")
+    np.testing.assert_allclose(np.asarray(shifted.coefficients_["beta"]).ravel(),
+                               np.asarray(fit.coefficients_["beta"]).ravel(), rtol=1e-6)      # the same fit, reparametrized
+    for key in ("gamma", "gamma_fixed_beta"):
+        np.testing.assert_allclose(np.asarray(shifted.robust_variances_[key]).ravel(),
+                                   np.asarray(fit.robust_variances_[key]).ravel(), rtol=1e-6, err_msg=key)
+    # negative control: the variance of gamma_j itself (here the model-based one) does depend on the origin
+    ratio = np.asarray(shifted.variances_["gamma"]).ravel() / np.asarray(fit.variances_["gamma"]).ravel()
+    assert np.max(ratio) > 1.5

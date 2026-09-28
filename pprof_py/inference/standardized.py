@@ -140,7 +140,9 @@ def standardized_measure(
     variance : {"model", "robust", "robust_fixed_beta"}
         Standard error of the fitted effects, for direct measures and gamma.
         ``"robust"`` is the cluster-robust sandwich of the joint (gamma, beta)
-        fit; ``"robust_fixed_beta"`` treats beta as known, as R's ``test_aoh``
+        fit for the provider effect at the average case mix (it accounts for
+        the estimation of beta and does not depend on the covariates' origin);
+        ``"robust_fixed_beta"`` treats beta as known, as R's ``test_aoh``
         does (R parity; it understates the variance for providers with an
         unusual case mix). Both need a model fitted with ``obs_id_var``.
     indirect_variance : {"null", "fitted"}
