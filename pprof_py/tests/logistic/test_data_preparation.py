@@ -87,3 +87,30 @@ def test_binomial_fit_through_dataprep_keeps_trials_aligned():
     with pytest.raises(ValueError, match="0 <= y <= n"):
         LogisticFixedEffectModel(use_dataprep=True).fit(df.assign(y=df["n"] + 1), y_var="y", x_vars=["x"],
                                                         provider_var="prov", n_var="n")
+
+
+def test_cell_numbering_does_not_depend_on_groupby_order(monkeypatch):
+    """cell_id and included are numbered from the sorted rows, so they stay on the right rows even when a
+    multi-key groupby returns the cells in another order (seen on production data: providers within a
+    cluster came back permuted, and repeating the counts onto the rows attached them to the wrong rows)."""
+    import numpy as np
+    import pandas as pd
+    from pprof_py.data import glmm_data_prep
+    rng = np.random.default_rng(12)
+    fac = np.repeat(np.arange(60), rng.integers(11, 80, 60))
+    df = pd.DataFrame({"y": rng.binomial(1, 0.3, fac.size), "f": fac, "h": rng.integers(0, 8, fac.size)})
+    expected = glmm_data_prep(df, "y", "f", "h", cutoff=10)
+    original_size = pd.core.groupby.generic.DataFrameGroupBy.size
+
+    def rotated_size(self):
+        out = original_size(self)
+        if isinstance(out.index, pd.MultiIndex) and out.size > 2:
+            return out.iloc[np.r_[1:out.size, 0]]            # cells no longer in the rows' order
+        return out
+
+    monkeypatch.setattr(pd.core.groupby.generic.DataFrameGroupBy, "size", rotated_size)
+    got = glmm_data_prep(df, "y", "f", "h", cutoff=10)
+    for col in ("cell_id", "included", "y_adj"):
+        np.testing.assert_array_equal(got.data[col].to_numpy(), expected.data[col].to_numpy())
+    np.testing.assert_array_equal(got.cell_sizes, expected.cell_sizes)
+    assert (got.data.groupby("cell_id", observed=True)[["f", "h"]].nunique().to_numpy() == 1).all()

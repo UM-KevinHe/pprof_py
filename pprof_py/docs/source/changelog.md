@@ -187,6 +187,14 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   facilities, and Kalbfleisch and Wolfe (2013) is "On monitoring outcomes of medical providers", *Statistics in
   Biosciences* 5(2), 286–302.
 
+**Three-stage data preparation**
+
+- `glmm_data_prep` numbers the provider x cluster cells from the sorted rows themselves (a new cell wherever the
+  pair changes). It repeated the per-cell counts of a `groupby` onto the rows, which assumes the groupby returns
+  the cells in the rows' order; on production data it did not, so `cell_id` and `included` were attached to the
+  wrong rows while every total stayed the same, and Stage 1's beta moved. `cell_sizes` is counted from the
+  category codes (cluster-major, provider-minor, as R's `n.fac.hosp`).
+
 **Random-effect measures and Cox cross-validation**
 
 - `LinearRandomEffectModel.calculate_standardized_measures` and its `'SM'` intervals use `reference`: the indirect
