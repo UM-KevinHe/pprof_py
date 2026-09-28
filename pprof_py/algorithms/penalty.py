@@ -757,3 +757,25 @@ def compute_group_indices(
         group_starts[g - 1] = idx[0]
         group_ends[g - 1] = idx[-1] + 1
     return group_starts, group_ends
+
+
+def interpolate_path(lambda_path, path, lambda_value):
+    """Row of a regularization path at an arbitrary lambda.
+
+    Linear interpolation in ``log(lambda)`` between the two bracketing grid
+    points (glmnet's convention), and the first or last row outside the
+    fitted range. ``lambda_path`` is decreasing; ``path`` has one row (or
+    value) per lambda. Every penalized path class's ``coef_at`` and
+    ``intercept_at`` use this, so they interpolate identically.
+    """
+    lam_path = lambda_path
+    if lambda_value >= lam_path[0]:
+        return path[0].copy()
+    if lambda_value <= lam_path[-1]:
+        return path[-1].copy()
+    log_lam = np.log(lam_path)
+    log_val = np.log(lambda_value)
+    idx = np.searchsorted(-log_lam, -log_val) - 1
+    idx = max(0, min(idx, len(lam_path) - 2))
+    frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
+    return (1.0 - frac) * path[idx] + frac * path[idx + 1]

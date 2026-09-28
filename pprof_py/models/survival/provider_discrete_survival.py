@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import weighted_column_scale, rescale_penalty_factors
+from ...algorithms.penalty import weighted_column_scale, rescale_penalty_factors, interpolate_path
 from ...algorithms.survival.discrete_survival import (
     discretize_times,
     initialize_baseline_hazard,
@@ -576,6 +576,13 @@ class ProviderPenalizedDiscreteSurvival(ProviderModel):
             raise NotFittedError(
                 f"This {type(self).__name__} is not fitted yet."
             )
+
+    def coef_at(self, lambda_value: float) -> np.ndarray:
+        """Covariate coefficients at an arbitrary lambda: linear interpolation in log(lambda) between
+        the bracketing path points, as every penalized path class does; the end points outside the path.
+        Predictions and provider effects use the nearest path point (``lambda_value=`` or ``which=``)."""
+        self._check_is_fitted()
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def predict_provider_effect(self, which: int = -1) -> pd.DataFrame:
         """Provider effects at a given lambda index."""

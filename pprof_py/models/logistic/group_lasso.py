@@ -14,7 +14,8 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns,
+                                     interpolate_path)
 from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
 from ...exceptions import NotFittedError
@@ -381,17 +382,12 @@ class GroupLassoLogistic(ProviderModel):
     def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
+
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation, as ``coef_at``)."""
+        self._check_is_fitted()
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict_proba(self, X, lambda_value=None):
         """Predicted probabilities."""
@@ -402,19 +398,7 @@ class GroupLassoLogistic(ProviderModel):
         else:
             lam = lambda_value
         coef = self.coef_at(lam)
-        intercept = self.intercept_path_[-1] if not hasattr(self, 'intercept_') else 0.0
-        # Interpolate intercept similarly.
-        idx = max(0, min(
-            int(np.searchsorted(-np.log(self.lambda_path_), -np.log(lam))) - 1,
-            len(self.lambda_path_) - 2,
-        ))
-        if lambda_value is not None and len(self.lambda_path_) > 1:
-            log_lam = np.log(self.lambda_path_)
-            log_val = np.log(max(lam, self.lambda_path_[-1]))
-            frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx]) if log_lam[idx + 1] != log_lam[idx] else 0.0
-            intercept = (1.0 - frac) * self.intercept_path_[idx] + frac * self.intercept_path_[idx + 1]
-        else:
-            intercept = self.intercept_path_[-1]
+        intercept = self.intercept_at(lam) if lambda_value is not None else self.intercept_path_[-1]
         eta = X @ coef + intercept
         return 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
 

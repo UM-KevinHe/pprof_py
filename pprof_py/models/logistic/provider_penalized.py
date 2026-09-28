@@ -16,7 +16,8 @@ from ...base import ProviderModel
 from scipy.special import expit
 from ...inference.count_tests import PlugIn, count_test, rows_by_provider
 from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
-from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha, unpenalized_columns)
+from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha, unpenalized_columns,
+                                     interpolate_path)
 from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic, add_unpenalized_block)
 from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit, logistic_intercept_update)
 from ...algorithms.logistic.provider_effects import compute_provider_indices, logistic_provider_newton_step
@@ -497,6 +498,18 @@ class ProviderPenalizedLogistic(ProviderModel):
             raise NotFittedError(
                 f"This {type(self).__name__} is not fitted yet."
             )
+
+    def coef_at(self, lambda_value: float) -> np.ndarray:
+        """Covariate coefficients at an arbitrary lambda: linear interpolation in log(lambda) between
+        the bracketing path points, as every penalized path class does; the end points outside the path.
+        Predictions and provider effects use the nearest path point (``lambda_value=`` or ``which=``)."""
+        self._check_is_fitted()
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
+
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation, as ``coef_at``)."""
+        self._check_is_fitted()
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict_provider_effect(self, which: int = -1) -> pd.DataFrame:
         """Provider effects at a given lambda index.

@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns,
+                                     interpolate_path)
 from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
 from ...algorithms.linear.likelihood import (linear_unpenalized_null_fit, linear_deviance, linear_null_deviance, linear_intercept_update)
 from ...exceptions import NotFittedError
@@ -310,35 +311,12 @@ class GroupLassoLinear(ProviderModel):
         ndarray, shape (n_features,)
         """
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def intercept_at(self, lambda_value: float) -> float:
         """Intercept at an arbitrary lambda (log-lambda interpolation)."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return float(self.intercept_path_[0])
-        if lambda_value <= lam_path[-1]:
-            return float(self.intercept_path_[-1])
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return float(
-            (1.0 - frac) * self.intercept_path_[idx]
-            + frac * self.intercept_path_[idx + 1]
-        )
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict(self, X, lambda_value=None):
         """Predict responses at a given lambda.

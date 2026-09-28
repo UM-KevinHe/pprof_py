@@ -324,8 +324,7 @@ coefficients and the intercept in $\log\lambda$, as `coef_at()` does:
 ```python
 lam = m.lambda_path_[60]
 p = m.predict_proba(X.values[:5], lambda_value=lam)
-intercept = np.interp(np.log(lam), np.log(m.lambda_path_[::-1]), m.intercept_path_[::-1])
-manual = 1 / (1 + np.exp(-(X.values[:5] @ m.coef_at(lam) + intercept)))
+manual = 1 / (1 + np.exp(-(X.values[:5] @ m.coef_at(lam) + m.intercept_at(lam))))
 print(p.round(4), bool(np.allclose(p, manual, rtol=0, atol=1e-12)))
 ```
 ```

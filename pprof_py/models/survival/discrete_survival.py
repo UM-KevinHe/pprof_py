@@ -47,6 +47,7 @@ import pandas as pd
 from ...base import ProviderModel
 
 from ...algorithms.survival.discrete_survival import (discretize_times, initialize_baseline_hazard, compute_n_at_risk, compute_discrete_lambda_max, discrete_residuals, fit_discrete_regularization_path, person_period_expand, predict_discrete_hazard, predict_survival_probability)
+from ...algorithms.penalty import interpolate_path
 from ...algorithms.survival.penalty import (
     weighted_column_scale,
     rescale_penalty_factors,
@@ -361,22 +362,10 @@ class DiscreteSurvival(ProviderModel):
             )
 
     def coef_at(self, lambda_value: float) -> np.ndarray:
-        """Coefficients at an arbitrary lambda via linear interpolation."""
+        """Coefficients at an arbitrary lambda: linear interpolation in log(lambda) between the
+        bracketing path points, as every penalized path class does; the end points outside the path."""
         self._check_is_fitted()
-        lam = self.lambda_path_
-        idx = np.interp(
-            lambda_value,
-            lam[::-1],
-            np.arange(len(lam), dtype=np.float64)[::-1],
-        )
-        lo = int(np.floor(idx))
-        hi = int(np.ceil(idx))
-        lo = max(0, min(lo, len(lam) - 1))
-        hi = max(0, min(hi, len(lam) - 1))
-        if lo == hi:
-            return self.coef_path_[lo]
-        w = idx - lo
-        return (1.0 - w) * self.coef_path_[lo] + w * self.coef_path_[hi]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def predict(
         self,

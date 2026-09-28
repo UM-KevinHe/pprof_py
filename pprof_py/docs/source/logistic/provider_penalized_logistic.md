@@ -139,11 +139,12 @@ model's is slightly larger because it is computed with the 60
 facility effects fitted, at the null point where every covariate is
 zero.
 
-`coef_path_`, `gamma_path_`, and `lambda_path_` all exist, following
-the same path-fitting shape as every other class in this documentation
-— but `coef_at()` does not exist on this class at all (confirm with
-`hasattr(model, "coef_at")` — `False`), which matters for the next
-section.
+`coef_path_`, `gamma_path_`, and `lambda_path_` follow the same
+path-fitting shape as every other class in this documentation, and
+`coef_at(lambda_value)` and `intercept_at(lambda_value)` interpolate the
+covariate coefficients and the intercept in $\log\lambda$ between path
+points, as they do for [Chapter 1's](penalized_logistic.md) class.
+Predictions and provider effects, by contrast, use a single path point:
 
 `predict_proba()` and `predict()` accept both a `which=` integer
 path index and a `lambda_value=` continuous lambda.  When

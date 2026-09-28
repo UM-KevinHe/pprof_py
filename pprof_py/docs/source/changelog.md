@@ -202,6 +202,11 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   and `standardized_measure`) is the full sandwich of the joint (γ, β) fit; it was (1/I_j)² times the meat, which treats
   β as known and understates the variance of providers with an unusual case mix. That form, which is R's `test_aoh`, is
   `variance="robust_fixed_beta"` (it matches `test_aoh` to 2e-15).
+- `ProviderPenalizedLogistic` and `ProviderPenalizedDiscreteSurvival` have `coef_at` (and `ProviderPenalizedLogistic` and
+  `GroupLassoLogistic` `intercept_at`), and every penalized path class interpolates the same way: linearly in log λ
+  between path points, the end points outside the path. `DiscreteSurvival.coef_at` interpolated linearly in λ (values
+  between path points move by up to 1e-2; at path points they are unchanged), and `GroupLassoLogistic.predict_proba`
+  extrapolated the intercept above the first λ (it now uses the first point, as `coef_at` does).
 
 **Internals**
 

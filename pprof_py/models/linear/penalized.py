@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from ...base import ProviderModel
 
-from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors
+from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors, interpolate_path
 from ...algorithms.coordinate_descent import (
     compute_lambda_max,
     build_lambda_sequence,
@@ -353,35 +353,12 @@ class PenalizedLinear(ProviderModel):
     def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def intercept_at(self, lambda_value: float) -> float:
         """Intercept at an arbitrary lambda (log-lambda interpolation)."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return float(self.intercept_path_[0])
-        if lambda_value <= lam_path[-1]:
-            return float(self.intercept_path_[-1])
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return float(
-            (1.0 - frac) * self.intercept_path_[idx]
-            + frac * self.intercept_path_[idx + 1]
-        )
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict(self, X, lambda_value=None):
         """Predicted values."""

@@ -245,14 +245,18 @@ PenalizedLogisticCV(
 
 | Estimator | Methods |
 |---|---|
-| `PenalizedLinear` | `coef_at(lambda_value)`, `predict(X, lambda_value=None)`, `summary(which=-1)` → `feature`, `coef`, `nonzero` |
+| `PenalizedLinear` | `coef_at(lambda_value)`, `intercept_at(lambda_value)`, `predict(X, lambda_value=None)`, `summary(which=-1)` → `feature`, `coef`, `nonzero` |
 | `PenalizedLinearCV` | `predict(X, lambda_value=None)` |
-| `GroupLassoLinear` | `coef_at`, `predict`, `active_group_labels(which=-1)` (1-indexed group labels) |
+| `GroupLassoLinear` | `coef_at`, `intercept_at`, `predict`, `active_group_labels(which=-1)` (1-indexed group labels) |
 | `PenalizedLogistic` | `coef_at`, `intercept_at`, `predict_proba(X, lambda_value=None)`, `predict(X, lambda_value=None, threshold=0.5)`, `summary(which=-1)` |
 | `PenalizedLogisticCV`, `GroupLassoLogisticCV` | `predict_proba`, `predict` |
-| `GroupLassoLogistic` | `coef_at`, `active_group_labels`, `predict_proba`, `predict` |
-| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)`; `test(providers=None, *, test_method="poibin_exact", reference="median", null_model=None, alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1)`, the fixed-effect model's count test at one path point, with limits by inversion (unweighted fits; the CV class tests at its selected lambda) |
+| `GroupLassoLogistic` | `coef_at`, `intercept_at`, `active_group_labels`, `predict_proba`, `predict` |
+| `ProviderPenalizedLogistic` | `coef_at`, `intercept_at`; `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)`; `test(providers=None, *, test_method="poibin_exact", reference="median", null_model=None, alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1)`, the fixed-effect model's count test at one path point, with limits by inversion (unweighted fits; the CV class tests at its selected lambda) |
 | `ProviderPenalizedLogisticCV` | the same, with `which=None` (the selected λ) |
+
+`coef_at` and `intercept_at` interpolate linearly in log λ between path points and return the end points outside the
+path, in every penalized path class (logistic, linear, Cox and discrete-time survival). Predictions of the provider
+classes, and their provider effects, use the path point nearest to `lambda_value` instead.
 
 ## Agreement with glmnet
 

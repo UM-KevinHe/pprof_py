@@ -92,8 +92,9 @@ survival (R's `DiscSurv` is lasso-only too), and `'group_lasso'` or
 `'sparse_group_lasso'` raise an error. Per-feature `penalty_factor`
 values work as in [Chapter 1](../logistic/penalized_logistic).
 
-`coef_at(lambda_value)` interpolates continuously, the same way
-[Chapter 1's](../logistic/penalized_logistic) `coef_at()` does.
+`coef_at(lambda_value)` interpolates linearly in $\log\lambda$ between
+path points, the same way [Chapter 1's](../logistic/penalized_logistic)
+`coef_at()` does.
 
 ## 13.4 Reading the path
 

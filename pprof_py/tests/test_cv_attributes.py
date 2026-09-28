@@ -4,8 +4,11 @@ import warnings
 import numpy as np
 import pytest
 
-from pprof_py import (DiscreteSurvivalCV, GroupLassoCoxPHCV, GroupLassoLogisticCV, PenalizedCoxPHCV, PenalizedLinearCV,
-                      PenalizedLogisticCV, ProviderPenalizedDiscreteSurvivalCV, ProviderPenalizedLogisticCV)
+from pprof_py import (DiscreteSurvival, DiscreteSurvivalCV, GroupLassoCoxPH, GroupLassoCoxPHCV, GroupLassoLinear,
+                      GroupLassoLogistic, GroupLassoLogisticCV, PenalizedCoxPH, PenalizedCoxPHCV, PenalizedLinear,
+                      PenalizedLinearCV, PenalizedLogistic, PenalizedLogisticCV, ProviderPenalizedCoxPH,
+                      ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV, ProviderPenalizedLogistic,
+                      ProviderPenalizedLogisticCV)
 
 SURFACE = ("lambda_path_", "cv_mean_deviance_", "cv_se_deviance_", "lambda_min_", "lambda_1se_", "lambda_", "model_", "coef_")
 
@@ -55,11 +58,8 @@ def test_model_is_the_full_data_path(name):
         cv = CASES[name](_data())
     path = np.asarray(cv.lambda_path_)
     assert np.array_equal(np.asarray(cv.model_.lambda_path_), path)
-    if hasattr(cv.model_, "coef_at"):
-        at_selected = cv.model_.coef_at(cv.lambda_)
-    else:                                          # the provider path classes index the path instead
-        at_selected = np.asarray(cv.model_.coef_path_)[int(np.argmin(np.abs(np.log(path) - np.log(cv.lambda_))))]
-    np.testing.assert_allclose(np.asarray(cv.coef_).ravel(), np.asarray(at_selected).ravel(), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(np.asarray(cv.coef_).ravel(), np.asarray(cv.model_.coef_at(cv.lambda_)).ravel(),
+                               rtol=0, atol=1e-12)
 
 
 @pytest.mark.parametrize("name", ["PenalizedCoxPHCV", "GroupLassoCoxPHCV"])
@@ -73,3 +73,32 @@ def test_cox_cv_model_reads_either_selected_lambda(name):
     at_min = cls(se_rule="min", **extra, **kw).fit(d["X"], duration=d["dur"], event=d["ev"])
     assert np.array_equal(one_se.model_.coef_at(one_se.lambda_min_), at_min.coef_)
     np.testing.assert_allclose(one_se.predict_linear(d["X"][:20]), d["X"][:20] @ one_se.coef_, rtol=0, atol=1e-12)
+
+
+PATHS = {
+    "PenalizedLogistic": lambda d: PenalizedLogistic(n_lambda=8).fit(d["X"], d["yb"]),
+    "PenalizedLinear": lambda d: PenalizedLinear(n_lambda=8).fit(d["X"], d["yl"]),
+    "GroupLassoLogistic": lambda d: GroupLassoLogistic(groups=[1, 1, 2, 2], n_lambda=8).fit(d["X"], d["yb"]),
+    "GroupLassoLinear": lambda d: GroupLassoLinear(groups=[1, 1, 2, 2], n_lambda=8).fit(d["X"], d["yl"]),
+    "ProviderPenalizedLogistic": lambda d: ProviderPenalizedLogistic(n_lambda=8).fit(d["X"], d["yb"], d["prov"]),
+    "PenalizedCoxPH": lambda d: PenalizedCoxPH(n_lambda=8).fit(d["X"], duration=d["dur"], event=d["ev"]),
+    "GroupLassoCoxPH": lambda d: GroupLassoCoxPH(groups=[1, 1, 2, 2], n_lambda=8).fit(d["X"], duration=d["dur"], event=d["ev"]),
+    "ProviderPenalizedCoxPH": lambda d: ProviderPenalizedCoxPH(n_lambda=8).fit(d["X"], duration=d["dur"], event=d["ev"], provider_id=d["prov"]),
+    "DiscreteSurvival": lambda d: DiscreteSurvival(n_lambda=8).fit(d["X"], d["tdisc"], d["ev"]),
+    "ProviderPenalizedDiscreteSurvival": lambda d: ProviderPenalizedDiscreteSurvival(n_lambda=8).fit(d["X"], d["tdisc"], d["ev"], d["prov"]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PATHS))
+def test_every_path_class_interpolates_in_log_lambda(name):
+    """C24: coef_at is the path row on the grid, linear in log(lambda) between grid points, the end rows outside."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        m = PATHS[name](_data())
+    lam, path = np.asarray(m.lambda_path_), np.asarray(m.coef_path_)
+    for i in range(lam.size):
+        np.testing.assert_allclose(m.coef_at(lam[i]), path[i], rtol=0, atol=1e-14)
+    for i in range(lam.size - 1):                  # the geometric midpoint is halfway in log(lambda)
+        np.testing.assert_allclose(m.coef_at(np.sqrt(lam[i] * lam[i + 1])), (path[i] + path[i + 1]) / 2, rtol=0, atol=1e-12)
+    np.testing.assert_allclose(m.coef_at(lam[0] * 10), path[0], rtol=0, atol=0)
+    np.testing.assert_allclose(m.coef_at(lam[-1] / 10), path[-1], rtol=0, atol=0)
