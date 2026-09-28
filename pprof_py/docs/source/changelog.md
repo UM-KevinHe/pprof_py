@@ -181,6 +181,13 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   inventories, which need network access), down from 174.
 - `LinearRandomEffectModel`'s standardized measures use the random-effect mean 0 whatever `reference` is; the linear
   random-effect pages now say so.
+- New theoretical reference, [Empirical Null Calibration of Provider Tests](empirical_null_theory.md): why the
+  theoretical null miscalibrates under overdispersion and discreteness, the two-groups model, the robust estimators
+  and their behaviour under one-sided outliers and in small groups, and flags and limits under a calibrated null, with
+  every derivation checked numerically.
+- Two bibliography entries are corrected: He et al. (2013) is the *Lifetime Data Analysis* paper on dialysis
+  facilities, and Kalbfleisch and Wolfe (2013) is "On monitoring outcomes of medical providers", *Statistics in
+  Biosciences* 5(2), 286–302.
 
 **Internals**
 

@@ -7,7 +7,10 @@ distributed when providers perform as expected, and the decisions that
 follow (p-values, flags and intervals). This page is about the middle
 step. By default the null is the theoretical N(0, 1); an *empirical*
 null estimates its location and scale from the z-statistics themselves.
-Everything here lives in `pprof_py.inference`.
+Everything here lives in `pprof_py.inference`. The theory behind it — why
+the theoretical null miscalibrates, what the estimators converge to, and the
+effects of outliers and small groups — is in
+[Empirical Null Calibration of Provider Tests](../empirical_null_theory).
 
 ## The problem: your null distribution is rarely exactly what theory says
 
