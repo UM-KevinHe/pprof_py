@@ -227,7 +227,9 @@ LinearRandomEffectModel.test(
   `"indirect_ratio"` or `"gamma"`). Its null value defaults to the measure at γ₀ (`null_value="reference"`), so it agrees with a test of
   γ = γ₀. Indirect measures use the variance of the observed count under γ₀ (`indirect_variance="null"`, a score-type test) and an
   identity working scale (`transform="auto"`); `indirect_variance="fitted"` with `transform="log"` reproduces earlier versions'
-  construction. `variance="robust"` uses sandwich variances, `population=` sets the standard population for direct measures, and
+  construction. `variance="robust"` uses the cluster-robust sandwich of the joint (γ, β) fit (the model needs `obs_id_var`);
+  `variance="robust_fixed_beta"` treats β as known, as R's `test_aoh` does (R parity; it understates the variance of providers whose
+  case mix differs from the rest). `population=` sets the standard population for direct measures, and
   `bounds="auto"` clips identity-scale intervals to the measure's range. There is no fixed scale factor: earlier versions divided every
   z-statistic by 1.81 by default, which `null_model=FixedNull(sd=1.81)` reproduces.
 

@@ -198,6 +198,10 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   `lambda_1se_` coefficients); `coef_` is the path's point at `lambda_`, and `full_fit_` is removed.
 - `GroupLassoCoxPH` returns the null point exactly at lambda >= `lambda_max_` (its penalized coefficients were about
   1e-17), as the provider classes do.
+- The cluster-robust variance of `LogisticFixedEffectModel`'s provider effects (`variance="robust"` in `test_standardized`
+  and `standardized_measure`) is the full sandwich of the joint (γ, β) fit; it was (1/I_j)² times the meat, which treats
+  β as known and understates the variance of providers with an unusual case mix. That form, which is R's `test_aoh`, is
+  `variance="robust_fixed_beta"` (it matches `test_aoh` to 2e-15).
 
 **Internals**
 

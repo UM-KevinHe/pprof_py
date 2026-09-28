@@ -107,11 +107,22 @@ class _CovariateInferenceMethods:
         ID level (e.g., patient). This accounts for within-cluster correlation
         when observations are repeated (e.g., same patient across multiple years).
 
-        For gamma (provider effects), the sandwich formula is:
-            robust_var(gamma_j) = (1/I_j)^2 * A0_j
+        For gamma (provider effects) two forms are returned:
+
+        - ``"gamma"``: the full sandwich, ``[I^-1 M I^-1]_jj``, with ``I`` the
+          information of ``(gamma, beta)`` and ``M`` the cluster meat of both
+          scores; with ``g_j = B_j / I_j`` and ``h_j = S^-1 g_j`` it is
+          ``A0_j/I_j^2 + 2 (A0_j/I_j) g_j.h_j + h_j' (W - C - C' + A2) h_j - 2 A1_j.h_j / I_j``,
+          ``W = sum_k A0_k g_k g_k'``, ``C = sum_k g_k A1_k'``. It accounts for
+          the estimation of beta, as the beta sandwich below does.
+        - ``"gamma_fixed_beta"``: ``(1/I_j)^2 * A0_j``, the sandwich with beta
+          treated as known, which is R's ``test_aoh`` (``robust_wald_gamma``
+          returns ``sqrt(1/I_j)``). It understates the variance for providers
+          whose case mix differs from the rest.
+
         where:
-            I_j = sum(p_i * (1 - p_i)) for observations i in group j
-            A0_j = sum_k[ (``sum_``{i in cluster k}(Y_i - p_i))^2 ] within group j
+            I_j = sum(N_i p_i (1 - p_i)) for observations i in group j
+            A0_j = sum_k[ (``sum_``{i in cluster k}(Y_i - N_i p_i))^2 ] within group j
 
         For beta (covariate coefficients), the full joint sandwich is:
             V_beta = S^{-1} @ M_eff @ S^{-1}
@@ -133,7 +144,8 @@ class _CovariateInferenceMethods:
         -------
         dict
             Dictionary with keys:
-            - 'gamma': array of robust variances for each group's fixed effect
+            - 'gamma': full-sandwich robust variances of the provider effects
+            - 'gamma_fixed_beta': robust variances with beta treated as known (R's ``test_aoh``)
             - 'beta': robust covariance matrix for covariate coefficients (p x p)
 
         Raises
@@ -245,7 +257,21 @@ class _CovariateInferenceMethods:
         # Robust covariance for beta: V = S^{-1} @ M_eff @ S^{-1}
         V_beta_robust = S_inv @ M_eff @ S_inv  # (p, p)
 
-        return {"gamma": robust_var_gamma, "beta": V_beta_robust}
+        # --- Gamma robust variance via the full sandwich [I^-1 M I^-1]_jj ---
+        # Row j of I^-1 is (e_j / I_j + g_j' S^-1 G', -g_j' S^-1) with g_j = B_j / I_j;
+        # O(m p^2), without forming the m x m block.
+        valid = np.isfinite(robust_var_gamma)
+        info = np.where(valid, 1.0 / D_inv, np.nan)
+        G = np.where(valid[:, None], (info_beta_gamma * D_inv[np.newaxis, :]).T, 0.0)   # (m, p): g_j
+        H = G @ S_inv                                                                   # (m, p): h_j
+        W = (G * A0[:, np.newaxis]).T @ G                                               # sum_k A0_k g_k g_k'
+        C = G.T @ A1_t                                                                  # sum_k g_k A1_k'
+        M_h = W - C - C.T + A2
+        full_var_gamma = (A0 / info**2 + 2.0 * (A0 / info) * np.sum(G * H, axis=1)
+                          + np.sum((H @ M_h) * H, axis=1) - 2.0 * np.sum(A1_t * H, axis=1) / info)
+        full_var_gamma = np.where(valid, full_var_gamma, np.nan)
+
+        return {"gamma": full_var_gamma, "gamma_fixed_beta": robust_var_gamma, "beta": V_beta_robust}
 
     def _compute_wald_beta(self, index: int, null: float = 0, alternative: str = "two_sided", alpha: float = 0.05, variance_type: str = "model"):
         """Perform a Wald test for a specific covariate coefficient.

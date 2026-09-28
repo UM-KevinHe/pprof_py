@@ -106,11 +106,12 @@ def _reference_gamma(gamma: np.ndarray, sizes: np.ndarray, reference) -> float:
 def _gamma_se(model, variance: str) -> np.ndarray:
     if variance == "model":
         return np.sqrt(np.asarray(model.variances_["gamma"], dtype=np.float64).ravel())
-    if variance == "robust":
+    if variance in ("robust", "robust_fixed_beta"):
         if getattr(model, "robust_variances_", None) is None:
             raise ValueError("Robust variances are not available; fit the model with obs_id_var.")
-        return np.sqrt(np.asarray(model.robust_variances_["gamma"], dtype=np.float64).ravel())
-    raise ValueError("variance must be 'model' or 'robust'.")
+        key = "gamma" if variance == "robust" else "gamma_fixed_beta"
+        return np.sqrt(np.asarray(model.robust_variances_[key], dtype=np.float64).ravel())
+    raise ValueError("variance must be 'model', 'robust' or 'robust_fixed_beta'.")
 
 
 def standardized_measure(
@@ -136,9 +137,12 @@ def standardized_measure(
         effects, their size-weighted mean, or a value on the effect scale.
         It sets the expected counts of indirect measures and every measure's
         reference value.
-    variance : {"model", "robust"}
+    variance : {"model", "robust", "robust_fixed_beta"}
         Standard error of the fitted effects, for direct measures and gamma.
-        ``"robust"`` needs a model fitted with ``obs_id_var``.
+        ``"robust"`` is the cluster-robust sandwich of the joint (gamma, beta)
+        fit; ``"robust_fixed_beta"`` treats beta as known, as R's ``test_aoh``
+        does (R parity; it understates the variance for providers with an
+        unusual case mix). Both need a model fitted with ``obs_id_var``.
     indirect_variance : {"null", "fitted"}
         Where the variance of ``O_j`` is evaluated for indirect measures: at
         gamma_0 (default; on the identity scale the test is then the score
@@ -155,7 +159,7 @@ def standardized_measure(
         raise ValueError(f"measure must be one of {MEASURES}.")
     if indirect_variance not in ("null", "fitted"):
         raise ValueError("indirect_variance must be 'null' or 'fitted'.")
-    if variance == "robust" and measure in ("indirect_rate", "indirect_ratio"):
+    if variance in ("robust", "robust_fixed_beta") and measure in ("indirect_rate", "indirect_ratio"):
         raise ValueError("Indirect measures use the Poisson-binomial variance of observed counts "
                          "(see indirect_variance); variance='robust' applies to direct measures and gamma.")
 

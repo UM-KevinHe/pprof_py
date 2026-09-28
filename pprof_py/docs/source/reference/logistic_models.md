@@ -45,7 +45,8 @@ fe.calculate_standardized_measures()["indirect"].head()
 `fit(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None, n_var=None, obs_id_var=None, use_dataprep=None, screen_providers=None,
 log_event_providers=None, cutoff=None, threshold_cor=None, threshold_vif=None, max_iter=10000, tol=1e-5, bound=10.0, backtrack=True)` —
 the `None` overrides replace the constructor values for this call; `bound` clips γ; `obs_id_var` (observation/patient id) enables cluster-robust
-variances (`summary(variance_type="robust")`); `n_var` accepts a trials-count column but the response is still validated as 0/1 — use one row per patient.
+variances, clustered on that id (`summary(variance_type="robust")` for β, `variance="robust"` in `test_standardized` for γ); `n_var` gives
+binomial trials per row, with the response the number of events out of them.
 
 **Fitted attributes:** `coefficients_` (`"beta"` `(p,)`, `"gamma"` `(m,)`), `variances_`, `robust_variances_`, `fitted_` (probabilities),
 `xbeta_`, `aic_`, `bic_`, `auc_`, `provider_ids_`, `provider_indices_`, `provider_sizes_`, `covariate_names_`, `outcome_`, `obs_ids_`, `N_`, `X`, `algorithm`,

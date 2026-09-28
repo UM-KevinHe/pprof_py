@@ -188,7 +188,8 @@ class LogisticFixedEffectModel(
         obs_id_var : Optional[str], default=None
             Column name for observation-level identifiers (e.g., patient ID,
             member ID). Required for cluster-robust variance estimation. If
-            provided, enables variance='robust' in test_standardized() and standardized_measure().
+            provided, enables variance='robust' (and the R-parity 'robust_fixed_beta') in test_standardized() and
+            standardized_measure().
         use_dataprep : Optional[bool], default=None
             Override default data preparation setting.
         screen_providers : Optional[bool], default=None
@@ -380,8 +381,10 @@ class LogisticFixedEffectModel(
                 self.coefficients_["gamma"][j] = gamma[idx]
                 if self.variances_ is not None and "gamma" in self.variances_:
                     self.variances_["gamma"][j] = se_gamma[idx] ** 2
-                if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-                    self.robust_variances_["gamma"][j] = se_gamma[idx] ** 2
+                if self.robust_variances_ is not None:
+                    for key in ("gamma", "gamma_fixed_beta"):
+                        if key in self.robust_variances_:
+                            self.robust_variances_[key][j] = se_gamma[idx] ** 2
 
         # Append new providers
         n_new = int(new_mask.sum())
@@ -395,10 +398,12 @@ class LogisticFixedEffectModel(
                 self.variances_["gamma"] = np.concatenate([
                     self.variances_["gamma"].flatten(), se_sq_new
                 ])
-            if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-                self.robust_variances_["gamma"] = np.concatenate([
-                    self.robust_variances_["gamma"].flatten(), se_sq_new
-                ])
+            if self.robust_variances_ is not None:
+                for key in ("gamma", "gamma_fixed_beta"):
+                    if key in self.robust_variances_:
+                        self.robust_variances_[key] = np.concatenate([
+                            self.robust_variances_[key].flatten(), se_sq_new
+                        ])
             if group_sizes is not None:
                 gs_new = np.asarray(group_sizes, dtype=int)[new_mask]
             else:
