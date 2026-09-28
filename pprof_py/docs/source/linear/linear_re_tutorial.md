@@ -174,17 +174,19 @@ has the highest BLUP.
 
 The **Indirect Standardized Difference** (ISDiff) compares each
 hospital's total fitted LOS with the total expected from its case mix
-alone ($\mathbf{X}^\top\hat{\boldsymbol\beta}$), per patient:
+at the reference random effect $u_0$
+($\mathbf{X}^\top\hat{\boldsymbol\beta} + u_0$), per patient:
 
 $$
 \text{ISDiff}_i = \frac{O_i - E_i}{n_i}
 = \frac{1}{n_i}\sum_{j}\left(\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta} + \hat{u}_i\right)
-- \frac{1}{n_i}\sum_{j}\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta} = \hat{u}_i .
+- \frac{1}{n_i}\sum_{j}\left(\mathbf{X}_{ij}^\top\hat{\boldsymbol\beta} + u_0\right) = \hat{u}_i - u_0 .
 $$
 
-For the linear model it is therefore the BLUP itself, on the outcome
-scale (days), measured from the random-effect mean 0. The `reference`
-argument does not change this measure (it does change the tests below).
+For the linear model it is therefore the BLUP measured from the
+reference, on the outcome scale (days). With `reference='median'`,
+$u_0 = -0.054$ here; `reference=0` measures from the random-effect mean,
+as R pprof does.
 
 ```python
 sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
@@ -193,22 +195,23 @@ print(sm['indirect'].head(10).to_string())
 
 ```
    provider_id  indirect_difference     observed     expected
-0   Hospital_1             0.213653  1955.235135  1937.929217
-1  Hospital_10             0.488747  2216.366012  2170.912568
-2  Hospital_11            -0.639378  2133.990590  2194.731545
-3  Hospital_12            -1.003254  1215.984026  1270.159718
-4  Hospital_13            -0.486697  2033.396047  2075.738672
-5  Hospital_14            -1.581776   736.970907   790.751280
-6  Hospital_15            -1.391879  1371.589996  1459.278352
-7  Hospital_16            -0.087237  2280.709964  2289.259209
-8  Hospital_17             0.428253  2271.276014  2229.735491
-9  Hospital_18            -2.540525   624.726892   703.483178
+0   Hospital_1             0.267838  1955.235135  1933.540291
+1  Hospital_10             0.542931  2216.366012  2165.873431
+2  Hospital_11            -0.585194  2133.990590  2189.584039
+3  Hospital_12            -0.949069  1215.984026  1267.233768
+4  Hospital_13            -0.432513  2033.396047  2071.024641
+5  Hospital_14            -1.527591   736.970907   788.909014
+6  Hospital_15            -1.337694  1371.589996  1455.864743
+7  Hospital_16            -0.033053  2280.709964  2283.949150
+8  Hospital_17             0.482437  2271.276014  2224.479616
+9  Hospital_18            -2.486341   624.726892   701.803466
 ```
 
 `observed` is the sum of fitted values (including BLUPs) for that
-hospital; `expected` is the sum under the baseline effect. Hospital 18's
-patients total 625 fitted days vs. an expected 703, a difference of
-$-2.54$ days per patient: its BLUP.
+hospital; `expected` is the sum under the reference effect. Hospital 18's
+patients total 625 fitted days vs. an expected 702, a difference of
+$-2.49$ days per patient: its BLUP ($-2.54$) measured from the median
+BLUP ($-0.054$).
 
 ## 7. Hypothesis testing
 
@@ -292,16 +295,16 @@ print(sm_ci['indirect_ci'].head(10).to_string())
 
 ```
    provider_id  indirect_difference     observed     expected     lower     upper
-0   Hospital_1             0.213653  1955.235135  1937.929217 -0.514031  0.941337
-1  Hospital_10             0.488747  2216.366012  2170.912568 -0.194821  1.172315
-2  Hospital_11            -0.639378  2133.990590  2194.731545 -1.316346  0.037589
-3  Hospital_12            -1.003254  1215.984026  1270.159718 -1.872872 -0.133635
-4  Hospital_13            -0.486697  2033.396047  2075.738672 -1.191289  0.217896
-5  Hospital_14            -1.581776   736.970907   790.751280 -2.634135 -0.529416
-6  Hospital_15            -1.391879  1371.589996  1459.278352 -2.205383 -0.578374
-7  Hospital_16            -0.087237  2280.709964  2289.259209 -0.754653  0.580178
-8  Hospital_17             0.428253  2271.276014  2229.735491 -0.242302  1.098807
-9  Hospital_18            -2.540525   624.726892   703.483178 -3.631575 -1.449476
+0   Hospital_1             0.267838  1955.235135  1933.540291 -0.459846  0.995522
+1  Hospital_10             0.542931  2216.366012  2165.873431 -0.140637  1.226499
+2  Hospital_11            -0.585194  2133.990590  2189.584039 -1.262162  0.091773
+3  Hospital_12            -0.949069  1215.984026  1267.233768 -1.818688 -0.079451
+4  Hospital_13            -0.432513  2033.396047  2071.024641 -1.137105  0.272080
+5  Hospital_14            -1.527591   736.970907   788.909014 -2.579951 -0.475232
+6  Hospital_15            -1.337694  1371.589996  1455.864743 -2.151199 -0.524190
+7  Hospital_16            -0.033053  2280.709964  2283.949150 -0.700468  0.634363
+8  Hospital_17             0.482437  2271.276014  2224.479616 -0.188117  1.152992
+9  Hospital_18            -2.486341   624.726892   701.803466 -3.577391 -1.395291
 ```
 
 ## 9. Visualizing the results

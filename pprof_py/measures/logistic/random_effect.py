@@ -48,7 +48,7 @@ class LogisticRandomEffectMeasuresMixin:
         reference : {'median', 'mean'} or float, default="median"
             Baseline for expected counts (indirect) and population norm (direct).
             - 'median': uses median of BLUPs
-            - 'mean': uses mean of BLUPs
+            - 'mean': uses the provider-size-weighted mean of BLUPs
             - float: uses this value as the null random effect
 
         Returns
@@ -79,7 +79,7 @@ class LogisticRandomEffectMeasuresMixin:
         if reference == "median":
             gamma_null = float(np.median(blups))
         elif reference == "mean":
-            gamma_null = float(np.mean(blups))
+            gamma_null = float(np.average(blups, weights=np.bincount(idx, minlength=n_levels)))
         elif isinstance(reference, (int, float)):
             gamma_null = float(reference)
         else:

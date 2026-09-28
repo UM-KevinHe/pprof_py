@@ -946,7 +946,7 @@ class _PenalizedCoxPHCVBase:
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        return self.model_.predict_linear(X, offset=offset)
+        return self.model_.predict_linear(X, offset=offset, lambda_value=self.lambda_)
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:
         """Partial hazard at the selected lambda.
@@ -962,7 +962,7 @@ class _PenalizedCoxPHCVBase:
         """
         self._check_is_fitted()
         return self.model_.predict_partial_hazard(
-            X, offset=offset,
+            X, offset=offset, lambda_value=self.lambda_,
         )
 
     def predict(self, X, offset=None) -> np.ndarray:
@@ -1047,12 +1047,14 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
         largest lambda within one standard error of that minimum
         (glmnet's 1-SE rule).
     model_ : PenalizedCoxPH
-        Fit on the *full* data at `lambda_min_` or `lambda_1se_` (per
-        `select`).
+        The full-data fit over the whole path (``lambda_path_``);
+        ``model_.coef_at(lambda_min_)`` and ``model_.coef_at(lambda_1se_)``
+        read it at either selected lambda.
     lambda_ : float
-        The lambda that ``se_rule`` selects, at which ``model_`` and ``coef_`` are fit.
+        The lambda that ``se_rule`` selects; ``coef_`` and the ``predict_*``
+        methods use it.
     coef_ : ndarray
-        `model_.coef_`.
+        ``model_``'s coefficients at ``lambda_``.
     fold_id_ : ndarray, shape (n_obs,)
         The fold assignment actually used.
     """
@@ -1342,27 +1344,19 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
             lambda_grid, cvm, cvsd,
         )
 
-        # Final estimator at the selected lambda.
-        chosen_lambda = (
-            self.lambda_min_
-            if self.se_rule == "min"
-            else self.lambda_1se_
-        )
-        self.model_ = PenalizedCoxPH(
-            lambda_path=chosen_lambda, **self._base_kwargs(),
-        )
-        self.model_.fit(
-            data.X, event=data.event, start=data.start,
-            stop=data.stop, strata=data.strata_codes,
-            offset=data.offset, sample_weight=data.weight,
-        )
-        self.coef_ = self.model_.coef_
+        # --- The full-data path is the fitted model (C22) ---
+        # As in the logistic and linear CV classes, model_ holds every path
+        # point (so model_.coef_at(lambda_min_) and model_.coef_at(lambda_1se_)
+        # both read the full-data fit), and coef_ is its point at the selected
+        # lambda, which lies on the grid.
         self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
+        self.model_ = full_fit
+        selected = int(np.argmin(np.abs(np.log(lambda_grid) - np.log(self.lambda_))))
+        self.coef_ = full_fit.coef_path_[selected].copy()
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_
         self.n_nonzero_path_ = full_fit.n_nonzero_path_
-        self.full_fit_ = full_fit
 
         return self
 

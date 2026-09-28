@@ -41,7 +41,9 @@ from ...algorithms.survival.penalty import (
     validate_groups, rescale_group_multipliers,
 )
 from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, unpenalized_columns
-from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.coordinate_descent import (
+    compute_group_lambda_max, fit_group_regularization_path, _compute_group_kkt_violation,
+)
 from ...algorithms.survival.ties import TieMethod
 from ...utils.deviance import saturated_log_likelihood, cox_deviance
 from .coxph import CoxPH
@@ -379,6 +381,31 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
             use_active_set=self.use_active_set,
         )
 
+        # At or above lambda_max the null point solves the problem, so it is
+        # stored exactly, as the provider classes do (C23): iterating from it
+        # only adds rounding noise to its zeros.  Later points were warm-started
+        # by the solver itself and are unchanged.
+        if lambda_max > 0:
+            ll_null, score_null, info_null = objective_fn(beta_null)
+            lam_null = lambda_max * (1.0 - 1e-12)
+            results = list(results)
+            for i, lam in enumerate(lambda_sequence):
+                if float(lam) >= lam_null:
+                    results[i] = results[i]._replace(
+                        beta=beta_null.copy(), log_likelihood=ll_null,
+                        objective_value=-prep.c * ll_null, n_outer_iter=0,
+                        n_inner_iter_total=0, converged=True,
+                        message="null point (lambda >= lambda_max)",
+                        information=info_null,
+                        active_groups=np.zeros(n_groups_fit, dtype=bool),
+                        group_norms=np.zeros(n_groups_fit),
+                        df=float(np.sum(beta_null != 0.0)),
+                        kkt_violation=_compute_group_kkt_violation(
+                            prep.c * score_null, beta_null, float(lam), self.alpha,
+                            groups_fit, group_weights_fit, prep.pf_fit, n_groups_fit,
+                        ),
+                    )
+
         # --- Common result storage (from base) ---
         # group_norms stay in the fitted (orthogonalized) coordinates, the
         # quantities the penalty acts on; beta goes back to X's columns.
@@ -501,11 +528,13 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     lambda_min_ : float
     lambda_1se_ : float
     model_ : GroupLassoCoxPH
+        The full-data fit over the whole path (``lambda_path_``).
     lambda_ : float
-        The lambda that ``se_rule`` selects, at which ``model_`` and ``coef_`` are fit.
+        The lambda that ``se_rule`` selects; ``coef_`` and the ``predict_*``
+        methods use it.
     coef_ : ndarray
+        ``model_``'s coefficients at ``lambda_``.
     fold_id_ : ndarray, shape (n_obs,)
-    full_fit_ : GroupLassoCoxPH
     """
 
     def __init__(
@@ -783,26 +812,19 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
             lambda_grid, cvm, cvsd,
         )
 
-        # --- Final estimator at selected lambda ---
-        chosen_lambda = (
-            self.lambda_min_ if self.se_rule == "min"
-            else self.lambda_1se_
-        )
-        self.model_ = GroupLassoCoxPH(
-            lambda_path=chosen_lambda, **self._base_kwargs(),
-        )
-        self.model_.fit(
-            data.X, event=data.event, start=data.start,
-            stop=data.stop, strata=data.strata_codes,
-            offset=data.offset, sample_weight=data.weight,
-        )
-        self.coef_ = self.model_.coef_
+        # --- The full-data path is the fitted model (C22) ---
+        # As in the logistic and linear CV classes, model_ holds every path
+        # point (so model_.coef_at(lambda_min_) and model_.coef_at(lambda_1se_)
+        # both read the full-data fit), and coef_ is its point at the selected
+        # lambda, which lies on the grid.
         self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
+        self.model_ = full_fit
+        selected = int(np.argmin(np.abs(np.log(lambda_grid) - np.log(self.lambda_))))
+        self.coef_ = full_fit.coef_path_[selected].copy()
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_
         self.n_nonzero_path_ = full_fit.n_nonzero_path_
-        self.full_fit_ = full_fit
 
         return self
 

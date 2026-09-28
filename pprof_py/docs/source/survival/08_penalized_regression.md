@@ -134,11 +134,18 @@ print(cv_min.coef_.round(4))   # at lambda_min_
 [ 0.0458 -0.0257  0.1675  0.1698]
 ```
 
-`cv.model_` is the full-data `PenalizedCoxPH` fit at the selected
-lambda, if you need more than just `coef_` — the fitted deviance, the
-number of nonzero coefficients, and so on. It is fitted at that one
-lambda only, so read coefficients at the other lambda from a CV object
-built with the other `se_rule`, as above.
+`cv.model_` is the full-data `PenalizedCoxPH` path, if you need more
+than just `coef_` — the fitted deviance, the number of nonzero
+coefficients, and so on, at any lambda. Reading it at `lambda_min_`
+gives the same coefficients as the `se_rule="min"` fit above, without a
+second cross-validation:
+
+```python
+print(np.array_equal(cv.model_.coef_at(cv.lambda_min_), cv_min.coef_))
+```
+```
+True
+```
 
 ## 8.5 A worked comparison on the running cohort
 

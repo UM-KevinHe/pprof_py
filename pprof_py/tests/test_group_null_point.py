@@ -85,3 +85,16 @@ def test_discrete_survival_fits_the_lasso_only(penalty_type):
     with pytest.raises(TypeError):
         DiscreteSurvival(groups=[1, 1, 2])
     assert DiscreteSurvival(n_lambda=5).fit(X, time, event).coef_path_.shape == (5, 3)
+
+
+@pytest.mark.parametrize("alpha", [0.0, 0.5])
+def test_group_lasso_cox_null_point_is_exact(alpha):
+    """C23: at lambda >= lambda_max GroupLassoCoxPH returns the null point exactly, as the provider classes do."""
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(400, 5))
+    t = rng.exponential(1 / np.exp(X @ [0.5, 0.3, 0.0, 0.0, 0.2]))
+    ev = (rng.uniform(size=400) < 0.7).astype(float)
+    m = GroupLassoCoxPH(groups=np.array([0, 1, 1, 2, 2]), alpha=alpha, n_lambda=10).fit(X, duration=t, event=ev)
+    assert np.all(m.coef_path_[0][1:] == 0.0)
+    assert m.coef_path_[0][0] != 0.0              # the unpenalized column is fitted at the null point
+    assert m.converged_path_[0] and m.kkt_violation_path_[0] <= 1e-12

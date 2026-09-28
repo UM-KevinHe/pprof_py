@@ -49,7 +49,11 @@ class LinearRandomEffectMeasuresMixin:
         stdz : Union[str, list], default="indirect"
             Standardization method(s); can be "indirect", "direct", or both.
         reference : Union[str, float], default="median"
-            Baseline norm used for standardization; can be "median", "mean", or a specific numeric value.
+            The reference random effect ``u_0`` at which the indirect expected
+            outcomes are computed: ``"median"`` (median BLUP), ``"mean"``
+            (provider-size-weighted mean BLUP) or a number. The indirect
+            difference is then ``u_k - u_0``; ``reference=0`` reproduces R
+            pprof's ``SM_output.linear_re``, which uses the random-effect mean 0.
 
         Returns
         -------
@@ -81,7 +85,7 @@ class LinearRandomEffectMeasuresMixin:
         elif isinstance(reference, (int, float)):
             re_null = reference
         else:
-            raise ValueError("Invalid 'null' argument provided. Must be 'median', 'mean', or a numeric value.")
+            raise ValueError("reference must be 'median', 'mean', or a numeric value.")
 
         # If providers are specified, select those groups; otherwise, use all groups
         if providers is not None:
@@ -96,7 +100,7 @@ class LinearRandomEffectMeasuresMixin:
         if "indirect" in stdz:
             n_groups = len(group_names)
             # Compute expected outcomes by group by excluding random effects
-            expected_by_group = np.bincount(group_indices, weights=self.xbeta_, minlength=n_groups)
+            expected_by_group = np.bincount(group_indices, weights=self.xbeta_ + re_null, minlength=n_groups)
             # Compute observed outcomes using the full fitted values including random effects
             observed_by_group = np.bincount(group_indices, weights=self.fitted_, minlength=n_groups)
             # Indirect standardized difference

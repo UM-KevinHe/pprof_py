@@ -179,8 +179,6 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - Signature listings are regenerated from the code, stale module paths and attribute names are updated, and the
   bibliography, cross-reference and docstring markup errors are fixed: the docs build has 4 warnings (intersphinx
   inventories, which need network access), down from 174.
-- `LinearRandomEffectModel`'s standardized measures use the random-effect mean 0 whatever `reference` is; the linear
-  random-effect pages now say so.
 - New theoretical reference, [Empirical Null Calibration of Provider Tests](empirical_null_theory.md): why the
   theoretical null miscalibrates under overdispersion and discreteness, the two-groups model, the robust estimators
   and their behaviour under one-sided outliers and in small groups, and flags and limits under a calibrated null, with
@@ -188,6 +186,18 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - Two bibliography entries are corrected: He et al. (2013) is the *Lifetime Data Analysis* paper on dialysis
   facilities, and Kalbfleisch and Wolfe (2013) is "On monitoring outcomes of medical providers", *Statistics in
   Biosciences* 5(2), 286–302.
+
+**Random-effect measures and Cox cross-validation**
+
+- `LinearRandomEffectModel.calculate_standardized_measures` and its `'SM'` intervals use `reference`: the indirect
+  difference is the BLUP minus the reference effect (it was the BLUP whatever `reference` was). The default is still
+  `"median"`; `reference=0` gives R pprof's measure. `reference="mean"` in `LogisticRandomEffectModel`'s measures is
+  the provider-size-weighted mean BLUP, as documented (it was unweighted).
+- `PenalizedCoxPHCV.model_` and `GroupLassoCoxPHCV.model_` are the full-data path, as in the other CV classes (they
+  were refits at the selected lambda only, so `model_.coef_at(lambda_min_)` under `se_rule="1se"` returned the
+  `lambda_1se_` coefficients); `coef_` is the path's point at `lambda_`, and `full_fit_` is removed.
+- `GroupLassoCoxPH` returns the null point exactly at lambda >= `lambda_max_` (its penalized coefficients were about
+  1e-17), as the provider classes do.
 
 **Internals**
 

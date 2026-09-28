@@ -232,7 +232,7 @@ PenalizedLogisticCV(
 | Estimator | Attributes |
 |---|---|
 | `PenalizedLinear` | `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`, `lambda_min_ratio_`, `penalty_factor_`, `column_scale_`, `deviance_path_`, `deviance_ratio_path_`, `null_deviance_`, `log_likelihood_path_`, `n_nonzero_path_`, `converged_path_`, `n_obs_`, `n_features_in_`, `feature_names_in_` |
-| `PenalizedLinearCV` | `coef_`, `coef_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_path_`, `cv_mean_mse_`, `cv_se_mse_`, `cv_std_mse_`, `model_` |
+| `PenalizedLinearCV` | `coef_`, `coef_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`, `cv_std_deviance_`, `model_` |
 | `GroupLassoLinear` | `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`, `column_scale_`, `deviance_path_`, `deviance_ratio_path_`, `null_deviance_`, `active_groups_path_`, `converged_path_`, `n_obs_`, `n_features_in_`, `feature_names_in_` (**no** `n_nonzero_path_`) |
 | `PenalizedLogistic` | as `PenalizedLinear` plus `n_iter_path_` |
 | `PenalizedLogisticCV` | `coef_`, `intercept_`, `coef_path_`, `intercept_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_min_idx_`, `lambda_1se_idx_`, `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`, `cv_std_deviance_`, `model_` |

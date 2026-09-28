@@ -45,7 +45,7 @@ log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wa
 - `reference`: the reference effect γ₀ — `"median"` (the median provider effect, γ or α), `"mean"` (the group-size-weighted mean
   effect) or a number on the effect scale. For standardized measures, confidence intervals and plots the default is `"median"`; for
   `test` and `test_standardized` it is `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
-  `LinearRandomEffectModel`'s standardized measures currently use 0 whatever `reference` is (an open item).
+  `reference=0` reproduces R pprof's random-effect measures, which have no reference argument.
 - `stdz`: `"indirect"`, `"direct"` or a list of both.
 - `alternative`: `"two_sided"` (or `"two-sided"`), `"less"` or `"greater"`. Confidence intervals for the provider effects themselves (`option="gamma"` / `"alpha"`) are two-sided only.
 

@@ -73,14 +73,9 @@ For linear random effects models, standardized measures quantify how much a prov
 
 Let $\hat{\boldsymbol{\beta}}$ denote the estimated fixed effects, and $\hat{\alpha}_i$ the estimated random effect for provider $i$. Define a reference or baseline random effect $\alpha_0$ (e.g., the median or mean of $\hat{\alpha}_i$, as specified by the `reference` parameter in `LinearRandomEffectModel.calculate_standardized_measures`).
 
-```{note}
-In the current implementation `calculate_standardized_measures` (and the
-`'SM'` option of `calculate_confidence_intervals`) computes the expected
-outcomes at $\alpha_0 = 0$, the random-effect mean, whatever `reference`
-is: the indirect difference is $\hat{\alpha}_i$ itself. `test()` does use
-`reference`. This is recorded as an open item; the formulas below give
-the measure as defined.
-```
+The baseline $\alpha_0$ is the `reference` argument (`"median"`, `"mean"`
+or a number). With `reference=0`, the random-effect mean, the measures are
+those of R pprof's `SM_output.linear_re`, which has no reference argument.
 
 #### 2.3.1. Indirect Standardization
 

@@ -75,10 +75,11 @@ so the selected λ, change between calls.
 
 Accepts every `PenalizedCoxPH` parameter plus `n_folds=10`, `fold_id`, `se_method` (`"analytical"` or
 `"bootstrap"` — bootstrap supports Breslow ties only), `n_bootstrap=100`, `random_state`, and
-`select` (`"lambda_min"` default, or `"lambda_1se"`). It computes the Verweij–Van Houwelingen grouped deviance per
+`se_rule` (`"1se"` default, or `"min"`). It computes the Verweij–Van Houwelingen grouped deviance per
 fold, as `cv.glmnet(family="cox")` does. Attributes: `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`,
-`lambda_min_`, `lambda_1se_`, `lambda_`, `coef_`, `model_` (a `PenalizedCoxPH` refit on all data at the selected λ),
-`full_fit_`, `fold_id_`, `cv_n_folds_`, `n_nonzero_path_`. The `predict_*` methods use `coef_` and take no `lambda_value`.
+`lambda_min_`, `lambda_1se_`, `lambda_`, `coef_`, `model_` (the `PenalizedCoxPH` path fitted on all data; `coef_` is its
+point at `lambda_`), `fold_id_`, `cv_n_folds_`, `n_nonzero_path_`. The `predict_*` methods use `lambda_` and take no
+`lambda_value`.
 
 ## `GroupLassoCoxPH` and `GroupLassoCoxPHCV`
 
