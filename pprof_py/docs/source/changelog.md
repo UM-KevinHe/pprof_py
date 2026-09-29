@@ -135,6 +135,14 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   convergence, one Newton step short of the optimum. A Serbin fit now ends at the optimum (the score falls from about 1e-6
   to 1e-11) with a dozen evaluations; fits and covariate LR and score tests run 4-7 times faster. Estimates move by at most
   1e-8 (Serbin) and 2e-6 (Ban, which also stopped short).
+- Serbin takes the joint Newton step as it is, as R's `logis_BIN_fe_prov` does; it clipped the provider-effect part to
+  ±2·`bound`. With covariates far from 0 (for example a calendar year) the step needs the provider effects to offset
+  x̄ᵀΔβ, and clipping them alone made it a descent direction: the line search shrank it to about 1e-16 and the fit stopped
+  near the null (log-likelihood −1522 against −1412 on the AOH goldens shifted by +50/−30), and without backtracking it
+  diverged. The fit no longer depends on the covariates' origin (β and fitted values equal the centered fit's to 1e-13)
+  and equals R's on the shifted goldens (β to 2e-13); fits in which the clip never acted, which include every test and
+  documentation fit, are unchanged. Serbin now warns when it reaches `max_iter` or when a line search that shortened the
+  step, not a small Newton step, ended the fit.
 - The Fine-Gray R comparison checks `FineGrayPH`'s standard errors against R's cluster-robust SEs, with which they agree to
   1e-14. It compared them with R's model-based `se(coef)`, 5% away; the two failures it reported were this mismatch.
 

@@ -204,8 +204,9 @@ class LogisticFixedEffectModel(
             Override VIF threshold.
         max_iter : int, default=10000
             Maximum optimization iterations.
-        tol : float, default=1e-5
-            Convergence tolerance.
+        tol : float, default=1e-8
+            Convergence tolerance on the largest change in a regression
+            coefficient between iterations.
         bound : float, default=10.0
             Bound for group effects.
         backtrack : bool, default=True
