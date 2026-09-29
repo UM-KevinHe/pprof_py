@@ -143,6 +143,18 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   and equals R's on the shifted goldens (β to 2e-13); fits in which the clip never acted, which include every test and
   documentation fit, are unchanged. Serbin now warns when it reaches `max_iter` or when a line search that shortened the
   step, not a small Newton step, ended the fit.
+- `LogisticFixedEffectModel.summary(test_method="score")` refers the score of a covariate to its efficient information,
+  with the provider effects as well as the other coefficients partialled out, as R's `summary.logis_fe` does; it
+  partialled out the other coefficients only, which overstated the information whenever the covariate is associated with
+  the providers (or has a mean far from 0, since the provider effects carry the intercept). The test was conservative
+  (5% tests rejected 0.7% of the time under the null in a simulation with provider-dependent covariate means; now 4.7%)
+  and nearly powerless for uncentered covariates (an age-like covariate at mean 70: statistic 0.95, now 29.8, with LR
+  30.0). The statistics now equal R's to the fitting tolerance.
+- The LR and score tests refit the model without the covariate on exactly the fitted rows, with the binomial trials and
+  the fit's algorithm and settings. They refitted through the default constructor, which re-applied data preparation
+  (a `use_dataprep=False` fit with providers of 10 or fewer records gave a negative LR statistic and a score test that
+  raised) and ignored the trials (binomial fits raised). For the default path the LR statistics are unchanged. Testing
+  the only covariate raises a clear `ValueError`.
 - The Fine-Gray R comparison checks `FineGrayPH`'s standard errors against R's cluster-robust SEs, with which they agree to
   1e-14. It compared them with R's model-based `se(coef)`, 5% away; the two failures it reported were this mismatch.
 

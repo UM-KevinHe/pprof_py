@@ -344,6 +344,44 @@ class _CovariateInferenceMethods:
             "alternative": alternative
         }
 
+    def _fit_reduced(self, index: int):
+        """Refit the model without covariate ``index`` for the LR and score tests.
+
+        The refit uses exactly the fitted rows, the binomial trials ``N_``, the
+        fitted algorithm and its settings, and the start of ``fit()``
+        (``gamma = logit(sum(y) / sum(N))``, ``beta = 0``), as R's
+        ``summary.logis_fe`` refits ``logis_fe`` on ``data_include``.  It
+        refitted through the model's default constructor instead (C33), which
+        re-applied data preparation (screening away providers a
+        ``use_dataprep=False`` fit had kept) and ignored the trials.
+
+        Returns
+        -------
+        tuple
+            (reduced design, gamma, beta, fitted algorithm)
+        """
+        from ....algorithms.logistic.fixed_effect import AlgorithmOptions, BanAlgorithm, SerbinAlgorithm
+
+        self._check_is_fitted()
+        if self.X.shape[1] < 2:
+            raise ValueError(
+                "The likelihood-ratio and score tests refit the model without the covariate "
+                "tested; they need at least one other covariate."
+            )
+        reduced_X = np.delete(self.X, index, axis=1)
+        y, N = self.outcome_, self.N_
+        y_bar = np.sum(y) / np.sum(N)
+        gamma = np.repeat(np.log(y_bar / (1 - y_bar)), len(self.provider_ids_))
+        beta = np.zeros(reduced_X.shape[1])
+        options = AlgorithmOptions(backtrack=self.algorithm.backtrack, max_iter=self.algorithm.max_iter,
+                                   bound=self.algorithm.bound, tol=self.algorithm.tol)
+        algorithm = (SerbinAlgorithm if self.algorithm_type == 'Serbin' else BanAlgorithm)(
+            np.column_stack((y, self.provider_indices_, reduced_X)), 0, reduced_X, 1,
+            self.provider_sizes_, gamma, beta, options, N=N,
+        )
+        result = algorithm.fit()
+        return reduced_X, np.asarray(result['gamma']), np.asarray(result['beta']), algorithm
+
     def _compute_lr_beta(self, index: int):
         """Perform a Likelihood Ratio test for a specific covariate.
 
@@ -358,30 +396,12 @@ class _CovariateInferenceMethods:
             Results including test statistic and p-value.
         """
         self._check_is_fitted()
-
-        # Full model log-likelihood
         gamma_obs_full = self.coefficients_['gamma'][self.provider_indices_]
         loglik_full = self.algorithm._loglikelihood(gamma_obs_full, self.coefficients_['beta'])
-
-        # Fit reduced model excluding the covariate at index
-        reduced_X = np.delete(self.X, index, axis=1)
-        reduced_model = self.__class__(algorithm=self.algorithm_type)
-        reduced_model.fit(
-            reduced_X, self.outcome_, self.provider_indices_,
-            max_iter=self.algorithm.max_iter,
-            tol=self.algorithm.tol,
-            bound=self.algorithm.bound,
-            backtrack=self.algorithm.backtrack
-        )
-
-        # Reduced model log-likelihood
-        gamma_obs_reduced = reduced_model.coefficients_['gamma'][reduced_model.provider_indices_]
-        loglik_reduced = reduced_model.algorithm._loglikelihood(gamma_obs_reduced, reduced_model.coefficients_['beta'])
-
-        # Test statistic and p-value
+        _, gamma_r, beta_r, algorithm_r = self._fit_reduced(index)
+        loglik_reduced = algorithm_r._loglikelihood(gamma_r[self.provider_indices_], beta_r)
         test_stat = 2 * (loglik_full - loglik_reduced)
         p_value = chi2.sf(test_stat, df=1)
-
         return {
             "statistic": test_stat,
             "p_value": p_value,
@@ -390,6 +410,14 @@ class _CovariateInferenceMethods:
 
     def _compute_score_beta(self, index: int):
         """Perform a Score test for a specific covariate.
+
+        The score for ``beta_j`` at the fit without covariate ``j`` is referred
+        to its efficient information, with the nuisance parameters -- the
+        provider effects and the other coefficients -- partialled out:
+        ``I_jj - I_j,(gamma, beta) I_(gamma, beta)^-1 I_(gamma, beta),j``, as in
+        R's ``summary.logis_fe``.  The information partialled out the other
+        coefficients only (C32), which overstated it whenever the covariate is
+        associated with the providers and made the test conservative.
 
         Parameters
         ----------
@@ -401,42 +429,24 @@ class _CovariateInferenceMethods:
         dict
             Results including test statistic and p-value.
         """
-        self._check_is_fitted()
-
-        # Fit reduced model excluding the covariate at index
-        reduced_X = np.delete(self.X, index, axis=1)
-        reduced_model = self.__class__(algorithm=self.algorithm_type)
-        reduced_model.fit(
-            reduced_X, self.outcome_, self.provider_indices_,
-            max_iter=self.algorithm.max_iter,
-            tol=self.algorithm.tol,
-            bound=self.algorithm.bound,
-            backtrack=self.algorithm.backtrack
-        )
-
-        # Compute probabilities and weights under the reduced model
-        gamma_obs = reduced_model.coefficients_['gamma'][reduced_model.provider_indices_]
-        p = sigmoid(gamma_obs + reduced_X @ reduced_model.coefficients_['beta'])
-        q = p * (1 - p)
-
-        # Score for the excluded covariate
-        score_excluded = np.sum((self.outcome_ - p) * self.X[:, index])
-
-        # Information components
-        info_excluded_excluded = np.sum(q * self.X[:, index] ** 2)  # scalar
-        info_excluded_beta = (q * self.X[:, index]).T @ reduced_X   # (1, p_reduced)
-        info_beta = reduced_X.T @ (q[:, None] * reduced_X)          # (p_reduced, p_reduced)
-
-        # Inverse of the information matrix for beta
-        schur_inv = covariance_from_information(info_beta, warn=True, what="Reduced-model information")  # (p_reduced, p_reduced)
-
-        # Variance of the score
-        info_full = info_excluded_excluded - info_excluded_beta @ schur_inv @ info_excluded_beta.T
-
-        # Test statistic and p-value
-        test_stat = score_excluded ** 2 / info_full
+        reduced_X, gamma_r, beta_r, _ = self._fit_reduced(index)
+        idx, m = self.provider_indices_, len(self.provider_ids_)
+        p = np.clip(sigmoid(gamma_r[idx] + reduced_X @ beta_r), 1e-10, 1 - 1e-10)
+        q = self.N_ * p * (1 - p)
+        x = self.X[:, index]
+        score = np.sum((self.outcome_ - self.N_ * p) * x)
+        # Nuisance information: diagonal provider block d, cross block B, coefficient block A.
+        d = np.bincount(idx, weights=q, minlength=m)
+        B = np.array([np.bincount(idx, weights=q * reduced_X[:, c], minlength=m) for c in range(reduced_X.shape[1])])
+        A = reduced_X.T @ (q[:, None] * reduced_X)
+        c_gamma = np.bincount(idx, weights=q * x, minlength=m)
+        c_beta = reduced_X.T @ (q * x)
+        schur_inv = covariance_from_information(A - (B / d) @ B.T, warn=True,
+                                                what="Schur complement of the reduced-model information")
+        r = c_beta - B @ (c_gamma / d)
+        info_efficient = np.sum(q * x * x) - np.sum(c_gamma ** 2 / d) - r @ schur_inv @ r
+        test_stat = score ** 2 / info_efficient
         p_value = chi2.sf(test_stat, df=1)
-
         return {
             "statistic": test_stat,
             "p_value": p_value,
