@@ -25,7 +25,8 @@ class IURDecomposition(NamedTuple):
     n_groups : int
         Number of groups (facilities).
     iur_groups : ndarray of shape (n_groups,)
-        Per-group reliability.
+        Per-group reliability at each group's size, ``s2_between /
+        (s2_between + s2_within / n_i)``.
     s2_between : float
         Between-group variance component (signal).
     s2_within : float
@@ -71,10 +72,16 @@ def _iur_decomposition(
 
     Notes
     -----
-    The returned ``s2_within`` is the pooled within-group variance
-    multiplied by ``n_prime``, following the R convention.  The
-    per-group IUR uses the *unscaled* pooled variance:
-    ``s2_b / (s2_b + s2_w_raw / n_i)``.
+    ``within_variances`` are variances of the group-level measure (of
+    order ``sigma_w^2 / n_i``), so their pooled value ``s2_w_raw``
+    estimates the noise at the effective size ``n_prime``, and the
+    returned ``s2_within = n_prime * s2_w_raw`` estimates the record-level
+    ``sigma_w^2``, as R's ``IUR_bootdata`` returns it.  The per-group
+    reliability is the reliability curve at each group's size,
+    ``s2_b / (s2_b + s2_within / n_i)``, the quantity ``decile_table``
+    reports.  R's ``IUR.fac``, ``s2_b / (s2_b + s2_w_raw / n_i)``, divides
+    the measure-level variance by ``n_i`` a second time and understates
+    every group's noise by the factor ``n_prime`` (B11).
     """
     sizes = np.asarray(sizes, dtype=np.float64)
     within_variances = np.asarray(within_variances, dtype=np.float64)
@@ -109,8 +116,8 @@ def _iur_decomposition(
     # ── Overall IUR ──
     iur = s2_b / s2_t if s2_t > 0 else 0.0
 
-    # ── Per-group IUR: s2_b / (s2_b + s2_w_raw / n_i) ──
-    denom = s2_b + s2_w_raw / sizes
+    # ── Per-group IUR at each group's size: s2_b / (s2_b + n' s2_w_raw / n_i) ──
+    denom = s2_b + s2_w_raw * n_prime / sizes
     with np.errstate(divide="ignore", invalid="ignore"):
         iur_groups = np.where(denom != 0, s2_b / denom, 0.0)
 

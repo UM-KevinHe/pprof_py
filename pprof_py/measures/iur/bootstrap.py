@@ -43,7 +43,9 @@ class BootstrapIUR(ProviderModel):
     n_groups_ : int
         Number of groups.
     iur_groups_ : ndarray of shape (``n_groups_``,)
-        Per-group IUR.
+        Per-group reliability at each group's own size,
+        ``s2_between_ / (s2_between_ + s2_within_ / group_sizes_)`` (the
+        curve that `decile_table` evaluates at representative sizes).
     s2_between_ : float
         Between-group variance component (signal).
     s2_within_ : float

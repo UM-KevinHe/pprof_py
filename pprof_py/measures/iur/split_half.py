@@ -1,6 +1,7 @@
 """Split-half correlation-based Inter-Unit Reliability estimation."""
 from __future__ import annotations
 
+import warnings
 from typing import Callable, Optional, Sequence
 
 import numpy as np
@@ -61,7 +62,10 @@ class SplitHalfIUR(ProviderModel):
     Attributes
     ----------
     n_groups_ : int
-        Number of groups.
+        Number of groups in the split-half correlations.
+    excluded_groups_ : ndarray
+        Groups with fewer than two observations, which cannot be split and
+        are left out of the correlations (with a warning); empty if none.
     iur_kappa_ : float
         Mean IUR from weighted kappa (categorised).
     iur_kendall_cat_ : float
@@ -149,6 +153,23 @@ class SplitHalfIUR(ProviderModel):
         unique_groups, group_counts = np.unique(
             groups, return_counts=True
         )
+
+        # C29: a group with one observation has an empty first half, so
+        # the two halves' measures would cover different groups.
+        splittable = group_counts >= 2
+        self.excluded_groups_ = unique_groups[~splittable]
+        if not splittable.all():
+            warnings.warn(
+                f"{int((~splittable).sum())} of {len(unique_groups)} groups have "
+                "fewer than two observations and cannot be split; they are "
+                "excluded from the split-half correlations.",
+                stacklevel=2,
+            )
+            keep = np.repeat(splittable, group_counts)   # data are sorted by group
+            obs, exp, groups = obs[keep], exp[keep], groups[keep]
+            unique_groups = unique_groups[splittable]
+            group_counts = group_counts[splittable]
+
         self.n_groups_ = len(unique_groups)
         all_indices = np.arange(len(obs))
 

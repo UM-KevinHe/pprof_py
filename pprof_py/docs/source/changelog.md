@@ -232,6 +232,21 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   between path points move by up to 1e-2; at path points they are unchanged), and `GroupLassoLogistic.predict_proba`
   extrapolated the intercept above the first λ (it now uses the first point, as `coef_at` does).
 
+**Inter-unit reliability**
+
+- `BootstrapIUR.iur_groups_` is each provider's reliability at its own size,
+  `s2_between_ / (s2_between_ + s2_within_ / n_k)`, the curve `decile_table()` evaluates. It divided the pooled
+  within variance of the measure by `n_k`, which is already that variance at the effective size `n_prime_`, so every
+  provider's noise was understated by the factor `n_prime_`: on a simulated cohort of 300 providers the values averaged
+  0.993 against true reliabilities of 0.536, and now average 0.496 (mean absolute error 0.040). This departs from the
+  internal R function `IUR_bootdata`, whose facility-level `IUR.fac` has the old form; the overall IUR, `s2_between_`,
+  `s2_within_` and `n_prime_` equal R's to 1e-13 and are unchanged.
+- `SplitHalfIUR` leaves providers with fewer than two records out of the split-half correlations, with a warning, and
+  lists them in `excluded_groups_`; it raised `IndexError`. Results without such providers are unchanged.
+- New theoretical reference, [Inter-Unit Reliability: Theory](inter_unit_reliability_theory.md): reliability and the
+  IUR, the analysis-of-variance and bootstrap estimators as implemented, the reliability curve, the estimate's
+  sampling distribution with an approximate interval, and what the split-half variants estimate.
+
 **Internals**
 
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.

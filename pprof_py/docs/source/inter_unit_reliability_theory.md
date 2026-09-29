@@ -294,8 +294,9 @@ value is reliable.
 
 ### 4.2. Per-provider values
 
-The same curve evaluated at each provider's own size, $\hat\rho(n_k)$, estimates $\rho_k$. `BootstrapIUR`
-also returns per-provider values, `iur_groups_`, computed as
+The same curve evaluated at each provider's own size, $\hat\rho(n_k)$, estimates $\rho_k$; `BootstrapIUR`
+returns it as `iur_groups_`. R's `IUR_bootdata`, whose overall decomposition `pprof_py` reproduces
+exactly, computes its facility-level values as
 
 $$
 \frac{s_b^2}{s_b^2 + s_{t,w}^2 / n_k},
@@ -303,12 +304,13 @@ $$
 
 which divides the pooled within variance *of the measure*, already of order $\sigma_w^2/n'$, by $n_k$ a
 second time: each provider's noise is understated by the factor $n'$, and every provider appears almost
-perfectly reliable. On the cohort above:
+perfectly reliable. `pprof_py` returned that form until the correction recorded in the changelog. On the
+cohort above:
 
 ```python
-consistent = boot.s2_between_ / (boot.s2_between_ + boot.s2_within_ / boot.group_sizes_)
-for name, r in (("iur_groups_", boot.iur_groups_), ("s_b^2/(s_b^2 + s2_within_/n_i)", consistent), ("true rho_i", rho)):
-    print(f"{name:30s} mean {r.mean():.3f}  range {r.min():.3f}-{r.max():.3f}  mean |r - rho| {np.mean(np.abs(r - rho)):.3f}")
+r_form = boot.s2_between_ / (boot.s2_between_ + boot.s2_within_ / (boot.n_prime_ * boot.group_sizes_))  # R's IUR.fac
+for name, r in (("iur_groups_", boot.iur_groups_), ("R's IUR.fac form", r_form), ("true rho_i", rho)):
+    print(f"{name:18s} mean {r.mean():.3f}  range {r.min():.3f}-{r.max():.3f}  mean |r - rho| {np.mean(np.abs(r - rho)):.3f}")
 breaks = np.unique(np.quantile(n, np.linspace(0, 1, 11)))           # the size bins decile_table() uses
 labels = np.clip(np.digitize(n, breaks[1:-1], right=True) + 1, 1, len(breaks) - 1)
 reps = np.r_[n.min(), [n[labels == g].mean() for g in np.unique(labels)], n.max()]
@@ -317,22 +319,16 @@ print("true rho at sizes:  ", (var_R / (var_R + mean_R / (0.1 * reps)))[[0, 1, 5
 ```
 
 ```
-iur_groups_                    mean 0.993  range 0.961-0.998  mean |r - rho| 0.457
-s_b^2/(s_b^2 + s2_within_/n_i) mean 0.496  range 0.104-0.689  mean |r - rho| 0.040
-true rho_i                     mean 0.536  range 0.109-0.739  mean |r - rho| 0.000
+iur_groups_        mean 0.496  range 0.104-0.689  mean |r - rho| 0.040
+R's IUR.fac form   mean 0.993  range 0.961-0.998  mean |r - rho| 0.457
+true rho_i         mean 0.536  range 0.109-0.739  mean |r - rho| 0.000
 decile_table():      [0.104 0.162 0.522 0.681 0.689]
 true rho at sizes:   [0.123 0.189 0.567 0.719 0.727]
 ```
 
-The reliability curve tracks the true reliabilities; in this sample $s_b^2$ is below $\sigma_b^2$
-($\widehat{\text{IUR}} = 0.541$ against 0.586 at $n'$), and every value derived from it is correspondingly
-a little low. `iur_groups_` does not.
-
-```{warning}
-`iur_groups_` understates each provider's noise by the factor $n'$ (Section 4.2) and is under review;
-use $\hat\rho(n_k) = $ `s2_between_ / (s2_between_ + s2_within_ / n_k)`, the reliability curve of
-Section 4.1, for per-provider reliabilities.
-```
+`iur_groups_` and the decile table track the true reliabilities; in this sample $s_b^2$ is below
+$\sigma_b^2$ ($\widehat{\text{IUR}} = 0.541$ against 0.586 at $n'$), and every value derived from it is
+correspondingly a little low. The R form does not track them.
 
 ### 4.3. Stratified IUR
 
@@ -349,7 +345,9 @@ values that vary widely and can fall far below zero.
 
 $s_b^2$ is a difference of two estimates and is negative whenever the between-provider spread of the
 observed values falls short of the pooled noise. When $\sigma_b^2 = 0$ this happens about half the time;
-`pprof_py` reports the estimate as it is, without truncation at 0.
+`pprof_py` reports the estimate as it is, without truncation at 0. The reliability curve then has no
+interpretation: $\hat\rho(n)$ is negative for $n < n' s_{t,w}^2/|s_b^2|$ and exceeds 1 above it, and
+neither `decile_table()` nor `iur_groups_` truncates it.
 
 ### 5.2. An approximate distribution and interval
 
@@ -512,22 +510,28 @@ coarsen the halves further and have no closed-form relation to $r$.
 
 A provider with $n_k$ records is split into $\lfloor n_k/2\rfloor$ and $\lceil n_k/2\rceil$ records, so
 the halves are unequal for odd sizes, which matters only for very small providers. A provider with one
-record has an empty first half; the two halves' measures then have different lengths, and `fit()`
-raises:
+record cannot be split: its first half is empty. `SplitHalfIUR` leaves such providers out of the
+correlations with a warning and lists them in `excluded_groups_`; the result is that of a fit without
+them:
 
 ```python
-try:
-    SplitHalfIUR(n_iter=1, seed=0).fit(np.r_[O, 1.0], np.r_[e, 0.2], np.r_[prov, K])   # one provider with 1 record
-except IndexError as err:
-    print("IndexError:", str(err).split(":")[0])
+import warnings
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    one = SplitHalfIUR(n_iter=1, seed=0).fit(np.r_[O, 1.0], np.r_[e, 0.2], np.r_[prov, K])   # one provider with 1 record
+print(caught[0].message)
+print("excluded:", one.excluded_groups_, "| providers used:", one.n_groups_, "| equals the fit without it:",
+      np.array_equal(one.iur_all_, SplitHalfIUR(n_iter=1, seed=0).fit(O, e, prov).iur_all_))
 ```
 
 ```
-IndexError: shape mismatch
+1 of 301 groups have fewer than two observations and cannot be split; they are excluded from the split-half correlations.
+excluded: [300] | providers used: 300 | equals the fit without it: True
 ```
 
-Providers with fewer than two records must be removed before `SplitHalfIUR.fit()`. `BootstrapIUR` and
-`DirectIUR` accept them: their weight $n_k - 1$ in $s_{t,w}^2$ is 0.
+`BootstrapIUR` and `DirectIUR` keep such providers: their weight $n_k - 1$ in $s_{t,w}^2$ is 0, and they
+enter $s_t^2$ with weight $n_k$.
 
 ## 7. Interpretation and limitations
 
@@ -592,9 +596,9 @@ values are more so (Section 4.3).
 | within variance from standard errors | `DirectIUR().fit(sizes, estimates, standard_errors)` |
 | $\widehat{\text{IUR}}$, $s_b^2$, $n' s_{t,w}^2$, $n'$ | `iur_`, `s2_between_`, `s2_within_`, `n_prime_` |
 | reliability curve $\hat\rho(n)$ | `decile_table()` |
-| per-provider values | `iur_groups_` (see the warning in Section 4.2); $\hat\rho(n_k)$ from `s2_between_`, `s2_within_` |
+| per-provider reliabilities $\hat\rho(n_k)$ | `BootstrapIUR.iur_groups_` |
 | subgroup decompositions | `BootstrapIUR.stratified_iur()` |
-| split-half estimators | `SplitHalfIUR(n_iter, category_probs, measure_fn, seed)`; `summary()`, `iur_all_` |
+| split-half estimators | `SplitHalfIUR(n_iter, category_probs, measure_fn, seed)`; `summary()`, `iur_all_`, `excluded_groups_` |
 
 ## References
 
