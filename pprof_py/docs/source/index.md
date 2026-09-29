@@ -11,10 +11,13 @@ implementations, `pprof_py` is designed for large-scale provider data
 and reproducible statistical analyses.
 
 ```{note}
-**Version 0.4.0** — All model families (logistic, linear, survival) now
-include penalized, group lasso, provider-penalized, and discrete-survival
-variants. Import all models from the package root:
-`from pprof_py import CoxPH, PenalizedLogistic, DiscreteSurvival, ...`
+**Version 0.5.0** — The three-stage model (`LogisticThreeStageModel`), one
+inference layer for every provider test, standardized measures and provider
+tests for Cox models, and theory papers on inference, the empirical null and
+inter-unit reliability. This release renames parts of the API; see the
+[changelog](changelog.md) for the changes from 0.4.1. Import all models from
+the package root:
+`from pprof_py import CoxPH, LogisticThreeStageModel, PenalizedLogistic, ...`
 ```
 
 ## Installation

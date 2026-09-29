@@ -25,7 +25,7 @@ Implemented in Python with NumPy, validated against R reference implementations,
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticFERandomClusterModel,
+    LogisticFERandomClusterModel, LogisticThreeStageModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -102,7 +102,7 @@ model.predict_survival_function(X_new, stratum=...)      # exp(-H(t))
 
 ```python
 model = LogisticFixedEffectModel()
-model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')   # or the array form: model.fit(X, y, groups)
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')   # or the array form: model.fit(X, y, provider_id)
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -112,11 +112,11 @@ model.calculate_standardized_measures()
 
 ```python
 model = LinearRandomEffectModel(verbose=False)
-model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], group_var='provider', reml=True)
+model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], provider_var='provider', reml=True)
 
 model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs (random intercepts)
-model.random_effect_sd_           # {group_var: sigma_u}
+model.random_effect_sd_           # {provider_var: sigma_u}
 model.sigma_                      # residual SD
 model.summary()
 model.test()                      # reference 0 (the random-effect mean); 'median', 'mean' or a number also work
@@ -129,7 +129,7 @@ model.plot_provider_effects()
 
 ```python
 model = LogisticRandomEffectModel(verbose=False)
-model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects (log-odds)
 model.get_random_effects()        # BLUPs
@@ -146,7 +146,7 @@ from pprof_py import PenalizedCoxPHCV
 
 model = PenalizedCoxPHCV(alpha=0.5, n_lambda=50)  # elastic net
 model.fit(X, duration=time, event=event)
-model.coef_           # coefficients at the selected lambda (lambda_min_ by default)
+model.coef_           # coefficients at the selected lambda (lambda_1se_ by default; se_rule="min" selects lambda_min_)
 model.lambda_min_     # lambda with the minimum cross-validated deviance
 model.lambda_1se_     # largest lambda within one standard error of the minimum
 ```
@@ -161,7 +161,7 @@ pip install .
 
 Requires Python ≥ 3.9.
 
-**Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
+**Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `numba`, `fast_poibin`.
 
 **Optional:**
 

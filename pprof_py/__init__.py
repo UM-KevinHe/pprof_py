@@ -61,7 +61,7 @@ from .exceptions import NotFittedError
 from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 __all__ = [
     # Linear

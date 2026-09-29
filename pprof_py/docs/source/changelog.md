@@ -9,9 +9,46 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
-## Unreleased — three-stage model and structural redesign
+## 0.5.0 (2026-09-29)
 
-This breaks parts of the API; no old name is kept as a deprecated alias.
+The three-stage model, one inference layer for every provider test, standardized measures and provider tests for Cox
+models, a review of the fixed-effect solvers and tests against R, and theory papers on inference for covariate
+effects, provider effects and standardized measures, on the empirical null and on inter-unit reliability. This
+release renames parts of the API and changes several defaults; no old name is kept as a deprecated alias.
+
+### Migrating from 0.4.1
+
+- **Renamed class.** `LogisticMixedEffectModel` is `LogisticFERandomClusterModel`. Its `fit()` takes the fitted stages
+  (`stage1=`, `stage2=`) or explicit `beta`, `sigma` and `gamma_init` (which replace `beta_init` and `sigma_init`), and
+  `summary(stage1=...)` replaces `stage1_model=`. `LogisticThreeStageModel` runs the whole pipeline.
+- **Arguments.** `provider_var` replaces `group_var`; arrays of provider IDs are `provider_id` (was `groups`, or
+  `provider` in `ProviderPenalizedCoxPH` and the provider-penalized logistic CV); the random-effects models take
+  `cluster_vars` (was `group_vars`) and `predict(re_vars=...)`; measures, intervals and tests take `reference` for the
+  reference value (was `null`).
+- **Provider tests.** `test()` takes `providers` first and keyword-only options, and calibrates through `null_model`
+  (replacing `empirical_null`, `n_strata` and `strata_var`); in the logistic fixed-effect model `n_resample` and `seed`
+  replace `n_bootstrap`, and `score_modified` is removed. `test_standardized()` has a new signature. Every test returns
+  one table indexed by `provider_id` with the columns `pprof_py.inference.PROVIDER_TEST_COLUMNS`.
+- **Cross-validation.** `se_rule` (`"min"` or `"1se"`) replaces `use_1se` and `select`, and defaults to `"1se"` in
+  every class (the Cox CVs defaulted to `"min"`). `model_` replaces `best_model_` and `final_estimator_`; `full_fit_` is
+  removed. `provider_bound`, `provider_max_iter`, `alpha` and `lambda_value` replace `gamma_bound`,
+  `max_provider_iter`, `alpha_en` and `lambda_val`.
+- **Fitted attributes.** `provider_ids_`, `provider_indices_` and `provider_sizes_` replace `groups_`, `group_indices_`
+  and `group_sizes_`, in the random-effects models too (with `cluster_ids_`, `cluster_sizes_` and `cluster_indices_`
+  dictionaries for their other factors).
+- **Removed.** `pprof_py.huber_location_scale` and `pprof_py.estimate_empirical_null` (use `robust_location_scale` and
+  `EmpiricalNull` from `pprof_py.inference`); the `pprof_py.statistics` subpackage (its helpers are in
+  `pprof_py.utils`); `breslow_baseline_hazard` (use `pprof_py.inference.survival.compute_baseline_hazard`); `update_sigma`. scikit-learn and seaborn
+  are no longer dependencies.
+- **Changed defaults and results.** `LogisticFERandomClusterModel` and `LogisticThreeStageModel` default to
+  `estimator="marginal"` and `convergence_criterion="max_delta_gamma"` (R's recipe is `estimator="he2013"`,
+  `convergence_criterion="relative"`, `bound_mode="absolute"`); `DataPrep` keeps providers with more than `cutoff`
+  records; the logistic fixed-effect Wald test and model-based standardized-measure standard errors use the variance at
+  the average case mix (R's variance stays in `variances_["gamma"]`); `BootstrapIUR.iur_groups_` is the reliability at
+  each provider's size; the covariate score test uses the efficient information. The sections below give the reasons
+  and the size of each change.
+
+### Three-stage model and structural redesign
 
 **Three-stage model**
 
@@ -298,7 +335,7 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
 - Models inherit pprof_py's own `ProviderModel` base class; scikit-learn is no longer a dependency.
 - Provider tests and intervals moved from `measures/` to `inference/`, and every mixin has a unique name.
 
-## Unreleased — mixed-effect model inference
+### Mixed-effect model inference
 
 Reviewed against R's `glmm.fac.hosp`, `summary.glmm.fac` and
 `summary.glmm.covar`. This changes results and breaks parts of the
@@ -334,7 +371,7 @@ Reviewed against R's `glmm.fac.hosp`, `summary.glmm.fac` and
   groups of a facility-size variable; the rank configuration shown earlier was
   pprof_py's previous default.
 
-## Unreleased — provider testing rebuilt on one inference layer
+### Provider testing rebuilt on one inference layer
 
 Provider tests now share one pipeline in `pprof_py.inference`: a
 z-statistic per provider, a null model, and one decision layer for
@@ -421,7 +458,7 @@ results and breaks the `test()` and `test_standardized()` APIs.
 The test suite checks these against `MASS::rlm`, the EmpiNull R package
 and R pprof's conventions to within 1e-12.
 
-## 0.4.1 — current (July 2025)
+## 0.4.1 (2026-09-21)
 
 - **Shared Gamma-frailty Cox model** (`FrailtyCoxPH`) and
   **time-varying-coefficient Cox model** (`TimeVaryingCoxPH`) migrated
@@ -433,7 +470,7 @@ and R pprof's conventions to within 1e-12.
   (ISSUE/CODE_ISSUES/K-code references) from docs and Code_review
   files; fixed broken links in README, index, and reference pages.
 
-## 0.4.0 (September 2026)
+## 0.4.0 (2026-09-19)
 
 The largest commit in the repository's history, adding the shared
 elastic-net/group-lasso coordinate-descent engine
