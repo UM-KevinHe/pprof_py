@@ -44,6 +44,7 @@ changelog
 direct_vs_indirect_standardization
 fixed_vs_random_effects
 empirical_null_theory
+inter_unit_reliability_theory
 ```
 
 ```{toctree}

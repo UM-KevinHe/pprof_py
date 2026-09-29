@@ -25,7 +25,8 @@ noise, and averaging more years of data (which shrinks the noise
 component without touching the signal component) is the standard fix
 — exactly the point Chapter 4 §4.9 makes without deriving the formula
 behind it. Three estimators compute this decomposition three different
-ways, plus a `ratio_measure` helper shared by two of them.
+ways, plus a `ratio_measure` helper shared by two of them. The [IUR theory](iur_theory) page derives the
+estimators, their sampling properties and what each one targets.
 
 ## The running example
 
