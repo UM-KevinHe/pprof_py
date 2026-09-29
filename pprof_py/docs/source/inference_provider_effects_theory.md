@@ -42,27 +42,36 @@ by the same $-c^\top\hat\beta$ (Part I, Section 2.4), and $\gamma_0$ with them.
 
 ### 3.1. Statistic and variance
 
-The Wald statistic is $z_k = (\hat\gamma_k - \gamma_0)/\widehat{\text{SE}}(\hat\gamma_k)$ with the normal reference,
-as in R, and `variances_["gamma"]` is the inverse-information variance of Part I, Section 2.3,
+The Wald statistic is $z_k = (\hat\gamma_k - \gamma_0)/\widehat{\text{SE}}_k$ with the normal reference, as in R. The
+inverse-information variance of $\hat\gamma_k$ (Part I, Section 2.3; `variances_["gamma"]`, R's `logis_fe_var`) is
 
 $$
 \operatorname{Var}(\hat\gamma_k) = D_k^{-1} + \bar x_k^\top S^{-1} \bar x_k, \qquad \bar x_k = B_{\cdot k}/D_k,
 $$
 
 the first term the provider's own information, the second the error in $\hat\beta$ carried at the provider's
-$w$-weighted mean covariate $\bar x_k$.
+$w$-weighted mean covariate $\bar x_k$. Section 3.2 shows why the test uses a different variance.
 
 ### 3.2. The variance the test needs
 
 The numerator is $\hat\gamma_k - \hat\gamma_0$, and $\hat\gamma_0$ carries the error in $\hat\beta$ as every
 $\hat\gamma_k$ does: to first order $\hat\gamma_k - \gamma_k \approx \varepsilon_k - \bar x_k^\top(\hat\beta - \beta)$
-with $\varepsilon_k$ the provider's own error, so the $\beta$ error that enters the comparison is
-$(\bar x_k - \bar x_0)^\top(\hat\beta - \beta)$ for a reference provider at $\bar x_0$, of variance
-$(\bar x_k - \bar x_0)^\top S^{-1}(\bar x_k - \bar x_0)$. The term $\bar x_k^\top S^{-1}\bar x_k$ in
+with $\varepsilon_k$ the provider's own error, so the $\beta$ error that enters the comparison with a reference
+provider at $\bar x_0$ is $(\bar x_k - \bar x_0)^\top(\hat\beta - \beta)$. The term $\bar x_k^\top S^{-1}\bar x_k$ of
 $\operatorname{Var}(\hat\gamma_k)$ is instead measured from the origin of the covariates, which is arbitrary: the
-Wald statistic's numerator does not depend on the origin, its denominator does. With covariates recorded far from 0
-(a calendar year, an age) the model-based standard errors are too large and the test loses power; recording the same
-covariate a few units higher changes them, and the flags:
+numerator does not depend on the origin, $\operatorname{Var}(\hat\gamma_k)$ does, and with covariates recorded far from
+0 (an age, a calendar year) it overstates the variance of the comparison. `pprof_py` therefore uses the variance of the
+provider effect at the average case mix,
+
+$$
+\operatorname{Var}(\hat\gamma_k + \bar x^\top\hat\beta) = D_k^{-1} + (\bar x_k - \bar x)^\top S^{-1} (\bar x_k - \bar x),
+$$
+
+with $\bar x$ the trials-weighted mean covariate row (`variances_["gamma_case_mix"]`): the reference is treated as a
+provider of average case mix. It is the model-based counterpart of the robust variance of Section 6, and it is used by
+the Wald test, the Wald limits of `calculate_confidence_intervals`, and the model-based standard errors of
+`test_standardized` (Part III). Recording a covariate 3 units higher changes `variances_["gamma"]` but not the
+variance at the average case mix, the Wald flags or the exact flags:
 
 ```python
 import numpy as np
@@ -84,27 +93,20 @@ rng = np.random.default_rng(3)
 d = cohort(rng)
 fits = {c: fit(d.assign(x1=d.x1 + c)) for c in (0.0, 3.0)}           # the same data, x1 recorded 3 units higher
 for c, f in fits.items():
-    g, se = np.ravel(f.coefficients_["gamma"]), np.sqrt(np.ravel(f.variances_["gamma"]))
-    exact = f.test(test_method="poibin_exact")
-    wald = f.test(test_method="wald")
-    print(f"x1 + {c:.0f}: gamma - median(gamma) [{(g - np.median(g))[:3].round(4)}...]; SE(gamma) [{se[:3].round(4)}...]; "
+    se_r = np.sqrt(np.ravel(f.variances_["gamma"]))
+    se_cm = np.sqrt(np.ravel(f.variances_["gamma_case_mix"]))
+    wald, exact = f.test(test_method="wald"), f.test(test_method="poibin_exact")
+    print(f"x1 + {c:.0f}: sqrt(variances_['gamma']) {se_r[:3].round(4)}; at the average case mix {se_cm[:3].round(4)}; "
           f"Wald flags {int((wald.flag != 0).sum())}, exact flags {int((exact.flag != 0).sum())}")
 ```
 
 ```
-x1 + 0: gamma - median(gamma) [[-0.3707 -0.0061 -0.3439]...]; SE(gamma) [[0.232  0.4403 0.3756]...]; Wald flags 16, exact flags 17
-x1 + 3: gamma - median(gamma) [[-0.3707 -0.0061 -0.3439]...]; SE(gamma) [[0.2507 0.454  0.3966]...]; Wald flags 15, exact flags 17
+x1 + 0: sqrt(variances_['gamma']) [0.232  0.4403 0.3756]; at the average case mix [0.2318 0.4404 0.3759]; Wald flags 16, exact flags 17
+x1 + 3: sqrt(variances_['gamma']) [0.2507 0.454  0.3966]; at the average case mix [0.2318 0.4404 0.3759]; Wald flags 16, exact flags 17
 ```
 
-The statistics that hold $\beta$ at $\hat\beta$ (Section 4) and the robust variance at the average case mix
-(Section 6) do not depend on the origin. R's `logis_fe` computes the same model-based variance.
-
-```{warning}
-The model-based Wald test of the provider effects (`test(test_method="wald")`) and the delta-method standard errors
-of the direct measures with `variance="model"` (Part III) depend on the covariates' origin through
-$\bar x_k^\top S^{-1}\bar x_k$ (Section 3.2). This is under review; until it is resolved, prefer the exact or score
-tests, or `variance="robust"`, whose statistics do not depend on the origin.
-```
+R's Wald test uses $\operatorname{Var}(\hat\gamma_k)$ and depends on the covariates' origin; the other statistics of
+Section 4 and the robust variance (Section 6) do not.
 
 ### 3.3. Providers without a finite estimate
 
@@ -112,7 +114,8 @@ A provider with no events or only events has no maximum-likelihood estimate: its
 $\mp\infty$ during the fit and stops where the covariate coefficients converge, or at the clamp
 $\operatorname{median}(\hat\gamma) \pm$ `bound`. Its Wald statistic and interval are then meaningless, and `test()`
 warns. The tests of Section 4 use the provider's event count, which is well defined for these providers (an
-observed count of 0 is simply extreme under the null when many events are expected).
+observed count of 0 is simply extreme under the null when many events are expected). `at_bound(model)` returns these
+providers, and any held at the clamp, for example to leave them out of an empirical-null fit.
 
 ## 4. Tests at the reference
 
@@ -186,8 +189,8 @@ exact limits exclude gamma_0 exactly when flagged: True
 provider_id
 41             -2.740       -5.849       -0.944      -4.813      -0.667    15
 18             -0.571       -1.618        0.415      -1.556       0.414    19
-31             -1.361       -1.780       -0.964      -1.768      -0.955   144
-43             -1.524       -2.015       -1.070      -1.995      -1.052   146
+31             -1.361       -1.780       -0.964      -1.768      -0.954   144
+43             -1.524       -2.015       -1.070      -1.995      -1.053   146
 ```
 
 Limits for the standardized measures follow by transforming these limits (Part III).
@@ -251,7 +254,7 @@ interval of $\sigma$ (the [three-stage chapter](logistic/logistic_three_stage_mo
 
 | test or quantity | basis | where it can fail |
 |---|---|---|
-| Wald, model-based variance | large-sample normality of $\hat\gamma_k$ | small providers (conservative); no-event or all-event providers; the origin of the covariates (Section 3.2) |
+| Wald, variance at the average case mix | large-sample normality of $\hat\gamma_k$ | small providers (conservative); no-event or all-event providers |
 | score | normal approximation to the count at $\gamma_0$ | few expected events |
 | exact, bootstrap | exact (or simulated) given $\hat\beta$ and $\gamma_0$ | error in $\hat\beta$ and $\gamma_0$, shared by all providers; the bootstrap's floor |
 | exact limits | inversion given $\hat\beta$ | as the exact test |

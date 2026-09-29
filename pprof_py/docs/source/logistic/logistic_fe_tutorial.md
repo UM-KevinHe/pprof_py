@@ -222,6 +222,12 @@ print(f"SE range: [{se_gamma.min():.4f}, {se_gamma.max():.4f}]")
 SE range: [0.3147, 1.0451]
 ```
 
+These are the standard errors of $\hat\gamma_i$ itself (R's). The Wald test and
+intervals below use the standard error at the average case mix,
+`variances_['gamma_case_mix']`, which does not depend on where the covariates
+are centred; with `age` recorded around 65 here, it is the smaller of the two
+(see [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 3.2).
+
 Smaller clinics, and clinics with few events, have larger standard
 errors — more uncertainty about their true performance. The largest
 (1.05) belongs to Clinic_54, which has the lowest $\hat{\gamma}$
@@ -388,24 +394,24 @@ print(gamma_ci['gamma_ci'].head(10))
 
 ```
   provider_id     gamma  gamma_lower  gamma_upper
-0    Clinic_1 -3.249995    -3.978365    -2.521626
-1   Clinic_10 -3.656766    -4.406950    -2.906583
-2  Clinic_100 -4.153595    -4.953717    -3.353474
-3   Clinic_11 -3.289742    -4.103444    -2.476040
-4   Clinic_12 -4.428621    -5.573762    -3.283481
-5   Clinic_13 -3.765100    -4.512238    -3.017962
-6   Clinic_14 -2.531061    -3.220155    -1.841967
-7   Clinic_15 -3.355796    -4.162740    -2.548852
-8   Clinic_16 -2.757958    -3.563606    -1.952311
-9   Clinic_17 -4.113990    -4.934460    -3.293520
+0    Clinic_1 -3.249995    -3.781391    -2.718600
+1   Clinic_10 -3.656766    -4.219973    -3.093560
+2  Clinic_100 -4.153595    -4.775799    -3.531392
+3   Clinic_11 -3.289742    -3.918978    -2.660507
+4   Clinic_12 -4.428621    -5.451014    -3.406229
+5   Clinic_13 -3.765100    -4.324902    -3.205298
+6   Clinic_14 -2.531061    -3.013695    -2.048427
+7   Clinic_15 -3.355796    -3.984631    -2.726962
+8   Clinic_16 -2.757958    -3.384707    -2.131209
+9   Clinic_17 -4.113990    -4.764010    -3.463970
 ```
 
-For Clinic 14: $\hat{\gamma} = -2.531$, SE = 0.352, 95 % CI =
-$[-3.220, -1.842]$. The interval sits well above the median gamma
+For Clinic 14: $\hat{\gamma} = -2.531$, SE = 0.246, 95 % CI =
+$[-3.014, -2.048]$. The interval sits well above the median gamma
 ($-3.529$), consistent with the significant test result.
 
-For Clinic 100: $\hat{\gamma} = -4.154$, SE = 0.408, 95 % CI =
-$[-4.954, -3.354]$. The interval sits below the median, also
+For Clinic 100: $\hat{\gamma} = -4.154$, SE = 0.317, 95 % CI =
+$[-4.776, -3.531]$. The interval sits below the median, also
 consistent with its flag = $-1$.
 
 Score and exact Poisson-Binomial CIs are also available via
@@ -433,24 +439,23 @@ print(sm_ci["indirect_ratio"].head(10).to_string())
 
 ```
   provider_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
-0    Clinic_1        1.257097      17.353737        17  13.523219        0.677407        2.157349
-1   Clinic_10        0.895757      12.365584        14  15.629231        0.455720        1.653704
-2  Clinic_100        0.579154       7.995002        11  18.993208        0.274811        1.155800
-3   Clinic_11        1.218206      16.816860        12   9.850551        0.604994        2.230614
-4   Clinic_12        0.452771       6.250332         4   8.834483        0.152526        1.221272
-5   Clinic_13        0.815204      11.253577        14  17.173612        0.413358        1.516942
-6   Clinic_14        2.163275      29.863168        24  11.094291        1.290575        3.307138
-7   Clinic_15        1.152829      15.914350        12  10.409181        0.575536        2.103350
-8   Clinic_16        1.803180      24.892197        14   7.764062        0.971456        2.971002
-9   Clinic_17        0.596342       8.232273        10  16.768895        0.276670        1.217648
+0    Clinic_1        1.257097      17.353737        17  13.523219        0.805558        1.881709
+1   Clinic_10        0.895757      12.365584        14  15.629231        0.541635        1.430162
+2  Clinic_100        0.579154       7.995002        11  18.993208        0.325398        0.997612
+3   Clinic_11        1.218206      16.816860        12   9.850551        0.713461        1.965131
+4   Clinic_12        0.452771       6.250332         4   8.834483        0.171821        1.106049
+5   Clinic_13        0.815204      11.253577        14  17.173612        0.492033        1.307475
+6   Clinic_14        2.163275      29.863168        24  11.094291        1.519297        2.943544
+7   Clinic_15        1.152829      15.914350        12  10.409181        0.674954        1.860492
+8   Clinic_16        1.803180      24.892197        14   7.764062        1.124166        2.690205
+9   Clinic_17        0.596342       8.232273        10  16.768895        0.325497        1.056324
 ```
 
-Clinic 14's ISR CI is $[1.291, 3.307]$ — the lower bound exceeds 1.0,
+Clinic 14's ISR CI is $[1.519, 2.944]$ — the lower bound exceeds 1.0,
 confirming that its elevated readmission rate is statistically
-significant. Clinic 100's ISR CI is $[0.275, 1.156]$, spanning 1.0,
-so while flagged at $\alpha = 0.05$ by the Poisson-Binomial test, the
-Wald CI for its ISR just includes 1.0 — a reminder that Wald and exact
-methods don't always agree at the boundary.
+significant. Clinic 100's ISR CI is $[0.325, 0.998]$, just below 1.0,
+in agreement with its flag from the Poisson-Binomial test; near the
+boundary the Wald and exact methods need not agree.
 
 ## 9. Visualizing the results
 

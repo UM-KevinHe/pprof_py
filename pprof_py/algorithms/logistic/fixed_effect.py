@@ -411,6 +411,33 @@ class SerbinAlgorithm(BaseAlgorithm):
 class BanAlgorithm(BaseAlgorithm):
     """Ban's alternating updates for logistic fixed-effect estimation.
     """
+
+    def fit(self) -> dict:
+        """Fit by alternating updates in centred covariates (C30).
+
+        Alternating updates of gamma and beta slow down when the two blocks
+        are strongly coupled, and a common offset in the covariates couples
+        them through the provider effects, which carry the intercept: on the
+        AOH goldens Ban took 19 iterations centred, 705 with the covariates
+        shifted by (+5, -3) and did not converge in 10,000 with (+50, -30).
+        The updates therefore run with ``X - xbar`` (``xbar`` the
+        trials-weighted mean covariate row) from the corresponding start, and
+        the provider effects are returned in the original coordinates,
+        ``gamma = gamma_c - xbar' beta``.  The median-relative clamp and the
+        stopping rule are unchanged by the shift.
+        """
+        X = self.X
+        if X.shape[1] == 0:
+            return super().fit()
+        xbar = self.N @ X / np.sum(self.N)
+        self.X = X - xbar
+        self.gamma_prov = self.gamma_prov + xbar @ self.beta
+        try:
+            super().fit()
+        finally:
+            self.X = X
+            self.gamma_prov = self.gamma_prov - xbar @ self.beta
+        return {'gamma': self.gamma_prov, 'beta': self.beta}
     def _update_gamma(self) -> tuple:
         """Update provider effects given fixed beta.
 

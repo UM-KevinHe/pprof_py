@@ -17,7 +17,7 @@ trials, sums over the standard population unless stated):
 * gamma: the fitted provider effect
 
 Standard errors: direct measures and gamma use the delta method on
-``SE(gamma_j)`` (model-based or cluster-robust). Indirect measures use the
+``SE(gamma_j)`` at the average case mix (model-based or cluster-robust; C34, C25). Indirect measures use the
 Poisson-binomial variance of ``O_j``, evaluated at gamma_0 (the default,
 score-type) or at the provider's fitted gamma_j (Wald-type). With the variance
 at gamma_0 and the identity scale (the default for indirect measures), the
@@ -105,7 +105,8 @@ def _reference_gamma(gamma: np.ndarray, sizes: np.ndarray, reference) -> float:
 
 def _gamma_se(model, variance: str) -> np.ndarray:
     if variance == "model":
-        return np.sqrt(np.asarray(model.variances_["gamma"], dtype=np.float64).ravel())
+        # C34: the variance at the average case mix (origin-invariant), as the robust variance (C25)
+        return np.sqrt(np.asarray(model.variances_["gamma_case_mix"], dtype=np.float64).ravel())
     if variance in ("robust", "robust_fixed_beta"):
         if getattr(model, "robust_variances_", None) is None:
             raise ValueError("Robust variances are not available; fit the model with obs_id_var.")
@@ -139,6 +140,10 @@ def standardized_measure(
         reference value.
     variance : {"model", "robust", "robust_fixed_beta"}
         Standard error of the fitted effects, for direct measures and gamma.
+        ``"model"`` is the inverse-information variance of the provider effect
+        at the average case mix, ``variances_["gamma_case_mix"]`` (it accounts
+        for the estimation of beta as it enters the comparison with the
+        reference and does not depend on the covariates' origin; C34).
         ``"robust"`` is the cluster-robust sandwich of the joint (gamma, beta)
         fit for the provider effect at the average case mix (it accounts for
         the estimation of beta and does not depend on the covariates' origin);
@@ -214,12 +219,31 @@ def standardized_measure(
 
 
 def at_bound(model, tol: float = 0.1) -> np.ndarray:
-    """Providers whose fitted effect sits at the solver's bound (for example all-0 or all-1 outcomes).
+    """Providers whose fitted effect is not a finite estimate.
 
-    Useful as ``fit_mask=~at_bound(model)`` when fitting an empirical null.
+    A provider with no events or only events has no maximum-likelihood
+    estimate: its effect moves towards minus or plus infinity during the fit
+    and stops where the covariate coefficients converge, or at the solver's
+    clamp ``median(gamma) +- bound``.  Both kinds are returned: providers with
+    records and no events or only events (the criterion the Wald test warns
+    on), and providers within ``tol`` of the clamp.  C35: this compared
+    ``|gamma|`` with ``bound``, which depends on the covariates' origin and
+    missed providers that stopped short of the clamp.  Useful as
+    ``fit_mask=~at_bound(model)`` when fitting an empirical null.
     """
     gamma = np.asarray(model.coefficients_["gamma"], dtype=np.float64).ravel()
     algorithm = getattr(model, "algorithm", None)
     bound = getattr(algorithm, "bound", None) if algorithm is not None else None
     bound = 10.0 if bound is None else float(bound)
-    return np.abs(gamma) >= bound - tol
+    clamped = np.abs(gamma - np.median(gamma)) >= bound - tol
+    idx = getattr(model, "provider_indices_", None)
+    y = getattr(model, "outcome_", None)
+    if idx is None or y is None:
+        return clamped
+    idx = np.asarray(idx).ravel()
+    trials = getattr(model, "N_", None)
+    trials = np.ones(idx.size) if trials is None else np.asarray(trials, dtype=np.float64).ravel()
+    events = np.bincount(idx, weights=np.asarray(y, dtype=np.float64).ravel(), minlength=gamma.size)
+    total = np.bincount(idx, weights=trials, minlength=gamma.size)
+    degenerate = (total > 0) & ((events <= 0) | (events >= total))
+    return degenerate | clamped

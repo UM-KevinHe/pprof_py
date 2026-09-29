@@ -171,7 +171,7 @@ $$
 T_W = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}_i)}
 $$
 
-  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the estimated standard error obtained from the square root of the corresponding diagonal element of the inverse Fisher information matrix $[I(\hat{\boldsymbol{\theta}})]^{-1}$. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution. `pprof_py` uses this normal reference, as R pprof does.
+  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the standard error of the provider effect at the average case mix, $\operatorname{Var}(\hat\gamma_i + \bar x^\top\hat{\boldsymbol\beta})$ from the inverse Fisher information matrix (`variances_['gamma_case_mix']`). The diagonal element for $\hat\gamma_i$ alone (`variances_['gamma']`, R's) depends on where the covariates are centred while the comparison with $\gamma_0$ does not; see [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 3.2. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution. `pprof_py` uses this normal reference, as R pprof does.
 
   *Caveat:* This test can be unreliable for providers where $\hat{\gamma}_i$ is poorly estimated (e.g., small $n_i$) or infinite (due to separation), as the standard error estimate may be inaccurate or zero.
 
@@ -212,7 +212,7 @@ $$
 \hat{\gamma}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\gamma}_i)
 $$
 
-  where $z_{1-\alpha/2}$ is the $(1-\alpha/2)$ quantile of the standard Normal distribution (or a t-distribution quantile). This is computationally simple but shares the limitations of the Wald test.
+  where $z_{1-\alpha/2}$ is the $(1-\alpha/2)$ quantile of the standard Normal distribution and the standard error is the Wald test's. This is computationally simple but shares the limitations of the Wald test.
 
 - **Score Interval:** Obtained by inverting the score test. It finds the set of $\gamma_0$ values for which the score test statistic $T_S$ falls within the acceptance region $[-z_{1-\alpha/2}, z_{1-\alpha/2}]$. This involves numerically solving equations like $T_S(\gamma_0) = \pm z_{1-\alpha/2}$ for $\gamma_0$.
 

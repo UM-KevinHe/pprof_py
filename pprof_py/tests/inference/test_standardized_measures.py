@@ -40,7 +40,8 @@ def _parts(model):
 @pytest.mark.parametrize("variance", ["model", "robust"])
 def test_direct_measures_match_their_definition(fit, variance):
     gamma, g0, xb, y, _ = _parts(fit)
-    se_g = np.sqrt((fit.variances_ if variance == "model" else fit.robust_variances_)["gamma"].ravel())
+    # both are the variance of the provider effect at the average case mix (C34, C25)
+    se_g = np.sqrt((fit.variances_["gamma_case_mix"] if variance == "model" else fit.robust_variances_["gamma"]).ravel())
     P = sig(gamma[:, None] + xb[None, :])
     rate = standardized_measure(fit, "direct_rate", variance=variance)
     assert np.allclose(rate.estimate, P.mean(1), rtol=1e-13)

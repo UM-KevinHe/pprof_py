@@ -117,11 +117,16 @@ class TestLogisticFixedEffectBan:
     def model(self, data):
         return _fit_fixed_effect(data, "Ban")
 
-    def test_beta_close_to_serbin(self, model):
-        # Ban and Serbin are different optimization algorithms for the same
-        # model; they converge to nearly, but not exactly, the same beta.
-        assert model.coefficients_["beta"].flatten() == pytest.approx(
-            [0.6288298873066283, 0.0016364908205175888], rel=1e-6
+    def test_beta_close_to_serbin(self, data):
+        # Ban and Serbin maximize the same likelihood.  The toy data have a
+        # provider with no events, which has no finite effect, so where each
+        # algorithm stops depends on how far that effect has drifted; without
+        # it the maximum is unique and the two agree to the fitting tolerance.
+        events = data.groupby("provider")["y"].sum()
+        finite = data[data["provider"].isin(events[events > 0].index)]
+        ban, serbin = _fit_fixed_effect(finite, "Ban"), _fit_fixed_effect(finite, "Serbin")
+        assert ban.coefficients_["beta"].flatten() == pytest.approx(
+            serbin.coefficients_["beta"].flatten(), rel=0, abs=1e-8      # the fits' tolerance on beta
         )
 
 

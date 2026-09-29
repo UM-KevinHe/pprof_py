@@ -101,7 +101,8 @@ Var(gamma_k): block formula vs dense inverse, max |diff| 1.1e-16
 
 The joint maximum-likelihood estimate is computed by Newton's method on $(\gamma, \beta)$ with the same block
 algebra (`algorithm="Serbin"`, R's `logis_BIN_fe_prov`), or by alternating updates of $\gamma$ and $\beta$
-(`"Ban"`), with Armijo backtracking. Two features of the fit matter for inference. After each step the provider
+(`"Ban"`, run in centred covariates so that its speed does not depend on their origin either), with Armijo
+backtracking. Two features of the fit matter for inference. After each step the provider
 effects are clamped to $\operatorname{median}(\gamma) \pm$ `bound` (10 by default), so a provider with no events
 or only events, whose likelihood has no maximum, sits at the bound; and iteration stops when the largest change in
 $\beta$ falls below `tol` ($10^{-8}$). Newton's method is equivariant under a shift of the covariates — replacing

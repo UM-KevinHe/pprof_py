@@ -155,6 +155,28 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   (a `use_dataprep=False` fit with providers of 10 or fewer records gave a negative LR statistic and a score test that
   raised) and ignored the trials (binomial fits raised). For the default path the LR statistics are unchanged. Testing
   the only covariate raises a clear `ValueError`.
+- Ban (`algorithm="Ban"`) alternates its updates in centred covariates and returns the provider effects in the
+  original ones. Alternating updates slow down when the covariates' common offset couples them with the provider
+  effects: on the AOH goldens it took 19 iterations centred, 705 with the covariates shifted by (+5, −3), and did not
+  converge in 10,000 with (+50, −30) (log-likelihood 0.52 short); it now takes 21 at every shift and reaches the maximum.
+  At the default tolerance its estimates on the AOH goldens as given move by at most 2.2e-9.
+- The model-based Wald test of the provider effects, its limits in `calculate_confidence_intervals`, and the
+  `variance="model"` standard errors of `test_standardized` use the variance of the provider effect at the average
+  case mix, Var(γ̂_k + x̄ᵀβ̂) = 1/I_k + (x̄_k − x̄)ᵀS⁻¹(x̄_k − x̄), stored as `variances_["gamma_case_mix"]`
+  (`variances_["gamma"]` keeps R's Var(γ̂_k)). A test compares γ̂_k with a reference that carries the same error in β̂;
+  R's variance measures that error from the covariates' origin, so recording a covariate a few units higher changed
+  the standard errors (×1.53 on the AOH goldens at a shift of (+5, −3), ×12.3 at (+50, −30)) and removed every Wald
+  flag. The new variance does not depend on the origin and matches the Monte Carlo variance of γ̂_k − median(γ̂)
+  (median ratio 1.03, against 0.58 for R's). This departs from R's `logis_fe` Wald test and `confint`; on centred
+  covariates the two nearly agree.
+- `at_bound()` returns the providers without a finite estimate: those with records and no events or only events,
+  and those held at the solver's clamp median ± `bound`. It compared |γ̂| with `bound`, which depended on the
+  covariates' origin and missed providers that stopped short of the clamp.
+- `calculate_confidence_intervals` weights the expected counts of its standardized-measure limits and its score
+  limits by the binomial trials, and scales rates by the crude rate Σy/ΣN, as the estimates do; binomial fits gave
+  limits that could exclude the estimate (an indirect ratio of 1.25 with limits 0.05–0.09). Its Wald limits use the
+  normal quantile, as R's `confint.logis_fe` and `test()` do, rather than a t quantile on the number of rows, so the
+  limits no longer depend on whether the same data are stored as binomial or Bernoulli rows.
 - The Fine-Gray R comparison checks `FineGrayPH`'s standard errors against R's cluster-robust SEs, with which they agree to
   1e-14. It compared them with R's model-based `se(coef)`, 5% away; the two failures it reported were this mismatch.
 

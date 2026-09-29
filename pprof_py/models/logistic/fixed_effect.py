@@ -74,7 +74,11 @@ class LogisticFixedEffectModel(
     coefficients_ : dict
         Model coefficients: 'beta' (covariates), 'gamma' (group effects).
     variances_ : dict
-        Variance-covariance matrices: 'beta' (for covariates), 'gamma' (for group effects).
+        Inverse-information variances: ``'beta'`` (covariance matrix of the
+        covariate effects), ``'gamma'`` (variance of each provider effect,
+        R's ``logis_fe_var``) and ``'gamma_case_mix'`` (variance of each
+        provider effect at the average case mix, ``Var(gamma_j + xbar' beta)``,
+        which the provider tests and direct measures use; C34).
     fitted_ : np.ndarray
         Fitted probabilities.
     aic_ : float
@@ -380,8 +384,10 @@ class LogisticFixedEffectModel(
             for idx in np.where(existing_mask)[0]:
                 j = np.where(self.provider_ids_ == provider_ids[idx])[0][0]
                 self.coefficients_["gamma"][j] = gamma[idx]
-                if self.variances_ is not None and "gamma" in self.variances_:
-                    self.variances_["gamma"][j] = se_gamma[idx] ** 2
+                if self.variances_ is not None:
+                    for key in ("gamma", "gamma_case_mix"):
+                        if key in self.variances_:
+                            self.variances_[key][j] = se_gamma[idx] ** 2
                 if self.robust_variances_ is not None:
                     for key in ("gamma", "gamma_fixed_beta"):
                         if key in self.robust_variances_:
@@ -395,10 +401,12 @@ class LogisticFixedEffectModel(
                 self.coefficients_["gamma"].flatten(), gamma[new_mask]
             ])
             se_sq_new = se_gamma[new_mask] ** 2
-            if self.variances_ is not None and "gamma" in self.variances_:
-                self.variances_["gamma"] = np.concatenate([
-                    self.variances_["gamma"].flatten(), se_sq_new
-                ])
+            if self.variances_ is not None:
+                for key in ("gamma", "gamma_case_mix"):
+                    if key in self.variances_:
+                        self.variances_[key] = np.concatenate([
+                            self.variances_[key].flatten(), se_sq_new
+                        ])
             if self.robust_variances_ is not None:
                 for key in ("gamma", "gamma_fixed_beta"):
                     if key in self.robust_variances_:
@@ -420,8 +428,11 @@ class LogisticFixedEffectModel(
         n_total = sort_idx.size
         self.provider_ids_ = self.provider_ids_[sort_idx]
         self.coefficients_["gamma"] = self.coefficients_["gamma"].flatten()[sort_idx]
-        if self.variances_ is not None and "gamma" in self.variances_:
-            self.variances_["gamma"] = self.variances_["gamma"].flatten()[sort_idx]
+        if self.variances_ is not None:
+            for key, value in self.variances_.items():            # every per-provider entry, not the beta matrix
+                value = np.asarray(value)
+                if key != "beta" and value.size == n_total:
+                    self.variances_[key] = value.flatten()[sort_idx]
         if self.robust_variances_ is not None:
             for key, value in self.robust_variances_.items():   # every per-provider entry, not the beta matrix
                 value = np.asarray(value)

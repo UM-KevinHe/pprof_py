@@ -10,7 +10,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, t
+from scipy.stats import norm
 from scipy.optimize import root_scalar
 
 
@@ -23,8 +23,12 @@ class _ConfidenceIntervalMethods:
     # -------------------------------------------------------------------------
     # BASIC (T-BASED) CI BOUNDS FOR GAMMA
     # -------------------------------------------------------------------------
-    def _compute_ci_bounds(self, gamma: np.ndarray, se: np.ndarray, df: int, level: float, alternative: str) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute two-sided or one-sided confidence interval bounds for gamma using a t-distribution.
+    def _compute_ci_bounds(self, gamma: np.ndarray, se: np.ndarray, level: float, alternative: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Compute two-sided or one-sided Wald confidence bounds for gamma with the normal reference.
+
+        As R's ``confint.logis_fe`` and the Wald test of ``test()``; a t quantile on
+        ``rows - m - p`` degrees of freedom made the limits depend on whether the same data
+        are stored as binomial or Bernoulli rows (C36).
 
         Parameters
         ----------
@@ -32,8 +36,6 @@ class _ConfidenceIntervalMethods:
             Point estimates of provider effects.
         se : np.ndarray
             Standard errors for gamma.
-        df : int
-            Degrees of freedom for the t-distribution.
         level : float
             Confidence level (e.g., 0.95 for 95% CI).
         alternative : str
@@ -51,15 +53,15 @@ class _ConfidenceIntervalMethods:
         """
         alpha = 1.0 - level
         if alternative == "two_sided":
-            crit_value = t.ppf(1.0 - alpha / 2.0, df)
+            crit_value = norm.ppf(1.0 - alpha / 2.0)   # normal reference, as R's confint.logis_fe (C36)
             lower = gamma - crit_value * se
             upper = gamma + crit_value * se
         elif alternative == "greater":
-            crit_value = t.ppf(1.0 - alpha, df)
+            crit_value = norm.ppf(1.0 - alpha)
             lower = gamma - crit_value * se
             upper = np.full_like(gamma, np.inf)
         elif alternative == "less":
-            crit_value = t.ppf(1.0 - alpha, df)
+            crit_value = norm.ppf(1.0 - alpha)
             lower = np.full_like(gamma, -np.inf)
             upper = gamma + crit_value * se
         else:
@@ -110,9 +112,10 @@ class _ConfidenceIntervalMethods:
         Tuple[bool, bool]
             (no_events, all_events) indicating if the provider has no events or all events.
         """
-        sum_y = np.sum(self.outcome_[self.provider_indices_ == group_idx])
-        gsize = self.provider_sizes_[group_idx]
-        return sum_y == 0, sum_y == gsize
+        mask = self.provider_indices_ == group_idx
+        sum_y = np.sum(self.outcome_[mask])
+        trials = np.sum(self.N_[mask])        # C36: binomial trials, not records
+        return sum_y == 0, sum_y == trials
 
     def _score_ci_for_one_group(self, group_idx: int, alpha: float, alternative: str, gamma_guess: float) -> Tuple[float, float]:
         """Compute score-based confidence interval for a single provider's gamma.
@@ -137,31 +140,32 @@ class _ConfidenceIntervalMethods:
         no_events, all_events = self._get_no_all_events(group_idx)
         observed = np.sum(self.outcome_[self.provider_indices_ == group_idx])
         xbeta_group = self.xbeta_[self.provider_indices_ == group_idx]
+        n_group = self.N_[self.provider_indices_ == group_idx]      # C36: binomial trials
 
         qnorm_half = norm.ppf(1.0 - alpha / 2.0)
         qnorm_1side = norm.ppf(1.0 - alpha)
 
         def upper_func(gamma):
             probs = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-            score = (observed - probs.sum()) / np.sqrt((probs * (1.0 - probs)).sum())
+            score = (observed - (n_group * probs).sum()) / np.sqrt((n_group * probs * (1.0 - probs)).sum())
             return score + (qnorm_half if alternative == "two_sided" else qnorm_1side if alternative == "less" else 0)
 
         def lower_func(gamma):
             probs = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-            score = (observed - probs.sum()) / np.sqrt((probs * (1.0 - probs)).sum())
+            score = (observed - (n_group * probs).sum()) / np.sqrt((n_group * probs * (1.0 - probs)).sum())
             return score - (qnorm_half if alternative == "two_sided" else qnorm_1side if alternative == "greater" else 0)
 
         if no_events:
             def no_events_func(gamma):
                 probs = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-                return qnorm_1side - probs.sum() / np.sqrt((probs * (1.0 - probs)).sum())
+                return qnorm_1side - (n_group * probs).sum() / np.sqrt((n_group * probs * (1.0 - probs)).sum())
             upper_bound = self._search_root(no_events_func, (gamma_guess - 5.0, gamma_guess + 5.0))
             return (-np.inf, upper_bound if upper_bound is not None else np.inf)
 
         if all_events:
             def all_events_func(gamma):
                 probs = 1.0 / (1.0 + np.exp(-(gamma + xbeta_group)))
-                return ((1.0 - probs).sum() / np.sqrt((probs * (1.0 - probs)).sum())) - qnorm_1side
+                return ((n_group * (1.0 - probs)).sum() / np.sqrt((n_group * probs * (1.0 - probs)).sum())) - qnorm_1side
             lower_bound = self._search_root(all_events_func, (gamma_guess - 5.0, gamma_guess + 5.0))
             return (lower_bound if lower_bound is not None else -np.inf, np.inf)
 
@@ -217,11 +221,7 @@ class _ConfidenceIntervalMethods:
         pd.DataFrame with columns ["provider_id","gamma","gamma_lower","gamma_upper"].
         """
         gamma_vals = self.coefficients_["gamma"].flatten()
-        se_gamma = np.sqrt(self.variances_["gamma"].flatten())
-        n_obs = len(self.outcome_)
-        p = len(self.coefficients_["beta"])
-        m = len(gamma_vals)
-        df = n_obs - (m + p)
+        se_gamma = np.sqrt(self.variances_["gamma_case_mix"].flatten())   # C34: the variance the Wald test uses
         alpha = 1.0 - level
 
         records = []
@@ -241,7 +241,6 @@ class _ConfidenceIntervalMethods:
                     g_lower, g_upper = self._compute_ci_bounds(
                         gamma=np.array([gamma_est]),
                         se=np.array([se_gamma[i]]),
-                        df=df,
                         level=level,
                         alternative=alternative
                     )
@@ -307,7 +306,7 @@ class _ConfidenceIntervalMethods:
         gamma_lower_map = df_gamma_ci.set_index("provider_id")["gamma_lower"].to_dict()
         gamma_upper_map = df_gamma_ci.set_index("provider_id")["gamma_upper"].to_dict()
 
-        population_rate = np.mean(self.outcome_) * 100.0
+        population_rate = np.sum(self.outcome_) / np.sum(self.N_) * 100.0   # C36: the estimates' crude rate
         results = {}
 
         # ---- INDIRECT ----
@@ -418,12 +417,12 @@ class _ConfidenceIntervalMethods:
         mask = (self.provider_indices_ == group_idx)
         xbeta_group = self.xbeta_[mask]
         pvals = 1.0/(1.0 + np.exp(-(gamma_val + xbeta_group)))
-        return pvals.sum()
+        return (self.N_[mask] * pvals).sum()      # C36: weighted by the binomial trials, as the estimates
 
     def _sum_logistic_overall(self, gamma_val):
         """Sum logistic(gamma_val + ``xbeta_``) over the entire dataset (for direct approach)."""
         pvals = 1.0/(1.0 + np.exp(-(gamma_val + self.xbeta_)))
-        return pvals.sum()
+        return (self.N_ * pvals).sum()            # C36: weighted by the binomial trials, as the estimates
 
     # -------------------------------------------------------------------------
     # PUBLIC METHOD TO COMPUTE CONFIDENCE INTERVALS

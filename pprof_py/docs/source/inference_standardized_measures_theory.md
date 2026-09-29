@@ -122,15 +122,38 @@ print(f"direct-ratio z (log scale) vs Wald z on gamma: max |difference| {np.max(
 
 ```
 indirect-ratio z equals the score z: True
-direct-ratio z (log scale) vs Wald z on gamma: max |difference| 0.846; flags differ for 2 of 60 providers
+direct-ratio z (log scale) vs Wald z on gamma: max |difference| 0.845; flags differ for 2 of 60 providers
 ```
 
 **Direct measures.** The standard error is the delta method in $\gamma_k$,
-$\text{SE}(\text{direct ratio}_k) = H'(\hat\gamma_k)\,\text{SE}(\hat\gamma_k)/O$, with the model-based or
-cluster-robust $\text{SE}(\hat\gamma_k)$ of Part II (`variance=`). On the log scale this is a Wald-type test of $\gamma_k$
-on a different scale: its statistics are close to, but not equal to, the Wald statistics on $\gamma_k$ (above, they
-differ by up to 0.85 and 2 of 60 flags change). The
-model-based variance inherits the dependence on the covariates' origin described in Part II, Section 3.2.
+$\text{SE}(\text{direct ratio}_k) = H'(\hat\gamma_k)\,\text{SE}_k/O$, with $\text{SE}_k$ the standard error of the
+provider effect at the average case mix, model-based or cluster-robust (Part II, Sections 3.2 and 6; `variance=`). The
+error in $\hat\beta$ therefore enters as it would at the average case mix; where the population's covariates are
+known, this agrees closely with the full delta method in $(\gamma_k, \beta)$:
+
+```python
+beta, cov_beta = np.ravel(fit.coefficients_["beta"]), fit.variances_["beta"]
+X = d[["x1", "x2"]].to_numpy()
+w = fit.fitted_ * (1 - fit.fitted_)
+D = np.bincount(idx, weights=w)
+xbar_k = np.column_stack([np.bincount(idx, weights=w * X[:, c]) for c in range(2)]) / D[:, None]
+y_total, full = d.y.sum(), []
+for k, g in enumerate(gamma):                                          # the delta method in (gamma_k, beta)
+    pk = 1 / (1 + np.exp(-(g + xb)))
+    a, b = np.sum(pk * (1 - pk)), (pk * (1 - pk)) @ X
+    r = a * xbar_k[k] - b
+    full.append(np.sqrt(a**2 / D[k] + r @ cov_beta @ r) / y_total)
+full = np.array(full)
+se = fit.test_standardized(measure="direct_ratio", transform="identity").se.to_numpy()
+print(f"direct-ratio SE / full delta method: median {np.median(se / full):.4f}, range {np.min(se / full):.4f}-{np.max(se / full):.4f}")
+```
+
+```
+direct-ratio SE / full delta method: median 1.0003, range 0.9956-1.0110
+```
+
+On the log scale the test is a Wald-type test of $\gamma_k$ on a different scale: its statistics are close to, but not
+equal to, the Wald statistics on $\gamma_k$ (above, they differ by up to 0.85 and 2 of 60 flags change).
 
 **Behaviour under the null.** The choice of variance and scale matters for small providers. For providers of 15–59
 records whose true effects all equal the reference, the indirect ratio's test flags at these rates:
@@ -169,7 +192,9 @@ $$
 \Big(\frac{H(g_L)}{O}, \frac{H(g_U)}{O}\Big) \;\text{(direct ratio)},
 $$
 
-and rates by the same scaling as the estimates. A strictly increasing map carries an interval's coverage over
+and rates by the same scaling as the estimates. Both expected counts are weighted by the binomial trials, as the
+estimates are, and Wald limits for $\gamma_k$ use the normal reference, so the limits do not depend on whether the
+data are stored as binomial or Bernoulli rows. A strictly increasing map carries an interval's coverage over
 unchanged, so, given $\hat\beta$, the measure's interval has exactly the coverage of the interval for $\gamma_k$; and
 because $h_k(\gamma_0)/E_k = 1$, the indirect ratio's interval excludes 1 exactly when the provider-effect interval
 excludes $\gamma_0$ — the limits are dual to the flags of the corresponding test:
@@ -202,13 +227,6 @@ the indirect ratio this inverts the score test, whose normal approximation gives
 and a lower limit clipped at 0 for small providers, where the transformed exact limits of Section 4.1 stay positive;
 the two agree more closely as providers grow. These limits are dual to the flags of the same call, whatever the null
 model.
-
-```{warning}
-For binomial models (fitted with `n_var`), the limits of `calculate_confidence_intervals(option="SM")` are computed
-without the trials: the same data as binomial rows and as Bernoulli rows give the same measures but different limits,
-and the binomial limits can exclude the estimate. This is under review; for binomial models use `test_standardized`,
-whose estimates, standard errors and limits agree between the two representations to rounding error.
-```
 
 ## 5. Linear and random-effect models
 
@@ -273,8 +291,8 @@ providers beyond their sampling error is the subject of the [empirical-null page
 |---|---|---|
 | indirect test (null variance, identity) | normal approximation to the Poisson-binomial count | few expected events (use the exact test and transformed limits) |
 | indirect test (fitted variance or log scale) | the same, with the variance at $\hat\gamma_k$ or the delta method | anti-conservative for small providers; no-event providers untestable on the log scale |
-| direct measures' standard errors | delta method in $\gamma_k$ | small providers; the covariates' origin with `variance="model"` (Part II, Section 3.2) |
-| transformed limits | a monotone map of the $\gamma_k$ limits, given $\hat\beta$ | as the underlying $\gamma_k$ interval; binomial models (Section 4.2) |
+| direct measures' standard errors | delta method in $\gamma_k$ at the average case mix | small providers |
+| transformed limits | a monotone map of the $\gamma_k$ limits, given $\hat\beta$ | as the underlying $\gamma_k$ interval |
 | survival SMR tests | $O_k$ Poisson with mean $E_k$ | error in the baseline and $\hat\beta$ |
 | all | $\hat\beta$, baseline and $\gamma_0$ treated as known | few providers |
 

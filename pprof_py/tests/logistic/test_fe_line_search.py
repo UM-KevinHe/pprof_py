@@ -28,15 +28,21 @@ def _cohort(seed=20260921, n=6000, K=60):
 
 
 def _max_score(model, df):
+    """The largest score at the fit, of the provider effects and of the coefficients of the centred covariates.
+
+    The score of an uncentred covariate's coefficient is its centred score plus the covariate's mean times the
+    provider effects' total score, so it measures the covariates' origin as well as the fit (C30): old Ban
+    passed on it with a centred score of 3e-4, centred Ban (8e-9) failed.  Centring makes it origin-invariant.
+    """
     xv = [f"x{j}" for j in range(9)]
     X, y = df[xv].to_numpy(), df["y"].to_numpy()
     gamma = pd.Series(np.ravel(model.coefficients_["gamma"]).astype(float), index=model.provider_ids_)
     eta = gamma.reindex(df["prov"]).to_numpy() + X @ np.ravel(model.coefficients_["beta"]).astype(float)
     r = y - 1 / (1 + np.exp(-eta))
-    return max(np.max(np.abs(X.T @ r)), np.max(np.abs(pd.Series(r).groupby(df["prov"].to_numpy()).sum())))
+    return max(np.max(np.abs((X - X.mean(axis=0)).T @ r)), np.max(np.abs(pd.Series(r).groupby(df["prov"].to_numpy()).sum())))
 
 
-@pytest.mark.parametrize("algorithm, tol", [("Serbin", 1e-8), ("Ban", 1e-5)])
+@pytest.mark.parametrize("algorithm, tol", [("Serbin", 1e-8), ("Ban", 1e-7)])
 def test_fit_reaches_the_optimum(algorithm, tol):
     df = _cohort()
     m = LogisticFixedEffectModel(algorithm=algorithm).fit(df, y_var="y", x_vars=[f"x{j}" for j in range(9)],

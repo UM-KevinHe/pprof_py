@@ -98,7 +98,17 @@ class _CovariateInferenceMethods:
         quad_term = np.sum((mat_tmp1 @ info_beta_inv) * mat_tmp1, axis=1)  # Shape: (n_groups,)
         var_gamma = info_gamma_inv + quad_term
 
-        return {"beta": var_beta, "gamma": var_gamma}
+        # C34: the variance at the average case mix, Var(gamma_j + xbar' beta) =
+        # 1/I_j + (xbar_j - xbar)' S^-1 (xbar_j - xbar), with xbar_j = B_j / I_j the provider's
+        # weighted mean covariate and xbar the trials-weighted mean covariate row (as C25).
+        # A provider test compares gamma_j with a reference that carries the same beta error,
+        # so it needs this variance, which does not depend on the covariates' origin; var_gamma
+        # (R's logis_fe_var) does.
+        xbar = self.N_ @ self.X / np.sum(self.N_)
+        centred = mat_tmp1 - xbar
+        var_gamma_case_mix = info_gamma_inv + np.sum((centred @ info_beta_inv) * centred, axis=1)
+
+        return {"beta": var_beta, "gamma": var_gamma, "gamma_case_mix": var_gamma_case_mix}
 
     def _compute_robust_variances(self) -> dict:
         """Compute cluster-robust (sandwich) variances for gamma and beta coefficients.

@@ -52,7 +52,10 @@ class _ProviderTestMethods:
             event count at gamma_0 (two-sided mid-p). ``"score"``:
             ``(O - E) / sqrt(Var_0(O))`` at gamma_0. ``"wald"``:
             ``(gamma_j - gamma_0) / SE(gamma_j)`` with a normal reference (as
-            R pprof); unreliable for providers at the numerical bound (see
+            R pprof) and the variance at the average case mix,
+            ``variances_["gamma_case_mix"]`` (R uses ``variances_["gamma"]``,
+            which depends on the covariates' origin; C34); unreliable for
+            providers without a finite estimate (see
             :func:`~pprof_py.inference.at_bound`). ``"bootstrap_exact"``: the
             exact test by simulation. Binomial models are weighted by trials.
         reference : "median", "mean", or float
@@ -89,7 +92,7 @@ class _ProviderTestMethods:
         se = None
         limits = None
         if test_method == "wald":
-            se = np.sqrt(np.asarray(self.variances_["gamma"], dtype=np.float64).ravel())
+            se = np.sqrt(np.asarray(self.variances_["gamma_case_mix"], dtype=np.float64).ravel())   # C34
             z = (gamma - g0) / se
             events = np.bincount(idx, weights=y, minlength=m)
             size = np.bincount(idx, weights=np.ones_like(y) if trials is None else trials, minlength=m)
