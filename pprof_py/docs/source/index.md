@@ -46,6 +46,7 @@ fixed_vs_random_effects
 empirical_null_theory
 inter_unit_reliability_theory
 inference_covariate_effects_theory
+inference_provider_effects_theory
 ```
 
 ```{toctree}

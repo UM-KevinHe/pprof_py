@@ -259,6 +259,10 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   inference theory series: the fixed-effect likelihood and the profile information of the coefficients, the Wald,
   likelihood-ratio and score tests, the incidental-parameter bias of the coefficients with small providers, the
   cluster-robust variance, and the other model families.
+- New theoretical reference, [Inference for Provider Effects](inference_provider_effects_theory.md), Part II of the
+  inference theory series: what a provider test compares, the Wald test and the variance it needs, the score, exact and
+  bootstrap tests at the reference, limits by inversion, the robust variances, and the random-effect and three-stage
+  tests.
 - New theoretical reference, [Inter-Unit Reliability: Theory](inter_unit_reliability_theory.md): reliability and the
   IUR, the analysis-of-variance and bootstrap estimators as implemented, the reliability curve, the estimate's
   sampling distribution with an approximate interval, and what the split-half variants estimate.
