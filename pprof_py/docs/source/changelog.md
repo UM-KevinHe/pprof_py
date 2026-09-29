@@ -263,6 +263,10 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   inference theory series: what a provider test compares, the Wald test and the variance it needs, the score, exact and
   bootstrap tests at the reference, limits by inversion, the robust variances, and the random-effect and three-stage
   tests.
+- New theoretical reference, [Inference for Standardized Measures](inference_standardized_measures_theory.md), Part III
+  of the inference theory series: indirect and direct standardized ratios and rates as functions of the provider
+  effect, their standard errors and tests, limits by transformation and by inversion, the linear and random-effect
+  measures, and the survival SMR.
 - New theoretical reference, [Inter-Unit Reliability: Theory](inter_unit_reliability_theory.md): reliability and the
   IUR, the analysis-of-variance and bootstrap estimators as implemented, the reliability curve, the estimate's
   sampling distribution with an approximate interval, and what the split-half variants estimate.

@@ -47,6 +47,7 @@ empirical_null_theory
 inter_unit_reliability_theory
 inference_covariate_effects_theory
 inference_provider_effects_theory
+inference_standardized_measures_theory
 ```
 
 ```{toctree}
