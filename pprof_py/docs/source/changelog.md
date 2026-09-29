@@ -255,6 +255,10 @@ This breaks parts of the API; no old name is kept as a deprecated alias.
   `s2_within_` and `n_prime_` equal R's to 1e-13 and are unchanged.
 - `SplitHalfIUR` leaves providers with fewer than two records out of the split-half correlations, with a warning, and
   lists them in `excluded_groups_`; it raised `IndexError`. Results without such providers are unchanged.
+- New theoretical reference, [Inference for Covariate Effects](inference_covariate_effects_theory.md), Part I of the
+  inference theory series: the fixed-effect likelihood and the profile information of the coefficients, the Wald,
+  likelihood-ratio and score tests, the incidental-parameter bias of the coefficients with small providers, the
+  cluster-robust variance, and the other model families.
 - New theoretical reference, [Inter-Unit Reliability: Theory](inter_unit_reliability_theory.md): reliability and the
   IUR, the analysis-of-variance and bootstrap estimators as implemented, the reliability curve, the estimate's
   sampling distribution with an approximate interval, and what the split-half variants estimate.
