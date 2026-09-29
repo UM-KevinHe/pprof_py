@@ -34,19 +34,20 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs, validate_X
 from ...data.survival_data import SurvivalData
 from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.penalty import weighted_column_scale, rescale_penalty_factors
+from ...algorithms.penalty import within_group_orthogonalize
 from ...algorithms.survival.coordinate_descent import (
     fit_regularization_path,
     compute_lambda_max,
     build_lambda_sequence,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...statistics.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio, bootstrap_cv_se
+from ...utils.deviance import saturated_log_likelihood, cox_deviance, deviance_ratio, bootstrap_cv_se
 from ...utils.numerical import safe_exp
 from .coxph import CoxPH, NotFittedError
 from ...exceptions import DegenerateFeatureWarning
@@ -289,6 +290,40 @@ class _PenalizedCoxPHBase:
             penalty_factor_full=penalty_factor_full,
             objective_fn=objective_fn, c=c, stratum_idx=stratum_idx,
         )
+
+    def _group_design(self, prep: SimpleNamespace, groups_fit: np.ndarray):
+        """Design, objective and back-transform blocks for a group penalty.
+
+        With ``orthogonalize=True`` each penalized group is orthogonalized
+        within itself on its weighted, centered columns, so the penalty is the
+        standardized group lasso R's ``grplasso::Strat.cox`` fits (it
+        orthogonalizes the centered standardized design).  Centering leaves
+        the partial likelihood unchanged; it enters only the penalty's metric.
+
+        Returns ``(X_design, objective_fn, QL_blocks)``; ``QL_blocks`` is None
+        when the design is not orthogonalized.
+        """
+        if not getattr(self, "orthogonalize", False):
+            return prep.X_fit, prep.objective_fn, None
+        data = prep.data
+        weight = data.weight
+        xm = (weight / weight.sum()) @ prep.X_fit
+        X_design, QL_blocks = within_group_orthogonalize(
+            prep.X_fit - xm, groups_fit, weight,
+        )
+        ties = getattr(self, "ties", "breslow")
+        stratum_idx = prep.stratum_idx
+
+        def objective_fn(beta_fit):  # noqa: D401
+            """Partial log-likelihood, score, and information at *beta_fit*."""
+            return cox_partial_likelihood(
+                X_design, data.start, data.stop, data.event, beta_fit,
+                offset=data.offset, weight=weight,
+                strata=data.strata_codes, ties=ties,
+                stratum_indices=stratum_idx,
+            )
+
+        return X_design, objective_fn, QL_blocks
 
     def _compute_null_point(self, prep: SimpleNamespace):
         """Compute the null point for lambda_max calculation.
@@ -552,15 +587,16 @@ class _PenalizedCoxPHBase:
         )
 
 
-class PenalizedCoxPH(_PenalizedCoxPHBase, BaseEstimator):
+class PenalizedCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Elastic-net-penalized Cox Proportional Hazards regression, fit
     by proximal Newton + coordinate descent over a lambda path.
 
     Reuses the exact same (Breslow/Efron) partial-likelihood engine as
     `CoxPH`, so every non-penalization capability -- strata, offset,
     sample weights, start/stop (left-truncated) data -- carries over
-    unchanged.  See ``docs/R_COMPATIBILITY.md`` for the numerical
-comparison against the package's pinned glmnet reference version. Current glmnet releases support additional Cox options;
+    unchanged.  See the survival guide's R compatibility notes for the
+    numerical comparison against the package's pinned glmnet reference
+    version. Current glmnet releases support additional Cox options;
     compatibility claims here refer to the explicitly pinned reference
     used by the regression suite. Efron-tie penalized fits use the same
     engine and are validated by self-consistency against this
@@ -606,20 +642,20 @@ comparison against the package's pinned glmnet reference version. Current glmnet
         control the proximal-Newton outer loop and coordinate-descent
         inner loop (`algorithms/coordinate_descent.py`).
 
-    Attributes (set by `fit`)
-    -------------------------
-    coef_path_ : ndarray, shape (n_lambda_, n_features)
+    Attributes
+    ----------
+    coef_path_ : ndarray, shape (``n_lambda_``, n_features)
         Fitted coefficients (original units) at every lambda in
         `lambda_path_`, in the same order.
-    lambda_path_ : ndarray, shape (n_lambda_,)
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
         The lambda values actually fit, descending.
     lambda_max_ : float
         Smallest lambda at which every penalized coefficient is 0
         (see `algorithms/coordinate_descent.py::compute_lambda_max`).
         0 if every feature is unpenalized.
-    log_likelihood_path_, deviance_ratio_path_, n_nonzero_path_ : ndarray, shape (n_lambda_,)
+    ``log_likelihood_path_``, ``deviance_ratio_path_``, ``n_nonzero_path_`` : ndarray, shape (``n_lambda_``,)
         Per-lambda partial log-likelihood, glmnet-style deviance ratio
-        (`statistics/deviance.py`), and count of exactly-nonzero
+        (`utils/deviance.py`), and count of exactly-nonzero
         coefficients (glmnet's `df`).
     log_likelihood_null_ : float
         Partial log-likelihood at beta=0 (all features), the
@@ -627,13 +663,13 @@ comparison against the package's pinned glmnet reference version. Current glmnet
     column_scale_ : ndarray, shape (n_features,)
         The `xs` divisor applied to each column before fitting
         (all 1s if `standardize=False`).
-    coef_, lambda_ : ndarray / float
+    ``coef_``, ``lambda_`` : ndarray / float
         Only set when the resolved `lambda_path_` has exactly one
         value (a single explicit `lambda_path` scalar, or a
         user-supplied length-1 sequence) -- the natural case of "just
         fit one penalized model". Use `coef_at()` or index
         `coef_path_` directly otherwise.
-    n_obs_, n_events_, n_features_in_, feature_names_in_, converged_path_, n_iter_path_ :
+    ``n_obs_``, ``n_events_``, ``n_features_in_``, ``feature_names_in_``, ``converged_path_``, ``n_iter_path_`` :
         See `CoxPH` for the analogous non-path attributes.
     """
 
@@ -891,7 +927,7 @@ class _PenalizedCoxPHCVBase:
 
     def _check_is_fitted(self) -> None:
         cls_name = type(self).__name__
-        if not hasattr(self, "final_estimator_"):
+        if not hasattr(self, "model_"):
             raise NotFittedError(
                 f"This {cls_name} instance is not fitted yet. "
                 "Call `fit` first."
@@ -910,7 +946,7 @@ class _PenalizedCoxPHCVBase:
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        return self.final_estimator_.predict_linear(X, offset=offset)
+        return self.model_.predict_linear(X, offset=offset, lambda_value=self.lambda_)
 
     def predict_partial_hazard(self, X, offset=None) -> np.ndarray:
         """Partial hazard at the selected lambda.
@@ -925,8 +961,8 @@ class _PenalizedCoxPHCVBase:
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        return self.final_estimator_.predict_partial_hazard(
-            X, offset=offset,
+        return self.model_.predict_partial_hazard(
+            X, offset=offset, lambda_value=self.lambda_,
         )
 
     def predict(self, X, offset=None) -> np.ndarray:
@@ -957,7 +993,7 @@ class _PenalizedCoxPHCVBase:
         )
 
 
-class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
+class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     """K-fold cross-validated lambda selection for `PenalizedCoxPH`,
     analogous to R's `cv.glmnet(family="cox")`.
 
@@ -992,28 +1028,33 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
     n_bootstrap : int, default 100
         Number of bootstrap replicates when ``se_method='bootstrap'``.
     random_state : int, optional
-        Used to randomly assign folds when `fold_id` is not given,
-        and as the seed for bootstrap resampling.
-    select : {"lambda_min", "lambda_1se"}, default "lambda_min"
-        Which cross-validated lambda `final_estimator_`/`coef_` uses.
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
+    se_rule : {"min", "1se"}, default "1se"
+        Which cross-validated lambda `model_`/`coef_` uses: the
+        minimum CV error (``"min"``) or the largest lambda within one SE of it
+        (``"1se"``).
     Remaining parameters are passed through to the underlying
     `PenalizedCoxPH` fits -- see that class.
 
-    Attributes (set by `fit`)
-    -------------------------
-    lambda_path_, cv_mean_deviance_, cv_se_deviance_ : ndarray, shape (n_lambda_,)
+    Attributes
+    ----------
+    ``lambda_path_``, ``cv_mean_deviance_``, ``cv_se_deviance_`` : ndarray, shape (``n_lambda_``,)
         The fitted lambda grid and, per lambda, the cross-validated
         mean (and standard error of the mean, across folds) deviance
         per event -- glmnet's `cvm`/`cvsd`.
-    lambda_min_, lambda_1se_ : float
+    ``lambda_min_``, ``lambda_1se_`` : float
         The lambda with minimum cross-validated deviance, and the
         largest lambda within one standard error of that minimum
         (glmnet's 1-SE rule).
-    final_estimator_ : PenalizedCoxPH
-        Fit on the *full* data at `lambda_min_` or `lambda_1se_` (per
-        `select`).
+    model_ : PenalizedCoxPH
+        The full-data fit over the whole path (``lambda_path_``);
+        ``model_.coef_at(lambda_min_)`` and ``model_.coef_at(lambda_1se_)``
+        read it at either selected lambda.
+    lambda_ : float
+        The lambda that ``se_rule`` selects; ``coef_`` and the ``predict_*``
+        methods use it.
     coef_ : ndarray
-        `final_estimator_.coef_`.
+        ``model_``'s coefficients at ``lambda_``.
     fold_id_ : ndarray, shape (n_obs,)
         The fold assignment actually used.
     """
@@ -1033,8 +1074,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        select: str = "lambda_min",
-        use_1se: bool = None,
+        se_rule: str = "1se",
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
         max_inner_iter: int = 1000,
@@ -1054,13 +1094,7 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        # Unify select= / use_1se= (ISSUE-011).  use_1se takes
-        # precedence when both are supplied.
-        if use_1se is not None:
-            self.select = "lambda_1se" if use_1se else "lambda_min"
-        else:
-            self.select = select
-        self.use_1se = (self.select == "lambda_1se")
+        self.se_rule = se_rule
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
@@ -1103,10 +1137,10 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
             self.max_outer_iter, self.outer_tol,
             self.max_inner_iter, self.inner_tol, self.fit_intercept,
         )
-        if self.select not in ("lambda_min", "lambda_1se"):
+        if self.se_rule not in ("min", "1se"):
             raise ValueError(
-                f"select must be 'lambda_min' or 'lambda_1se', "
-                f"got {self.select!r}"
+                f"se_rule must be 'min' or '1se', "
+                f"got {self.se_rule!r}"
             )
         if self.se_method not in ("analytical", "bootstrap"):
             raise ValueError(
@@ -1310,26 +1344,19 @@ class PenalizedCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
             lambda_grid, cvm, cvsd,
         )
 
-        # Final estimator at the selected lambda.
-        chosen_lambda = (
-            self.lambda_min_
-            if self.select == "lambda_min"
-            else self.lambda_1se_
-        )
-        self.final_estimator_ = PenalizedCoxPH(
-            lambda_path=chosen_lambda, **self._base_kwargs(),
-        )
-        self.final_estimator_.fit(
-            data.X, event=data.event, start=data.start,
-            stop=data.stop, strata=data.strata_codes,
-            offset=data.offset, sample_weight=data.weight,
-        )
-        self.coef_ = self.final_estimator_.coef_
+        # --- The full-data path is the fitted model (C22) ---
+        # As in the logistic and linear CV classes, model_ holds every path
+        # point (so model_.coef_at(lambda_min_) and model_.coef_at(lambda_1se_)
+        # both read the full-data fit), and coef_ is its point at the selected
+        # lambda, which lies on the grid.
+        self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
+        self.model_ = full_fit
+        selected = int(np.argmin(np.abs(np.log(lambda_grid) - np.log(self.lambda_))))
+        self.coef_ = full_fit.coef_path_[selected].copy()
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_
         self.n_nonzero_path_ = full_fit.n_nonzero_path_
-        self.full_fit_ = full_fit
 
         return self
 

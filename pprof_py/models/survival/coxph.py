@@ -1,6 +1,6 @@
 """User-facing CoxPH estimator, following scikit-learn conventions.
 
-This module is the only place pandas, sklearn's BaseEstimator, and the
+This module is the only place pandas, pprof_py's ProviderModel base, and the
 statistical engine (algorithms/, statistics/) meet -- everything below it
 is plain NumPy so that a future distributed backend only has to replace
 what happens inside `fit`, not the class's public surface.
@@ -8,18 +8,13 @@ what happens inside `fit`, not the class's public surface.
 from __future__ import annotations
 
 import warnings
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...data.survival_validation import (
-    validate_fit_inputs,
-    validate_X,
-    validate_X_predict,
-    validate_predict_offset,
-)
+from ...data.survival_validation import validate_fit_inputs, validate_X_predict, validate_predict_offset
 from ...data.survival_data import SurvivalData
 from ...algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
 from ...algorithms.survival.optimization import newton_raphson
@@ -35,9 +30,11 @@ from ...inference.survival.baseline import compute_baseline_hazard
 from ...inference.survival.residuals import martingale_residuals
 from ...utils.numerical import col_means, safe_exp
 from ...exceptions import NotFittedError
+from ...measures.survival.coxph import CoxPHMeasuresMixin
+from ...inference.survival.provider_tests import CoxPHInferenceMixin
 
 
-class CoxPH(BaseEstimator):
+class CoxPH(CoxPHMeasuresMixin, CoxPHInferenceMixin, ProviderModel):
     """Cox Proportional Hazards regression, fit by maximizing the
     (Breslow, by default) partial likelihood via Newton-Raphson.
 
@@ -75,14 +72,14 @@ class CoxPH(BaseEstimator):
         data with multiple rows per subject, supply the subject identifier
         as `cluster` so those rows are treated as one independent unit.
 
-    Attributes (set by `fit`)
-    -------------------------
-    coef_, standard_errors_, covariance_, z_scores_, p_values_,
-    confidence_intervals_, log_likelihood_, log_likelihood_null_,
-    n_iter_, converged_, convergence_message_, n_obs_, n_events_, n_features_in_,
-    feature_names_in_, baseline_hazard_, martingale_residuals_,
-    naive_covariance_, naive_standard_errors_, robust_covariance_,
-    robust_, n_clusters_, cluster_labels_
+    Notes
+    -----
+    Fitted attributes: ``coef_``, ``standard_errors_``, ``covariance_``, ``z_scores_``, ``p_values_``,
+    ``confidence_intervals_``, ``log_likelihood_``, ``log_likelihood_null_``,
+    ``n_iter_``, ``converged_``, ``convergence_message_``, ``n_obs_``, ``n_events_``, ``n_features_in_``,
+    ``feature_names_in_``, ``baseline_hazard_``, ``martingale_residuals_``,
+    ``naive_covariance_``, ``naive_standard_errors_``, ``robust_covariance_``,
+    ``robust_``, ``n_clusters_``, ``cluster_labels_``
     """
 
     def __init__(

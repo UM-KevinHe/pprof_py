@@ -14,13 +14,13 @@ from __future__ import annotations
 
 import numpy as np
 from scipy import stats
+from ...utils.numerical import covariance_from_information  # re-exported
 
 
 # REV-011: promoted to pprof_py.utils.numerical so the logistic/linear
 # fixed-effect code can share it.  Re-exported here so existing imports
 # keep working; the default (warn=False) preserves the historical
 # silent-fallback behaviour for these callers exactly.
-from ...utils.numerical import covariance_from_information  # noqa: E402,F401
 
 
 def standard_errors(covariance: np.ndarray) -> np.ndarray:

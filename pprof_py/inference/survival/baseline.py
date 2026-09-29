@@ -84,7 +84,3 @@ def compute_baseline_hazard(
         return pd.DataFrame(columns=["stratum", "time", "hazard", "survival"])
     return pd.concat(rows, ignore_index=True)
 
-
-# Backwards-compatible alias: earlier versions of this module only ever
-# implemented Breslow, under this name.
-breslow_baseline_hazard = compute_baseline_hazard

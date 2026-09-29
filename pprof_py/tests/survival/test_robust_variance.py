@@ -186,3 +186,15 @@ def test_robust_matches_real_r_auto_promoted_variance():
     )
     np.testing.assert_allclose(model.standard_errors_, r["se_robust"].to_numpy(), rtol=1e-8)
     np.testing.assert_allclose(model.naive_covariance_.diagonal() ** 0.5, r["se_naive"].to_numpy(), rtol=1e-8)
+
+
+
+def test_few_clusters_warn():
+    import warnings as _w
+    from pprof_py.inference.survival.robust import robust_covariance
+    naive = np.eye(2)
+    with pytest.warns(UserWarning, match="fewer than 30"):
+        robust_covariance(naive, np.ones((5, 2)))
+    with _w.catch_warnings():
+        _w.simplefilter("error", UserWarning)
+        robust_covariance(naive, np.ones((40, 2)))

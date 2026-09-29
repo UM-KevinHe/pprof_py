@@ -49,7 +49,7 @@ model.converged_         # always check this -- see "Convergence" below
 | `max_iter` | `20` | Maximum Newton–Raphson iterations (R: `iter.max`). |
 | `eps` | `1e-9` | Convergence tolerance on the *relative change in log-likelihood* between accepted steps (R: `eps`). |
 | `confidence_level` | `0.95` | Level for `confidence_intervals_` and the `summary()` interval columns. |
-| `robust` | `False` | Report the cluster-robust (sandwich) covariance instead of the model-based one. Without `cluster=`, every row is its own cluster. |
+| `robust` | `False` | Report the cluster-robust (sandwich) covariance instead of the model-based one. Without `cluster=`, every row is its own cluster. With fewer than 30 clusters it warns: the sandwich estimator can then understate standard errors (no small-sample correction is applied, as in R's `survival`). |
 
 `robust` is a *constructor* argument. `fit()` has no `robust` keyword — passing one raises
 `TypeError`.
@@ -73,7 +73,7 @@ CoxPH.fit(X, duration=None, event=None, start=None, stop=None,
 | `cluster` | no | Cluster label per row. **Implies robust variance**, regardless of the constructor's `robust`. |
 
 Rows may be in any order. The full list of input checks, and the exception raised by each, is in
-{ref}`survival_ref_data`.
+{ref}`data-preparation-guide`.
 
 ## Fitted attributes
 
@@ -106,6 +106,8 @@ Rows may be in any order. The full list of input checks, and the exception raise
 | `predict_survival_function(X, offset=None, stratum=None)` | `exp(-cumulative hazard)`, same shape. |
 | `score(X, duration=…, event=…, start=…, stop=…, strata=…, offset=…, sample_weight=…)` | The partial log-likelihood of the supplied data at the fitted coefficients (a `float`). |
 | `summary()` | `DataFrame` indexed by feature name with columns `coef`, `exp(coef)`, `se(coef)`, `z`, `p`, `lower_<level>%`, `upper_<level>%`. |
+| `calculate_standardized_measures(X, duration=…, event=…, start=…, stop=…, *, provider_id, offset=None, providers=None, stdz="indirect")` | Indirect and direct standardized ratios (SMR, SHR) per provider: a dict with an `"indirect"` table (`provider_id`, `indirect_ratio`, `observed`, `expected`, `person_time`) and/or a `"direct"` table (`provider_id`, `direct_ratio`, `observed`, `expected`, `n_pop`). See below. |
+| `test(X, duration=…, event=…, start=…, stop=…, *, provider_id, offset=None, providers=None, test_method="midp", null_model=None, level=0.95)` | Tests each provider's indirect ratio against 1 (the SMR tutorial's Section 4): a `DataFrame` indexed by provider with the provider-test columns plus `observed`, `expected`, `person_time`. See below. |
 
 `predict_cumulative_hazard` / `predict_survival_function` are evaluated **only at the stratum's
 event times** — there is no `times=` argument. To read the step function at arbitrary times, forward-fill:
@@ -160,6 +162,36 @@ stage2.baseline_hazard_                    # the "expected" side of the comparis
 
 `stage2.coef_` is an empty array and `stage2.summary()` an empty table; the result of interest is the baseline hazard.
 The full method is in Chapter 4 of the tutorial.
+
+`calculate_standardized_measures` does both stages from `stage1` and adds direct standardization:
+
+```python
+m = stage1.calculate_standardized_measures(X, start=np.zeros(n), stop=time, event=event,
+                                           provider_id=provider, stdz=["indirect", "direct"])
+```
+
+With `eta_i = X_i @ coef_ + offset_i`, a national baseline `Lambda_0` (the Breslow estimator over all rows with `eta` as
+offset: He and Schaubel's two-stage estimate for a fit stratified by provider, the pooled model's for an unstratified
+fit) and each provider's baseline `Lambda_0j` (the Breslow estimator over its rows at the same coefficients):
+
+- indirect ratio `O_j / E_j`: provider j's observed events over `E_j = sum_{i in j} exp(eta_i) [Lambda_0(stop_i) -
+  Lambda_0(start_i)]`; the `E_j` add up to the total observed events;
+- direct ratio `E^(j) / O`: `E^(j) = sum_{all i} exp(eta_i) [Lambda_0j(stop_i) - Lambda_0j(start_i)]`, the events
+  expected if every patient had provider j's baseline, over the total observed `O`.
+
+These follow the SMR tutorial's definitions and match R's `survival` (`basehaz` of the stratified model and of the
+offset-only model) to 1e-14. Baselines are Breslow estimators whatever `ties` fitted the coefficients; rows are
+unweighted. A provider's baseline is flat after its last event, so its direct ratio understates a hazard that
+continues over the population's later follow-up.
+
+`test` treats `O_j` as Poisson with mean `E_j`. `test_method="midp"` (the default) is the two-sided mid-p test
+(tutorial Eq. 10), as a z-statistic (Eq. 14) that `null_model` calibrates: the theoretical null, or an empirical null
+such as the tutorial's, grouped by quartiles of person-time (`EmpiricalNull.fitter(size=person_time, n_groups=4,
+estimator=HUBER_RLM)`). Its limits invert the calibrated test (Section 4.2.2), so a provider is flagged exactly when its
+interval excludes 1; a side on which the calibrated test never rejects has limit 0 or infinity. `test_method="exact"` is
+the exact Poisson test (Eq. 9, the doubled tail capped at 0.999) with Byar's limits when `E_j >= 100` and the exact
+chi-square limits otherwise (Eq. 11-12), under the theoretical null. Remark 4.1's exact limits are reproduced; its
+"Byar" row is Eq. 11 evaluated at `O + 0.5` in both limits, not Eq. 11 as printed, which is what `test` uses.
 
 ## R parity cheat-sheet
 

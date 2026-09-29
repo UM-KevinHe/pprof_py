@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.sparse import coo_matrix, csr_matrix
@@ -35,9 +37,9 @@ from scipy.sparse.linalg import splu
 from scipy.stats import t
 
 from ...exceptions import NotFittedError
-from ...inference.linear import RandomEffectInferenceMixin
-from ...measures.linear import RandomEffectMeasuresMixin
-from ...plotting.linear import RandomEffectPlottingMixin
+from ...inference.linear import LinearRandomEffectInferenceMixin
+from ...measures.linear import LinearRandomEffectMeasuresMixin
+from ...plotting.linear import LinearRandomEffectPlottingMixin
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +58,10 @@ class _FitState:
 
 
 class LinearRandomEffectModel(
-    RandomEffectInferenceMixin,
-    RandomEffectMeasuresMixin,
-    RandomEffectPlottingMixin,
+    LinearRandomEffectInferenceMixin,
+    LinearRandomEffectMeasuresMixin,
+    LinearRandomEffectPlottingMixin,
+    ProviderModel,
 ):
     """Gaussian linear mixed-effects model with random intercepts, lme4-style.
 
@@ -128,9 +131,12 @@ class LinearRandomEffectModel(
         self.sigma_: Optional[float] = None
         self.random_effect_sd_: Optional[Dict[str, float]] = None
         self.theta_: Optional[Array] = None
-        self.groups_: Optional[Union[Dict[str, Array], Array]] = None
-        self.group_sizes_: Optional[Union[Dict[str, Array], Array]] = None
-        self.group_indices_: Optional[Array] = None
+        self.provider_ids_: Optional[Array] = None
+        self.provider_sizes_: Optional[Array] = None
+        self.provider_indices_: Optional[Array] = None
+        self.cluster_ids_: Optional[Dict[str, Array]] = None
+        self.cluster_sizes_: Optional[Dict[str, Array]] = None
+        self.cluster_indices_: Optional[Dict[str, Array]] = None
         self.xbeta_: Optional[Array] = None
         self.covariate_names_: Optional[List[str]] = None
         self.outcome_: Optional[Array] = None
@@ -171,9 +177,13 @@ class LinearRandomEffectModel(
         self._weights: Optional[Array] = None
         self._alpha_dict: Optional[Dict[str, pd.Series]] = None
         self._var_alpha_dict: Optional[Dict[str, float]] = None
-        self._groups_dict: Optional[Dict[str, Array]] = None
-        self._group_sizes_dict: Optional[Dict[str, Array]] = None
         self.result = None  # stub for plotting mixin protocol
+
+    def _require_one_factor(self) -> None:
+        """Provider profiling (measures, intervals, tests, plots) needs a fit without cluster_vars."""
+        if len(self._group_vars) > 1:
+            raise ValueError("Provider profiling with LinearRandomEffectModel needs a fit without cluster_vars; "
+                             f"this model has {self._group_vars[1:]}.")
 
     def _check_is_fitted(self) -> None:
         """Raise `NotFittedError` if the model has not been fitted yet."""
@@ -192,8 +202,8 @@ class LinearRandomEffectModel(
         X: pd.DataFrame,
         y_var: str,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        provider_var: Optional[str] = None,
+        cluster_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         weights_var: Optional[str] = None,
         include_intercept: bool = True,
@@ -212,10 +222,12 @@ class LinearRandomEffectModel(
             Response variable column name.
         x_vars : list of str, optional
             Fixed-effect covariate columns.
-        group_vars : list of str
-            Random-intercept grouping variables.
-        group_var : str, optional
-            Backward-compatible alias for one grouping variable.
+        provider_var : str
+            Column of provider IDs; its random intercepts are the provider effects that
+            the measures, tests, and plots report.
+        cluster_vars : str or list of str, optional
+            Further grouping columns with their own (crossed) random intercepts, e.g.
+            the hospital in Stage 2 of the three-stage model.
         offset_var : str, optional
             Known offset column added to the linear predictor as-is.
         weights_var : str, optional
@@ -233,12 +245,12 @@ class LinearRandomEffectModel(
             verbose = self.verbose
         use_reml = self.reml if reml is None else bool(reml)
 
-        if group_vars is None and group_var is not None:
-            group_vars = [group_var]
-        elif isinstance(group_vars, str):
-            group_vars = [group_vars]
-        elif group_vars is not None:
-            group_vars = list(group_vars)
+        if provider_var is None:
+            raise ValueError("provider_var is required.")
+        if isinstance(cluster_vars, str):
+            cluster_vars = [cluster_vars]
+        group_vars = [provider_var, *(cluster_vars or [])]
+        self._provider_var = provider_var
 
         if not group_vars:
             raise ValueError("At least one grouping variable is required")
@@ -305,8 +317,7 @@ class LinearRandomEffectModel(
             self._weights = w
 
         # Group coding.
-        self.groups_ = {}
-        self.group_sizes_ = {}
+        sizes_by_var = []
         self._group_indices = []
         self._n_groups = []
         self._group_labels = []
@@ -321,8 +332,7 @@ class LinearRandomEffectModel(
             self._group_indices.append(idx)
             self._n_groups.append(len(labels))
             self._group_labels.append(labels)
-            self.groups_[gv] = labels
-            self.group_sizes_[gv] = sizes
+            sizes_by_var.append(sizes)
 
         self._q_slices = []
         start = 0
@@ -462,19 +472,15 @@ class LinearRandomEffectModel(
         vcov = self._fixed_effect_vcov(theta_opt, final.beta)
 
         # ---- Mixin-compatibility attributes ----
-        # The inference, measures, and plotting mixins expect flat
-        # (single-grouping-variable) attributes.  When there is exactly
-        # one grouping variable, expose the flat form directly.
-        # Multi-group models retain the dict form and can be accessed
-        # via get_random_effects() / _alpha_dict.
-        self._groups_dict = dict(self.groups_)
-        self._group_sizes_dict = dict(self.group_sizes_)
+        self.provider_ids_ = self._group_labels[0]
+        self.provider_sizes_ = sizes_by_var[0]
+        self.provider_indices_ = self._group_indices[0]
+        self.cluster_ids_ = {gv: self._group_labels[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_sizes_ = {gv: sizes_by_var[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_indices_ = {gv: self._group_indices[j] for j, gv in enumerate(group_vars) if j > 0}
 
         if len(group_vars) == 1:
             gv0 = group_vars[0]
-            self.groups_ = self._groups_dict[gv0]
-            self.group_sizes_ = self._group_sizes_dict[gv0]
-            self.group_indices_ = self._group_indices[0]
             self.coefficients_ = {
                 "beta": pd.Series(
                     self._beta, index=self._beta_names, dtype=float
@@ -491,7 +497,6 @@ class LinearRandomEffectModel(
                 ),
             }
         else:
-            self.group_indices_ = None
             self.coefficients_ = {
                 "beta": pd.Series(
                     self._beta, index=self._beta_names, dtype=float
@@ -851,21 +856,22 @@ class LinearRandomEffectModel(
 
     def get_random_effects(
         self,
-        group_var: Optional[str] = None,
+        var: Optional[str] = None,
     ) -> pd.Series:
         """Return BLUPs for the given grouping variable."""
+        var = self._provider_var if var is None else var
         if self._alpha_dict is None:
             raise ValueError("Model has not been fitted")
         re = self._alpha_dict
-        if group_var is None:
+        if var is None:
             if len(re) != 1:
                 raise ValueError(
-                    f"Specify group_var; available={list(re)}"
+                    f"Specify var; available={list(re)}"
                 )
             return list(re.values())[0]
-        if group_var not in re:
-            raise ValueError(f"Unknown group_var '{group_var}'")
-        return re[group_var]
+        if var not in re:
+            raise ValueError(f"Unknown grouping variable '{var}'")
+        return re[var]
 
     def get_sigma(self) -> float:
         """Profiled residual standard deviation.
@@ -880,28 +886,29 @@ class LinearRandomEffectModel(
 
     def get_random_effect_sd(
         self,
-        group_var: Optional[str] = None,
+        var: Optional[str] = None,
     ) -> Union[float, Dict[str, float]]:
         """Estimated random-effect standard deviation.
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         float or dict
         """
+        var = self._provider_var if var is None else var
         if self.random_effect_sd_ is None:
             raise ValueError("Model has not been fitted")
-        if group_var is None:
+        if var is None:
             if len(self.random_effect_sd_) != 1:
                 return dict(self.random_effect_sd_)
             return next(iter(self.random_effect_sd_.values()))
-        if group_var not in self.random_effect_sd_:
-            raise ValueError(f"Unknown group_var '{group_var}'")
-        return float(self.random_effect_sd_[group_var])
+        if var not in self.random_effect_sd_:
+            raise ValueError(f"Unknown grouping variable '{var}'")
+        return float(self.random_effect_sd_[var])
 
     # ------------------------------------------------------------------
     # Prediction
@@ -912,8 +919,7 @@ class LinearRandomEffectModel(
         X: pd.DataFrame,
         *,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        re_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         use_re: bool = False,
     ) -> Array:
@@ -945,22 +951,12 @@ class LinearRandomEffectModel(
             eta = X_fe @ beta
 
         if use_re:
-            if group_vars is None and group_var is not None:
-                group_vars = [group_var]
-            elif isinstance(group_vars, str):
-                group_vars = [group_vars]
-            elif group_vars is None:
-                group_vars = list(self._group_vars)
-            else:
-                group_vars = list(group_vars)
+            re_vars = list(self._group_vars) if re_vars is None else ([re_vars] if isinstance(re_vars, str) else list(re_vars))
+            unknown = [v for v in re_vars if v not in self._group_vars]
+            if unknown:
+                raise ValueError(f"Unknown grouping variables {unknown}; fitted: {self._group_vars}")
 
-            if list(group_vars) != list(self._group_vars):
-                raise ValueError(
-                    f"group_vars must match fitted grouping variables: "
-                    f"{self._group_vars}"
-                )
-
-            for gv in group_vars:
+            for gv in re_vars:
                 re = self._alpha_dict[gv]
                 groups_new = X[gv].astype(str).values
                 # pandas Index/Series labels may not be strings, so use

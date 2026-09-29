@@ -85,13 +85,13 @@ _AUTO = {
 }
 
 
-def _provider_index(provider, n: int) -> pd.Index:
-    if provider is None:
-        index = pd.RangeIndex(n, name="provider")
+def _provider_index(provider_id, n: int) -> pd.Index:
+    if provider_id is None:
+        index = pd.RangeIndex(n, name="provider_id")
     else:
-        index = pd.Index(np.asarray(provider).ravel(), name="provider")
+        index = pd.Index(np.asarray(provider_id).ravel(), name="provider_id")
         if len(index) != n:
-            raise ValueError("provider must have one entry per estimate.")
+            raise ValueError("provider_id must have one entry per estimate.")
     if not index.is_unique:
         raise ValueError("provider identifiers must be unique.")
     return index
@@ -121,13 +121,13 @@ class MeasureFrame:
     reference_value: Optional[float] = None
 
     @classmethod
-    def from_arrays(cls, estimate, se, provider=None, *, measure=None, reference_value=None) -> "MeasureFrame":
+    def from_arrays(cls, estimate, se, provider_id=None, *, measure=None, reference_value=None) -> "MeasureFrame":
         """Build from estimates and standard errors computed anywhere."""
         est = np.asarray(estimate, dtype=np.float64).ravel()
         s = np.asarray(se, dtype=np.float64).ravel()
         if est.shape != s.shape:
             raise ValueError("estimate and se must have the same length.")
-        return cls(est, s, _provider_index(provider, est.size), measure, reference_value)
+        return cls(est, s, _provider_index(provider_id, est.size), measure, reference_value)
 
     @classmethod
     def from_frame(cls, frame: pd.DataFrame, *, estimate: str = "estimate", se: str = "se",
@@ -165,11 +165,11 @@ class ZFrame:
     df: Optional[Union[float, np.ndarray]] = None
 
     @classmethod
-    def from_arrays(cls, z, provider=None) -> "ZFrame":
+    def from_arrays(cls, z, provider_id=None) -> "ZFrame":
         """Wrap z-statistics computed elsewhere (for example Poisson mid-p z-scores)."""
         zz = np.asarray(z, dtype=np.float64).ravel().copy()
         zz[~np.isfinite(zz)] = np.nan
-        return cls(zz, _provider_index(provider, zz.size))
+        return cls(zz, _provider_index(provider_id, zz.size))
 
     @property
     def has_intervals(self) -> bool:

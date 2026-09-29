@@ -14,8 +14,8 @@ project = 'pprof_py'
 copyright = '2025, Kevin He'
 author = 'Kevin He'
 
-release = '0.4.1'
-version = '0.4'
+release = '0.5.0'
+version = '0.5'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -51,7 +51,7 @@ bibtex_bibfiles = ['references.bib']
 bibtex_default_style = 'unsrt'
 bibtex_reference_style = 'author_year'
 
-autosummary_generate = True
+autosummary_generate = False  # no page uses autosummary directives
 
 # templates_path = ['_templates']  # No custom templates yet
 exclude_patterns = []
@@ -78,7 +78,7 @@ napoleon_use_rtype = True
 
 autodoc_member_order = 'bysource'
 autodoc_default_options = {
-    'exclude-members': '__weakref__, __sklearn_tags__, set_output, get_params, set_params',
+    'exclude-members': '__weakref__, get_params, set_params',
 }
 
 intersphinx_mapping = {

@@ -26,16 +26,16 @@ X_COLS = ["x1", "x2", "x3"]
 ```python
 from pprof_py.data import validate_and_convert_inputs, check_missingness, check_variation, run_structural_checks
 
-v = validate_and_convert_inputs(df, x_vars=X_COLS, y_var="event", group_var="provider")
-v.X.shape, v.y.shape, v.groups.shape, v.covariate_names
+v = validate_and_convert_inputs(df, x_vars=X_COLS, y_var="event", provider_var="provider")
+v.X.shape, v.y.shape, v.provider_id.shape, v.covariate_names
 ```
 
 ```text
-validate_and_convert_inputs(X, y=None, groups=None, x_vars=None, y_var=None, group_var=None, *,
+validate_and_convert_inputs(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None, *,
                             n_var=None, obs_id_var=None, use_dataprep=False, dataprep_options=None) -> ValidatedInputs
 ```
 
-The returned `ValidatedInputs` has `X`, `y`, `groups`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — and `covariate_names`. The structural checks in `pprof_py.data`
+The returned `ValidatedInputs` has `X`, `y`, `provider_id`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — and `covariate_names`. The structural checks in `pprof_py.data`
 take a `DataFrame` and column names:
 
 | Function | Behaviour |
@@ -46,7 +46,7 @@ take a `DataFrame` and column names:
 | `check_vif(data, x_columns, threshold=10)` | logs a warning for covariates above the threshold |
 | `run_structural_checks(data, y_col, x_cols, group_col, *, threshold_cor=0.9)` | runs the default pipeline; returns `None` |
 
-The logging-only checks accept a keyword-only `_logger`; `tests/test_infrastructure.py` still passes a logger positionally, which is why several of its tests fail.
+The logging-only checks accept a keyword-only `_logger`.
 
 ## `DataPrep`
 
@@ -56,9 +56,37 @@ from pprof_py.data import DataPrep, DataPrepOptions
 clean = DataPrep(df, "event", X_COLS, "provider", options=DataPrepOptions(), check=True).data_prep()   # cleaned DataFrame
 ```
 
-`DataPrep(data, Y_char, X_char, prov_char, options=None, check=True, logging=logging)` runs `check_missingness`, `check_variation`, `check_correlation`, `check_vif`,
+`DataPrep(data, Y_char, X_char, prov_char, options=None, n_char=None, check=True, logging=logging)` runs `check_missingness`, `check_variation`, `check_correlation`, `check_vif`,
 `provider_screening`, `filter_small_providers` and `log_no_all_event_providers` in turn; `data_prep()` returns the cleaned frame. `DataPrepOptions` defaults:
 `cutoff=10`, `screen_providers=False`, `log_event_providers=False`, `threshold_cor=0.9`, `threshold_vif=10`, `binary_response=False`. `LogisticFixedEffectModel` builds these options from its own constructor arguments (`cutoff`, `screen_providers`, `log_event_providers`, `threshold_cor`, `threshold_vif`).
+Screening keeps providers with **more than** `cutoff` records, as R's `glmm.data.prep` does. `n_char` names a column of binomial trials:
+the response is then an event count between 0 and the trials, and screening still counts records. `LogisticFixedEffectModel.fit(..., n_var=...)`
+passes it, so binomial fits can use `DataPrep`.
+
+## `glmm_data_prep`: data for the three-stage model
+
+```python
+from pprof_py.data import glmm_data_prep
+
+prep = glmm_data_prep(df, y_var="event", provider_var="provider", cluster_var="cluster", cutoff=10)
+prep.data           # screened records with provider_size, y_adj, cell_id, included
+prep.cell_sizes     # records in every provider x cluster combination, cluster-major
+```
+
+`glmm_data_prep(data, y_var, provider_var, cluster_var, cutoff=10)` reproduces R's `glmm.data.prep` row for row. It keeps providers
+with more than `cutoff` records; sets `y_adj` to the binary outcome raised by `0.01 / provider_size` for providers with no events and
+lowered by that amount for providers with all events; sorts by cluster, then provider, keeping the data order within each cell; and
+numbers the provider x cluster cells in that order (`cell_id`), with `included = 1` for cells with more than `cutoff` records. It
+returns a `GLMMPreparedData` with `data`, `cell_sizes`, `n_providers` and `n_clusters`.
+
+| R (`glmm.data.prep`) | pprof_py |
+|---|---|
+| `fac.size` | `provider_size` |
+| `Y.adj` | `y_adj` |
+| `prov_ID` | `cell_id` |
+| `included` | `included` |
+| `n.fac.hosp` | `cell_sizes` |
+| `fac`, `hosp` | `n_providers`, `n_clusters` |
 
 ## Inter-unit reliability (IUR)
 
@@ -83,8 +111,8 @@ boot.decile_table()
 split = SplitHalfIUR(n_iter=5, seed=1).fit(obs, exp, provider)
 split.summary()                                                     # one column per correlation / kappa variant
 
-fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, group_var="provider")
-direct = DirectIUR().fit(fe.group_sizes_, fe.coefficients_["gamma"], np.sqrt(fe.variances_["gamma"]))
+fe = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, provider_var="provider")
+direct = DirectIUR().fit(fe.provider_sizes_, fe.coefficients_["gamma"], np.sqrt(fe.variances_["gamma"]))
 direct.iur_
 direct.decile_table()
 ```

@@ -4,7 +4,7 @@
 `pprof_py` organizes its models into three families — **logistic**,
 **linear**, and **survival** — each with its own estimator classes.
 Rather than forcing all models through a single abstract base class, the
-package uses a combination of **scikit-learn conventions** and
+package uses a combination of **a small common base class** and
 **structural-typing protocols** to provide a consistent API while
 respecting each model family's distinct statistical requirements.
 
@@ -23,7 +23,7 @@ linear random-effect model, and a Cox proportional hazards model share
 almost no fitting logic. Forcing them into a common inheritance tree
 added complexity without adding value.
 
-**scikit-learn estimator conventions.** Most model classes follow scikit-learn's estimator interface. The exceptions are `LinearFixedEffectModel`, `LinearRandomEffectModel`, `LogisticFixedEffectModel` and `LogisticRandomEffectModel`, which do not inherit `BaseEstimator` and have no `get_params()` / `set_params()`:
+**One base class.** Every model class inherits `pprof_py.base.ProviderModel`, which fixes these conventions:
 
 - Constructor arguments define model *configuration* (e.g., `ties`,
   `confidence_level`).
@@ -31,10 +31,10 @@ added complexity without adding value.
 - Fitted attributes end with a trailing underscore (e.g., `coef_`,
   `standard_errors_`, `log_likelihood_`).
 - `get_params()` / `set_params()` return and modify constructor
-  parameters, not fitted results.
+  parameters, not fitted results, and the `repr` lists the parameters
+  that differ from their defaults.
 
-Survival models (`CoxPH`, `PenalizedCoxPH`, etc.) inherit directly
-from `sklearn.base.BaseEstimator`.
+pprof_py does not depend on scikit-learn.
 
 **Structural-typing protocols.** Common *interface contracts* — methods
 like `summary()`, `test()`, and plotting methods — are defined as
@@ -46,7 +46,7 @@ explicit inheritance is needed (though it is allowed).
 
 | Family | Module | Classes |
 |--------|--------|---------|
-| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
+| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
 | Linear | `pprof_py.models.linear` | `LinearFixedEffectModel`, `LinearRandomEffectModel`, `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear` |
 | Survival | `pprof_py.models.survival` | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`, `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`, `CauseSpecificCoxPH`, `FineGrayPH` |
 | Selection | `pprof_py.selection` | `CoxPHSelector` |
@@ -57,7 +57,7 @@ All models are importable from the package root:
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticMixedEffectModel,
+    LogisticFERandomClusterModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -86,7 +86,7 @@ runtime if needed.
 
 Models that provide a `summary()` method satisfy this protocol.
 
-```python
+```{code-block} python
 class SummaryMixin(Protocol):
     def summary(
         self,
@@ -107,10 +107,17 @@ $$
 
 Models that provide a `test()` method for hypothesis testing.
 
-```python
+```{code-block} python
 class TestMixin(Protocol):
-    def test(self, *args, **kwargs) -> Any: ...
+    def test(self, providers: Any = None, *, reference: Any = ..., null_model: Any = None,
+             alternative: str = "two_sided", level: float = 0.95, critical: Any = None,
+             **kwargs: Any) -> Any: ...
 ```
+
+Every `test()` returns a `DataFrame` indexed by provider with the columns
+`pprof_py.inference.PROVIDER_TEST_COLUMNS`, where `flag` is +1 above the
+reference, −1 below, 0 not significant and NA not tested; the family
+adds its own statistics (`test_method=`).
 
 Common tests include the Wald Z-test:
 
@@ -126,7 +133,7 @@ Wald tests for survival models).
 
 Models that provide standard diagnostic and summary plots.
 
-```python
+```{code-block} python
 class PlotMixin(Protocol):
     def plot_funnel(self, *args, **kwargs) -> None: ...
     def plot_residuals(self, *args, **kwargs) -> None: ...
@@ -140,9 +147,9 @@ All plotting uses Matplotlib as the primary backend. The package-wide
 visual style is defined in `pprof_py.plotting.style`.
 
 Each model family exposes its plotting methods through a dedicated
-`PlottingMixin` (e.g., `plotting.linear.RandomEffectPlottingMixin`,
-`plotting.logistic.RandomEffectPlottingMixin`,
-`plotting.logistic.FixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticMixedEffectModel` have neither.
+`PlottingMixin` (e.g., `plotting.linear.LinearRandomEffectPlottingMixin`,
+`plotting.logistic.LogisticRandomEffectPlottingMixin`,
+`plotting.logistic.LogisticFixedEffectPlottingMixin`). Both linear models (fixed and random effect) provide `plot_residuals` and `plot_qq`; on `LogisticFixedEffectModel` they raise `NotImplementedError`, and `LogisticRandomEffectModel` and `LogisticFERandomClusterModel` have neither.
 
 ## Common Fitted Attributes
 
@@ -178,13 +185,16 @@ The naming conventions differ slightly between families.
 | `residuals_` | Residuals (response scale) |
 | `converged_` | Boolean convergence flag |
 
-This table describes the random-effect classes. The fixed-effect classes have `coefficients_['gamma']` (provider effects) instead of `'alpha'`, `variances_['gamma']`, no `loglike_` or `converged_`, and `LogisticFixedEffectModel` adds `auc_`. Exact shapes and the different `summary()` layouts are listed in the reference ({ref}`ll_ref_conventions`).
+This table describes the random-effect classes. The fixed-effect classes have `coefficients_['gamma']` (provider effects) instead of `'alpha'`, `variances_['gamma']`, no `loglike_` or `converged_`, and `LogisticFixedEffectModel` adds `auc_`. Exact shapes and the different `summary()` layouts are listed in the reference pages ({ref}`ll_ref_linear`, {ref}`ll_ref_logistic`).
 
 ## Typical Workflow
 
+These are templates on your own data (`X`, `time`, `event`, `df`, ...), not
+runnable examples; each model's chapter has a complete one.
+
 **Survival model:**
 
-```python
+```{code-block} python
 from pprof_py import CoxPH
 
 # 1. Configure
@@ -208,11 +218,11 @@ model.predict_survival_function(X_new)
 
 **Logistic fixed-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LogisticFixedEffectModel
 
 model = LogisticFixedEffectModel()
-model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -220,15 +230,15 @@ model.calculate_standardized_measures()
 
 **Linear random-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LinearRandomEffectModel
 
 model = LinearRandomEffectModel(verbose=False)
-model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs
-model.random_effect_sd_           # {group_var: sigma_u}
+model.random_effect_sd_           # {provider_var: sigma_u}
 model.summary()
 model.test()                     # reference 0 (the random-effect mean) by default
 model.calculate_standardized_measures(stdz='indirect')
@@ -238,11 +248,11 @@ model.plot_provider_effects()
 
 **Logistic random-effect model:**
 
-```python
+```{code-block} python
 from pprof_py import LogisticRandomEffectModel
 
 model = LogisticRandomEffectModel(verbose=False)
-model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects (log-odds)
 model.get_random_effects()        # BLUPs

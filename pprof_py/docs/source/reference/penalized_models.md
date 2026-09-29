@@ -2,7 +2,7 @@
 # Reference: penalized, group-lasso and provider-penalized linear and logistic models
 
 Elastic-net (glmnet-style), group-lasso and provider-penalized estimators, fitted along a path of penalty strengths λ by proximal-Newton
-with coordinate descent. All follow the scikit-learn interface (`get_params`, `set_params`, `clone`).
+with coordinate descent. All share pprof_py's `ProviderModel` interface (`get_params`, `set_params`).
 
 | Estimator | Outcome | Penalty | Notes |
 |---|---|---|---|
@@ -40,7 +40,7 @@ path.coef_at(path.lambda_path_[5])                              # coefficients a
 path.summary(which=-1)                                          # feature, coef, nonzero at one path step
 
 cv = PenalizedLinearCV(n_lambda=20, n_folds=5, random_state=0).fit(Xa, y)
-cv.lambda_min_, cv.lambda_1se_, cv.coef_                        # coef_ is the 1-SE solution (use_1se=True by default)
+cv.lambda_min_, cv.lambda_1se_, cv.coef_                        # coef_ is the 1-SE solution (se_rule="1se" by default)
 
 groups = np.array([1, 1, 2])                                    # one label per column; 0 = unpenalized
 gl = GroupLassoLinear(groups=groups, n_lambda=10).fit(Xa, y)
@@ -50,17 +50,21 @@ lg = PenalizedLogistic(alpha=1.0, n_lambda=20).fit(Xa, yb)
 lg.predict_proba(Xa[:3], lambda_value=lg.lambda_path_[5])
 
 pp = ProviderPenalizedLogistic(n_lambda=8).fit(Xa, yb, provider_id=provider)
-pp.predict_provider_effect().head()                             # provider, gamma at the last lambda
+pp.predict_provider_effect().head()                             # provider_id, gamma at the last lambda
 ```
+
+Fold assignment is random unless `random_state` is set: with `random_state=None` (the default), the folds, and
+so the selected λ, change between calls.
 
 ## Conventions shared by all of them
 
 - **Path estimators** (`PenalizedLinear`, `GroupLassoLinear`, `PenalizedLogistic`, `GroupLassoLogistic`, `ProviderPenalizedLogistic`) expose
   `coef_path_` (`n_lambda × p`), `intercept_path_`, `lambda_path_` (descending) and further `*_path_` arrays. They have **no `coef_`**;
   use `coef_at(lambda_value)` (interpolated), `intercept_at` (logistic), or index the path.
-- **`*CV` estimators** refit on all data and expose `coef_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `cv_mean_*_`, `cv_se_*_`, `cv_std_*_`, and `model_`
-  (the refit path estimator). With the default `use_1se=True`, `lambda_` is `lambda_1se_`. The error attributes are named for the loss:
-  `cv_*_mse_` (linear) and `cv_*_deviance_` (logistic).
+- **`*CV` estimators** refit on all data. Every CV class, here and in the survival family, exposes the same attributes:
+  `lambda_path_`, `cv_mean_deviance_` and `cv_se_deviance_` (the cross-validated deviance and its standard error at each lambda;
+  for linear models the deviance is the residual sum of squares), `lambda_min_`, `lambda_1se_`, `lambda_` (the one `se_rule` selects;
+  with the default `"1se"`, `lambda_1se_`), `model_` (the full-data fit) and `coef_` (at `lambda_`).
 - `lambda_path` may be `None` (automatic path of `n_lambda` values from `lambda_max_`), or explicit values. The automatic path always returns
   `n_lambda` points; glmnet may stop earlier.
 - `standardize=True` scales columns by their population standard deviation before penalizing and returns coefficients on the original scale.
@@ -68,6 +72,15 @@ pp.predict_provider_effect().head()                             # provider, gamm
 - Weights and offsets: every `fit` takes `sample_weight` and `offset`.
 - `predict(X, lambda_value=None)` uses the last λ on the path when `lambda_value` is omitted (path estimators) or `coef_` (CV estimators).
 - A predictor with zero weighted variance triggers that module's own `DegenerateFeatureWarning`.
+- Group penalties are the standardized group lasso that R's `grplasso` fits: with `orthogonalize=True` (the default) each
+  penalized group is orthogonalized within itself before penalizing; `orthogonalize=False` fits the plain group lasso on the
+  standardized columns, which R has no counterpart for. `group_multiplier` gives one multiplier per penalized group (default
+  `sqrt(group size)`); `0` in `groups` marks unpenalized columns, which must be contiguous.
+- `ProviderPenalizedLogistic` matches R's `grp.lasso(prov.char=)` (`penalty_type="group_lasso"`) and `pp.lasso(prov.char=)`
+  (`penalty_type="elastic_net"`, `alpha=1`). `alpha` follows the penalty type: the elastic net's mixing (default 1, the
+  lasso); `"group_lasso"` is the pure group lasso (only `None` or `0`); `"sparse_group_lasso"` requires it. `lambda_max_` is
+  taken with the provider effects, the intercept and any unpenalized coefficients at their joint MLE, and at or above it the
+  path returns that null point exactly. With one provider the group path is `GroupLassoLogistic`'s.
 
 ## Signatures
 
@@ -84,6 +97,7 @@ PenalizedLinear(
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 
@@ -98,12 +112,13 @@ PenalizedLinearCV(
     fit_intercept: 'bool' = True,
     n_folds: 'int' = 10,
     fold_id: 'Optional[np.ndarray]' = None,
-    use_1se: 'bool' = True,
+    se_rule: 'str' = '1se',
     random_state: 'Optional[int]' = None,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 
@@ -117,6 +132,7 @@ GroupLassoLinear(
     penalty_factor: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     use_active_set: 'bool' = True,
     max_outer_iter: 'int' = 100,
@@ -153,6 +169,7 @@ GroupLassoLogistic(
     penalty_factor: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     use_active_set: 'bool' = True,
     max_outer_iter: 'int' = 100,
@@ -165,21 +182,23 @@ GroupLassoLogistic(
 ```text
 ProviderPenalizedLogistic(
     penalty_type: 'str' = 'elastic_net',
-    alpha: 'float' = 1.0,
+    alpha: 'Optional[float]' = None,
     groups: 'Optional[np.ndarray]' = None,
     group_multiplier: 'Optional[np.ndarray]' = None,
-    gamma_bound: 'float' = 10.0,
+    provider_bound: 'float' = 10.0,
     n_lambda: 'int' = 100,
     lambda_min_ratio: 'Optional[float]' = None,
     lambda_path: 'Optional[np.ndarray]' = None,
     penalty_factor: 'Optional[np.ndarray]' = None,
     standardize: 'bool' = True,
+    orthogonalize: 'bool' = True,
     fit_intercept: 'bool' = True,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-07,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
     provider_max_iter: 'int' = 10,
+    provider_tol: 'Optional[float]' = None,
 )
 ```
 
@@ -196,12 +215,13 @@ PenalizedLogisticCV(
     fit_intercept: 'bool' = True,
     n_folds: 'int' = 10,
     fold_id: 'Optional[np.ndarray]' = None,
-    use_1se: 'bool' = True,
+    se_rule: 'str' = '1se',
     random_state: 'Optional[int]' = None,
     max_outer_iter: 'int' = 100,
     outer_tol: 'float' = 1e-09,
     max_inner_iter: 'int' = 1000,
     inner_tol: 'float' = 1e-10,
+    use_active_set: 'bool' = False,
 )
 ```
 
@@ -212,7 +232,7 @@ PenalizedLogisticCV(
 | Estimator | Attributes |
 |---|---|
 | `PenalizedLinear` | `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`, `lambda_min_ratio_`, `penalty_factor_`, `column_scale_`, `deviance_path_`, `deviance_ratio_path_`, `null_deviance_`, `log_likelihood_path_`, `n_nonzero_path_`, `converged_path_`, `n_obs_`, `n_features_in_`, `feature_names_in_` |
-| `PenalizedLinearCV` | `coef_`, `coef_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_path_`, `cv_mean_mse_`, `cv_se_mse_`, `cv_std_mse_`, `model_` |
+| `PenalizedLinearCV` | `coef_`, `coef_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`, `cv_std_deviance_`, `model_` |
 | `GroupLassoLinear` | `coef_path_`, `intercept_path_`, `lambda_path_`, `lambda_max_`, `column_scale_`, `deviance_path_`, `deviance_ratio_path_`, `null_deviance_`, `active_groups_path_`, `converged_path_`, `n_obs_`, `n_features_in_`, `feature_names_in_` (**no** `n_nonzero_path_`) |
 | `PenalizedLogistic` | as `PenalizedLinear` plus `n_iter_path_` |
 | `PenalizedLogisticCV` | `coef_`, `intercept_`, `coef_path_`, `intercept_path_`, `lambda_`, `lambda_min_`, `lambda_1se_`, `lambda_min_idx_`, `lambda_1se_idx_`, `lambda_path_`, `cv_mean_deviance_`, `cv_se_deviance_`, `cv_std_deviance_`, `model_` |
@@ -225,14 +245,18 @@ PenalizedLogisticCV(
 
 | Estimator | Methods |
 |---|---|
-| `PenalizedLinear` | `coef_at(lambda_value)`, `predict(X, lambda_value=None)`, `summary(which=-1)` → `feature`, `coef`, `nonzero` |
+| `PenalizedLinear` | `coef_at(lambda_value)`, `intercept_at(lambda_value)`, `predict(X, lambda_value=None)`, `summary(which=-1)` → `feature`, `coef`, `nonzero` |
 | `PenalizedLinearCV` | `predict(X, lambda_value=None)` |
-| `GroupLassoLinear` | `coef_at`, `predict`, `active_group_labels(which=-1)` (1-indexed group labels) |
+| `GroupLassoLinear` | `coef_at`, `intercept_at`, `predict`, `active_group_labels(which=-1)` (1-indexed group labels) |
 | `PenalizedLogistic` | `coef_at`, `intercept_at`, `predict_proba(X, lambda_value=None)`, `predict(X, lambda_value=None, threshold=0.5)`, `summary(which=-1)` |
 | `PenalizedLogisticCV`, `GroupLassoLogisticCV` | `predict_proba`, `predict` |
-| `GroupLassoLogistic` | `coef_at`, `active_group_labels`, `predict_proba`, `predict` |
-| `ProviderPenalizedLogistic` | `predict_provider_effect(which=-1)` → `provider`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)` |
+| `GroupLassoLogistic` | `coef_at`, `intercept_at`, `active_group_labels`, `predict_proba`, `predict` |
+| `ProviderPenalizedLogistic` | `coef_at`, `intercept_at`; `predict_provider_effect(which=-1)` → `provider_id`, `gamma`; `predict_proba(X, provider_id=None, lambda_value=None, which=-1)`; `predict(..., threshold=0.5)`; `test(providers=None, *, test_method="poibin_exact", reference="median", null_model=None, alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1)`, the fixed-effect model's count test at one path point, with limits by inversion (unweighted fits; the CV class tests at its selected lambda) |
 | `ProviderPenalizedLogisticCV` | the same, with `which=None` (the selected λ) |
+
+`coef_at` and `intercept_at` interpolate linearly in log λ between path points and return the end points outside the
+path, in every penalized path class (logistic, linear, Cox and discrete-time survival). Predictions of the provider
+classes, and their provider effects, use the path point nearest to `lambda_value` instead.
 
 ## Agreement with glmnet
 

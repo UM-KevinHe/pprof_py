@@ -14,6 +14,7 @@ page is the compact reference for all four together, including
 from pprof_py.data.timedep import build_skeleton, tmerge, UpdateStream
 
 skeleton = build_skeleton(id=[1, 2, 3], tstop=[5.0, 8.0, 3.0])
+print(skeleton)
 ```
 ```
    id  tstart  tstop
@@ -29,8 +30,9 @@ subject's interval at every new update time and filling in one output
 column per `UpdateStream`:
 
 ```python
-treated = UpdateStream(id=[1, 1, 2], time=[2.0, 4.0], value=[1, 0])   # id=1: on at t=2, off at t=4
+treated = UpdateStream(id=[1, 1, 2], time=[2.0, 4.0, 3.0], value=[1, 0, 1])   # id 1: on at 2, off at 4; id 2: on at 3
 merged = tmerge(skeleton, tdc={"treated": treated})
+print(merged)
 ```
 ```
    id  tstart  tstop  treated
@@ -58,6 +60,7 @@ from pprof_py.data.timedep import survsplit
 
 split = survsplit(id=[1, 2, 3], tstart=[0, 0, 0], tstop=[5.0, 8.0, 3.0],
                    event=[1, 0, 1], cut=[2.0, 4.0])
+print(split)
 ```
 ```
    id  tstart  tstop  event tstart_bin_
@@ -86,6 +89,8 @@ or outside an interval's own endpoints does not create a zero-length
 row.
 
 ## `validate_fit_inputs`: what every Cox-family `fit()` already runs
+
+With the survival guide's `cohort` and `X` ([Chapter 0](../survival/00_start_here)):
 
 ```python
 from pprof_py.data.survival_validation import validate_fit_inputs

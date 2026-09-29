@@ -376,6 +376,120 @@ def rescale_group_multipliers(
     return gm
 
 
+
+def fit_group_multipliers(
+    group_multiplier: Optional[np.ndarray],
+    groups: np.ndarray,
+    fit_cols: np.ndarray,
+) -> np.ndarray:
+    """Group multipliers for the groups left after degenerate-column exclusion.
+
+    Parameters
+    ----------
+    group_multiplier : ndarray or None, shape (G,)
+        User multipliers, one per penalized group of the full design, in
+        canonical label order.  ``None`` gives ``sqrt`` of each group's
+        remaining size (grplasso's default).
+    groups : ndarray of int, shape (p,)
+        Canonical labels of the full design (from ``validate_groups``).
+    fit_cols : ndarray of bool, shape (p,)
+        Columns kept for fitting.
+
+    Returns
+    -------
+    ndarray, shape (G_fit,)
+        One multiplier per group that still has columns, in the order of
+        the canonical labels ``validate_groups`` assigns to the kept columns.
+        A group left without columns drops out with its multiplier.
+    """
+    kept = groups[fit_cols]
+    surviving = np.unique(kept[kept > 0])
+    if group_multiplier is None:
+        sizes = np.array([np.sum(kept == g) for g in surviving], dtype=np.intp)
+        return np.sqrt(sizes.astype(np.float64))
+    n_groups = int(groups.max())
+    sizes_full = np.array(
+        [np.sum(groups == g) for g in range(1, n_groups + 1)], dtype=np.intp,
+    )
+    gm = rescale_group_multipliers(group_multiplier, sizes_full, n_groups)
+    return gm[surviving - 1]
+
+
+
+
+def unpenalized_columns(
+    groups: np.ndarray,
+    group_weights: np.ndarray,
+    penalty_factor: np.ndarray,
+    alpha: float,
+) -> np.ndarray:
+    """Columns that carry no penalty under the sparse group lasso.
+
+    The penalty is ``lam * [(1 - alpha) * m_g * ||beta_g|| + alpha * pf_j *
+    |beta_j|]``, so a column is unpenalized when it is in group 0, or when
+    both of its terms vanish: ``(1 - alpha) * m_g == 0`` and
+    ``alpha * pf_j == 0``.  With ``alpha < 1`` and positive multipliers that
+    is group 0 exactly: a zero penalty factor inside a penalized group
+    removes only the column's L1 term.  These are the columns fitted at the
+    null point that sets ``lambda_max``.
+
+    Parameters
+    ----------
+    groups : ndarray of int, shape (p,)
+        Canonical group labels (0 = unpenalized, 1..G).
+    group_weights : ndarray, shape (G,)
+        Group multipliers ``m_g``.
+    penalty_factor : ndarray, shape (p,)
+    alpha : float
+
+    Returns
+    -------
+    ndarray of bool, shape (p,)
+    """
+    groups = np.asarray(groups)
+    gw = np.asarray(group_weights, dtype=np.float64)
+    pf = np.asarray(penalty_factor, dtype=np.float64)
+    in_group = groups > 0
+    m = np.zeros(groups.shape[0], dtype=np.float64)
+    m[in_group] = gw[groups[in_group] - 1]
+    return ~in_group | (((1.0 - alpha) * m == 0.0) & (alpha * pf == 0.0))
+
+
+PENALTY_TYPES = ("elastic_net", "group_lasso", "sparse_group_lasso")
+
+
+def resolve_penalty_alpha(penalty_type: str, alpha: Optional[float]) -> float:
+    """The mixing parameter a provider model's penalty type fits with.
+
+    ``"elastic_net"``: ``alpha`` (``None`` means 1, the lasso).
+    ``"group_lasso"``: the pure group lasso, alpha = 0; ``None`` or 0 only.
+    ``"sparse_group_lasso"``: ``alpha`` is required (0 = group lasso,
+    1 = lasso).
+    """
+    if penalty_type not in PENALTY_TYPES:
+        raise ValueError(
+            f"penalty_type must be one of {PENALTY_TYPES}, got {penalty_type!r}"
+        )
+    if penalty_type == "group_lasso":
+        if alpha is not None and float(alpha) != 0.0:
+            raise ValueError(
+                "penalty_type='group_lasso' is the pure group lasso (alpha=0); "
+                "use penalty_type='sparse_group_lasso' to add an L1 term"
+            )
+        return 0.0
+    if alpha is None:
+        if penalty_type == "sparse_group_lasso":
+            raise ValueError(
+                "penalty_type='sparse_group_lasso' needs alpha in [0, 1] "
+                "(0 = group lasso, 1 = lasso)"
+            )
+        return 1.0
+    value = float(alpha)
+    if not (np.isfinite(value) and 0.0 <= value <= 1.0):
+        raise ValueError(f"alpha must be in [0, 1], got {alpha!r}")
+    return value
+
+
 def sparse_group_lasso_penalty_value(
     beta: np.ndarray,
     alpha: float,
@@ -643,3 +757,25 @@ def compute_group_indices(
         group_starts[g - 1] = idx[0]
         group_ends[g - 1] = idx[-1] + 1
     return group_starts, group_ends
+
+
+def interpolate_path(lambda_path, path, lambda_value):
+    """Row of a regularization path at an arbitrary lambda.
+
+    Linear interpolation in ``log(lambda)`` between the two bracketing grid
+    points (glmnet's convention), and the first or last row outside the
+    fitted range. ``lambda_path`` is decreasing; ``path`` has one row (or
+    value) per lambda. Every penalized path class's ``coef_at`` and
+    ``intercept_at`` use this, so they interpolate identically.
+    """
+    lam_path = lambda_path
+    if lambda_value >= lam_path[0]:
+        return path[0].copy()
+    if lambda_value <= lam_path[-1]:
+        return path[-1].copy()
+    log_lam = np.log(lam_path)
+    log_val = np.log(lambda_value)
+    idx = np.searchsorted(-log_lam, -log_val) - 1
+    idx = max(0, min(idx, len(lam_path) - 2))
+    frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
+    return (1.0 - frac) * path[idx] + frac * path[idx + 1]

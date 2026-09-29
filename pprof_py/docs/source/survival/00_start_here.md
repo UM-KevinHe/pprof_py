@@ -1,6 +1,7 @@
 (survival_start)=
 # Survival Analysis in `pprof_py`: A Complete Guide
-### From Survival Analysis Theory to Practice
+
+*From survival analysis theory to practice*
 
 ---
 
@@ -161,9 +162,9 @@ print(pprof_py.__version__)
 
 Every code example in this guide assumes `cohort` (defined above) and the
 shared variables below are in memory. Chapters are otherwise independent,
-with three deliberate exceptions, each flagged where it occurs: Chapter 9 reuses
+with a few deliberate exceptions, each flagged where it occurs: Chapter 9 reuses
 `X_wide` from Chapter 8, Chapter 10 reuses `make_multi_year_records` from
-Chapter 5, and Chapters 6 and 7 build the extra columns they need themselves.
+Chapter 5, and Chapters 6, 7, 13 and 14 build the extra columns they need themselves.
 
 ```python
 # Shared variables assumed by the short snippets in Chapters 2-9

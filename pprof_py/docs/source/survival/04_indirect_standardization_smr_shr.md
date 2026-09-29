@@ -234,17 +234,17 @@ facility_table = (
     .groupby("facility_id").sum()
 )
 facility_table["SMR"] = facility_table["observed"] / facility_table["expected"]
-facility_table.head()
+print(facility_table.head())
 ```
 
 ```
-              observed   expected       SMR
+             observed  expected       SMR
 facility_id
-0                   11   7.579731  1.451239
-1                    8   7.736351  1.034079
-2                    7   4.249237  1.647355
-3                    4   7.573212  0.528177
-4                    9   6.273192  1.434676
+0                  11  7.579731  1.451239
+1                   8  7.736351  1.034079
+2                   7  4.249237  1.647355
+3                   4  7.573212  0.528177
+4                   9  6.273192  1.434676
 ```
 
 A useful sanity check that has nothing to do with any one facility:
@@ -255,6 +255,70 @@ likelihood is maximized (Section 2.3), and it's exactly the "population
 SMR equal to 1" constraint the underlying methods literature builds
 around. If these two totals are wildly different, suspect the
 offset-mean correction from Section 4.6 before anything else.
+
+### Both measures in one call, and direct standardization
+
+`CoxPH.calculate_standardized_measures` carries out Sections 4.5-4.7 from
+the stage 1 fit: the national baseline is the Breslow estimator with
+$X_i\hat\beta$ as offset (so no offset-mean correction is involved), and
+each facility's expected deaths follow. Pass the data stage 1 was fitted
+to, plus each row's facility:
+
+```python
+measures = stage1.calculate_standardized_measures(
+    X1, duration=cohort["time"], event=cohort["death"],
+    provider_id=cohort["facility_id"], stdz=["indirect", "direct"],
+)
+print(measures["indirect"].head().round(6).to_string(index=False))
+```
+```
+ provider_id  indirect_ratio  observed  expected  person_time
+           0        1.451239      11.0  7.579731      253.043
+           1        1.034079       8.0  7.736351      240.727
+           2        1.647355       7.0  4.249237      159.953
+           3        0.528177       4.0  7.573212      220.816
+           4        1.434676       9.0  6.273192      194.164
+```
+
+These are `facility_table`'s observed and expected deaths and SMRs, with
+each facility's time at risk added (the grouping variable of the
+empirical null in Section 4.8).
+
+**Direct standardization** asks the converse question: how many deaths
+would the *whole* population have had under facility $k$'s own baseline
+hazard? With $\hat\Lambda_{0k}$ facility $k$'s stage 1 (stratified)
+baseline and $O$ the total observed deaths,
+
+$$
+\text{DSR}_k = \frac{E^{(k)}}{O}, \qquad
+E^{(k)} = \sum_{i} \exp(X_i\hat\beta)\,\hat\Lambda_{0k}(t_i),
+$$
+
+summed over *all* patients. Above 1 again means more deaths than the
+national norm. Every facility is evaluated on the same patients, so
+direct ratios can be compared across facilities. But each rests on the
+facility's own baseline over the population's whole follow-up: that
+baseline is flat after the facility's last death, so a facility followed
+for less time than the population is understated, and a small facility's
+DSR is noisy (one with no deaths has a DSR of 0).
+
+```python
+print(measures["direct"].head().round(6).to_string(index=False))
+```
+```
+ provider_id  direct_ratio  observed   expected  n_pop
+           0      1.428424     259.0 369.961749   4000
+           1      1.065564     259.0 275.980998   4000
+           2      1.580136     259.0 409.255305   4000
+           3      0.519908     259.0 134.656279   4000
+           4      1.414668     259.0 366.399072   4000
+```
+
+Both baselines are Breslow estimators, as in the methodology, whatever
+`ties` fitted $\hat\beta$ (with no tied death times the Breslow and Efron
+baselines coincide). With left-truncated data, pass `start=` and `stop=`
+instead of `duration=`: each patient contributes the hazard between entry
+and exit.
 
 ## 4.8 Is an SMR of 1.45 actually surprising?
 
@@ -362,6 +426,60 @@ is a genuinely different, more actionable finding. This is precisely
 why the CMS methodology this chapter is modeled on restricts published
 comparisons to facilities above a minimum expected-death threshold —
 below it, the ratio is simply too noisy to interpret on its own.
+
+### The same inference with `CoxPH.test`
+
+`CoxPH.test` runs this section's tests on the stage 1 fit, with the
+arguments of `calculate_standardized_measures`. Its default is the mid-p
+test, whose limits invert the test, so a facility is flagged exactly when
+its interval excludes 1; `test_method="exact"` gives the exact test with
+the Byar and chi-square limits above:
+
+```python
+tests = stage1.test(X1, duration=cohort["time"], event=cohort["death"],
+                    provider_id=cohort["facility_id"])
+print(tests[["estimate", "p_value", "flag", "ci_lower", "ci_upper"]].head().round(4).to_string())
+print(int((tests["flag"] != 0).sum()), "of", len(tests), "facilities flagged")
+```
+```
+             estimate  p_value  flag  ci_lower  ci_upper
+provider_id
+0              1.4512   0.2287     0    0.7631    2.5224
+1              1.0341   0.8804     0    0.4803    1.9637
+2              1.6474   0.2056     0    0.7205    3.2587
+3              0.5282   0.1832     0    0.1678    1.2740
+4              1.4347   0.2862     0    0.6997    2.6329
+2 of 40 facilities flagged
+```
+
+When the facilities' z-statistics are wider than N(0, 1), an empirical null
+calibrates them. The methodology groups facilities by quartiles of their
+patient-years at risk, the `person_time` column of the standardized measures:
+
+```python
+from pprof_py.inference import EmpiricalNull, HUBER_RLM
+
+person_time = stage1.calculate_standardized_measures(
+    X1, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"],
+)["indirect"]["person_time"]
+calibrated = stage1.test(
+    X1, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"],
+    null_model=EmpiricalNull.fitter(size=person_time, n_groups=4, estimator=HUBER_RLM),
+)
+print(calibrated[["null_mean", "null_sd"]].drop_duplicates().round(3).to_string(index=False))
+```
+```
+ null_mean  null_sd
+    -0.156    2.215
+     0.312    1.089
+    -0.190    1.050
+     0.074    1.445
+```
+
+With 40 facilities, each of the four groups holds ten, too few for reliable
+null estimates: the group SDs above range from 1.05 to 2.2. The empirical-null
+guide's operating characteristics show such small groups flagging too often;
+with this few facilities, prefer `n_groups=1`.
 
 ## 4.9 A note on reliability: how much of the variation is signal?
 

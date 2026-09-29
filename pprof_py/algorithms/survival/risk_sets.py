@@ -30,9 +30,9 @@ they stay behaviorally identical:
 
 Both compute the identical S0/S1/S2 definitions:
 
-    S0 = sum_{i in R(t)} weight_i * r_i                   (scalar)
-    S1 = sum_{i in R(t)} weight_i * r_i * X_i              (p,)
-    S2 = sum_{i in R(t)} weight_i * r_i * outer(X_i, X_i)  (p, p)
+    S0 = ``sum_``{i in R(t)} weight_i * r_i                   (scalar)
+    S1 = ``sum_``{i in R(t)} weight_i * r_i * X_i              (p,)
+    S2 = ``sum_``{i in R(t)} weight_i * r_i * outer(X_i, X_i)  (p, p)
 """
 from __future__ import annotations
 

@@ -12,26 +12,15 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-)
+from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors, interpolate_path
 from ...algorithms.coordinate_descent import (
     compute_lambda_max,
     build_lambda_sequence,
     fit_regularization_path,
 )
-from ...algorithms.linear.likelihood import (
-    build_linear_objective,
-    linear_null_score,
-    linear_unpenalized_null_fit,
-    linear_deviance,
-    linear_null_deviance,
-    linear_intercept_update,
-)
+from ...algorithms.linear.likelihood import (linear_unpenalized_null_fit, linear_deviance, linear_null_deviance, linear_intercept_update)
 from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
@@ -65,7 +54,7 @@ def _resolve_lambda_path(
     )
 
 
-class PenalizedLinear(BaseEstimator):
+class PenalizedLinear(ProviderModel):
     """Elastic-net-penalized linear (Gaussian) regression.
 
     Matches ``glmnet(family="gaussian")`` in lambda sequence,
@@ -364,35 +353,12 @@ class PenalizedLinear(BaseEstimator):
     def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def intercept_at(self, lambda_value: float) -> float:
         """Intercept at an arbitrary lambda (log-lambda interpolation)."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return float(self.intercept_path_[0])
-        if lambda_value <= lam_path[-1]:
-            return float(self.intercept_path_[-1])
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return float(
-            (1.0 - frac) * self.intercept_path_[idx]
-            + frac * self.intercept_path_[idx + 1]
-        )
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict(self, X, lambda_value=None):
         """Predicted values."""
@@ -425,7 +391,7 @@ class PenalizedLinear(BaseEstimator):
         })
 
 
-class PenalizedLinearCV(BaseEstimator):
+class PenalizedLinearCV(ProviderModel):
     """Cross-validated penalized linear regression.
 
     Analogous to ``cv.glmnet(family="gaussian")``.
@@ -447,9 +413,10 @@ class PenalizedLinearCV(BaseEstimator):
     n_folds : int, default=10
     fold_id : array-like or None
         User-supplied fold assignments (overrides n_folds).
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
         If True, use lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter : int, default=100
     outer_tol : float, default=1e-9
     max_inner_iter : int, default=1000
@@ -464,7 +431,7 @@ class PenalizedLinearCV(BaseEstimator):
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda_1se_ if use_1se, else lambda_min_).
+        Selected lambda (``lambda_1se_`` if se_rule == "1se", else ``lambda_min_``).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean cross-validated deviance (weighted RSS) at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)
@@ -496,7 +463,7 @@ class PenalizedLinearCV(BaseEstimator):
         fit_intercept: bool = True,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
@@ -514,7 +481,7 @@ class PenalizedLinearCV(BaseEstimator):
         self.fit_intercept = fit_intercept
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -524,6 +491,8 @@ class PenalizedLinearCV(BaseEstimator):
 
     def fit(self, X, y, sample_weight=None, offset=None):
         """Fit CV to select lambda."""
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         full_model = PenalizedLinear(
             alpha=self.alpha, n_lambda=self.n_lambda,
             lambda_min_ratio=self.lambda_min_ratio,
@@ -600,7 +569,7 @@ class PenalizedLinearCV(BaseEstimator):
         self.lambda_min_ = float(lambda_path[idx_min])
         self.lambda_1se_ = float(lambda_path[idx_1se])
         self.lambda_ = float(
-            lambda_path[idx_1se] if self.use_1se else lambda_path[idx_min]
+            lambda_path[idx_1se] if (self.se_rule == "1se") else lambda_path[idx_min]
         )
         self.model_ = full_model
         self.coef_ = full_model.coef_at(self.lambda_)

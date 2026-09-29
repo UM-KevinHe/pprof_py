@@ -55,7 +55,7 @@ when available; without numba a much slower pure-Python fallback runs and a warn
 `stratum, time, hazard, survival` table of the cumulative baseline hazard at `eta = 0`, using the formula of the requested tie method.
 `CoxPH.baseline_hazard_` is this table multiplied by `exp(mean offset)` to match R's `basehaz(centered = FALSE)`.
 
-## Deviance helpers (`pprof_py.statistics.deviance`)
+## Deviance helpers (`pprof_py.utils.deviance`)
 
 | Function | Purpose |
 |---|---|

@@ -14,7 +14,7 @@ import pandas as pd
 from pprof_py.inference import PROVIDER_TEST_COLUMNS
 import pytest
 
-from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
+from pprof_py import LogisticFixedEffectModel, LogisticFERandomClusterModel, LogisticRandomEffectModel
 from pprof_py.exceptions import NotFittedError
 
 
@@ -28,8 +28,8 @@ def _toy_data(n_groups=6, seed=12345):
         x1 = rng.normal(size=n)
         x2 = rng.normal(size=n)
         if g == 0:
-            # Zero-event provider: exercise the no-events branch of
-            # _exact_ci_for_one_group.
+            # Zero-event provider: exercise the open lower limit of the
+            # inverted exact test.
             y = np.zeros(n)
         else:
             linpred = -0.3 + 0.5 * x1 - 0.2 * x2 + (g - 2.5) * 0.4
@@ -48,7 +48,7 @@ def data():
 
 def _fit_fixed_effect(data, algorithm):
     model = LogisticFixedEffectModel(use_dataprep=False, algorithm=algorithm)
-    model.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+    model.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
     return model
 
 
@@ -117,17 +117,22 @@ class TestLogisticFixedEffectBan:
     def model(self, data):
         return _fit_fixed_effect(data, "Ban")
 
-    def test_beta_close_to_serbin(self, model):
-        # Ban and Serbin are different optimization algorithms for the same
-        # model; they converge to nearly, but not exactly, the same beta.
-        assert model.coefficients_["beta"].flatten() == pytest.approx(
-            [0.6288298873066283, 0.0016364908205175888], rel=1e-6
+    def test_beta_close_to_serbin(self, data):
+        # Ban and Serbin maximize the same likelihood.  The toy data have a
+        # provider with no events, which has no finite effect, so where each
+        # algorithm stops depends on how far that effect has drifted; without
+        # it the maximum is unique and the two agree to the fitting tolerance.
+        events = data.groupby("provider")["y"].sum()
+        finite = data[data["provider"].isin(events[events > 0].index)]
+        ban, serbin = _fit_fixed_effect(finite, "Ban"), _fit_fixed_effect(finite, "Serbin")
+        assert ban.coefficients_["beta"].flatten() == pytest.approx(
+            serbin.coefficients_["beta"].flatten(), rel=0, abs=1e-8      # the fits' tolerance on beta
         )
 
 
 def _mixed_effect_inits(data, x_vars=("x1", "x2")):
-    """No existing call-site precedent in the repo for gamma_init/beta_init/
-    sigma_init; derive simple, deterministic starting values."""
+    """No existing call-site precedent in the repo for gamma_init/beta/
+    sigma; derive simple, deterministic starting values."""
     beta_init = np.zeros(len(x_vars))
     y_bar = data["y"].mean()
     logit_bar = np.log(y_bar / (1 - y_bar))
@@ -137,12 +142,12 @@ def _mixed_effect_inits(data, x_vars=("x1", "x2")):
     return gamma_init, beta_init, sigma_init
 
 
-class TestLogisticMixedEffect:
+class TestLogisticFERandomCluster:
     @pytest.fixture(scope="class")
     def model(self, data):
         x_vars = ["x1", "x2"]
         gamma_init, beta_init, sigma_init = _mixed_effect_inits(data, x_vars)
-        m = LogisticMixedEffectModel(update_sigma=False)
+        m = LogisticFERandomClusterModel()
         m.fit(
             data,
             y_var="y",
@@ -150,8 +155,8 @@ class TestLogisticMixedEffect:
             provider_var="provider",
             cluster_var="provider",
             gamma_init=gamma_init,
-            beta_init=beta_init,
-            sigma_init=sigma_init,
+            beta=beta_init,
+            sigma=sigma_init,
             verbose=False,
         )
         return m
@@ -177,7 +182,7 @@ class TestLogisticFixedEffectDataPrep:
         model = LogisticFixedEffectModel(
             use_dataprep=True, screen_providers=True, log_event_providers=True, algorithm="Serbin"
         )
-        model.fit(data, x_vars=["x1", "x2"], y_var="y", group_var="provider")
+        model.fit(data, x_vars=["x1", "x2"], y_var="y", provider_var="provider")
         return model
 
     def test_beta(self, model):
@@ -197,7 +202,7 @@ class TestLogisticRandomEffect:
     @pytest.fixture(scope="class")
     def model(self, data):
         m = LogisticRandomEffectModel(verbose=False)
-        m.fit(data, y_var="y", x_vars=["x1", "x2"], group_var="provider")
+        m.fit(data, y_var="y", x_vars=["x1", "x2"], provider_var="provider")
         return m
 
     def test_beta(self, model):

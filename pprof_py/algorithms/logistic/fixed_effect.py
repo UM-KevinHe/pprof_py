@@ -15,7 +15,7 @@ log-likelihood evaluation.
 import logging
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
+from ...utils.numerical import solve_information
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -171,7 +171,20 @@ class BaseAlgorithm(ABC):
         # Numerically stable log(1+exp(x)): avoids overflow when linear > 709
         # np.logaddexp(0, x) = log(exp(0) + exp(x)) = log(1 + exp(x)), stable for all x
         return np.sum(self.y * linear - self.N * np.logaddexp(0, linear))
-    
+
+    @staticmethod
+    def _below_noise(predicted: float, loglik: float) -> bool:
+        """Whether an Armijo target is below the log-likelihood's rounding level.
+
+        C3: near the optimum a Newton step's predicted gain (``s * v * lambda``)
+        falls below the rounding error of the log-likelihood sum, so the
+        Armijo test compares rounding noise and can fail at every step size;
+        backtracking then shrank the step to exactly 0 (about 1,400
+        evaluations with ``t = 0.6``) and the zero step read as convergence.
+        A step whose predicted gain is at that level is accepted as it is.
+        """
+        return 0.0 < predicted <= 1e-12 * (1.0 + abs(loglik))
+
 
     @abstractmethod
     def _backtrack(self) -> None:
@@ -292,6 +305,7 @@ class SerbinAlgorithm(BaseAlgorithm):
         """
         s = 0.01
         t = 0.6
+        self._last_step = (1.0, 0.0)
         while self.iter <= self.max_iter and self.beta_crit >= self.tol:
             self.iter += 1
             gamma_obs = self.gamma_prov[self._prov_indices]
@@ -312,18 +326,18 @@ class SerbinAlgorithm(BaseAlgorithm):
                 score_gamma, score_beta, info_gamma_inv, mat_tmp1, mat_tmp2, schur_score_beta
             )
 
-            # Cap gamma direction to prevent one extreme provider from hijacking
-            # the backtracking step size. Any d_gamma beyond 2*bound is wasted
-            # since gamma will be clipped to [median-bound, median+bound] anyway.
-            max_gamma_step = 2.0 * self.bound
-            d_gamma_prov = np.clip(d_gamma_prov, -max_gamma_step, max_gamma_step)
+            # C27: the joint Newton direction is used as it is, as in R's
+            # logis_BIN_fe_prov.  Clipping the gamma block alone (formerly to
+            # +-2*bound) changes the direction, can make it a descent direction
+            # when the step needs gamma to offset xbar'd_beta (covariates far
+            # from 0), and makes the iterates depend on the covariates' origin.
 
             v = 1
             loglkd = self._loglikelihood(self.gamma_prov[self._prov_indices], self.beta)
             d_loglkd = self._loglikelihood((self.gamma_prov + v * d_gamma_prov)[self._prov_indices], self.beta + v * d_beta) - loglkd
             lambda_ = np.concatenate([score_gamma, score_beta]) @ np.concatenate([d_gamma_prov, d_beta])
 
-            while d_loglkd < s * v * lambda_:
+            while d_loglkd < s * v * lambda_ and not self._below_noise(s * v * lambda_, loglkd):
                 v *= t
                 d_loglkd = self._loglikelihood((self.gamma_prov + v * d_gamma_prov)[self._prov_indices], self.beta + v * d_beta) - loglkd
 
@@ -336,6 +350,33 @@ class SerbinAlgorithm(BaseAlgorithm):
 
             self.beta = beta_new
             logger.debug(f"Inf norm of running diff in est reg parm is {self.beta_crit:.3e};")
+            self._last_step = (v, float(np.max(np.abs(d_beta), initial=0.0)))
+
+        self._report_stop()
+
+    def _report_stop(self) -> None:
+        """Warn when the loop ended without the Newton step becoming small.
+
+        The stopping rule is R's (``stop = "beta"``): the accepted beta step,
+        ``v * |d_beta|``, below ``tol``.  It reads a line search that shrank the
+        step as convergence; C27 was such a case (a step shrunk to 8e-16 while
+        the Newton beta step was 0.46).  The rule and the estimates are kept;
+        only a warning is added, for that case and for the iteration limit.
+        """
+        if not self.beta_crit < self.tol:  # also NaN
+            logger.warning(
+                "Serbin did not converge in %d iterations (beta_crit=%.3e, tol=%.3e)",
+                self.max_iter, self.beta_crit, self.tol,
+            )
+            return
+        v, newton_beta_step = self._last_step
+        if v < 1.0 and newton_beta_step >= self.tol:
+            logger.warning(
+                "Serbin stopped because the line search shortened the last step to "
+                "v=%.3e (accepted beta step %.3e, Newton beta step %.3e, tol=%.3e); "
+                "the estimates may not be at the maximum",
+                v, self.beta_crit, newton_beta_step, self.tol,
+            )
 
     def _no_backtrack(self) -> None:
         """Single Newton step without line search.
@@ -353,20 +394,50 @@ class SerbinAlgorithm(BaseAlgorithm):
             mat2 = cho_solve((cho_L, lower), mat1)
             schur_score_beta = cho_solve((cho_L, lower), sc_b)
             d_gamma, d_beta = self._compute_deltas(sc_g, sc_b, ig_inv, mat1, mat2, schur_score_beta)
-            # Cap gamma direction (same rationale as _backtrack)
-            max_gamma_step = 2.0 * self.bound
-            d_gamma = np.clip(d_gamma, -max_gamma_step, max_gamma_step)
+            # The full Newton direction (C27; see _backtrack).
             self.gamma_prov += d_gamma
             med = np.median(self.gamma_prov)
             self.gamma_prov = np.clip(self.gamma_prov, med - self.bound, med + self.bound)
             beta_cand = self.beta + d_beta
             self.beta_crit = np.linalg.norm(self.beta - beta_cand, np.inf)
             self.beta = beta_cand
+        if not self.beta_crit <= self.tol:  # also NaN
+            logger.warning(
+                "Serbin (no backtracking) did not converge in %d iterations "
+                "(beta_crit=%.3e, tol=%.3e)", self.max_iter, self.beta_crit, self.tol,
+            )
 
 
 class BanAlgorithm(BaseAlgorithm):
     """Ban's alternating updates for logistic fixed-effect estimation.
     """
+
+    def fit(self) -> dict:
+        """Fit by alternating updates in centred covariates (C30).
+
+        Alternating updates of gamma and beta slow down when the two blocks
+        are strongly coupled, and a common offset in the covariates couples
+        them through the provider effects, which carry the intercept: on the
+        AOH goldens Ban took 19 iterations centred, 705 with the covariates
+        shifted by (+5, -3) and did not converge in 10,000 with (+50, -30).
+        The updates therefore run with ``X - xbar`` (``xbar`` the
+        trials-weighted mean covariate row) from the corresponding start, and
+        the provider effects are returned in the original coordinates,
+        ``gamma = gamma_c - xbar' beta``.  The median-relative clamp and the
+        stopping rule are unchanged by the shift.
+        """
+        X = self.X
+        if X.shape[1] == 0:
+            return super().fit()
+        xbar = self.N @ X / np.sum(self.N)
+        self.X = X - xbar
+        self.gamma_prov = self.gamma_prov + xbar @ self.beta
+        try:
+            super().fit()
+        finally:
+            self.X = X
+            self.gamma_prov = self.gamma_prov - xbar @ self.beta
+        return {'gamma': self.gamma_prov, 'beta': self.beta}
     def _update_gamma(self) -> tuple:
         """Update provider effects given fixed beta.
 
@@ -450,7 +521,8 @@ class BanAlgorithm(BaseAlgorithm):
                     self.beta,
                 )
 
-                if ll_new - ll_old >= s * v * lambda_gamma:
+                if (ll_new - ll_old >= s * v * lambda_gamma
+                        or self._below_noise(s * v * lambda_gamma, ll_old)):
                     break
 
                 v *= t
@@ -500,7 +572,8 @@ class BanAlgorithm(BaseAlgorithm):
                     beta_candidate,
                 )
 
-                if ll_new - ll_old >= s * v * lambda_beta:
+                if (ll_new - ll_old >= s * v * lambda_beta
+                        or self._below_noise(s * v * lambda_beta, ll_old)):
                     break
 
                 v *= t

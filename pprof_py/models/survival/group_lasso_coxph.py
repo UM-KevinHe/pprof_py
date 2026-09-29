@@ -30,7 +30,7 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
 from ...data.survival_validation import validate_fit_inputs
 from ...data.survival_data import SurvivalData
@@ -38,24 +38,22 @@ from ...algorithms.survival.cox_likelihood import (
     cox_partial_likelihood, precompute_stratum_indices,
 )
 from ...algorithms.survival.penalty import (
-    validate_groups, rescale_group_multipliers, compute_group_indices,
+    validate_groups, rescale_group_multipliers,
 )
-from ...algorithms.survival.coordinate_descent import (
-    compute_group_lambda_max, build_lambda_sequence,
-    fit_group_regularization_path,
+from ...algorithms.penalty import fit_group_multipliers, unorthogonalize_coefs, unpenalized_columns
+from ...algorithms.coordinate_descent import (
+    compute_group_lambda_max, fit_group_regularization_path, _compute_group_kkt_violation,
 )
 from ...algorithms.survival.ties import TieMethod
-from ...statistics.deviance import (
-    saturated_log_likelihood, cox_deviance, deviance_ratio,
-)
-from .coxph import CoxPH, NotFittedError
+from ...utils.deviance import saturated_log_likelihood, cox_deviance
+from .coxph import CoxPH
 from .penalized_coxph import (
     _PenalizedCoxPHBase,
     _PenalizedCoxPHCVBase,
     _resolve_lambda_path,
     DegenerateFeatureWarning,
 )
-from ...statistics.deviance import bootstrap_cv_se
+from ...utils.deviance import bootstrap_cv_se
 
 
 # ------------------------------------------------------------------
@@ -109,10 +107,10 @@ def _validate_group_parameters(
 # GroupLassoCoxPH
 # ------------------------------------------------------------------
 
-class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
+class GroupLassoCoxPH(_PenalizedCoxPHBase, ProviderModel):
     """Group lasso / sparse group lasso penalized Cox regression.
 
-    Fits a regularization path for the penalty:
+    Fits a regularization path for the penalty::
 
         lambda * [(1-alpha) * sum_g m_g * ||beta_g||_2
                   + alpha * sum_j pf_j * |beta_j|]
@@ -134,6 +132,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         sorted (after internal remapping to 1..G).
     alpha : float, default 0.0
         Sparse group lasso mixing parameter:
+
         * ``alpha=0.0``: pure group lasso (entire groups in/out).
         * ``0 < alpha < 1``: sparse group lasso (group selection
           plus within-group sparsity).
@@ -156,10 +155,11 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
     standardize : bool, default True
         Standardize features before fitting; coefficients returned on
         original scale.
-    orthogonalize : bool, default False
-        Within-group SVD orthogonalization (recommended for
-        ``method='MM'``).  Currently a placeholder; ``method='MM'``
-        is not yet implemented.
+    orthogonalize : bool, default True
+        Orthogonalize each penalized group within itself (on its weighted,
+        centered columns), so the penalty is the standardized group lasso
+        that R's ``grplasso::Strat.cox`` fits.  ``False`` fits the plain
+        group lasso on the standardized columns.
     method : str, default 'proximal_newton'
         Optimization method: ``'proximal_newton'`` (exact Hessian) or
         ``'MM'`` (diagonal majorization, not yet implemented).
@@ -167,10 +167,10 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         Tie-handling method: ``'breslow'`` or ``'efron'``.
     use_active_set : bool, default False
         When True, the proximal-Newton inner CD solver uses active-set
-        screening to skip groups whose coefficients are zero.  This
-        can speed up large problems (many groups, most inactive) but
-        may yield slightly different sparsity patterns at intermediate
-        lambda values due to proximal-Newton path dependence.
+        screening to skip groups whose coefficients are zero.  This can
+        speed up large problems (many groups, most inactive); both settings
+        converge to the same solution (convergence is certified by the KKT
+        residual over every group).
     max_outer_iter : int, default 100
     outer_tol : float, default 1e-9
     max_inner_iter : int, default 1000
@@ -178,29 +178,33 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
     fit_intercept : bool, default False
         Must be ``False`` (Cox PH has no intercept).
 
-    Attributes (set by ``fit``)
-    ---------------------------
-    coef_path_ : ndarray, shape (n_lambda_, n_features)
+    Attributes
+    ----------
+    coef_path_ : ndarray, shape (``n_lambda_``, n_features)
         Coefficient matrix along the regularization path.
-    lambda_path_ : ndarray, shape (n_lambda_,)
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
         Lambda values actually used (descending).
     lambda_max_ : float
-    log_likelihood_path_ : ndarray, shape (n_lambda_,)
-    deviance_ratio_path_ : ndarray, shape (n_lambda_,)
-    n_nonzero_path_ : ndarray of int, shape (n_lambda_,)
-    converged_path_ : ndarray of bool, shape (n_lambda_,)
-    n_iter_path_ : ndarray of int, shape (n_lambda_,)
-    group_norms_ : ndarray, shape (n_lambda_, n_groups)
-        ``||beta_g||_2`` per group at each lambda.
+    log_likelihood_path_ : ndarray, shape (``n_lambda_``,)
+    deviance_ratio_path_ : ndarray, shape (``n_lambda_``,)
+    n_nonzero_path_ : ndarray of int, shape (``n_lambda_``,)
+    converged_path_ : ndarray of bool, shape (``n_lambda_``,)
+    n_iter_path_ : ndarray of int, shape (``n_lambda_``,)
+    group_norms_ : ndarray, shape (``n_lambda_``, n_groups)
+        ``||beta_g||_2`` per group at each lambda, in the fitted
+        (orthogonalized, when ``orthogonalize``) coordinates.
+    kkt_violation_path_ : ndarray, shape (``n_lambda_``,)
+        Relative KKT residual at each lambda (``converged_path_`` is True
+        where it falls below the solver's threshold).
     active_groups_ : list of ndarray of bool
         Boolean mask of active groups at each lambda.
-    df_path_ : ndarray, shape (n_lambda_,)
+    df_path_ : ndarray, shape (``n_lambda_``,)
         Degrees of freedom (number of nonzero coefficients) per lambda.
     groups_ : ndarray of int, shape (n_features,)
         Canonicalized group labels (after validation).
     group_sizes_ : ndarray of int
     n_groups_ : int
-    group_weights_ : ndarray, shape (n_groups_,)
+    group_weights_ : ndarray, shape (``n_groups_``,)
     column_scale_ : ndarray, shape (n_features,)
     """
 
@@ -214,7 +218,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
         lambda_min_ratio: Optional[float] = None,
         lambda_path=None,
         standardize: bool = True,
-        orthogonalize: bool = False,
+        orthogonalize: bool = True,
         method: str = "proximal_newton",
         ties: Union[str, TieMethod] = "breslow",
         use_active_set: bool = False,
@@ -310,24 +314,25 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
 
         # Remap groups for the reduced feature set (after
         # degenerate-column removal).
-        groups_fit = groups[prep.fit_cols]
-        groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
-            groups_fit, prep.p_fit,
+        groups_fit, _sizes_fit, n_groups_fit = validate_groups(
+            groups[prep.fit_cols], prep.p_fit,
         )
-        group_weights_fit = rescale_group_multipliers(
-            None if self.group_multiplier is None
-            else group_weights,
-            group_sizes_fit, n_groups_fit,
-        )
-        gs_arr, ge_arr = compute_group_indices(
-            groups_fit, n_groups_fit,
+        group_weights_fit = fit_group_multipliers(
+            self.group_multiplier, groups, prep.fit_cols,
         )
 
+        # C8b: the standardized group lasso (groups orthogonalized on their
+        # centered columns), as R's grplasso::Strat.cox fits.
+        X_design, objective_fn, QL_blocks = self._group_design(prep, groups_fit)
+
         # --- Null point for lambda_max ---
-        # Group-specific: unpenalized features are those with
-        # group label 0 (not pf == 0 as in elastic net).
+        # Group-specific: unpenalized features are those that carry no
+        # penalty -- group 0 (a zero penalty factor inside a penalized group
+        # removes only the column's L1 term).
         beta_null = np.zeros(prep.p_fit)
-        always_unpenalized = groups_fit == 0
+        always_unpenalized = unpenalized_columns(
+            groups_fit, group_weights_fit, prep.pf_fit, self.alpha,
+        )
         if (
             np.any(always_unpenalized)
             and not np.all(always_unpenalized)
@@ -338,7 +343,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
                 eps=self.outer_tol,
             )
             restricted.fit(
-                prep.X_fit[:, always_unpenalized],
+                X_design[:, always_unpenalized],
                 duration=None, event=prep.data.event,
                 start=prep.data.start, stop=prep.data.stop,
                 strata=prep.data.strata_codes,
@@ -347,7 +352,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
             )
             beta_null[always_unpenalized] = restricted.coef_
 
-        _, score_null, _ = prep.objective_fn(beta_null)
+        _, score_null, _ = objective_fn(beta_null)
         lambda_max = (
             0.0 if np.all(always_unpenalized)
             else compute_group_lambda_max(
@@ -356,15 +361,16 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
             )
         )
 
+        # The true lambda_max, as the logistic and linear group classes use
+        # (R pads its first lambda by 1e-5).
         lambda_sequence, lambda_min_ratio = _resolve_lambda_path(
             self.lambda_path, lambda_max, self.lambda_min_ratio,
             self.n_lambda, prep.p_fit, prep.data.n_obs,
-            lambda_pad=1e-5,
         )
 
         # --- Fit the group lasso path ---
         results = fit_group_regularization_path(
-            prep.objective_fn, prep.p_fit, prep.c, self.alpha,
+            objective_fn, prep.p_fit, prep.c, self.alpha,
             lambda_sequence, groups_fit, group_weights_fit,
             prep.pf_fit, n_groups_fit,
             beta_warm_start=beta_null,
@@ -375,10 +381,44 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
             use_active_set=self.use_active_set,
         )
 
+        # At or above lambda_max the null point solves the problem, so it is
+        # stored exactly, as the provider classes do (C23): iterating from it
+        # only adds rounding noise to its zeros.  Later points were warm-started
+        # by the solver itself and are unchanged.
+        if lambda_max > 0:
+            ll_null, score_null, info_null = objective_fn(beta_null)
+            lam_null = lambda_max * (1.0 - 1e-12)
+            results = list(results)
+            for i, lam in enumerate(lambda_sequence):
+                if float(lam) >= lam_null:
+                    results[i] = results[i]._replace(
+                        beta=beta_null.copy(), log_likelihood=ll_null,
+                        objective_value=-prep.c * ll_null, n_outer_iter=0,
+                        n_inner_iter_total=0, converged=True,
+                        message="null point (lambda >= lambda_max)",
+                        information=info_null,
+                        active_groups=np.zeros(n_groups_fit, dtype=bool),
+                        group_norms=np.zeros(n_groups_fit),
+                        df=float(np.sum(beta_null != 0.0)),
+                        kkt_violation=_compute_group_kkt_violation(
+                            prep.c * score_null, beta_null, float(lam), self.alpha,
+                            groups_fit, group_weights_fit, prep.pf_fit, n_groups_fit,
+                        ),
+                    )
+
         # --- Common result storage (from base) ---
+        # group_norms stay in the fitted (orthogonalized) coordinates, the
+        # quantities the penalty acts on; beta goes back to X's columns.
+        stored = results if QL_blocks is None else [
+            r._replace(beta=unorthogonalize_coefs(r.beta, groups_fit, QL_blocks))
+            for r in results
+        ]
         self._store_path_results(
-            results, prep, lambda_sequence, lambda_max,
+            stored, prep, lambda_sequence, lambda_max,
             lambda_min_ratio,
+        )
+        self.kkt_violation_path_ = np.array(
+            [r.kkt_violation for r in results],
         )
 
         # --- Group-specific result attributes ---
@@ -451,7 +491,7 @@ class GroupLassoCoxPH(_PenalizedCoxPHBase, BaseEstimator):
 # GroupLassoCoxPHCV
 # ------------------------------------------------------------------
 
-class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
+class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, ProviderModel):
     """Cross-validated group lasso Cox regression.
 
     Performs k-fold cross-validation over the lambda path to select
@@ -476,20 +516,25 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         ``'analytical'`` (glmnet-style weighted CV SE) or
         ``'bootstrap'`` (Breslow ties only).
     random_state : int or None, default None
-    select : str, default 'lambda_min'
-        ``'lambda_min'`` or ``'lambda_1se'``.
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
+    se_rule : str, default '1se'
+        ``'min'`` or ``'1se'``.
 
-    Attributes (set by ``fit``)
-    ---------------------------
-    lambda_path_ : ndarray, shape (n_lambda_,)
-    cv_mean_deviance_ : ndarray, shape (n_lambda_,)
-    cv_se_deviance_ : ndarray, shape (n_lambda_,)
+    Attributes
+    ----------
+    lambda_path_ : ndarray, shape (``n_lambda_``,)
+    cv_mean_deviance_ : ndarray, shape (``n_lambda_``,)
+    cv_se_deviance_ : ndarray, shape (``n_lambda_``,)
     lambda_min_ : float
     lambda_1se_ : float
-    final_estimator_ : GroupLassoCoxPH
+    model_ : GroupLassoCoxPH
+        The full-data fit over the whole path (``lambda_path_``).
+    lambda_ : float
+        The lambda that ``se_rule`` selects; ``coef_`` and the ``predict_*``
+        methods use it.
     coef_ : ndarray
+        ``model_``'s coefficients at ``lambda_``.
     fold_id_ : ndarray, shape (n_obs,)
-    full_fit_ : GroupLassoCoxPH
     """
 
     def __init__(
@@ -502,7 +547,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         lambda_min_ratio: Optional[float] = None,
         lambda_path=None,
         standardize: bool = True,
-        orthogonalize: bool = False,
+        orthogonalize: bool = True,
         method: str = "proximal_newton",
         ties: Union[str, TieMethod] = "breslow",
         use_active_set: bool = False,
@@ -516,8 +561,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         se_method: str = "analytical",
         n_bootstrap: int = 100,
         random_state: Optional[int] = None,
-        select: str = "lambda_min",
-        use_1se: bool = None,
+        se_rule: str = "1se",
     ):
         """Cross-validated group lasso Cox."""
         self.groups = groups
@@ -542,12 +586,7 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         self.se_method = se_method
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-        # Unify select= / use_1se= (ISSUE-011).
-        if use_1se is not None:
-            self.select = "lambda_1se" if use_1se else "lambda_min"
-        else:
-            self.select = select
-        self.use_1se = (self.select == "lambda_1se")
+        self.se_rule = se_rule
 
     def _base_kwargs(self) -> dict:
         """Constructor kwargs forwarded to ``GroupLassoCoxPH``."""
@@ -578,10 +617,10 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
         sample_weight=None,
     ) -> "GroupLassoCoxPHCV":
         """Fit the full path, then cross-validate to select lambda."""
-        if self.select not in ("lambda_min", "lambda_1se"):
+        if self.se_rule not in ("min", "1se"):
             raise ValueError(
-                f"select must be 'lambda_min' or 'lambda_1se', "
-                f"got {self.select!r}"
+                f"se_rule must be 'min' or '1se', "
+                f"got {self.se_rule!r}"
             )
         if self.se_method not in ("analytical", "bootstrap"):
             raise ValueError(
@@ -773,25 +812,19 @@ class GroupLassoCoxPHCV(_PenalizedCoxPHCVBase, BaseEstimator):
             lambda_grid, cvm, cvsd,
         )
 
-        # --- Final estimator at selected lambda ---
-        chosen_lambda = (
-            self.lambda_min_ if self.select == "lambda_min"
-            else self.lambda_1se_
-        )
-        self.final_estimator_ = GroupLassoCoxPH(
-            lambda_path=chosen_lambda, **self._base_kwargs(),
-        )
-        self.final_estimator_.fit(
-            data.X, event=data.event, start=data.start,
-            stop=data.stop, strata=data.strata_codes,
-            offset=data.offset, sample_weight=data.weight,
-        )
-        self.coef_ = self.final_estimator_.coef_
+        # --- The full-data path is the fitted model (C22) ---
+        # As in the logistic and linear CV classes, model_ holds every path
+        # point (so model_.coef_at(lambda_min_) and model_.coef_at(lambda_1se_)
+        # both read the full-data fit), and coef_ is its point at the selected
+        # lambda, which lies on the grid.
+        self.lambda_ = self.lambda_min_ if self.se_rule == "min" else self.lambda_1se_
+        self.model_ = full_fit
+        selected = int(np.argmin(np.abs(np.log(lambda_grid) - np.log(self.lambda_))))
+        self.coef_ = full_fit.coef_path_[selected].copy()
         self.n_obs_ = data.n_obs
         self.n_events_ = int(np.sum(data.event))
         self.feature_names_in_ = full_fit.feature_names_in_
         self.n_nonzero_path_ = full_fit.n_nonzero_path_
-        self.full_fit_ = full_fit
 
         return self
 

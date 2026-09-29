@@ -92,7 +92,7 @@ model.fit(
     X=data,
     y_var='complication',
     x_vars=['age', 'severity', 'urgent'],
-    group_var='provider_id',
+    provider_var='provider_id',
 )
 ```
 
@@ -100,15 +100,15 @@ model.fit(
 
 ```python
 summary = model.summary()
-print(summary)
+print(summary.to_string())
 ```
 
 ```
              Estimate  Std.Error    z value      Pr(>|z|)
-(Intercept) -4.744732   0.384863 -12.328360  6.373025e-35
-age          0.042402   0.005639   7.520125  5.472391e-14
-severity     0.248302   0.027888   8.903560  5.408364e-19
-urgent       0.504732   0.117978   4.278187  1.884214e-05
+(Intercept) -4.744732   0.384863 -12.328360  6.373068e-35
+age          0.042402   0.005639   7.520124  5.472424e-14
+severity     0.248302   0.027888   8.903560  5.408338e-19
+urgent       0.504732   0.117978   4.278187  1.884215e-05
 ```
 
 The columns mirror what `lme4::summary()` shows in R:
@@ -161,6 +161,7 @@ Hospital_15    0.359097
 Hospital_16    0.738506
 Hospital_17    0.079881
 Hospital_18    0.051852
+dtype: float64
 ```
 
 The BLUPs range from $-0.641$ to $+0.739$ (SD = 0.279). This is
@@ -197,20 +198,20 @@ predicted complication burden (using its BLUP) to what would be expected
 if that hospital performed at the median level:
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 sm_df = sm['indirect']
 print(sm_df.head(10))
 ```
 
 ```
-      group_id  indirect_ratio  indirect_rate  observed   expected
+   provider_id  indirect_ratio  indirect_rate  observed   expected
 0   Hospital_1        0.801878      19.265898      17.0  21.200234
 1  Hospital_10        1.432589      34.419342      19.0  13.262703
 2  Hospital_11        1.102326      26.484456      30.0  27.215180
 3  Hospital_12        0.851397      20.455654      23.0  27.014409
-4  Hospital_13        0.800663      19.236709      21.0  26.228262
+4  Hospital_13        0.800663      19.236709      21.0  26.228263
 5  Hospital_14        1.034282      24.849631      16.0  15.469670
-6  Hospital_15        1.331996      32.002506      32.0  24.024093
+6  Hospital_15        1.331996      32.002506      32.0  24.024092
 7  Hospital_16        1.721810      41.368153      51.0  29.620000
 8  Hospital_17        1.065650      25.603279      12.0  11.260733
 9  Hospital_18        1.014591      24.376529      17.0  16.755526
@@ -223,7 +224,7 @@ of each patient's true risk at their hospital. `expected` uses the
 median BLUP as the reference.
 
 Hospital 16 stands out: ISR = 1.72, meaning 72 % more complications
-than expected at the median level. Hospital 25 is at the other extreme
+than expected at the median level. Hospital 19 is at the other extreme
 with ISR = 0.40. The full ISR range is $[0.402, 1.722]$.
 
 ## 6. Hypothesis testing
@@ -242,7 +243,7 @@ print(test_results[['estimate', 'se', 'z_raw', 'p_value', 'flag', 'ci_lower', 'c
 
 ```
              estimate        se     z_raw   p_value  flag  ci_lower  ci_upper
-provider
+provider_id
 Hospital_1  -0.143147  0.214148 -0.977764  0.328191     0 -0.562868  0.276575
 Hospital_10  0.355628  0.231867  1.248078  0.212003     0 -0.098824  0.810079
 Hospital_11  0.151774  0.193643  0.441713  0.658697     0 -0.227760  0.531308
@@ -261,7 +262,8 @@ reports a 95 % interval for each BLUP (`ci_lower`, `ci_upper`), which
 excludes the reference exactly when the hospital is flagged.
 
 Only **2 of 25** hospitals are flagged at the 5 % level: Hospital 16
-(flag = +1, $p = 0.0001$, $Z = 3.88$) and one flagged low. With
+(flag = +1, $p = 0.0001$, $Z = 3.88$) and Hospital 19 (flag = $-1$,
+$p = 0.001$, $Z = -3.23$). With
 25 providers and BLUPs already shrunk toward the mean, the test is
 conservative — only the strongest deviations survive. This is by
 design: RE models trade power for stability.
@@ -277,7 +279,7 @@ print(alpha_ci_df.head(10))
 ```
 
 ```
-      group_id     alpha  alpha_lower  alpha_upper
+   provider_id     alpha  alpha_lower  alpha_upper
 0   Hospital_1 -0.143147    -0.562868     0.276575
 1  Hospital_10  0.355628    -0.098824     0.810079
 2  Hospital_11  0.151774    -0.227760     0.531308
@@ -298,14 +300,14 @@ hospitals' CIs span zero, consistent with not being flagged.
 
 ```python
 sm_ci = model.calculate_confidence_intervals(
-    option='SM', stdz='indirect', null='median',
+    option='SM', stdz='indirect', reference='median',
     measure=['ratio'], level=0.95,
 )
-print(sm_ci['indirect_ratio'].head(10))
+print(sm_ci["indirect_ratio"].head(10).to_string())
 ```
 
 ```
-      group_id  indirect_ratio     lower     upper
+   provider_id  indirect_ratio     lower     upper
 0   Hospital_1        0.801878  0.527018  1.220088
 1  Hospital_10        1.432589  0.909402  2.256771
 2  Hospital_11        1.102326  0.754190  1.611163
@@ -333,7 +335,7 @@ grows — small hospitals need an extreme ISR to be flagged.
 ```python
 model.plot_funnel(
     test_method='wald',
-    null='median',
+    reference='median',
     target=1.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Ratio (O/E)",
@@ -346,7 +348,7 @@ model.plot_funnel(
 model.plot_provider_effects(
     level=0.95,
     use_flags=True,
-    null='median',
+    reference='median',
     plot_title="Provider Random Effects (BLUPs, Log-Odds Scale)",
 )
 ```
@@ -363,7 +365,7 @@ model.plot_standardized_measures(
     measure='ratio',
     level=0.95,
     use_flags=True,
-    null='median',
+    reference='median',
     plot_title="Indirect Standardized Ratio (O/E) with CIs",
 )
 ```

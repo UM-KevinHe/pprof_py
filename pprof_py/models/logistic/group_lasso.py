@@ -12,39 +12,19 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    within_group_orthogonalize,
-    unorthogonalize_coefs,
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-)
-from ...algorithms.coordinate_descent import (
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    fit_group_regularization_path,
-)
-from ...algorithms.logistic.likelihood import (
-    build_logistic_objective,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_loglik,
-    logistic_deviance,
-    logistic_null_deviance,
-    logistic_intercept_update,
-)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns,
+                                     interpolate_path)
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
 from ...exceptions import NotFittedError
 from .penalized import DegenerateFeatureWarning, _resolve_lambda_path, _stratified_fold_assignment
 
 logger = logging.getLogger(__name__)
 
 
-class GroupLassoLogistic(BaseEstimator):
+class GroupLassoLogistic(ProviderModel):
     """Group lasso / sparse group lasso penalized logistic regression.
 
     Fits the regularization path over a grid of lambda values using
@@ -65,16 +45,18 @@ class GroupLassoLogistic(BaseEstimator):
     group_multiplier : array-like or None
         Per-group penalty multipliers.  Default: sqrt(group_size).
     standardize : bool, default=True
+    orthogonalize : bool, default=True
+        Orthogonalize each penalized group within itself, so the penalty is
+        the standardized group lasso R's ``grplasso`` fits.  ``False`` fits
+        the plain group lasso on the standardized columns.
     fit_intercept : bool, default=True
     use_active_set : bool, default=True
     max_outer_iter : int, default=100
     outer_tol : float, default=1e-9
-        Outer-loop convergence tolerance.  Note that the group block
-        solver frequently fails to reach stationarity at this tolerance
-        on correlated within-group designs; ``converged_path_`` reports
-        that honestly rather than declaring success.  Inspect
-        ``kkt_violation_path_`` for the actual distance from
-        stationarity at each path point.
+        Outer-loop convergence tolerance: a path point is converged when
+        its relative KKT residual falls below ``10 * outer_tol`` (or below
+        ``max(10 * outer_tol, 1e-6)`` once the iterates stop moving);
+        ``kkt_violation_path_`` gives the residual at each point.
     max_inner_iter : int, default=1000
     inner_tol : float, default=1e-10
 
@@ -200,15 +182,9 @@ class GroupLassoLogistic(BaseEstimator):
         groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
             groups_fit, p_fit,
         )
-        gw_fit = rescale_group_multipliers(
-            None, group_sizes_fit, n_groups_fit,
-        )  # recompute default sqrt(size) for the reduced set
-        if self.group_multiplier is not None:
-            # User-supplied multipliers: keep them but they must still
-            # map correctly.  For now, use sqrt(size) for safety.
-            gw_fit = rescale_group_multipliers(
-                None, group_sizes_fit, n_groups_fit,
-            )
+        # Multipliers of the groups that still have columns: the user's, or
+        # sqrt(remaining size) by default.
+        gw_fit = fit_group_multipliers(self.group_multiplier, groups_full, fit_cols)
 
         # Penalty factors.
         pf_input = self.penalty_factor
@@ -221,17 +197,18 @@ class GroupLassoLogistic(BaseEstimator):
         c = 1.0 / float(np.sum(weight))
 
         # C2: within-group orthogonalization (R/grplasso convention).
-        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I,
-        # which is what makes the block coordinate update exact -- see the
-        # scale-correction note in the group CD kernel.  The unpenalized
+        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I;
+        # with the 1/4 majorizer below every group block is then 0.25*I and
+        # the block update takes its one-pass form.  The unpenalized
         # pseudo-group (label 0) is left untouched, as in R.
         #
         # NOTE: this changes the ESTIMATOR, not just the algorithm.  In the
         # original coordinates the penalty becomes
         #     lam * sqrt(K_g) * sqrt( beta_g' (X_g' W X_g / sum w) beta_g )
         # i.e. the standardized group lasso (Simon & Tibshirani 2012), which
-        # is what R/grplasso fits.  Set orthogonalize=False only to reproduce
-        # pre-change results; that path is NOT a validated alternative.
+        # is what R/grplasso fits.  orthogonalize=False fits the plain group
+        # lasso on the standardized columns (the block update is exact for
+        # any Hessian block); R has no counterpart for it.
         QL_blocks = None
         if self.orthogonalize:
             X_fit, QL_blocks = within_group_orthogonalize(
@@ -246,7 +223,7 @@ class GroupLassoLogistic(BaseEstimator):
         # at the top of the path (mirrors the R reference's SerBIN.residuals).
         beta_null, score_null, intercept_null = logistic_unpenalized_null_fit(
             X_fit, y, weight,
-            unpenalized=((groups_fit == 0) | (pf_fit == 0.0)),
+            unpenalized=unpenalized_columns(groups_fit, gw_fit, pf_fit, self.alpha),
             offset=offset, fit_intercept=self.fit_intercept,
         )
 
@@ -405,17 +382,12 @@ class GroupLassoLogistic(BaseEstimator):
     def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
+
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation, as ``coef_at``)."""
+        self._check_is_fitted()
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict_proba(self, X, lambda_value=None):
         """Predicted probabilities."""
@@ -426,19 +398,7 @@ class GroupLassoLogistic(BaseEstimator):
         else:
             lam = lambda_value
         coef = self.coef_at(lam)
-        intercept = self.intercept_path_[-1] if not hasattr(self, 'intercept_') else 0.0
-        # Interpolate intercept similarly.
-        idx = max(0, min(
-            int(np.searchsorted(-np.log(self.lambda_path_), -np.log(lam))) - 1,
-            len(self.lambda_path_) - 2,
-        ))
-        if lambda_value is not None and len(self.lambda_path_) > 1:
-            log_lam = np.log(self.lambda_path_)
-            log_val = np.log(max(lam, self.lambda_path_[-1]))
-            frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx]) if log_lam[idx + 1] != log_lam[idx] else 0.0
-            intercept = (1.0 - frac) * self.intercept_path_[idx] + frac * self.intercept_path_[idx + 1]
-        else:
-            intercept = self.intercept_path_[-1]
+        intercept = self.intercept_at(lam) if lambda_value is not None else self.intercept_path_[-1]
         eta = X @ coef + intercept
         return 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
 
@@ -447,7 +407,7 @@ class GroupLassoLogistic(BaseEstimator):
         return (self.predict_proba(X, lambda_value) >= threshold).astype(int)
 
 
-class GroupLassoLogisticCV(BaseEstimator):
+class GroupLassoLogisticCV(ProviderModel):
     """Cross-validated group lasso logistic regression.
 
     Fits the group lasso path, selects lambda via CV binomial deviance.
@@ -456,12 +416,13 @@ class GroupLassoLogisticCV(BaseEstimator):
     ----------
     groups : array-like, shape (p,)
     alpha : float, default=0.0
-    n_lambda, lambda_min_ratio, lambda_path, penalty_factor,
-    group_multiplier, standardize, fit_intercept, use_active_set
+    n_lambda, lambda_min_ratio, lambda_path, penalty_factor, group_multiplier, standardize, fit_intercept, use_active_set
+        As in ``GroupLassoLogistic``.
     n_folds : int, default=10
     fold_id : array-like or None
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
     """
 
@@ -480,7 +441,7 @@ class GroupLassoLogisticCV(BaseEstimator):
         use_active_set: bool = True,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
@@ -501,7 +462,7 @@ class GroupLassoLogisticCV(BaseEstimator):
         self.use_active_set = use_active_set
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -510,6 +471,8 @@ class GroupLassoLogisticCV(BaseEstimator):
 
     def fit(self, X, y, sample_weight=None, offset=None):
         """Fit CV to select lambda, then refit on full data."""
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         full_model = GroupLassoLogistic(
             groups=self.groups, alpha=self.alpha,
             n_lambda=self.n_lambda,
@@ -590,7 +553,7 @@ class GroupLassoLogisticCV(BaseEstimator):
         self.lambda_min_ = float(lambda_path[idx_min])
         self.lambda_1se_ = float(lambda_path[idx_1se])
         self.lambda_ = float(
-            lambda_path[idx_1se] if self.use_1se else lambda_path[idx_min]
+            lambda_path[idx_1se] if (self.se_rule == "1se") else lambda_path[idx_min]
         )
         self.model_ = full_model
         self.coef_ = full_model.coef_at(self.lambda_)

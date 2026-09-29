@@ -71,7 +71,8 @@ def plot_funnel(
     ----------
     df : pd.DataFrame
         One row per provider/group.  Must contain ``estimate_col``,
-        ``precision_col``, and optionally ``flag_col`` (int: -1/0/1).
+        ``precision_col``, and optionally ``flag_col`` (-1/0/1; NaN for a provider without a
+        test result, drawn hollow as "Not tested").
     limits_df : pd.DataFrame
         Control-limit curves.  Must contain ``precision``,
         ``control_lower``, ``control_upper``, and ``alpha`` columns.
@@ -173,8 +174,10 @@ def plot_funnel(
     # ---- scatter points -----------------------------------------------
     flag_map = {-1: 0, 0: 1, 1: 2}
     if flag_col and flag_col in df.columns:
-        present_flags = sorted(df[flag_col].unique())
+        present_flags = sorted(int(v) for v in pd.unique(df[flag_col].dropna()))
+        untested = df[df[flag_col].isna()]            # no test result: drawn hollow, listed last
     else:
+        untested = df.iloc[0:0]
         present_flags = [0]
         df = df.copy()
         df["_flag_tmp"] = 0
@@ -194,6 +197,21 @@ def plot_funnel(
             alpha=point_alpha,
             edgecolor=edge_color,
             linewidth=edge_linewidth if edge_color else 0,
+            label=lbl,
+        )
+        legend_handles.append(h)
+        legend_labels.append(lbl)
+    if len(untested):
+        lbl = f"{_style.UNTESTED_LABEL} ({len(untested)})"
+        h = ax.scatter(
+            untested[precision_col],
+            untested[estimate_col],
+            marker=point_shapes[1 % len(point_shapes)],
+            facecolors="none",
+            edgecolors=_style.COLOR_UNTESTED,
+            s=point_size * 30,
+            alpha=point_alpha,
+            linewidth=0.8,
             label=lbl,
         )
         legend_handles.append(h)

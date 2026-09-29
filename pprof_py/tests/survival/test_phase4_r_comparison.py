@@ -99,7 +99,9 @@ def _run_competing_risks(csvname, prefix, has_truncation):
     fg = FineGrayPH(ties="efron").fit(X, event=d["event"], failcode=1, id=d["id"], **kwargs)
     r_fg = _r_coef_table(f"{prefix}_finegray_fit")
     _check(f"{prefix}: finegray fit coef", fg.coef_, r_fg["coef"], RTOL_COEF)
-    _check(f"{prefix}: finegray fit se", fg.standard_errors_, r_fg["se_coef"], 1e-3)
+    # B5: FineGrayPH reports the cluster-robust SE (clustered on id), which R's summary() lists as "robust se"
+    # and uses for z; its "se(coef)" column is the model-based SE of the weighted fit.
+    _check(f"{prefix}: finegray fit robust se", fg.standard_errors_, r_fg["se_robust"], RTOL_COEF)
 
 
 def test_competing_risks_simple():

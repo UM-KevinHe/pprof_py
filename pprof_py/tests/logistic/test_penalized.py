@@ -218,11 +218,11 @@ class TestProviderPenalizedLogistic:
     """Provider-effect model tests."""
 
     def test_provider_effects_bounded(self, synth_provider_data):
-        """Provider effects should respect gamma_bound."""
+        """Provider effects should respect provider_bound."""
         X, y, prov, _, _ = synth_provider_data
         bound = 3.0
         model = ProviderPenalizedLogistic(
-            gamma_bound=bound, n_lambda=20,
+            provider_bound=bound, n_lambda=20,
         )
         model.fit(X, y, provider_id=prov)
         for i in range(len(model.lambda_path_)):
@@ -268,7 +268,7 @@ class TestProviderPenalizedLogisticCV:
         """CV should select a lambda and produce valid results."""
         X, y, prov, _, _ = synth_provider_data
         cv = ProviderPenalizedLogisticCV(
-            n_lambda=15, n_folds=5, gamma_bound=5.0,
+            n_lambda=15, n_folds=5, provider_bound=5.0,
             random_state=42,
         )
         cv.fit(X, y, provider_id=prov)

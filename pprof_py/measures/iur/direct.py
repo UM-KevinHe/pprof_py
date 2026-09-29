@@ -6,17 +6,15 @@ be computed directly without bootstrap resampling.
 """
 from __future__ import annotations
 
-from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_is_fitted
+from ...base import ProviderModel
 
 from ._core import ArrayLike, _compute_decile_table, _iur_decomposition
 
 
-class DirectIUR(BaseEstimator):
+class DirectIUR(ProviderModel):
     """Direct IUR from pre-computed group-level estimates and SEs.
 
     This estimator does not require patient-level data.  It computes
@@ -35,7 +33,7 @@ class DirectIUR(BaseEstimator):
         Within-group variance component (noise), scaled by ``n_prime_``.
     n_prime_ : float
         Effective sample size per group.
-    sizes_ : ndarray of shape (n_groups_,)
+    sizes_ : ndarray of shape (``n_groups_``,)
         Group sizes used during fitting.
 
     Examples
@@ -107,7 +105,7 @@ class DirectIUR(BaseEstimator):
         table : DataFrame
             Single-row frame with IUR at each representative size.
         """
-        check_is_fitted(self, "iur_")
+        self._require_fitted("iur_")
         return _compute_decile_table(
             self.sizes_,
             self.s2_between_,

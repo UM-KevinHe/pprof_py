@@ -25,10 +25,13 @@ write_coef_table <- function(fit, name) {
   s <- summary(fit)
   coefs <- as.data.frame(s$coefficients)
   ci <- as.data.frame(s$conf.int)
+  robust <- grep("robust se", colnames(coefs), fixed = TRUE)
   out <- data.frame(
     term = rownames(coefs),
     coef = coefs[["coef"]],
     se_coef = coefs[, grep("^se\\(coef\\)$", colnames(coefs))],
+    # the cluster-robust se (Fine-Gray fits, cluster = id); summary()'s z uses it
+    se_robust = if (length(robust)) coefs[, robust] else NA_real_,
     z = coefs[[grep("^z$", colnames(coefs), value = TRUE)[1]]],
     p = coefs[, grep("^Pr", colnames(coefs))],
     lower_95 = ci[, 3],

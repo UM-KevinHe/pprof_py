@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 from scipy.stats import norm, t as t_dist
 
-from pprof_py import (LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel,
-                      LogisticMixedEffectModel, LogisticRandomEffectModel)
+from pprof_py import (ProviderPenalizedLogistic, LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel,
+                      LogisticFERandomClusterModel, LogisticRandomEffectModel)
 from pprof_py.inference import HUBER_RLM, PROVIDER_TEST_COLUMNS, EmpiricalNull
 
 sig = lambda x: 1 / (1 + np.exp(-x))
@@ -30,16 +30,21 @@ def models():
     y = rng.binomial(1, sig(-1.4 + X @ [0.5, -0.3] + g[prov])).astype(float)
     y[prov == 5] = 0.0                                              # a zero-event provider
     df = pd.DataFrame(X, columns=["x1", "x2"]); df["y"] = y; df["provider"] = prov
+    df["cluster"] = np.random.default_rng(7).integers(0, 12, prov.size)   # own stream: the other data are unchanged
     fe = LogisticFixedEffectModel(); _quiet(fe.fit, X, y, prov)
-    re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], group_var="provider", verbose=False)
-    me = LogisticMixedEffectModel(update_sigma=False)
+    re = LogisticRandomEffectModel(); _quiet(re.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
+    me = LogisticFERandomClusterModel()
     _quiet(me.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_var="provider",
-           gamma_init=np.full(m, -1.4), beta_init=fe.coefficients_["beta"].ravel(), sigma_init=0.35, verbose=False)
+           gamma_init=np.full(m, -1.4), beta=fe.coefficients_["beta"].ravel(), sigma=0.35, verbose=False)
     yl = 5.0 + X @ [1.0, -0.5] + rng.normal(0, 0.6, m)[prov] + rng.normal(0, 2.0, prov.size)
     dfl = df.assign(y=yl)
     lfe = LinearFixedEffectModel(); _quiet(lfe.fit, X, yl, prov)
-    lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], group_var="provider", verbose=False)
-    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre}
+    lre = LinearRandomEffectModel(); _quiet(lre.fit, dfl, y_var="y", x_vars=["x1", "x2"], provider_var="provider", verbose=False)
+    rec = LogisticRandomEffectModel()
+    _quiet(rec.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_vars=["cluster"], verbose=False)
+    ppl = ProviderPenalizedLogistic(n_lambda=6)
+    _quiet(ppl.fit, X, y, prov)
+    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec, "ppl": ppl}
 
 
 ROUTES = {
@@ -50,8 +55,13 @@ ROUTES = {
     "logistic_re/wald": ("re", dict(test_method="wald")),
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
-    "logistic_me/poibin_exact": ("me", dict(test_method="poibin_exact")),
-    "logistic_me/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),
+    "logistic_re_clustered/exact": ("rec", dict(test_method="exact")),
+    "provider_penalized_logistic/poibin_exact": ("ppl", dict(test_method="poibin_exact")),
+    "logistic_re_clustered/poibin_exact": ("rec", dict(test_method="poibin_exact")),
+    "logistic_re_clustered/resampling": ("rec", dict(test_method="resampling", n_resample=1500, seed=3)),
+    "logistic_fe_random_cluster/exact": ("me", dict(test_method="exact")),
+    "logistic_fe_random_cluster/poibin_exact": ("me", dict(test_method="poibin_exact")),
+    "logistic_fe_random_cluster/resampling": ("me", dict(test_method="resampling", n_resample=1500, seed=3)),
     "linear_fe/wald": ("lfe", {}),
     "linear_re/wald": ("lre", {}),
 }
@@ -66,7 +76,7 @@ def _run(models, route, **extra):
 @pytest.mark.parametrize("route", sorted(ROUTES))
 def test_schema_and_conventions(models, route):
     res = _run(models, route)
-    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider"
+    assert tuple(res.columns) == PROVIDER_TEST_COLUMNS and res.index.name == "provider_id"
     assert str(res.flag.dtype) == "Int8" and res.flag.notna().all()
     assert ((res.flag == 1) <= (res.z_adjusted > 0)).all() and ((res.flag == -1) <= (res.z_adjusted < 0)).all()
     np.testing.assert_allclose(res.p_value, 2 * norm.sf(np.abs(res.z_adjusted)), rtol=1e-12, atol=0)
@@ -99,7 +109,7 @@ def test_linear_fe_uses_student_t(models):
     np.testing.assert_allclose(res.ci_upper - res.estimate, t_dist.isf(0.025, df) * res.se, rtol=1e-10)
 
 
-@pytest.mark.parametrize("route", ["logistic_fe/bootstrap_exact", "logistic_re/resampling", "logistic_me/resampling"])
+@pytest.mark.parametrize("route", ["logistic_fe/bootstrap_exact", "logistic_re/resampling", "logistic_fe_random_cluster/resampling"])
 def test_monte_carlo_routes_are_reproducible(models, route):
     a, b = _run(models, route), _run(models, route)
     c = _run(models, route, seed=4)
@@ -122,9 +132,9 @@ def test_binomial_trials_weight_the_score_test():
     y = rng.binomial(n_trials.astype(int), sig(-0.8 + 0.4 * X[:, 0] + rng.normal(0, 0.3, m)[prov])).astype(float)
     df = pd.DataFrame({"x1": X[:, 0], "y": y, "n": n_trials, "provider": prov})
     fe = LogisticFixedEffectModel(use_dataprep=False)                   # data prep insists on 0/1 outcomes
-    _quiet(fe.fit, df, x_vars=["x1"], y_var="y", n_var="n", group_var="provider")
+    _quiet(fe.fit, df, x_vars=["x1"], y_var="y", n_var="n", provider_var="provider")
     g0 = np.median(fe.coefficients_["gamma"].ravel())
-    p0 = np.clip(sig(g0 + fe.xbeta_.ravel()), 1e-10, 1 - 1e-10); idx = np.asarray(fe.group_indices_)
+    p0 = np.clip(sig(g0 + fe.xbeta_.ravel()), 1e-10, 1 - 1e-10); idx = np.asarray(fe.provider_indices_)
     z = (np.bincount(idx, fe.outcome_) - np.bincount(idx, fe.N_ * p0)) / np.sqrt(np.bincount(idx, fe.N_ * p0 * (1 - p0)))
     np.testing.assert_allclose(_quiet(fe.test, test_method="score").z_raw, z, rtol=1e-12)
     exact = _quiet(fe.test, test_method="poibin_exact")                    # trials expanded, so counts can exceed rows

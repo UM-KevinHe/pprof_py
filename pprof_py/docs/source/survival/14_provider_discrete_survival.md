@@ -20,7 +20,7 @@ Each lambda now alternates three Newton/CD steps instead of two, up to
 `max_outer_iter` times:
 
 1. **Provider step**: Newton update for $\gamma_k$ (median-clamp
-   bounded by `gamma_bound`, same mechanism as
+   bounded by `provider_bound`, same mechanism as
    [the logistic chapter's](../logistic/provider_penalized_logistic)
    Section 3), up to `provider_max_iter` (default 10) rounds.
 2. **Baseline hazard step**: Newton update for $\alpha_t$ via
@@ -32,24 +32,17 @@ Each lambda now alternates three Newton/CD steps instead of two, up to
    person-period working response
    ([Chapter 13's](13_discrete_survival) expansion).
 
-Convergence is checked once per outer iteration, as a **single summed
-criterion** across all three blocks — `max|Δβ| + max|Δγ| + max|Δα| <
-outer_tol` — differently from
-[Chapter 12's](12_provider_penalized_cox) Cox model, which requires
-each block's own threshold to pass independently.
+Convergence is checked once per outer iteration, on the largest change
+in any of the three blocks: `max(max|Δβ|, max|Δγ|, max|Δα|) < outer_tol`
+(default `1e-7`), that is, every block's largest change must be below
+the tolerance.
 
-## 14.2 `alpha_en`, not `alpha`
+## 14.2 `alpha`: elastic-net mixing
 
-This class's elastic-net mixing parameter is spelled `alpha_en`
-rather than the plain `alpha` used elsewhere in the penalized-
-regression chapters.  Both names are accepted (`alpha=` works as an
-alias), but the distinct spelling exists for a real reason: `alpha`
-already means something *different* elsewhere in this family —
-[`DiscreteSurvival.alpha`](13_discrete_survival) is group-vs-lasso
-mixing, meaningful only for `penalty_type='sparse_group_lasso'`, not
-elastic-net mixing at all.  There is no `penalty_type=` or `groups=`
-on this class — unlike `DiscreteSurvival`, it is elastic-net only,
-matching R `pp.DiscSurv`.
+`alpha` is the elastic-net mixing parameter (1 = lasso, 0 = ridge),
+as in the other penalized classes.
+[`DiscreteSurvival`](13_discrete_survival) has no `alpha`: it fits the
+lasso only.
 
 ## 14.3 `standardize=False` by default — deliberately
 
@@ -68,46 +61,53 @@ default the way it is everywhere else.
 
 ## 14.4 The running example, extended with facilities
 
-[Chapter 13's](13_discrete_survival) annual chart-review cohort,
-unmodified — `facility_id` was already present, just unused there.
+[Chapter 13's](13_discrete_survival) annual chart-review cohort, with
+`time_year` built the same way; `facility_id` was already present, just
+unused there.
 
 ```python
+import numpy as np
 from pprof_py import ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV
+
+cohort["time_year"] = np.ceil(cohort["time"]).astype(int)   # as in Chapter 13
 
 X = cohort[["age", "sex", "diabetes", "comorbidity_count"]]
 time, event = cohort["time_year"], cohort["death"]
 provider_id = cohort["facility_id"]
 
-model = ProviderPenalizedDiscreteSurvival(alpha_en=1.0)
+model = ProviderPenalizedDiscreteSurvival(alpha=1.0)
 model.fit(X, time, event, provider_id)
 
-model.n_providers_          # 40
-model.n_timepoints_         # 4
-model.coef_path_.shape      # (100, 4)
-model.baseline_hazard_path_.shape   # (100, 4)  -- alpha_t path
-model.gamma_path_.shape     # (100, 40)          -- one column per facility
+print(model.n_providers_, "providers,", model.n_timepoints_, "timepoints")
+print("coef_path_:", model.coef_path_.shape,
+      " baseline_hazard_path_:", model.baseline_hazard_path_.shape,   # alpha_t per lambda
+      " gamma_path_:", model.gamma_path_.shape)                       # one column per facility
+```
+```
+40 providers, 4 timepoints
+coef_path_: (100, 4)  baseline_hazard_path_: (100, 4)  gamma_path_: (100, 40)
 ```
 
-## 14.5 `predict_hazard()` here is a different, and safer, design
+## 14.5 `predict_hazard()` and `predict_survival()`
 
 ```python
 hz = model.predict_hazard(X.values[:3], provider_id.values[:3], which=50)
-hz.shape   # (3, 4) -- one row per subject, one column per discrete timepoint
 sv = model.predict_survival(X.values[:3], provider_id.values[:3], which=50)
-sv.shape   # (3, 4)
+print(hz.shape, sv.shape)   # one row per subject, one column per discrete timepoint
+print(bool(np.allclose(sv, np.cumprod(1 - hz, axis=1))))
+```
+```
+(3, 4) (3, 4)
+True
 ```
 
-Note that this is not [Chapter 13's](13_discrete_survival)
-`predict_hazard()` with a `provider_id=` argument tacked on — the
-signature and return shape are both different.
-`DiscreteSurvival.predict_hazard(X, time, ...)` requires `time=` and
-returns a 1-D, person-period-length array.
-`ProviderPenalizedDiscreteSurvival.predict_hazard(X, provider_id=None,
-which=-1)` takes **no `time=` argument at all** and returns a 2-D
-array — the hazard at *every* timepoint for every subject, wide
-format.  If you don't specifically need a single per-subject timepoint,
-the wide-format pattern is convenient since it avoids choosing which
-timepoints to query up front.
+The signature is [Chapter 13's](13_discrete_survival) with `provider_id`
+second: `predict_hazard(X, provider_id=None, time=None, lambda_value=None,
+which=None)`. Without `time=`, as here, the result has one column per time
+point; with it, the person-period form of Chapter 13, one value per period up
+to each subject's time. `which` picks a path point by index (by default, the
+last) and `lambda_value` the path point nearest a lambda; rows of providers the
+model has not seen get no provider effect.
 
 `predict_survival()` here is exactly the cumulative product of
 `1 - predict_hazard()` across the timepoint axis
@@ -117,39 +117,30 @@ Cox survival curve, one row per subject, cumulative down the columns.
 ## 14.6 Provider effects and cross-validation
 
 ```python
-cv = ProviderPenalizedDiscreteSurvivalCV(n_folds=5, random_state=0, alpha_en=1.0)
+cv = ProviderPenalizedDiscreteSurvivalCV(n_folds=5, random_state=0, alpha=1.0)
 cv.fit(X, time, event, provider_id)
 
-cv.lambda_min_   # 0.00011302037861218591
-cv.lambda_1se_   # 0.03968401238419185
-cv.coef_          # at the selected lambda (use_1se=True default)
+print(f"lambda_min = {cv.lambda_min_:.6f}, lambda_1se = {cv.lambda_1se_:.6f}")
+print(pd.Series(cv.coef_, index=X.columns).round(4).to_string())   # at the selected lambda (se_rule="1se")
 ```
 ```
-age                  0.0445
+lambda_min = 0.000105, lambda_1se = 0.259308
+age                  0.0246
 sex                  0.0000
 diabetes             0.0000
 comorbidity_count    0.0000
 ```
 
-Only `age` survives at the default `lambda_1se_` — the same pattern
-[survival Chapter 4 §4.9](04_indirect_standardization_smr_shr) and
-[Chapter 12](12_provider_penalized_cox) both found: with a modest
-event count spread across many facilities and four discrete
-timepoints, the one-standard-error margin comfortably prefers the
-simplest model. This class's CV parameter is the ordinary `use_1se:
-bool = True`, matching
-[the logistic provider chapter](../logistic/provider_penalized_logistic)
-and every non-Cox CV class in this documentation.
-`DiscreteSurvivalCV` also accepts `use_1se` as an alias for its
-native `se_rule` parameter.
-
-The full-data fit is accessible as `cv.model_` (consistent with
-every other CV class in the package).  `DiscreteSurvivalCV` also
-exposes it as `cv.best_model_` for backward compatibility.
+Only `age` survives at the default `lambda_1se_`, as in
+[Chapter 13](13_discrete_survival) without provider effects: with 259
+deaths spread across 40 facilities and four discrete timepoints, the
+one-standard-error margin prefers the simplest model. This class's CV parameter is `se_rule` (default `"1se"`), as in
+every CV class in the package, and the full-data fit is `cv.model_`.
 
 ## 14.7 What's next
 
-Deliverable 4 is complete: both discrete-time survival chapters are
-written.  The package's remaining undocumented surface after this
-deliverable is `LogisticMixedEffectModel` (Deliverable 5) and the
-infrastructure and utility reference pages (Deliverable 6).
+This is the last chapter of the survival guide. For provider tests and
+confidence intervals on standardized ratios (SMRs), return to
+[Chapter 4](04_indirect_standardization_smr_shr); the
+[empirical-null guide](empirical-null-guide) covers calibrating those
+tests.

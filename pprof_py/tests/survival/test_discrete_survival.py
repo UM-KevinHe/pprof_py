@@ -149,7 +149,7 @@ class TestDiscreteSurvivalCV:
         assert cv.lambda_1se_ >= cv.lambda_min_
 
     def test_coef_at_selected_lambda(self, synth_data):
-        """Refit model from best_model_ should have correct coef shape."""
+        """Refit model from model_ should have correct coef shape."""
         X, time, event, _ = synth_data
         cv = DiscreteSurvivalCV(
             penalty_type="lasso", n_lambda=15,
@@ -158,5 +158,5 @@ class TestDiscreteSurvivalCV:
         cv.fit(X, time=time, event=event)
         # DiscreteSurvivalCV has no coef_ attribute;
         # coefficients are accessed via the refit model.
-        assert hasattr(cv, "best_model_")
-        assert cv.best_model_.coef_path_.shape[1] == X.shape[1]
+        assert hasattr(cv, "model_")
+        assert cv.model_.coef_path_.shape[1] == X.shape[1]

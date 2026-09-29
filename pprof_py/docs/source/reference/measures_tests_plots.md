@@ -3,7 +3,7 @@
 
 The fixed-effect, random-effect and mixed-effect classes share a provider-profiling workflow: estimate provider effects → standardize them →
 test them against a null → build intervals → plot. The theory (direct versus indirect standardization) is in
-[Direct vs indirect standardization](direct_vs_indirect_standardization); this page lists the methods and what they return.
+[Direct vs indirect standardization](../direct_vs_indirect_standardization); this page lists the methods and what they return.
 
 ```python
 import numpy as np
@@ -28,8 +28,8 @@ import matplotlib
 matplotlib.use("Agg")
 from pprof_py import LinearFixedEffectModel, LogisticFixedEffectModel
 
-lin = LinearFixedEffectModel().fit(df, y_var="y", x_vars=X_COLS, group_var="provider")
-log = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, group_var="provider")
+lin = LinearFixedEffectModel().fit(df, y_var="y", x_vars=X_COLS, provider_var="provider")
+log = LogisticFixedEffectModel().fit(df, y_var="event", x_vars=X_COLS, provider_var="provider")
 
 lin.calculate_standardized_measures(stdz=["indirect", "direct"])["direct"].head()
 log.calculate_confidence_intervals(option="SM", stdz="indirect", measure="ratio", test_method="wald")["indirect_ratio"].head()
@@ -40,12 +40,12 @@ lin.plot_funnel(); lin.plot_provider_effects(); lin.plot_coefficient_forest()
 log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wald")
 ```
 
-## `null`, `reference`, `stdz`, `alternative`
+## `reference`, `stdz`, `alternative`
 
-- `null` (standardized measures, confidence intervals and plots): `"median"` (the median provider effect, γ or α), `"mean"` (the
-  group-size-weighted mean effect) or a number on the effect scale.
-- `reference` (`test` and `test_standardized`): the reference effect γ₀ the tests compare against, in the same three forms. The default is
-  `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
+- `reference`: the reference effect γ₀ — `"median"` (the median provider effect, γ or α), `"mean"` (the group-size-weighted mean
+  effect) or a number on the effect scale. For standardized measures, confidence intervals and plots the default is `"median"`; for
+  `test` and `test_standardized` it is `"median"`, except `0` (the random-effect mean, as in R pprof) for the random-effect classes.
+  `reference=0` reproduces R pprof's random-effect measures, which have no reference argument.
 - `stdz`: `"indirect"`, `"direct"` or a list of both.
 - `alternative`: `"two_sided"` (or `"two-sided"`), `"less"` or `"greater"`. Confidence intervals for the provider effects themselves (`option="gamma"` / `"alpha"`) are two-sided only.
 
@@ -53,14 +53,14 @@ log.plot_standardized_measures(stdz="indirect", measure="ratio", test_method="wa
 
 | Estimator | Returned dict | Columns |
 |---|---|---|
-| `LinearFixedEffectModel`, `LinearRandomEffectModel` | `"indirect"` | `group_id`, `indirect_difference`, `observed`, `expected` |
-| | `"direct"` | `group_id`, `direct_difference`, `observed`, `expected` |
-| `LogisticFixedEffectModel` | `"indirect"` | `group_id`, `indirect_ratio`, `indirect_rate`, `observed`, `expected` |
-| | `"direct"` | `group_id`, `direct_ratio`, `direct_rate`, `observed`, `expected`, `n_pop` |
-| `LogisticRandomEffectModel`, `LogisticMixedEffectModel` | `"indirect"` | as the fixed-effect logistic indirect table |
+| `LinearFixedEffectModel`, `LinearRandomEffectModel` | `"indirect"` | `provider_id`, `indirect_difference`, `observed`, `expected` |
+| | `"direct"` | `provider_id`, `direct_difference`, `observed`, `expected` |
+| `LogisticFixedEffectModel` | `"indirect"` | `provider_id`, `indirect_ratio`, `indirect_rate`, `observed`, `expected` |
+| | `"direct"` | `provider_id`, `direct_ratio`, `direct_rate`, `observed`, `expected`, `n_pop` |
+| `LogisticRandomEffectModel`, `LogisticFERandomClusterModel` | `"indirect"` | as the fixed-effect logistic indirect table |
 
-Signatures: `providers=None, stdz="indirect", null="median"` for the linear and mixed classes; the logistic fixed-effect version adds
-`include_extreme_obs=False, extreme_obs_total_n=None`; the logistic random-effect version adds a leading `group_var=None`.
+Signatures: `providers=None, stdz="indirect", reference="median"` for the linear and mixed classes; the logistic fixed-effect version adds
+`include_extreme_obs=False, extreme_obs_total_n=None`.
 
 ## `calculate_confidence_intervals`
 
@@ -70,7 +70,7 @@ LogisticFixedEffectModel.calculate_confidence_intervals(
     level: 'float' = 0.95,
     option: 'str' = 'SM',
     stdz: 'Union[str, list]' = 'indirect',
-    null: 'Union[str, float]' = 'median',
+    reference: 'Union[str, float]' = 'median',
     measure: 'Union[str, list]' = ('rate', 'ratio'),
     alternative: 'str' = 'two_sided',
     test_method: 'str' = 'exact',
@@ -79,12 +79,11 @@ LogisticFixedEffectModel.calculate_confidence_intervals(
 
 ```text
 LogisticRandomEffectModel.calculate_confidence_intervals(
-    group_var: 'Optional[str]' = None,
     providers: 'Optional[Union[List, Array]]' = None,
     level: 'float' = 0.95,
     option: 'str' = 'SM',
     stdz: 'Union[str, List[str]]' = 'indirect',
-    null: 'Union[str, float]' = 'median',
+    reference: 'Union[str, float]' = 'median',
     measure: 'Union[str, List[str]]' = ('rate', 'ratio'),
     alternative: 'str' = 'two_sided',
 )
@@ -92,12 +91,12 @@ LogisticRandomEffectModel.calculate_confidence_intervals(
 
 | Estimator | `option` | Returned dict (keys → columns) |
 |---|---|---|
-| Linear fixed effect | `"gamma"` | `"gamma_ci"` → `group_id`, `gamma`, `lower`, `upper` |
+| Linear fixed effect | `"gamma"` | `"gamma_ci"` → `provider_id`, `gamma`, `lower`, `upper` |
 | | `"SM"` | `"indirect_ci"`, `"direct_ci"` → the standardized-measure columns plus `lower`, `upper` (subject to K2) |
-| Linear random effect | `"alpha"` | `"alpha_ci"` → `group_id`, `alpha`, `alpha_lower`, `alpha_upper` |
+| Linear random effect | `"alpha"` | `"alpha_ci"` → `provider_id`, `alpha`, `alpha_lower`, `alpha_upper` |
 | | `"SM"` | `"indirect_ci"` (K2), `"direct_ci"` |
-| Logistic fixed effect | `"gamma"` | `"gamma_ci"` → `group_id`, `gamma`, `gamma_lower`, `gamma_upper` |
-| | `"SM"` | one key per `stdz` × `measure`, e.g. `"indirect_ratio"` → `group_id`, `indirect_ratio`, `indirect_rate`, `observed`, `expected`, `ci_ratio_lower`, `ci_ratio_upper` |
+| Logistic fixed effect | `"gamma"` | `"gamma_ci"` → `provider_id`, `gamma`, `gamma_lower`, `gamma_upper` |
+| | `"SM"` | one key per `stdz` × `measure`, e.g. `"indirect_ratio"` → `provider_id`, `indirect_ratio`, `indirect_rate`, `observed`, `expected`, `ci_ratio_lower`, `ci_ratio_upper` |
 
 For the logistic fixed-effect model the interval method is `test_method` ∈ {`"wald"`, `"score"`, `"exact"`}; the standardized-measure
 intervals are the transformed provider-effect intervals, which must therefore be two-sided.
@@ -148,7 +147,6 @@ LogisticFixedEffectModel.test_standardized(
 LogisticRandomEffectModel.test(
     providers=None,
     *,
-    group_var: 'Optional[str]' = None,
     test_method: 'str' = 'wald',
     reference=0.0,
     null_model=None,
@@ -162,10 +160,10 @@ LogisticRandomEffectModel.test(
 ```
 
 ```text
-LogisticMixedEffectModel.test(
+LogisticFERandomClusterModel.test(
     providers=None,
     *,
-    test_method: 'str' = 'resampling',
+    test_method: 'str' = 'exact',
     reference='median',
     null_model=None,
     alternative: 'str' = 'two_sided',
@@ -204,16 +202,22 @@ LinearRandomEffectModel.test(
 
 | Estimator | `test_method` (default first) | Default `reference` | Intervals |
 |---|---|---|---|
-| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald only |
-| `LogisticRandomEffectModel.test` | `"wald"`, `"poibin_exact"`, `"resampling"` | `0` | Wald only |
-| `LogisticMixedEffectModel.test` | `"resampling"`, `"poibin_exact"` | `"median"` | none |
+| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald; inverted test (`"poibin_exact"`) |
+| `LogisticRandomEffectModel.test` | `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` | `0` | Wald; inverted test (`"exact"`, `"poibin_exact"`) |
+| `ProviderPenalizedLogistic.test` | `"poibin_exact"` | `"median"` | inverted test |
+| `LogisticFERandomClusterModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
 | `LinearFixedEffectModel.test` | Wald with a Student-t reference on n − p − m degrees of freedom | `"median"` | t intervals |
 | `LinearRandomEffectModel.test` | Wald (normal reference) | `0` | normal intervals |
 
-- **Exact and Monte Carlo tests** (`"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event count with its
-  effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof. `"resampling"`
-  draws the other random effects from their posterior (He et al. 2013). The Monte Carlo tests use `n_resample` draws and `seed`; a
-  simulated tail probability of zero is replaced by `0.5 / n_resample`.
+- **Exact and Monte Carlo tests** (`"exact"`, `"poibin_exact"`, `"bootstrap_exact"`, `"resampling"`) test the provider's event
+  count with its effect set to γ₀. Two-sided p-values are mid-p; one-sided p-values are `P(X >= O)` or `P(X <= O)`, as in R pprof.
+  `"exact"` (the mixed-effect default, and in random-effects models with one cluster factor) draws each cluster's effect once for all
+  of a provider's patients in that cluster and computes the count's distribution exactly. `"poibin_exact"` holds the other random
+  effects at their posterior means; `"resampling"` draws them from their posterior for each patient (He et al. 2013). The Monte Carlo
+  tests use `n_resample` draws and `seed`. In `"resampling"`, providers whose simulated tail reaches the floor `0.5 / n_resample` get
+  the exact tails of the same null, with a warning; `"bootstrap_exact"` keeps the floor. The exact tests' intervals invert the test,
+  so a limit excludes γ₀ exactly when the provider is flagged. All count tests run through one component,
+  `pprof_py.inference.count_tests`.
 - **Binomial outcomes** (a logistic fixed-effect model fitted with `n_var`) are weighted by their trials in the score, exact and bootstrap
   tests; the exact test expands trials up to 20,000 per provider.
 - **The logistic Wald test** uses the normal reference, as R pprof does. It is unreliable for providers at the numerical bound of γ
@@ -223,11 +227,15 @@ LinearRandomEffectModel.test(
   `"indirect_ratio"` or `"gamma"`). Its null value defaults to the measure at γ₀ (`null_value="reference"`), so it agrees with a test of
   γ = γ₀. Indirect measures use the variance of the observed count under γ₀ (`indirect_variance="null"`, a score-type test) and an
   identity working scale (`transform="auto"`); `indirect_variance="fitted"` with `transform="log"` reproduces earlier versions'
-  construction. `variance="robust"` uses sandwich variances, `population=` sets the standard population for direct measures, and
+  construction. `variance="robust"` uses the cluster-robust sandwich of the joint (γ, β) fit for the provider effect at the
+  average case mix (it accounts for the estimation of β and does not depend on where the covariates are centered; the model
+  needs `obs_id_var`);
+  `variance="robust_fixed_beta"` treats β as known, as R's `test_aoh` does (R parity; it understates the variance of providers whose
+  case mix differs from the rest). `population=` sets the standard population for direct measures, and
   `bounds="auto"` clips identity-scale intervals to the measure's range. There is no fixed scale factor: earlier versions divided every
   z-statistic by 1.81 by default, which `null_model=FixedNull(sd=1.81)` reproduces.
 
-Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provider` with the columns
+Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provider_id` with the columns
 `pprof_py.inference.PROVIDER_TEST_COLUMNS`:
 
 | Column | Meaning |
@@ -250,15 +258,15 @@ Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provi
 ## Plotting methods
 
 All plots use Matplotlib and return `None` (they draw on the current figure). Common arguments: `group_ids` (subset of providers), `level`,
-`use_flags` (colour by `flag`), `null`, and `**plot_kwargs` (titles, sizes; see the docstrings). The plots pass their `null` to `test()` as
+`use_flags` (colour by `flag`), `reference`, and `**plot_kwargs` (titles, sizes; see the docstrings). The plots pass their `reference` to `test()` as
 `reference`; a provider the test could not evaluate (`flag` is `NA`) is drawn as not flagged.
 
 | Estimator | Methods |
 |---|---|
-| `LinearFixedEffectModel`, `LinearRandomEffectModel` | `plot_funnel(stdz="indirect", null="median", target=0.0, alpha=0.05, …)`, `plot_provider_effects(…, test_method=None)`, `plot_standardized_measures(…, measure="difference", …)`, `plot_coefficient_forest(orientation="vertical", refline_value=0.0, …)`, `plot_residuals(…)`, `plot_qq(…)` |
+| `LinearFixedEffectModel`, `LinearRandomEffectModel` | `plot_funnel(stdz="indirect", reference="median", target=0.0, alpha=0.05, …)`, `plot_provider_effects(…, test_method=None)`, `plot_standardized_measures(…, measure="difference", …)`, `plot_coefficient_forest(orientation="vertical", refline_value=0.0, …)`, `plot_residuals(…)`, `plot_qq(…)` |
 | `LogisticFixedEffectModel` | `plot_funnel(test_method="score", target=1.0, …)`, `plot_provider_effects(test_method="wald", …)`, `plot_standardized_measures(measure="ratio", test_method="score", …)`, `plot_coefficient_forest(…)`; `plot_residuals` and `plot_qq` raise `NotImplementedError` |
-| `LogisticRandomEffectModel` | as above with a leading `group_var=None` and `test_method="wald"` defaults; no residual plots |
-| `LogisticMixedEffectModel` | no plotting methods |
+| `LogisticRandomEffectModel` | as above with `test_method="wald"` defaults; no residual plots |
+| `LogisticFERandomClusterModel` | no plotting methods |
 
 `plot_standardized_measures` on the linear models draws the intervals of K2. Two standalone functions are exported: `pprof_py.plot_caterpillar(df, estimate_col="estimate",
 ci_lower_col="lower", ci_upper_col="upper", group_col=None, flag_col=None, …)` and `pprof_py.plotting.plot_funnel(df, limits_df, *, estimate_col, precision_col,

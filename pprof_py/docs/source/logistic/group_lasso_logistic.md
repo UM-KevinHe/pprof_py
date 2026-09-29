@@ -5,7 +5,7 @@ In R, this is closest to `grplasso::grp.lasso()` (pure group lasso) or
 `gglasso`/`grpreg` (sparse group lasso) for a binomial outcome.
 `GroupLassoLogistic` is R's `grplasso` for binomial family and
 `GroupLassoLogisticCV` cross-validates it. This chapter assumes you've
-read [Penalized Logistic Regression](penalized_logistic) — the lambda
+read [Penalized Logistic Regression](penalized_logistic.md) — the lambda
 path, standardization, and cross-validation machinery are all shared,
 so this chapter only covers what's different when the penalty acts on
 *groups* of coefficients instead of one coefficient at a time. One of
@@ -14,7 +14,7 @@ if you skim the rest.
 
 ## 1. The problem elastic net doesn't quite solve
 
-[Penalized Logistic Regression's Section 1](penalized_logistic) makes
+[Penalized Logistic Regression's Section 1](penalized_logistic.md) makes
 the case for shrinking coefficients when you have more candidate risk
 adjusters than you're confident belong in the model. Elastic net
 shrinks and selects one *coefficient* at a time — but a lot of real
@@ -66,7 +66,7 @@ whole and still have some of its own coordinates shrunk to zero.
 ## 3. The running example: admission source and a comorbidity panel
 
 Same shape of mortality cohort as the
-[penalized logistic chapter](penalized_logistic), but built around
+[penalized logistic chapter](penalized_logistic.md), but built around
 three genuine groups instead of ten individual covariates: a
 categorical admission source (one-hot into three dummy columns), a
 three-item comorbidity panel, and a two-item noise lab panel — plus an
@@ -141,11 +141,17 @@ from pprof_py import GroupLassoLogistic
 m = GroupLassoLogistic(groups=groups, alpha=0.0)   # pure group lasso
 m.fit(X, y)
 
-m.lambda_max_       # 0.013250566398507435
-m.n_groups_          # 3 -- the *penalized* groups only; group 0 doesn't count
-m.group_sizes_       # array([3, 3, 2])
-m.group_weights_     # array([1.7321, 1.7321, 1.4142])  -- sqrt(3), sqrt(3), sqrt(2)
+print(f"lambda_max = {m.lambda_max_:.6f}")
+print(m.n_groups_, m.group_sizes_, m.group_weights_.round(4))   # penalized groups only; weights sqrt(size)
 ```
+```
+lambda_max = 0.013751
+3 [3 3 2] [1.7321 1.7321 1.4142]
+```
+
+`age` is group 0: unpenalized, and fitted at every point of the path,
+including the null point at $\lambda_{\max}$, the smallest $\lambda$ at
+which every penalized group is zero.
 
 The mechanics you already know from `PenalizedLogistic` carry over
 directly: `coef_` doesn't exist for this full, 100-point path fit
@@ -154,29 +160,28 @@ by position or `coef_at()` by an arbitrary lambda. What's new is a
 per-group view of the path. `active_groups_path_` (shape `(100, 3)`)
 and `active_group_labels(which=)` report which groups have a nonzero
 norm at a given path index; `group_norms_path_` (shape `(100, 3)`)
-gives the actual $\|\beta_g\|_2$ trajectory, which is the more
-reliable of the two to read near the top of the path (Section 7
-explains why):
+gives the actual $\|\beta_g\|_2$ trajectory (Section 6):
 
 ```python
 lam50 = m.lambda_path_[50]
-m.active_group_labels(which=50)   # array([1, 2, 3]) -- all three active by here
-m.coef_at(lam50)
+print(m.active_group_labels(which=50))   # all three active by here
+print(pd.Series(m.coef_at(lam50), index=candidates).round(4).to_string())
 ```
 ```
-age              0.0000
-src_emergency    0.7051
-src_transfer     0.9169
-src_urgent       0.3406
-diabetes         0.1316
-chf              0.4210
-ckd              0.5558
-lab_e            0.0105
-lab_f            0.0074
+[1 2 3]
+age              0.0339
+src_emergency    0.7061
+src_transfer     0.9292
+src_urgent       0.3358
+diabetes         0.1365
+chf              0.4532
+ckd              0.5889
+lab_e            0.0145
+lab_f           -0.0014
 ```
 
-Notice `age` is `0.0000` here too — every single point on this path,
-in fact, not just this one. That's the subject of the next section.
+`age` (true effect 0.038) is unpenalized, so it carries its fitted
+value throughout.
 
 ## 5. Sparse group lasso: selection within a selected group
 
@@ -191,18 +196,18 @@ are independently shrunk and can be individually zeroed:
 ```python
 m_sparse = GroupLassoLogistic(groups=groups, alpha=0.5)
 m_sparse.fit(X, y)
-m_sparse.coef_at(m_sparse.lambda_path_[50])
+print(pd.Series(m_sparse.coef_at(m_sparse.lambda_path_[50]), index=candidates).round(4).to_string())
 ```
 ```
-age              0.0000
-src_emergency    0.7036
-src_transfer     0.9144
-src_urgent       0.3372
-diabetes         0.1313
-chf              0.4205
-ckd              0.5559
-lab_e            0.0095
-lab_f            0.0063
+age              0.0339
+src_emergency    0.7061
+src_transfer     0.9293
+src_urgent       0.3385
+diabetes         0.1355
+chf              0.4518
+ckd              0.5899
+lab_e            0.0142
+lab_f           -0.0015
 ```
 
 At this particular lambda the two are nearly identical, because none
@@ -216,42 +221,33 @@ have no reason to drop part of a group; use a modest `alpha > 0` when
 you also suspect some coordinates *within* an included group are
 individually uninformative.
 
-## 6. Reading `active_groups_path_` near the top of the path
+## 6. Group norms along the path
 
-`lambda_max_`, by definition, should be the smallest lambda at which
-every penalized group's norm is exactly zero. In practice, near the
-top of this cohort's path, it isn't quite:
+`group_norms_path_` shows when each group enters and how fast it grows:
 
 ```python
-m.group_norms_path_[[0, 1, 2, 3, 5, 8]]
+rows = [0, 1, 2, 3, 5, 8, 31]
+norms = pd.DataFrame(m.group_norms_path_[rows], index=rows,
+                     columns=["group 1 (source)", "group 2 (comorbidity)", "group 3 (noise)"])
+norms.insert(0, "lambda", m.lambda_path_[rows])
+print(norms.round(6).to_string())
 ```
 ```
-idx  lambda      group 1 (source)  group 2 (comorbidity)  group 3 (noise)
-  0  0.013251     2.35e-12           2.45e-12               4.17e-14
-  1  0.012073     4.73e-12           4.93e-12               1.06e-13
-  2  0.011001     6.21e-10           6.48e-10               2.20e-11
-  3  0.010024     2.10e-02           2.20e-02               9.05e-04
-  5  0.008322     8.84e-02           8.96e-02               3.98e-03
-  8  0.006295     2.19e-01           1.94e-01               7.61e-03
+      lambda  group 1 (source)  group 2 (comorbidity)  group 3 (noise)
+0   0.013751          0.000000               0.000000          0.00000
+1   0.012529          0.008804               0.032652          0.00000
+2   0.011416          0.038814               0.062346          0.00000
+3   0.010402          0.066097               0.089109          0.00000
+5   0.008636          0.113631               0.135156          0.00000
+8   0.006533          0.170687               0.189297          0.00000
+31  0.000769          0.335217               0.336155          0.00132
 ```
 
-Note that the first three rows are floating-point noise, not real
-solutions — group norms on the order of `1e-10` to `1e-12` are
-indistinguishable from zero for any modeling purpose.
-`group_norms_path_` itself is the more trustworthy read near the
-boundary — the actual magnitudes make it obvious rows 0–2 are noise
-and row 3 onward is real.
-
-The substantive story is still there once you look at magnitude rather
-than the boolean active flag: by row 8, the noise group's norm
-(`0.0076`) is already an order of magnitude smaller than the two real
-groups' (`0.22`, `0.19`) — group lasso is correctly treating the noise
-panel as carrying much weaker collective signal, even though on this
-cohort all three groups happen to cross the raw activation threshold
-at a similar point in the path (the
-[linear chapter that follows](../linear/group_lasso_linear) shows a
-cleaner, more sequential version of this same story, where the noise
-group visibly enters dozens of lambdas later than the real ones).
+At `lambda_max_` (row 0) every penalized group is exactly zero. The two
+real groups enter together at the next point, while the noise panel
+stays at zero until row 31, where it first becomes active, at a lambda
+about one eighteenth of `lambda_max_`: group lasso holds the panel out as a
+unit until the penalty has relaxed a long way.
 
 ## 7. Cross-validation with `GroupLassoLogisticCV`
 
@@ -261,12 +257,13 @@ from pprof_py import GroupLassoLogisticCV
 cv = GroupLassoLogisticCV(groups=groups, alpha=0.0, n_folds=10, random_state=0)
 cv.fit(X, y)
 
-cv.lambda_min_   # 0.00035194667528199477
-cv.lambda_1se_   # 0.005735853877827921
-cv.lambda_        # 0.005735853877827921 -- lambda_1se_, use_1se=True default
+print(f"lambda_min = {cv.lambda_min_:.6f}, lambda_1se = {cv.lambda_1se_:.6f}")   # lambda_ is lambda_1se_
+```
+```
+lambda_min = 0.001618, lambda_1se = 0.006533
 ```
 
-Same parameter (`use_1se`), same default, same `cv_mean_deviance_` /
+Same parameter (`se_rule`), same default, same `cv_mean_deviance_` /
 `cv_se_deviance_` naming as `PenalizedLogisticCV` — group lasso's CV
 class was built consistently with its element-wise sibling here, even
 though (as the [next chapter](../linear/group_lasso_linear) and the
@@ -274,37 +271,25 @@ though (as the [next chapter](../linear/group_lasso_linear) and the
 that consistency doesn't hold everywhere in the package.
 
 ```python
-cv.coef_   # at lambda_1se_
+print(pd.Series(cv.coef_, index=candidates).round(4).to_string())   # at lambda_1se_
 ```
 ```
-age              0.0000
-src_emergency    0.3513
-src_transfer     0.5500
-src_urgent       0.0051
-diabetes        -0.0245
-chf              0.2596
-ckd              0.3610
-lab_e            0.0061
-lab_f            0.0050
+age              0.0329
+src_emergency    0.3286
+src_transfer     0.4622
+src_urgent       0.1334
+diabetes         0.0709
+chf              0.2409
+ckd              0.3190
+lab_e            0.0000
+lab_f            0.0000
 ```
 
-`age` is `0.0000` here too, for the reason Section 5 explained — this
-is the CV class's fit passing straight through to the same underlying
-solver. One more thing worth flagging honestly: `diabetes` comes out
-*negative* (`-0.0245`) at `lambda_1se_`, even though it has a clearly
-positive effect (`+0.30`) in the data-generating process above. This
-isn't a bug — pure group lasso (`alpha=0.0`) shrinks a whole group's
-coefficient vector by a single multiplicative factor, preserving
-whatever *direction* that vector already had once `diabetes`, `chf`,
-and `ckd` are estimated jointly rather than one at a time. With three
-correlated comorbidity flags in the same group, the coefficient that
-best explains the group's combined effect, conditional on the other
-two, can differ in sign from any one flag's own marginal association
-with mortality — an ordinary consequence of multivariate adjustment
-among correlated covariates, not something specific to this method.
-At `lambda_min_` (`cv.model_.coef_at(cv.lambda_min_)`), where less
-shrinkage is applied, `diabetes` returns to a small positive value
-(`0.1241`), closer to its true marginal effect.
+At `lambda_1se_` both real groups are in, with every coefficient
+shrunk toward zero and positive like its true effect, and the noise
+panel is zeroed as a unit. At `lambda_min_`
+(`cv.model_.coef_at(cv.lambda_min_)`; `cv.model_` holds the full path)
+the real coefficients are larger and the noise panel is still zero.
 
 ## 8. Choosing groups for healthcare data
 
@@ -331,35 +316,24 @@ out directly:
   individually is a normal, supported pattern — every column needs a
   group label, but not every label needs more than one column.
 
-## 9. `predict_proba()`: correct, despite looking fragile
+## 9. `predict_proba()`
 
-`GroupLassoLogistic.predict_proba()` re-derives an intercept
-interpolation inline, by hand, rather than calling a shared helper
-like `PenalizedLogistic.intercept_at()` — worth knowing about because
-reading it side by side with `coef_at()` looks like it could easily
-be wrong. It was checked directly against a clean, independent
-interpolation for an in-range lambda:
+`predict_proba()` at an arbitrary lambda interpolates both the
+coefficients and the intercept in $\log\lambda$, as `coef_at()` does:
 
 ```python
 lam = m.lambda_path_[60]
-m.predict_proba(X.values[:5], lambda_value=lam)
-# [0.0529, 0.0348, 0.0627, 0.1025, 0.0707], confirmed to match a
-# manual coef_at()-style interpolation of both coefficient and
-# intercept at the same lambda, to full floating-point precision.
+p = m.predict_proba(X.values[:5], lambda_value=lam)
+manual = 1 / (1 + np.exp(-(X.values[:5] @ m.coef_at(lam) + m.intercept_at(lam))))
+print(p.round(4), bool(np.allclose(p, manual, rtol=0, atol=1e-12)))
 ```
-No note is attached to this one — it's mentioned here because the code
-itself doesn't inspire confidence, not because the result is wrong.
+```
+[0.0287 0.0222 0.057  0.0427 0.0663] True
+```
 
 ## 10. What's next
 
 The [group lasso linear chapter](../linear/group_lasso_linear) covers
-the same penalty for continuous outcomes next, with a noticeably
-cleaner group-entry story than Section 7's — and a second instance of
-the [penalized linear chapter's](../linear/penalized_linear) `predict()`
-bug. A [group lasso Cox chapter](../survival/11_group_lasso_cox)
-follows for time-to-event outcomes, built on top of the survival
-guide's existing `PenalizedCoxPH` machinery rather than standing alone
-the way this chapter and the linear one do. After group lasso, a
-provider-penalized chapter covers `ProviderPenalizedLogistic` — the
-package's central methodological contribution, combining provider
-effects with penalized covariate selection in one model.
+the same penalty for continuous outcomes, and the
+[group lasso Cox chapter](../survival/11_group_lasso_cox) covers it for
+time-to-event outcomes.

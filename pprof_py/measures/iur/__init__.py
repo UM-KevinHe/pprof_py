@@ -1,7 +1,7 @@
 """Inter-Unit Reliability (IUR) estimation.
 
-Three estimators are provided, each implementing the sklearn
-``BaseEstimator`` interface (``__init__`` → ``.fit()`` → fitted
+Three estimators are provided, each implementing the
+``ProviderModel`` interface (``__init__`` → ``.fit()`` → fitted
 attributes with trailing underscore):
 
 * :class:`BootstrapIUR` — stratified bootstrap variance-decomposition.

@@ -11,6 +11,8 @@ produced the coefficient-level agreement numbers those pages cite.
 
 ## `preflight_report`: the same checks `fit()` runs, as a report
 
+The example uses the survival guide's `cohort` ([Chapter 0](../survival/00_start_here)):
+
 ```python
 from pprof_py.diagnostics.survival import preflight_report
 
@@ -21,15 +23,14 @@ report = preflight_report(
 print(report.report())
 ```
 ```
-Pre-flight data diagnostics — ESRD cohort
-==========================================
+Pre-flight data diagnostics
+===========================
 Rows: 4,000
 
 Missing / non-finite values: none found in mapped columns.
 
 Events: 259
-Distinct event times: 241 (global; avg tie size 1.1x); largest tied
-group in the data overall (no strata given): 2 events at t=0.984
+Distinct event times: 241 (global; avg tie size 1.1x); largest tied group in the data overall (no strata given): 2 events at t=0.984
 
 Covariate summary:
                     min      mean   max        std
@@ -57,10 +58,18 @@ object for programmatic use rather than string-parsing the report.
 
 ## `validate_against_r`: what produced the R compatibility numbers
 
-```python
+The run needs R (with `survival`) or R results computed beforehand, so
+this example is not executed here. The specification is a JSON file
+naming the data file and the columns of each stage:
+
+```{code-block} python
 from pprof_py.diagnostics.survival.validate_against_r import run_validation
 
-run_validation(spec_path="validation_spec.yaml")
+# validation_spec.json:
+# {"data": "cohort.csv", "ties": "breslow", "output_dir": "validation_output",
+#  "stage1": {"covariates": ["age", "sex", "diabetes"], "duration": "time",
+#             "event": "death", "strata": "facility_id"}}
+print(run_validation(spec_path="validation_spec.json"))   # or r_results_override="r_check_results"
 ```
 
 This is the machinery behind

@@ -69,7 +69,7 @@ R's is Efron):
 
 With left truncation the IPCW weights do not reproduce R's. Until that is resolved, treat `FineGrayPH` results on
 left-truncated data as unvalidated, and compare `finegray_transform(...).weight` with R's `finegray()` on your data
-(see {ref}`survival_validation_tools`). Cause-specific models are unaffected: they are ordinary `CoxPH` fits.
+(see {ref}`diagnostics-guide`). Cause-specific models are unaffected: they are ordinary `CoxPH` fits.
 
 ## `CoxPHSelector`
 

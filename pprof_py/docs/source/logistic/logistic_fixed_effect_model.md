@@ -8,16 +8,16 @@
 
 ## 1. Introduction
 
-Healthcare provider profiling, the process of evaluating and comparing the performance of healthcare entities like hospitals, clinics, or individual practitioners, is crucial for improving quality of care, managing costs, and informing patient choice {cite}`Shahian2011Public,Krumholz2013Administrative`. Performance is often assessed using patient outcomes such as mortality, readmission, or complication rates. However, providers serve different patient populations, necessitating robust risk adjustment methods to account for variations in patient characteristics (case mix) before making fair comparisons {cite}`Iezzoni2001Risk`.
+Healthcare provider profiling, the process of evaluating and comparing the performance of healthcare entities like hospitals, clinics, or individual practitioners, is crucial for improving quality of care, managing costs, and informing patient choice {cite}`logfe-Shahian2011Public,logfe-Krumholz2013Administrative`. Performance is often assessed using patient outcomes such as mortality, readmission, or complication rates. However, providers serve different patient populations, necessitating robust risk adjustment methods to account for variations in patient characteristics (case mix) before making fair comparisons {cite}`logfe-Iezzoni2001Risk`.
 
-Generalized linear models (GLMs), particularly logistic regression for binary outcomes, are commonly employed for risk adjustment. When dealing with data clustered within providers, incorporating provider-specific effects is essential. Two primary approaches exist: random effects (RE) models and fixed effects (FE) models. RE models assume provider effects are random variables drawn from a common distribution, allowing for "borrowing strength" across providers and potentially increasing efficiency, but rely on the strong assumption that provider effects are uncorrelated with patient covariates {cite}`Neuhaus1991Comparison`. Violation of this assumption, which is common in observational healthcare data, can lead to biased estimates {cite}`Kalbfleisch2013Monitoring`.
+Generalized linear models (GLMs), particularly logistic regression for binary outcomes, are commonly employed for risk adjustment. When dealing with data clustered within providers, incorporating provider-specific effects is essential. Two primary approaches exist: random effects (RE) models and fixed effects (FE) models. RE models assume provider effects are random variables drawn from a common distribution, allowing for "borrowing strength" across providers and potentially increasing efficiency, but rely on the strong assumption that provider effects are uncorrelated with patient covariates {cite}`logfe-Neuhaus1991Comparison`. Violation of this assumption, which is common in observational healthcare data, can lead to biased estimates {cite}`logfe-Kalbfleisch2013Monitoring`.
 
-Fixed effects models, conversely, treat each provider's effect as a distinct, unknown parameter to be estimated. This approach is robust to the correlation between provider effects and covariates, making it preferable when unbiased estimation of individual provider performance, especially for potentially outlying providers, is the primary goal {cite}`He2013Evaluating`. However, estimating FE models with a large number of providers ($m$) poses significant computational challenges for standard GLM algorithms due to the high dimensionality ($m+p$, where $p$ is the number of covariates) of the parameter space {cite}`Greene2004Behaviour`.
+Fixed effects models, conversely, treat each provider's effect as a distinct, unknown parameter to be estimated. This approach is robust to the correlation between provider effects and covariates, making it preferable when unbiased estimation of individual provider performance, especially for potentially outlying providers, is the primary goal {cite}`logfe-He2013Evaluating`. However, estimating FE models with a large number of providers ($m$) poses significant computational challenges for standard GLM algorithms due to the high dimensionality ($m+p$, where $p$ is the number of covariates) of the parameter space {cite}`logfe-Greene2004Behaviour`.
 
 This paper details the statistical methodology implemented in our software for fitting logistic fixed effect models efficiently, even with a large number of providers. We focus on:
 
 - The logistic fixed effects model formulation.
-- Computationally efficient estimation algorithms adapted from methods like SerBIN {cite}`Wu2022Improving`.
+- Computationally efficient estimation algorithms adapted from methods like SerBIN {cite}`logfe-Wu2022Improving`.
 - Calculation of standardized measures (Indirect and Direct Standardization) for performance comparison.
 - Robust hypothesis testing procedures (Wald, Score, Exact Poisson-Binomial, Exact Bootstrap) for identifying providers with performance significantly different from a benchmark.
 - Construction of corresponding confidence intervals for provider effects and standardized measures.
@@ -91,7 +91,7 @@ where
 - $I_{\beta\beta}$ is a $p \times p$ matrix with elements $[I_{\beta\beta}]_{kl} = \sum_{i=1}^m \sum_{j=1}^{n_i} X_{ijk} X_{ijl} w_{ij}$.
 - $I_{\gamma\beta} = I_{\beta\gamma}^\top$ is an $m \times p$ matrix with elements $[I_{\gamma\beta}]_{ik} = \sum_{j=1}^{n_i} X_{ijk} w_{ij}$.
 
-The key challenge is inverting $I(\boldsymbol{\theta})$ when $m$ is large. The SerBIN approach {cite}`Wu2022Improving` leverages the fact that $I_{\gamma\gamma}$ is diagonal and uses the partitioned inverse formula involving the Schur complement $S = I_{\beta\beta} - I_{\beta\gamma} I_{\gamma\gamma}^{-1} I_{\gamma\beta}$:
+The key challenge is inverting $I(\boldsymbol{\theta})$ when $m$ is large. The SerBIN approach {cite}`logfe-Wu2022Improving` leverages the fact that $I_{\gamma\gamma}$ is diagonal and uses the partitioned inverse formula involving the Schur complement $S = I_{\beta\beta} - I_{\beta\gamma} I_{\gamma\gamma}^{-1} I_{\gamma\beta}$:
 
 $$
 [I(\boldsymbol{\theta})]^{-1} = \begin{pmatrix} I_{\gamma\gamma}^{-1} + I_{\gamma\gamma}^{-1} I_{\gamma\beta} S^{-1} I_{\beta\gamma} I_{\gamma\gamma}^{-1} & -I_{\gamma\gamma}^{-1} I_{\gamma\beta} S^{-1} \\ -S^{-1} I_{\beta\gamma} I_{\gamma\gamma}^{-1} & S^{-1} \end{pmatrix}
@@ -171,7 +171,7 @@ $$
 T_W = \frac{\hat{\gamma}_i - \gamma_0}{\widehat{\text{se}}(\hat{\gamma}_i)}
 $$
 
-  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the estimated standard error obtained from the square root of the corresponding diagonal element of the inverse Fisher information matrix $[I(\hat{\boldsymbol{\theta}})]^{-1}$. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution. `pprof_py` uses this normal reference, as R pprof does.
+  where $\widehat{\text{se}}(\hat{\gamma}_i)$ is the standard error of the provider effect at the average case mix, $\operatorname{Var}(\hat\gamma_i + \bar x^\top\hat{\boldsymbol\beta})$ from the inverse Fisher information matrix (`variances_['gamma_case_mix']`). The diagonal element for $\hat\gamma_i$ alone (`variances_['gamma']`, R's) depends on where the covariates are centred while the comparison with $\gamma_0$ does not; see [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 3.2. Under $H_0$, $T_W$ asymptotically follows a standard Normal distribution. `pprof_py` uses this normal reference, as R pprof does.
 
   *Caveat:* This test can be unreliable for providers where $\hat{\gamma}_i$ is poorly estimated (e.g., small $n_i$) or infinite (due to separation), as the standard error estimate may be inaccurate or zero.
 
@@ -212,7 +212,7 @@ $$
 \hat{\gamma}_i \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\gamma}_i)
 $$
 
-  where $z_{1-\alpha/2}$ is the $(1-\alpha/2)$ quantile of the standard Normal distribution (or a t-distribution quantile). This is computationally simple but shares the limitations of the Wald test.
+  where $z_{1-\alpha/2}$ is the $(1-\alpha/2)$ quantile of the standard Normal distribution and the standard error is the Wald test's. This is computationally simple but shares the limitations of the Wald test.
 
 - **Score Interval:** Obtained by inverting the score test. It finds the set of $\gamma_0$ values for which the score test statistic $T_S$ falls within the acceptance region $[-z_{1-\alpha/2}, z_{1-\alpha/2}]$. This involves numerically solving equations like $T_S(\gamma_0) = \pm z_{1-\alpha/2}$ for $\gamma_0$.
 
@@ -281,7 +281,7 @@ model.fit(
     X=data_df,
     y_var='Outcome',
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID',
+    provider_var='ProviderID',
     max_iter=500,
     tol=1e-4
 )
@@ -312,8 +312,8 @@ print(f"BIC: {model.bic_:.2f}")
 print(f"AUC: {model.auc_:.3f}")
 
 # Group information
-# print(f"Groups: {model.groups_[:5]}")
-# print(f"Group Sizes: {model.group_sizes_[:5]}")
+# print(f"Groups: {model.provider_ids_[:5]}")
+# print(f"Group Sizes: {model.provider_sizes_[:5]}")
 ```
 
 ### 3.3. Prediction
@@ -325,7 +325,7 @@ Generate predicted probabilities for new or existing data.
 predictions = model.predict(
     X=data_df,
     x_vars=['Covariate1', 'Covariate2', 'Covariate3'],
-    group_var='ProviderID'
+    provider_var='ProviderID'
 )
 print(f"First 5 predictions: {predictions[:5]}")
 ```
@@ -338,7 +338,7 @@ Calculate ISR, DSR, and corresponding rates using `.calculate_standardized_measu
 # Calculate Indirect Standardized Ratio and Rate vs median
 sm_indirect = model.calculate_standardized_measures(
     stdz='indirect',
-    null='median' # Use median gamma as baseline
+    reference='median' # Use median gamma as baseline
 )
 print("\n--- Indirect Measures (vs Median) ---")
 print(sm_indirect['indirect'].head()) # Access the DataFrame
@@ -360,7 +360,7 @@ print("\n--- Provider Test (Exact vs Median) ---")
 print(test_results_exact.head())
 ```
 
-The result is indexed by provider with the columns described in {ref}`ll_ref_measures`: `z_raw`
+The result is indexed by `provider_id` with the columns described in {ref}`ll_ref_measures`: `z_raw`
 (the test statistic), `p_value`, and `flag` (1: more events than expected, -1: fewer, 0: not
 significant, NA: not tested). `test_method='wald'` also reports `se` and a confidence interval, and
 `null_model=` calibrates the test against an empirical null ({ref}`empirical-null-guide`).
@@ -387,7 +387,7 @@ isr_cis = model.calculate_confidence_intervals(
     measure='ratio',
     level=0.90,
     test_method='exact', # Base gamma CI method
-    null='median',
+    reference='median',
     alternative='two_sided' # Base gamma CIs must be two-sided
 )
 print("\n--- Indirect Ratio CIs (based on Exact) ---")
@@ -423,7 +423,7 @@ Use the plotting methods to visualize results.
 
 ## 4. Discussion
 
-The logistic fixed effects model offers a robust approach to provider profiling, particularly valuable when potential confounding between provider characteristics and patient case mix is a concern. By directly estimating provider-specific intercepts ($\gamma_i$), the model effectively controls for all time-invariant provider attributes, whether observed or unobserved. This contrasts with random effects models, which rely on the often-untested assumption that provider effects are uncorrelated with patient covariates. While RE models may offer efficiency gains under specific conditions (large $m$, small $n_i$, and no confounding), the FE approach prioritizes unbiased estimation of provider effects, which is critical for high-stakes applications like public reporting or pay-for-performance {cite}`Kalbfleisch2013Monitoring`.
+The logistic fixed effects model offers a robust approach to provider profiling, particularly valuable when potential confounding between provider characteristics and patient case mix is a concern. By directly estimating provider-specific intercepts ($\gamma_i$), the model effectively controls for all time-invariant provider attributes, whether observed or unobserved. This contrasts with random effects models, which rely on the often-untested assumption that provider effects are uncorrelated with patient covariates. While RE models may offer efficiency gains under specific conditions (large $m$, small $n_i$, and no confounding), the FE approach prioritizes unbiased estimation of provider effects, which is critical for high-stakes applications like public reporting or pay-for-performance {cite}`logfe-Kalbfleisch2013Monitoring`.
 
 Our implementation provides several computationally efficient algorithms (Serbin, Ban) that scale well even with a large number of providers, overcoming limitations of standard GLM software. Furthermore, the inclusion of various hypothesis testing methods (Wald, Score, Exact Poisson-Binomial, Bootstrap) allows users to choose the most appropriate inferential tool based on their data characteristics and assumptions. The exact methods, particularly the Poisson-Binomial test, are recommended when asymptotic approximations underlying Wald and Score tests may be inadequate, such as with small providers or low event rates.
 
@@ -431,7 +431,7 @@ Standardized measures (ISR, DSR) facilitate meaningful comparisons by adjusting 
 
 ### Limitations and Considerations
 
-**Incidental Parameters Problem**: In FE models, when the number of groups ($m$) grows large while the group size ($n_i$) remains small and fixed, the MLEs for the common parameters ($\beta$) can be inconsistent {cite}`Neyman1948Consistent`. However, for logistic regression, the inconsistency is typically small, and $\hat{\beta}$ remains consistent if $n_i \rightarrow \infty$ {cite}`Greene2004Behaviour`. In many provider profiling scenarios where $n_i$ is reasonably large, this is less of a concern.
+**Incidental Parameters Problem**: In FE models, when the number of groups ($m$) grows large while the group size ($n_i$) remains small and fixed, the MLEs for the common parameters ($\beta$) can be inconsistent {cite}`logfe-Neyman1948Consistent`. However, for logistic regression, the inconsistency is typically small, and $\hat{\beta}$ remains consistent if $n_i \rightarrow \infty$ {cite}`logfe-Greene2004Behaviour`. In many provider profiling scenarios where $n_i$ is reasonably large, this is less of a concern.
 
 **Separation**: Like standard logistic regression, the FE model can suffer from separation (perfect prediction) or quasi-separation, especially within smaller groups or those with zero or all events. This can lead to infinite estimates for some $\gamma_i$. Our implementation includes bounding of $\gamma_i$ during optimization to mitigate numerical issues, but users should be aware of providers exhibiting such patterns (e.g., via the `log_event_providers` option during data preparation). The Wald test and associated CIs are particularly unreliable in cases of separation. Exact and score-based methods are generally more robust in these situations.
 
@@ -451,7 +451,7 @@ The `LogisticFixedEffectModel` provides a robust and computationally efficient t
 ## References
 
 ```{bibliography} ../references.bib
-:list: enumerated
 :filter: docname in docnames
 :keyprefix: logfe-
+:labelprefix: GFE
 ```

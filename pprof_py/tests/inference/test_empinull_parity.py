@@ -17,11 +17,11 @@ X = pd.read_csv(DATA / "empinull_input.csv")
 
 
 def _z_only():
-    return ZFrame.from_arrays(X.z, provider=X.provider_id)
+    return ZFrame.from_arrays(X.z, provider_id=X.provider_id)
 
 
 def _wald():
-    m = MeasureFrame.from_arrays(X.est, X.se, provider=X.provider_id, measure="direct_rate")
+    m = MeasureFrame.from_arrays(X.est, X.se, provider_id=X.provider_id, measure="direct_rate")
     return z_statistic(m, null_value="mean", transform="logit")
 
 

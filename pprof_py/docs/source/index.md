@@ -11,10 +11,13 @@ implementations, `pprof_py` is designed for large-scale provider data
 and reproducible statistical analyses.
 
 ```{note}
-**Version 0.4.0** — All model families (logistic, linear, survival) now
-include penalized, group lasso, provider-penalized, and discrete-survival
-variants. Import all models from the package root:
-`from pprof_py import CoxPH, PenalizedLogistic, DiscreteSurvival, ...`
+**Version 0.5.0** — The three-stage model (`LogisticThreeStageModel`), one
+inference layer for every provider test, standardized measures and provider
+tests for Cox models, and theory papers on inference, the empirical null and
+inter-unit reliability. This release renames parts of the API; see the
+[changelog](changelog.md) for the changes from 0.4.1. Import all models from
+the package root:
+`from pprof_py import CoxPH, LogisticThreeStageModel, PenalizedLogistic, ...`
 ```
 
 ## Installation
@@ -25,7 +28,7 @@ cd pprof_py
 pip install .
 ```
 
-Requires `numpy`, `pandas`, `scipy`, `scikit-learn`, and `numba`
+Requires `numpy`, `pandas`, `scipy`, and `numba`
 (optional, for JIT-compiled survival kernels).
 
 ```{toctree}
@@ -43,6 +46,11 @@ changelog
 
 direct_vs_indirect_standardization
 fixed_vs_random_effects
+empirical_null_theory
+inter_unit_reliability_theory
+inference_covariate_effects_theory
+inference_provider_effects_theory
+inference_standardized_measures_theory
 ```
 
 ```{toctree}
@@ -64,7 +72,7 @@ logistic/logistic_random_effect_model
 logistic/penalized_logistic
 logistic/group_lasso_logistic
 logistic/provider_penalized_logistic
-logistic/logistic_mixed_effect_model
+logistic/logistic_three_stage_model
 ```
 
 ```{toctree}

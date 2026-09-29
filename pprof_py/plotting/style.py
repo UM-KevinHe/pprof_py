@@ -28,6 +28,8 @@ COLOR_NEUTRAL_GREY = "grey"    # error bars, secondary annotations
 # Flag-coded categorical roles (e.g. -1 = lower, 0 = expected, 1 = higher).
 FLAG_COLORS: Dict[int, str] = {-1: COLOR_WARNING, 0: COLOR_PRIMARY, 1: COLOR_SECONDARY}
 FLAG_LABELS = ["Lower", "Expected", "Higher"]
+COLOR_UNTESTED = "#9E9E9E"      # hollow markers: providers without a test result (flag NA)
+UNTESTED_LABEL = "Not tested"
 
 # ---------------------------------------------------------------------------
 # Figure/typography defaults.

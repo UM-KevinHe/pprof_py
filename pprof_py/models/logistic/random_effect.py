@@ -32,16 +32,17 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
 from scipy.optimize import minimize
 from scipy.special import expit
-from scipy.sparse import coo_matrix, csr_matrix, eye
+from scipy.sparse import coo_matrix, csr_matrix
 from scipy.sparse.linalg import splu
-from scipy.stats import norm
 
-from ...inference.logistic import RandomEffectInferenceMixin
-from ...measures.logistic import RandomEffectMeasuresMixin
-from ...plotting.logistic import RandomEffectPlottingMixin
+from ...inference.logistic import LogisticRandomEffectInferenceMixin
+from ...measures.logistic import LogisticRandomEffectMeasuresMixin
+from ...plotting.logistic import LogisticRandomEffectPlottingMixin
 from ...exceptions import NotFittedError
 
 try:
@@ -65,7 +66,8 @@ class _FitState:
     iterations: int
 
 
-class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasuresMixin, RandomEffectPlottingMixin):
+class LogisticRandomEffectModel(LogisticRandomEffectInferenceMixin, LogisticRandomEffectMeasuresMixin, LogisticRandomEffectPlottingMixin,
+                                ProviderModel):
     """Bernoulli-logit GLMM with random intercepts, lme4-style.
 
     Model:
@@ -138,8 +140,12 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         self.bic_: Optional[float] = None
         self.loglike_: Optional[float] = None
         self.sigma_: Optional[Dict[str, float]] = None
-        self.groups_: Optional[Dict[str, Array]] = None
-        self.group_sizes_: Optional[Dict[str, Array]] = None
+        self.provider_ids_: Optional[Array] = None
+        self.provider_sizes_: Optional[Array] = None
+        self.provider_indices_: Optional[Array] = None
+        self.cluster_ids_: Optional[Dict[str, Array]] = None
+        self.cluster_sizes_: Optional[Dict[str, Array]] = None
+        self.cluster_indices_: Optional[Dict[str, Array]] = None
         self.xbeta_: Optional[Array] = None
         self.covariate_names_: Optional[List[str]] = None
         self.outcome_: Optional[Array] = None
@@ -193,8 +199,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         X: pd.DataFrame,
         y_var: str,
         x_vars: Optional[List[str]] = None,
-        group_vars: Optional[Union[str, Sequence[str]]] = None,
-        group_var: Optional[str] = None,
+        provider_var: Optional[str] = None,
+        cluster_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         include_intercept: bool = True,
         verbose: Optional[bool] = None,
@@ -213,8 +219,12 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             Covariate column names to estimate jointly with random effects.
             If None, only the intercept (if include_intercept=True) and
             random effects are estimated.
-        group_vars : list of str
-            Random-intercept grouping variable(s).
+        provider_var : str
+            Column of provider IDs; its random intercepts are the provider effects that
+            the measures, tests, and plots report.
+        cluster_vars : str or list of str, optional
+            Further grouping columns with their own (crossed) random intercepts, e.g.
+            the hospital in Stage 2 of the three-stage model.
         offset_var : str, optional
             Column name for a known offset (e.g. X @ beta from a prior
             stage). Added to the linear predictor as-is.
@@ -226,12 +236,12 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         if verbose is None:
             verbose = self.verbose
 
-        if group_vars is None and group_var is not None:
-            group_vars = [group_var]
-        elif isinstance(group_vars, str):
-            group_vars = [group_vars]
-        elif group_vars is not None:
-            group_vars = list(group_vars)
+        if provider_var is None:
+            raise ValueError("provider_var is required.")
+        if isinstance(cluster_vars, str):
+            cluster_vars = [cluster_vars]
+        group_vars = [provider_var, *(cluster_vars or [])]
+        self._provider_var = provider_var
 
         if not group_vars:
             raise ValueError("At least one grouping variable is required")
@@ -281,9 +291,8 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         else:
             self._offset = work[offset_var].to_numpy(dtype=float)
 
-        # Group coding.
-        self.groups_ = {}
-        self.group_sizes_ = {}
+        # Group coding: the provider factor first, then the cluster factors.
+        sizes_by_var = []
         self._group_indices = []
         self._n_groups = []
         self._group_labels = []
@@ -298,8 +307,13 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             self._group_indices.append(idx)
             self._n_groups.append(len(labels))
             self._group_labels.append(labels)
-            self.groups_[gv] = labels
-            self.group_sizes_[gv] = sizes
+            sizes_by_var.append(sizes)
+        self.provider_ids_ = self._group_labels[0]
+        self.provider_sizes_ = sizes_by_var[0]
+        self.provider_indices_ = self._group_indices[0]
+        self.cluster_ids_ = {gv: self._group_labels[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_sizes_ = {gv: sizes_by_var[j] for j, gv in enumerate(group_vars) if j > 0}
+        self.cluster_indices_ = {gv: self._group_indices[j] for j, gv in enumerate(group_vars) if j > 0}
 
         self._q_slices = []
         start = 0
@@ -475,6 +489,86 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             logger.info(f"  Overall converged: {self.converged_}")
 
         return self
+
+    def profile_sigma(self, var: Optional[Union[str, Sequence[str]]] = None, level: float = 0.95) -> pd.DataFrame:
+        """Profile-likelihood confidence interval for each random-effect standard deviation.
+
+        With ``sigma_k`` held at a value, the Laplace deviance is minimized over the fixed effects and
+        the other standard deviations; the interval holds the values at which this profiled deviance
+        exceeds its minimum by at most the ``level`` quantile of chi-square(1).  That is the interval
+        lme4's ``confint(method = "profile")`` reports.  A lower limit of 0 means the deviance rises by
+        less than that at ``sigma_k = 0``.
+
+        Parameters
+        ----------
+        var : str or list of str, optional
+            Grouping variables to profile (default: all).
+        level : float, default 0.95
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by grouping variable, with columns ``sigma`` (the estimate), ``lower`` and ``upper``.
+        """
+        from scipy.optimize import brentq
+        from scipy.stats import chi2
+
+        self._check_is_fitted()
+        if not self.stage2:
+            raise ValueError("profile_sigma needs the Laplace (stage2=True) fit.")
+        if not 0.0 < float(level) < 1.0:
+            raise ValueError(f"level must be in (0, 1), got {level!r}")
+        names = list(self._group_vars)
+        wanted = names if var is None else ([var] if isinstance(var, str) else list(var))
+        unknown = [v for v in wanted if v not in names]
+        if unknown:
+            raise ValueError(f"Unknown grouping variables {unknown}; fitted: {names}")
+        n_sig = len(names)
+        crit = float(chi2.ppf(level, 1))
+        u_cache = {"u": self._u.copy()}
+
+        def deviance(sigma: Array, beta: Array) -> float:
+            state = self._pirls(sigma=sigma, beta0=beta, u0=u_cache["u"], update_beta=False)
+            u_cache["u"] = state.u.copy()
+            return self._laplace_deviance(sigma, beta, state.u)
+
+        rows = []
+        for gv in wanted:
+            k = names.index(gv)
+            x_cache = {"x": np.r_[np.delete(self._sigma, k), self._beta]}
+            bounds = [(0.0, self.sigma_upper)] * (n_sig - 1) + [(None, None)] * self._p
+
+            def profiled(s: float) -> float:
+                def objective(x: Array) -> float:
+                    sigma = np.insert(np.clip(x[: n_sig - 1], 0.0, self.sigma_upper), k, s)
+                    return deviance(sigma, x[n_sig - 1:])
+                if x_cache["x"].size == 0:
+                    return objective(x_cache["x"])
+                # Warm start from the previous profile point, with a small initial simplex; the deviance
+                # (not the nuisance parameters) is what needs to be accurate.
+                x0 = x_cache["x"]
+                simplex = np.vstack([x0, x0 + 0.01 * np.eye(x0.size) * np.maximum(np.abs(x0), 0.1)])
+                r = minimize(objective, x0, method="Nelder-Mead", bounds=bounds,
+                             options={"maxiter": self.max_iter_outer, "xatol": 1e-5, "fatol": 1e-8,
+                                      "adaptive": True, "initial_simplex": simplex})
+                x_cache["x"] = np.asarray(r.x, dtype=float)
+                return float(r.fun)
+
+            est = float(self._sigma[k])
+            dev_min = min(float(-2.0 * self.loglike_), profiled(est))
+            excess = lambda s: profiled(s) - dev_min - crit        # noqa: E731
+            hi = est + max(0.1, est)
+            while excess(hi) < 0.0:
+                if hi > 1e3:
+                    raise RuntimeError(f"No upper profile limit for {gv!r} below 1000.")
+                hi *= 2.0
+            upper = brentq(excess, est, hi, xtol=1e-7)
+            if est <= 0.0 or excess(0.0) <= 0.0:
+                lower = 0.0
+            else:
+                lower = brentq(excess, 0.0, est, xtol=1e-7)
+            rows.append({"sigma": est, "lower": float(lower), "upper": float(upper)})
+        return pd.DataFrame(rows, index=pd.Index(wanted, name="group_var"))
 
     def _optimize_stage1(self, fun, x0: Array) -> Dict:
         """Stage-1 optimizer matching glmer's default BOBYQA role."""
@@ -794,49 +888,51 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
     # Convenience methods
     # ------------------------------------------------------------------
 
-    def get_random_effects(self, group_var: Optional[str] = None) -> pd.Series:
+    def get_random_effects(self, var: Optional[str] = None) -> pd.Series:
         """Per-provider random intercepts (BLUPs).
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         Series
         """
+        var = self._provider_var if var is None else var
         self._check_is_fitted()
         re = self.coefficients_["alpha"]
-        if group_var is None:
+        if var is None:
             if len(re) != 1:
-                raise ValueError(f"Specify group_var; available={list(re)}")
+                raise ValueError(f"Specify var; available={list(re)}")
             return list(re.values())[0]
-        if group_var not in re:
-            raise ValueError(f"Unknown group_var \'{group_var}\'")
-        return re[group_var]
+        if var not in re:
+            raise ValueError(f"Unknown grouping variable \'{var}\'")
+        return re[var]
 
-    def get_sigma(self, group_var: Optional[str] = None) -> float:
+    def get_sigma(self, var: Optional[str] = None) -> float:
         """Estimated random-effect standard deviation.
 
         Parameters
         ----------
-        group_var : str or None
+        var : str, optional
             Required when multiple grouping variables are present.
 
         Returns
         -------
         float
         """
+        var = self._provider_var if var is None else var
         if self.sigma_ is None:
             raise ValueError("Model has not been fitted")
-        if group_var is None:
+        if var is None:
             if len(self.sigma_) != 1:
-                raise ValueError(f"Specify group_var; available={list(self.sigma_)}")
+                raise ValueError(f"Specify var; available={list(self.sigma_)}")
             return next(iter(self.sigma_.values()))
-        if group_var not in self.sigma_:
-            raise ValueError(f"Unknown group_var \'{group_var}\'")
-        return self.sigma_[group_var]
+        if var not in self.sigma_:
+            raise ValueError(f"Unknown grouping variable \'{var}\'")
+        return self.sigma_[var]
 
     # ------------------------------------------------------------------
     # Prediction
@@ -847,7 +943,7 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
         X: pd.DataFrame,
         *,
         x_vars: Optional[List[str]] = None,
-        group_var: Optional[str] = None,
+        re_vars: Optional[Union[str, Sequence[str]]] = None,
         offset_var: Optional[str] = None,
         use_re: bool = False,
         type: str = "response",
@@ -860,9 +956,9 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
             New data for prediction.
         x_vars : list of str, optional
             Covariate columns. If None, uses covariates from fitting.
-        group_var : str, optional
-            Grouping variable column for including random effects.
-            Required when ``use_re=True``.
+        re_vars : str or list of str, optional
+            Grouping columns whose random effects ``use_re=True`` adds; defaults
+            to every fitted grouping column.
         offset_var : str, optional
             Offset column in ``X``. If None, offset is zero.
         use_re : bool, default False
@@ -901,17 +997,15 @@ class LogisticRandomEffectModel(RandomEffectInferenceMixin, RandomEffectMeasures
 
         # Add random effects if requested
         if use_re:
-            if group_var is None:
-                if len(self._group_vars) == 1:
-                    group_var = self._group_vars[0]
-                else:
-                    raise ValueError(
-                        f"Specify group_var for RE predictions; available: {self._group_vars}"
-                    )
-            re = self.coefficients_["alpha"][group_var]
-            groups_new = X[group_var].astype(str).values
-            re_vals = np.array([re.get(g, 0.0) for g in groups_new])
-            eta += re_vals
+            re_vars = list(self._group_vars) if re_vars is None else ([re_vars] if isinstance(re_vars, str) else list(re_vars))
+            unknown = [v for v in re_vars if v not in self._group_vars]
+            if unknown:
+                raise ValueError(f"Unknown grouping variables {unknown}; fitted: {self._group_vars}")
+            for gv in re_vars:
+                re = self.coefficients_["alpha"][gv]
+                groups_new = X[gv].astype(str).values
+                re_vals = np.array([re.get(g, 0.0) for g in groups_new])
+                eta += re_vals
 
         if type == "link":
             return eta

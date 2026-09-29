@@ -53,8 +53,8 @@ def logistic_provider_score_info(
     """Per-provider score and information for the logistic model.
 
     For provider k:
-        score_k = sum_{i: prov(i)=k} w_i * (y_i - p_i)
-        info_k  = sum_{i: prov(i)=k} w_i * p_i * (1 - p_i)
+        score_k = ``sum_``{i: prov(i)=k} w_i * (y_i - p_i)
+        info_k  = ``sum_``{i: prov(i)=k} w_i * p_i * (1 - p_i)
 
     Parameters
     ----------

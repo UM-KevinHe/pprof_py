@@ -71,7 +71,12 @@ data['readmitted'] = (np.random.rand(n_total) < 1/(1+np.exp(-log_odds))).astype(
 
 That gives us 9,888 patients across 100 clinics, with an overall
 readmission rate of 13.8 %. Clinic sizes range from 50 to 149
-patients (median 98). The first few rows:
+patients (median 98.5). The first few rows:
+
+```python
+cols = ['provider_id', 'age', 'chronic_conditions', 'prior_admission', 'readmitted']
+print(data[cols].head().to_string(index=False))
+```
 
 ```
 provider_id       age  chronic_conditions  prior_admission  readmitted
@@ -113,23 +118,24 @@ model.fit(
     X=data,
     y_var='readmitted',
     x_vars=['age', 'chronic_conditions', 'prior_admission'],
-    group_var='provider_id',
+    provider_var='provider_id',
     max_iter=1000,
     tol=1e-6,
 )
 ```
 
 `algorithm='Serbin'` uses the block-diagonal Schur-complement trick
-described in {cite}`logfe-Wu2022Improving`, which keeps the per-iteration
+described by Wu et al. (2022; see the
+[methodology page](logistic_fixed_effect_model.md)), which keeps the per-iteration
 cost at $O(mp^2)$ instead of $O((m+p)^3)$. `cutoff=10` drops any
-clinic with fewer than 10 patients — none are dropped here because the
+clinic with 10 or fewer patients — none are dropped here because the
 smallest clinic has 50. All 100 providers are retained.
 
 ## 3. Reading the covariate coefficients
 
 ```python
 summary = model.summary(test_method='wald')
-print(summary)
+print(summary.to_string())
 ```
 
 ```
@@ -186,7 +192,7 @@ patient mix.
 
 ```python
 gamma = model.coefficients_['gamma']   # length-100 array
-groups = model.groups_                  # provider labels
+groups = model.provider_ids_            # provider labels
 
 print(f"Gamma range: [{gamma.min():.4f}, {gamma.max():.4f}]")
 print(f"Gamma median: {np.median(gamma):.4f}")
@@ -213,11 +219,19 @@ print(f"SE range: [{se_gamma.min():.4f}, {se_gamma.max():.4f}]")
 ```
 
 ```
-SE range: [0.2924, 0.6389]
+SE range: [0.3147, 1.0451]
 ```
 
-Smaller clinics have larger standard errors — more uncertainty about
-their true performance — which is exactly the signal the funnel plot
+These are the standard errors of $\hat\gamma_i$ itself (R's). The Wald test and
+intervals below use the standard error at the average case mix,
+`variances_['gamma_case_mix']`, which does not depend on where the covariates
+are centred; with `age` recorded around 65 here, it is the smaller of the two
+(see [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 3.2).
+
+Smaller clinics, and clinics with few events, have larger standard
+errors — more uncertainty about their true performance. The largest
+(1.05) belongs to Clinic_54, which has the lowest $\hat{\gamma}$
+($-5.73$) and one readmission in 55 patients. This is exactly the signal the funnel plot
 (Section 8) is designed to visualize.
 
 ## 5. Predictions
@@ -226,7 +240,7 @@ their true performance — which is exactly the signal the funnel plot
 preds = model.predict(
     X=data,
     x_vars=['age', 'chronic_conditions', 'prior_admission'],
-    group_var='provider_id',
+    provider_var='provider_id',
 )
 print(f"Predicted probabilities: min={preds.min():.4f}, mean={preds.mean():.4f}, max={preds.max():.4f}")
 ```
@@ -250,13 +264,13 @@ it observe compared to how many would be *expected* if it performed
 at the median clinic's level?"
 
 ```python
-sm = model.calculate_standardized_measures(stdz='indirect', null='median')
+sm = model.calculate_standardized_measures(stdz='indirect', reference='median')
 sm_df = sm['indirect']
 print(sm_df.head(10))
 ```
 
 ```
-     group_id  indirect_ratio  indirect_rate  observed   expected
+  provider_id  indirect_ratio  indirect_rate  observed   expected
 0    Clinic_1        1.257097      17.353737        17  13.523219
 1   Clinic_10        0.895757      12.365584        14  15.629231
 2  Clinic_100        0.579154       7.995002        11  18.993208
@@ -318,18 +332,18 @@ print(test_results[['estimate', 'z_raw', 'p_value', 'flag']].head(10))
 ```
 
 ```
-            estimate     z_raw   p_value  flag
-provider
-Clinic_1   -3.249995  1.021081  0.307216     0
-Clinic_10  -3.656766 -0.416515  0.677033     0
-Clinic_100 -4.153595 -2.092793  0.036368    -1
-Clinic_11  -3.289742  0.753502  0.451149     0
-Clinic_12  -4.428621 -1.869366  0.061572     0
-Clinic_13  -3.765100 -0.814136  0.415567     0
-Clinic_14  -2.531061  3.750076  0.000177     1
-Clinic_15  -3.355796  0.558359  0.576599     0
-Clinic_16  -2.757958  2.273616  0.022989     1
-Clinic_17  -4.113990 -1.858888  0.063043     0
+             estimate     z_raw   p_value  flag
+provider_id
+Clinic_1    -3.249995  1.021081  0.307216     0
+Clinic_10   -3.656766 -0.416515  0.677033     0
+Clinic_100  -4.153595 -2.092793  0.036368    -1
+Clinic_11   -3.289742  0.753502  0.451149     0
+Clinic_12   -4.428621 -1.869366  0.061572     0
+Clinic_13   -3.765100 -0.814136  0.415567     0
+Clinic_14   -2.531061  3.750076  0.000177     1
+Clinic_15   -3.355796  0.558359  0.576599     0
+Clinic_16   -2.757958  2.273616  0.022989     1
+Clinic_17   -4.113990 -1.858888  0.063043     0
 ```
 
 Reading the output:
@@ -379,25 +393,25 @@ print(gamma_ci['gamma_ci'].head(10))
 ```
 
 ```
-     group_id     gamma  gamma_lower  gamma_upper
-0    Clinic_1 -3.249995    -3.978365    -2.521626
-1   Clinic_10 -3.656766    -4.406950    -2.906583
-2  Clinic_100 -4.153595    -4.953717    -3.353474
-3   Clinic_11 -3.289742    -4.103444    -2.476040
-4   Clinic_12 -4.428621    -5.573762    -3.283481
-5   Clinic_13 -3.765100    -4.512238    -3.017962
-6   Clinic_14 -2.531061    -3.220155    -1.841967
-7   Clinic_15 -3.355796    -4.162740    -2.548852
-8   Clinic_16 -2.757958    -3.563606    -1.952311
-9   Clinic_17 -4.113990    -4.934460    -3.293520
+  provider_id     gamma  gamma_lower  gamma_upper
+0    Clinic_1 -3.249995    -3.781391    -2.718600
+1   Clinic_10 -3.656766    -4.219973    -3.093560
+2  Clinic_100 -4.153595    -4.775799    -3.531392
+3   Clinic_11 -3.289742    -3.918978    -2.660507
+4   Clinic_12 -4.428621    -5.451014    -3.406229
+5   Clinic_13 -3.765100    -4.324902    -3.205298
+6   Clinic_14 -2.531061    -3.013695    -2.048427
+7   Clinic_15 -3.355796    -3.984631    -2.726962
+8   Clinic_16 -2.757958    -3.384707    -2.131209
+9   Clinic_17 -4.113990    -4.764010    -3.463970
 ```
 
-For Clinic 14: $\hat{\gamma} = -2.531$, SE = 0.352, 95 % CI =
-$[-3.220, -1.842]$. The interval sits well above the median gamma
+For Clinic 14: $\hat{\gamma} = -2.531$, SE = 0.246, 95 % CI =
+$[-3.014, -2.048]$. The interval sits well above the median gamma
 ($-3.529$), consistent with the significant test result.
 
-For Clinic 100: $\hat{\gamma} = -4.154$, SE = 0.408, 95 % CI =
-$[-4.954, -3.354]$. The interval sits below the median, also
+For Clinic 100: $\hat{\gamma} = -4.154$, SE = 0.317, 95 % CI =
+$[-4.776, -3.531]$. The interval sits below the median, also
 consistent with its flag = $-1$.
 
 Score and exact Poisson-Binomial CIs are also available via
@@ -415,34 +429,33 @@ sm_ci = model.calculate_confidence_intervals(
     option='SM',
     stdz='indirect',
     measure=['ratio', 'rate'],
-    null='median',
+    reference='median',
     level=0.95,
     test_method='wald',
     alternative='two_sided',
 )
-print(sm_ci['indirect_ratio'].head(10))
+print(sm_ci["indirect_ratio"].head(10).to_string())
 ```
 
 ```
-     group_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
-0    Clinic_1        1.257097      17.353737        17  13.523219        0.677407        2.157349
-1   Clinic_10        0.895757      12.365584        14  15.629231        0.455720        1.653704
-2  Clinic_100        0.579154       7.995002        11  18.993208        0.274811        1.155800
-3   Clinic_11        1.218206      16.816860        12   9.850551        0.604994        2.230614
-4   Clinic_12        0.452771       6.250332         4   8.834483        0.152526        1.221272
-5   Clinic_13        0.815204      11.253577        14  17.173612        0.413358        1.516942
-6   Clinic_14        2.163275      29.863168        24  11.094291        1.290575        3.307138
-7   Clinic_15        1.152829      15.914350        12  10.409181        0.575536        2.103350
-8   Clinic_16        1.803180      24.892197        14   7.764062        0.971456        2.971002
-9   Clinic_17        0.596342       8.232273        10  16.768895        0.276670        1.217648
+  provider_id  indirect_ratio  indirect_rate  observed   expected  ci_ratio_lower  ci_ratio_upper
+0    Clinic_1        1.257097      17.353737        17  13.523219        0.805558        1.881709
+1   Clinic_10        0.895757      12.365584        14  15.629231        0.541635        1.430162
+2  Clinic_100        0.579154       7.995002        11  18.993208        0.325398        0.997612
+3   Clinic_11        1.218206      16.816860        12   9.850551        0.713461        1.965131
+4   Clinic_12        0.452771       6.250332         4   8.834483        0.171821        1.106049
+5   Clinic_13        0.815204      11.253577        14  17.173612        0.492033        1.307475
+6   Clinic_14        2.163275      29.863168        24  11.094291        1.519297        2.943544
+7   Clinic_15        1.152829      15.914350        12  10.409181        0.674954        1.860492
+8   Clinic_16        1.803180      24.892197        14   7.764062        1.124166        2.690205
+9   Clinic_17        0.596342       8.232273        10  16.768895        0.325497        1.056324
 ```
 
-Clinic 14's ISR CI is $[1.291, 3.307]$ — the lower bound exceeds 1.0,
+Clinic 14's ISR CI is $[1.519, 2.944]$ — the lower bound exceeds 1.0,
 confirming that its elevated readmission rate is statistically
-significant. Clinic 100's ISR CI is $[0.275, 1.156]$, spanning 1.0,
-so while flagged at $\alpha = 0.05$ by the Poisson-Binomial test, the
-Wald CI for its ISR just includes 1.0 — a reminder that Wald and exact
-methods don't always agree at the boundary.
+significant. Clinic 100's ISR CI is $[0.325, 0.998]$, just below 1.0,
+in agreement with its flag from the Poisson-Binomial test; near the
+boundary the Wald and exact methods need not agree.
 
 ## 9. Visualizing the results
 
@@ -458,7 +471,7 @@ model.plot_provider_effects(
     level=0.95,
     test_method='wald',
     use_flags=True,
-    null='median',
+    reference='median',
     title="Provider Effects: Adjusted Log-Odds (Gamma)",
     figure_size=(10, 6),
 )
@@ -480,7 +493,7 @@ model.plot_standardized_measures(
     level=0.95,
     test_method='wald',
     use_flags=True,
-    null='median',
+    reference='median',
     title="Provider Standardized Ratios (Indirect O/E)",
     figure_size=(10, 6),
 )
@@ -497,7 +510,7 @@ Providers outside the funnel are the ones whose ISR is too far from
 ```python
 model.plot_funnel(
     test_method='poibin_exact',
-    null='median',
+    reference='median',
     target=1.0,
     alpha=[0.05, 0.01],
     plot_title="Funnel Plot: Indirect Standardized Ratios (O/E)",

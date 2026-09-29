@@ -14,11 +14,10 @@ where ``alpha_k`` are baseline hazard parameters (one per distinct
 timepoint), ``gamma_i`` are optional provider effects (unpenalized),
 and ``beta`` are covariate coefficients (penalized).
 
-The model supports three penalty types:
-
-* ``'lasso'`` — individual L1 penalty
-* ``'group_lasso'`` — group L2 penalty
-* ``'sparse_group_lasso'`` — combined L1 + group L2
+The penalty is the lasso on the covariate coefficients, with per-feature
+penalty factors.  Group penalties are not implemented for discrete-time
+survival (R's ``grplasso::DiscSurv`` is lasso-only too); ``penalty_type``
+accepts ``'lasso'`` and raises for the group types.
 
 When ``provider`` is supplied, the model uses the two-layer
 architecture from ``grplasso``: provider effects are updated via
@@ -41,32 +40,18 @@ References
 from __future__ import annotations
 
 import logging
-import warnings
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.survival.discrete_survival import (
-    discretize_times,
-    initialize_baseline_hazard,
-    compute_n_at_risk,
-    compute_discrete_lambda_max,
-    discrete_residuals,
-    discrete_loglik,
-    fit_discrete_regularization_path,
-    fit_single_lambda_discrete,
-    person_period_expand,
-    predict_discrete_hazard,
-    predict_survival_probability,
-    DiscreteFitResult,
-)
+from ...algorithms.survival.discrete_survival import (discretize_times, initialize_baseline_hazard, compute_n_at_risk, compute_discrete_lambda_max, discrete_residuals, fit_discrete_regularization_path, person_period_expand, predict_discrete_hazard, predict_survival_probability)
+from ...algorithms.penalty import interpolate_path
 from ...algorithms.survival.penalty import (
     weighted_column_scale,
     rescale_penalty_factors,
 )
-from ...algorithms.survival.coordinate_descent import build_lambda_sequence
 from .coxph import NotFittedError
 
 logger = logging.getLogger(__name__)
@@ -81,11 +66,15 @@ def _validate_discrete_params(
     standardize, max_iter, tol, bound,
 ):
     """Validate constructor parameters."""
-    valid_penalties = ('lasso', 'group_lasso', 'sparse_group_lasso')
-    if penalty_type not in valid_penalties:
+    if penalty_type in ('group_lasso', 'sparse_group_lasso'):
         raise ValueError(
-            f"penalty_type must be one of {valid_penalties}, got {penalty_type!r}"
+            f"penalty_type={penalty_type!r} is not available: DiscreteSurvival "
+            "fits the lasso only (group penalties are not implemented for "
+            "discrete-time survival, and R's DiscSurv is lasso-only too); use "
+            "penalty_type='lasso'"
         )
+    if penalty_type != 'lasso':
+        raise ValueError(f"penalty_type must be 'lasso', got {penalty_type!r}")
     if isinstance(n_lambda, (bool, np.bool_)) or int(n_lambda) != n_lambda or int(n_lambda) < 1:
         raise ValueError(f"n_lambda must be a positive integer, got {n_lambda!r}")
     if lambda_min_ratio is not None:
@@ -112,7 +101,7 @@ def _validate_discrete_params(
 # DiscreteSurvival — Regularization path
 # ======================================================================
 
-class DiscreteSurvival(BaseEstimator):
+class DiscreteSurvival(ProviderModel):
     """Penalized discrete-time survival model.
 
     Fits a regularization path of discrete-time survival models with
@@ -123,15 +112,9 @@ class DiscreteSurvival(BaseEstimator):
     Parameters
     ----------
     penalty_type : str, default 'lasso'
-        One of ``'lasso'``, ``'group_lasso'``, ``'sparse_group_lasso'``.
-    groups : array-like or None, default None
-        Group labels per feature (required for group/sparse group).
-        0 = unpenalized.
-    alpha : float, default 1.0
-        Sparse group mixing: 0 = pure group lasso, 1 = lasso.
-        Only used when ``penalty_type='sparse_group_lasso'``.
-    group_multiplier : array-like or None, default None
-        Per-group multipliers; defaults to sqrt(group_size).
+        The lasso, the only penalty: ``'group_lasso'`` and
+        ``'sparse_group_lasso'`` raise (not implemented for discrete-time
+        survival; R's ``DiscSurv`` is lasso-only).
     penalty_factor : array-like or None, default None
         Per-feature penalty factors.  Rescaled to sum to p.
     n_lambda : int, default 100
@@ -187,9 +170,6 @@ class DiscreteSurvival(BaseEstimator):
     def __init__(
         self,
         penalty_type: str = 'lasso',
-        groups=None,
-        alpha: float = 1.0,
-        group_multiplier=None,
         penalty_factor=None,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
@@ -205,9 +185,6 @@ class DiscreteSurvival(BaseEstimator):
     ):
         """Discrete-time survival with penalized regression."""
         self.penalty_type = penalty_type
-        self.groups = groups
-        self.alpha = alpha
-        self.group_multiplier = group_multiplier
         self.penalty_factor = penalty_factor
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
@@ -384,29 +361,17 @@ class DiscreteSurvival(BaseEstimator):
                 "DiscreteSurvival is not fitted. Call `fit` first."
             )
 
-    def coef_at(self, lambda_val: float) -> np.ndarray:
-        """Coefficients at an arbitrary lambda via linear interpolation."""
+    def coef_at(self, lambda_value: float) -> np.ndarray:
+        """Coefficients at an arbitrary lambda: linear interpolation in log(lambda) between the
+        bracketing path points, as every penalized path class does; the end points outside the path."""
         self._check_is_fitted()
-        lam = self.lambda_path_
-        idx = np.interp(
-            lambda_val,
-            lam[::-1],
-            np.arange(len(lam), dtype=np.float64)[::-1],
-        )
-        lo = int(np.floor(idx))
-        hi = int(np.ceil(idx))
-        lo = max(0, min(lo, len(lam) - 1))
-        hi = max(0, min(hi, len(lam) - 1))
-        if lo == hi:
-            return self.coef_path_[lo]
-        w = idx - lo
-        return (1.0 - w) * self.coef_path_[lo] + w * self.coef_path_[hi]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def predict(
         self,
         X,
         time=None,
-        lambda_val=None,
+        lambda_value=None,
         which: Optional[int] = None,
         type: str = 'link',
     ):
@@ -418,7 +383,7 @@ class DiscreteSurvival(BaseEstimator):
         time : array-like or None
             Required when *type* is ``'hazard'`` or ``'survival'``.
             Per-subject follow-up time (same scale as training).
-        lambda_val : float or None
+        lambda_value : float or None
             Query at a specific lambda.
         which : int or None
             Index into ``lambda_path_``.
@@ -439,11 +404,11 @@ class DiscreteSurvival(BaseEstimator):
             )
         if type == 'hazard':
             return self.predict_hazard(
-                X, time, lambda_val=lambda_val, which=which,
+                X, time, lambda_value=lambda_value, which=which,
             )
         if type == 'survival':
             return self.predict_survival(
-                X, time, lambda_val=lambda_val, which=which,
+                X, time, lambda_value=lambda_value, which=which,
             )
 
         if isinstance(X, pd.DataFrame):
@@ -451,8 +416,8 @@ class DiscreteSurvival(BaseEstimator):
         else:
             X_np = np.asarray(X, dtype=np.float64)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
         elif which is not None:
             coef = self.coef_path_[which]
         else:
@@ -470,25 +435,24 @@ class DiscreteSurvival(BaseEstimator):
     def predict_hazard(
         self,
         X,
-        time,
-        lambda_val=None,
+        time=None,
+        lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
         """Predicted hazard probabilities in person-period (long) format.
 
-        Returns a 1-D array whose length equals ``sum(time_int)`` after
-        discretizing each subject's *time* into integer codes via
-        ``timepoint_map_``.  This is distinct from
-        ``ProviderPenalizedDiscreteSurvival.predict_hazard()``, which
-        returns a 2-D ``(n, K)`` wide-format array instead (see
-        ISSUE-023 in ``CODE_ISSUES.md``).
+        With ``time``, a 1-D array whose length equals ``sum(time_int)`` after
+        discretizing each subject's *time* via ``timepoint_map_``; without it,
+        an ``(n, K)`` array, one column per time point. The signature matches
+        ``ProviderPenalizedDiscreteSurvival.predict_hazard()`` (after ``provider_id``).
 
         Parameters
         ----------
         X : DataFrame or ndarray, shape ``(n, p)``
-        time : array-like, shape ``(n,)``
-            Follow-up time for each subject.
-        lambda_val : float or None
+        time : array-like, shape ``(n,)``, optional
+            Follow-up time for each subject: the result is then in person-period
+            (long) form. Without it, the result has one column per time point.
+        lambda_value : float or None
         which : int or None
 
         Returns
@@ -500,19 +464,16 @@ class DiscreteSurvival(BaseEstimator):
             X_np = X.values.astype(np.float64)
         else:
             X_np = np.asarray(X, dtype=np.float64)
-        time_np = np.asarray(time, dtype=np.float64)
-
-        # ISSUE-019 fix: look up query times against the fitted
-        # timepoint mapping rather than re-discretizing locally.
-        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
-        # Clip to valid range [1, K].
         K = len(self.timepoint_map_)
-        time_int = np.clip(time_int, 1, K)
+        if time is None:            # every time point: the wide (n, K) form
+            time_int = np.full(X_np.shape[0], K)
+        else:                       # up to each subject's time: the person-period form
+            time_int = np.clip(np.searchsorted(self.timepoint_map_, np.asarray(time, dtype=np.float64)) + 1, 1, K)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
             # Find nearest alpha
-            idx = np.argmin(np.abs(self.lambda_path_ - lambda_val))
+            idx = np.argmin(np.abs(self.lambda_path_ - lambda_value))
             alpha = self.alpha_path_[idx]
         elif which is not None:
             coef = self.coef_path_[which]
@@ -522,13 +483,14 @@ class DiscreteSurvival(BaseEstimator):
             alpha = self.alpha_path_[-1]
 
         eta = X_np @ coef
-        return predict_discrete_hazard(alpha, eta, time_int)
+        out = predict_discrete_hazard(alpha, eta, time_int)
+        return out.reshape(-1, K) if time is None else out
 
     def predict_survival(
         self,
         X,
-        time,
-        lambda_val=None,
+        time=None,
+        lambda_value=None,
         which: Optional[int] = None,
     ) -> np.ndarray:
         """Predicted survival probabilities S(T_i | Z_i).
@@ -542,16 +504,15 @@ class DiscreteSurvival(BaseEstimator):
             X_np = X.values.astype(np.float64)
         else:
             X_np = np.asarray(X, dtype=np.float64)
-        time_np = np.asarray(time, dtype=np.float64)
-
-        # ISSUE-019 fix: same as predict_hazard — use fitted mapping.
-        time_int = np.searchsorted(self.timepoint_map_, time_np) + 1
         K = len(self.timepoint_map_)
-        time_int = np.clip(time_int, 1, K)
+        if time is None:            # every time point: the wide (n, K) form
+            time_int = np.full(X_np.shape[0], K)
+        else:                       # up to each subject's time: the person-period form
+            time_int = np.clip(np.searchsorted(self.timepoint_map_, np.asarray(time, dtype=np.float64)) + 1, 1, K)
 
-        if lambda_val is not None:
-            coef = self.coef_at(lambda_val)
-            idx = np.argmin(np.abs(self.lambda_path_ - lambda_val))
+        if lambda_value is not None:
+            coef = self.coef_at(lambda_value)
+            idx = np.argmin(np.abs(self.lambda_path_ - lambda_value))
             alpha = self.alpha_path_[idx]
         elif which is not None:
             coef = self.coef_path_[which]
@@ -561,7 +522,8 @@ class DiscreteSurvival(BaseEstimator):
             alpha = self.alpha_path_[-1]
 
         eta = X_np @ coef
-        return predict_survival_probability(alpha, eta, time_int)
+        out = predict_survival_probability(alpha, eta, time_int)
+        return out.reshape(-1, K) if time is None else out
 
     def summary(self, which: int = -1) -> pd.DataFrame:
         """Summary table at a given lambda index."""
@@ -577,7 +539,7 @@ class DiscreteSurvival(BaseEstimator):
 # DiscreteSurvivalCV — Cross-validated lambda selection
 # ======================================================================
 
-class DiscreteSurvivalCV(BaseEstimator):
+class DiscreteSurvivalCV(ProviderModel):
     """Cross-validated discrete-time survival model.
 
     Performs k-fold cross-validation to select the optimal lambda.
@@ -592,10 +554,8 @@ class DiscreteSurvivalCV(BaseEstimator):
     se_rule : str, default '1se'
         Lambda selection rule: ``'min'`` (minimum CV error) or
         ``'1se'`` (largest lambda within 1 SE of minimum).
-        Alias: ``use_1se`` (``True`` → ``'1se'``, ``False`` →
-        ``'min'``), accepted for cross-family consistency.
     random_state : int or None, default None
-        Random seed for fold assignment.
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_fold_retries : int, default 100
         Maximum retries for event-stratified fold assignment with
         timepoint coverage.
@@ -604,15 +564,21 @@ class DiscreteSurvivalCV(BaseEstimator):
 
     Attributes
     ----------
+    lambda_path_ : ndarray
+        The lambda sequence (the full-data fit's).
     lambda_min_ : float
         Lambda with minimum mean CV error.
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
-    cv_mean_ : ndarray, shape (n_lambda,)
+    lambda_ : float
+        The lambda that ``se_rule`` selects.
+    coef_ : ndarray
+        The full-data coefficients at ``lambda_``.
+    cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean CV error per lambda.
-    cv_se_ : ndarray, shape (n_lambda,)
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV error per lambda.
-    best_model_ : DiscreteSurvival
+    model_ : DiscreteSurvival
         Full-data fit.
     fold_assignment_ : ndarray of int, shape (n,)
     """
@@ -623,16 +589,11 @@ class DiscreteSurvivalCV(BaseEstimator):
         se_rule: str = '1se',
         random_state=None,
         max_fold_retries: int = 100,
-        use_1se=None,
         **kwargs,
     ):
         """Cross-validated discrete-time survival."""
         self.n_folds = n_folds
-        # ISSUE-021: accept use_1se (bool) as alias for se_rule (str).
-        if use_1se is not None:
-            self.se_rule = '1se' if use_1se else 'min'
-        else:
-            self.se_rule = se_rule
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_fold_retries = max_fold_retries
         self._model_kwargs = kwargs
@@ -655,6 +616,8 @@ class DiscreteSurvivalCV(BaseEstimator):
         -------
         self
         """
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # Coerce
         if isinstance(X, pd.DataFrame):
             X_np = X.values.astype(np.float64)
@@ -678,10 +641,9 @@ class DiscreteSurvivalCV(BaseEstimator):
         # --- Fit full model ---
         full_model = DiscreteSurvival(**self._model_kwargs)
         full_model.fit(X, time, event, sample_weight=sample_weight)
-        self.best_model_ = full_model
-        # ISSUE-024: alias for consistency with every other CV class.
         self.model_ = full_model
         lambda_seq = full_model.lambda_path_
+        self.lambda_path_ = lambda_seq
         n_lambda = len(lambda_seq)
 
         # --- Cross-validation ---
@@ -769,8 +731,8 @@ class DiscreteSurvivalCV(BaseEstimator):
         cv_mean[valid] = np.mean(loss_matrix[:, valid], axis=0)
         cv_se[valid] = np.std(loss_matrix[:, valid], axis=0, ddof=1) / np.sqrt(self.n_folds)
 
-        self.cv_mean_ = cv_mean
-        self.cv_se_ = cv_se
+        self.cv_mean_deviance_ = cv_mean
+        self.cv_se_deviance_ = cv_se
 
         # Lambda selection
         valid_idx = np.where(valid)[0]
@@ -789,6 +751,8 @@ class DiscreteSurvivalCV(BaseEstimator):
         # is within 1 SE of the minimum
         candidates = valid_idx[cv_mean[valid_idx] <= threshold]
         self.lambda_1se_ = lambda_seq[candidates[0]]
+        self.lambda_ = self.lambda_1se_ if self.se_rule == "1se" else self.lambda_min_
+        self.coef_ = self.model_.coef_at(self.lambda_)
 
         return self
 
@@ -844,15 +808,15 @@ class DiscreteSurvivalCV(BaseEstimator):
         )
 
     def _check_is_fitted(self):
-        if not hasattr(self, 'best_model_'):
+        if not hasattr(self, 'model_'):
             raise NotFittedError(
                 "DiscreteSurvivalCV is not fitted. Call `fit` first."
             )
 
-    def coef_at(self, lambda_val: float) -> np.ndarray:
+    def coef_at(self, lambda_value: float) -> np.ndarray:
         """Coefficients at an arbitrary lambda."""
         self._check_is_fitted()
-        return self.best_model_.coef_at(lambda_val)
+        return self.model_.coef_at(lambda_value)
 
     def predict(self, X, rule: Optional[str] = None, type: str = 'link'):
         """Predict using the selected lambda.
@@ -870,7 +834,7 @@ class DiscreteSurvivalCV(BaseEstimator):
         self._check_is_fitted()
         rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
-        return self.best_model_.predict(X, lambda_val=lam, type=type)
+        return self.model_.predict(X, lambda_value=lam, type=type)
 
     def summary(self, rule: Optional[str] = None) -> pd.DataFrame:
         """Summary at the selected lambda.
@@ -880,10 +844,10 @@ class DiscreteSurvivalCV(BaseEstimator):
         self._check_is_fitted()
         rule = self.se_rule if rule is None else rule
         lam = self.lambda_1se_ if rule == '1se' else self.lambda_min_
-        idx = np.argmin(np.abs(self.best_model_.lambda_path_ - lam))
-        result = self.best_model_.summary(which=idx)
+        idx = np.argmin(np.abs(self.model_.lambda_path_ - lam))
+        result = self.model_.summary(which=idx)
         result.attrs['lambda'] = lam
         result.attrs['rule'] = rule
-        result.attrs['cv_mean'] = self.cv_mean_[idx]
-        result.attrs['cv_se'] = self.cv_se_[idx]
+        result.attrs['cv_mean_deviance'] = self.cv_mean_deviance_[idx]
+        result.attrs['cv_se_deviance'] = self.cv_se_deviance_[idx]
         return result

@@ -10,7 +10,7 @@ Three-layer architecture:
 
 The linear predictor for observation i at time t is:
 
-    eta_{i,t} = gamma_{prov(i)} + alpha_t + X_i @ beta
+    ``eta_``{i,t} = ``gamma_``{prov(i)} + alpha_t + X_i @ beta
 
 R reference: grplasso/R/pp_DiscSurv.R, grplasso/src/pp_DiscSurv_lasso.cpp.
 
@@ -22,20 +22,13 @@ Provenance: new file, 2026-09. Pattern drawn from:
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-)
+from ...algorithms.penalty import weighted_column_scale, rescale_penalty_factors, interpolate_path
 from ...algorithms.survival.discrete_survival import (
     discretize_times,
     initialize_baseline_hazard,
@@ -67,7 +60,7 @@ def _provider_newton_from_loglik(
     provider_idx: np.ndarray,
     n_providers: int,
     gamma: np.ndarray,
-    gamma_bound: float = 10.0,
+    provider_bound: float = 10.0,
 ) -> np.ndarray:
     """One Newton step for provider effects using discrete_loglik outputs.
 
@@ -76,11 +69,11 @@ def _provider_newton_from_loglik(
 
     The per-provider score and information are:
 
-        score_k = - sum_{i in k} score_beta_i
-                = sum_{i in k} (delta_i - sum_t p_{it})
+        score_k = - ``sum_``{i in k} score_beta_i
+                = ``sum_``{i in k} (delta_i - sum_t p_{it})
 
-        info_k  = sum_{i in k} working_weights_i
-                = sum_{i in k} sum_t p_{it} * (1 - p_{it})
+        info_k  = ``sum_``{i in k} working_weights_i
+                = ``sum_``{i in k} sum_t p_{it} * (1 - p_{it})
 
     where ``score_beta`` from ``discrete_loglik`` is the gradient of
     the *negative* log-likelihood, hence the sign flip.
@@ -97,7 +90,7 @@ def _provider_newton_from_loglik(
     n_providers : int
     gamma : ndarray, shape (n_providers,)
         Current provider effects.
-    gamma_bound : float
+    provider_bound : float
         Maximum deviation from median.
 
     Returns
@@ -120,8 +113,8 @@ def _provider_newton_from_loglik(
     median_gamma = float(np.median(gamma_new))
     gamma_new = np.clip(
         gamma_new,
-        median_gamma - gamma_bound,
-        median_gamma + gamma_bound,
+        median_gamma - provider_bound,
+        median_gamma + provider_bound,
     )
     return gamma_new
 
@@ -130,7 +123,7 @@ def _provider_newton_from_loglik(
 # ProviderPenalizedDiscreteSurvival
 # ======================================================================
 
-class ProviderPenalizedDiscreteSurvival(BaseEstimator):
+class ProviderPenalizedDiscreteSurvival(ProviderModel):
     """Provider-penalized discrete-time survival model.
 
     Three-layer architecture matching R ``pp.DiscSurv``:
@@ -144,10 +137,9 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
 
     Parameters
     ----------
-    alpha_en : float, default=1.0
-        Elastic net mixing (1 = lasso, 0 = ridge).  Alias:
-        ``alpha`` (accepted for cross-family consistency).
-    gamma_bound : float, default=10.0
+    alpha : float, default=1.0
+        Elastic net mixing (1 = lasso, 0 = ridge).
+    provider_bound : float, default=10.0
         Maximum provider effect deviation from median.
     n_lambda : int, default=100
     lambda_min_ratio : float or None
@@ -172,8 +164,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
     use_active_set : bool, default=True
         Active-set screening for the CD solver.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     coef_path_ : ndarray, shape (n_lambda, p)
     baseline_hazard_path_ : ndarray, shape (n_lambda, n_timepoints)
     gamma_path_ : ndarray, shape (n_lambda, K)
@@ -184,9 +176,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
 
     def __init__(
         self,
-        alpha_en: float = 1.0,
-        gamma_bound: float = 10.0,
-        alpha: Optional[float] = None,
+        alpha: float = 1.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
@@ -201,9 +192,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
         use_active_set: bool = True,
     ):
         """Two-layer provider + penalized discrete survival."""
-        # ISSUE-022: accept alpha as alias for alpha_en.
-        self.alpha_en = alpha if alpha is not None else alpha_en
-        self.gamma_bound = gamma_bound
+        self.alpha = alpha
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
@@ -243,8 +233,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
         -------
         self
 
-        Algorithm
-        ---------
+        Notes
+        -----
         For each lambda in the path (warm-started):
 
         1. **Provider step:** Newton update for gamma_k using the
@@ -259,8 +249,8 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
            person-period expanded working response, using
            ``discrete_coordinate_descent_step()``.
 
-        4. Convergence check: max |delta_beta| + max |delta_gamma|
-           + max |delta_alpha| < outer_tol.
+        4. Convergence check: ``max(max|delta_beta|, max|delta_gamma|,
+           max|delta_alpha|) < outer_tol``.
         """
         # =============================================================
         # 1. Input validation and feature names
@@ -354,7 +344,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
             )
             gamma_new = _provider_newton_from_loglik(
                 ll_null.score_beta, ll_null.working_weights,
-                provider_idx, n_providers, gamma, self.gamma_bound,
+                provider_idx, n_providers, gamma, self.provider_bound,
             )
             eta += (gamma_new - gamma)[provider_idx]
             gamma_change = np.max(np.abs(gamma_new - gamma))
@@ -363,7 +353,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
             # Alpha update
             alpha_new = baseline_hazard_update(
                 alpha, time_int, event_np, eta,
-                n_events, bound=self.gamma_bound,
+                n_events, bound=self.provider_bound,
             )
             alpha_change = np.max(np.abs(alpha_new - alpha))
             alpha = alpha_new
@@ -430,7 +420,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
                 )
                 gamma_new = _provider_newton_from_loglik(
                     ll_res.score_beta, ll_res.working_weights,
-                    provider_idx, n_providers, gamma, self.gamma_bound,
+                    provider_idx, n_providers, gamma, self.provider_bound,
                 )
                 # Update eta for gamma change.
                 eta += (gamma_new - gamma)[provider_idx]
@@ -439,7 +429,7 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
                 # --- Layer 2: Baseline hazard alpha update ---
                 alpha = baseline_hazard_update(
                     alpha, time_int, event_np, eta,
-                    n_events, bound=self.gamma_bound,
+                    n_events, bound=self.provider_bound,
                 )
 
                 # --- Layer 3: Penalized beta update (IRLS + CD) ---
@@ -587,35 +577,66 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
                 f"This {type(self).__name__} is not fitted yet."
             )
 
+    def coef_at(self, lambda_value: float) -> np.ndarray:
+        """Covariate coefficients at an arbitrary lambda: linear interpolation in log(lambda) between
+        the bracketing path points, as every penalized path class does; the end points outside the path.
+        Predictions and provider effects use the nearest path point (``lambda_value=`` or ``which=``)."""
+        self._check_is_fitted()
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
+
     def predict_provider_effect(self, which: int = -1) -> pd.DataFrame:
         """Provider effects at a given lambda index."""
         self._check_is_fitted()
         gamma = self.gamma_path_[which]
         return pd.DataFrame({
-            "provider": self.provider_labels_,
+            "provider_id": self.provider_labels_,
             "gamma": gamma,
         })
 
+    def _path_index(self, lambda_value, which):
+        """The path point: nearest to ``lambda_value``, else ``which``, else the last."""
+        if lambda_value is not None:
+            return int(np.argmin(np.abs(np.asarray(self.lambda_path_) - lambda_value)))
+        return -1 if which is None else which
+
+    def _to_person_period(self, wide, time):
+        """Rows of ``wide`` (one column per time point) cut at each subject's time, stacked."""
+        k = wide.shape[1]
+        time_int = np.clip(np.searchsorted(self.time_points_, np.asarray(time, dtype=np.float64)) + 1, 1, k)
+        return np.concatenate([wide[i, :time_int[i]] for i in range(wide.shape[0])])
+
     def predict_hazard(
-        self, X, provider_id=None, which: int = -1,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted conditional hazard at each time point.
+        """Predicted conditional hazard.
+
+        Parameters
+        ----------
+        X : array-like, shape (n_new, p)
+        provider_id : array-like, optional
+            Provider of each row; rows of unknown providers get no provider effect.
+        time : array-like, optional
+            Follow-up time of each row: the result is then in person-period (long)
+            form, as ``DiscreteSurvival.predict_hazard``. Without it, the result has
+            one column per time point.
+        lambda_value : float, optional
+            The path point nearest to this lambda.
+        which : int, optional
+            Path index (default: the last).
 
         Returns
         -------
-        ndarray, shape (n_new, n_timepoints)
+        ndarray, shape (n_new, n_timepoints), or ``(sum(time_int),)`` with ``time``
         """
         self._check_is_fitted()
+        which = self._path_index(lambda_value, which)
         X = np.asarray(X, dtype=np.float64)
         coef = self.coef_path_[which]
         alpha = self.baseline_hazard_path_[which]
         n_new = X.shape[0]
-        n_t = len(alpha)
-
         # eta_{i,t} = alpha_t + X_i @ beta
         eta_base = X @ coef  # shape (n_new,)
         eta = np.outer(np.ones(n_new), alpha) + eta_base[:, np.newaxis]
-
         # Add provider effects.
         if provider_id is not None:
             gamma = self.gamma_path_[which]
@@ -626,29 +647,22 @@ class ProviderPenalizedDiscreteSurvival(BaseEstimator):
                 pidx = label_to_idx.get(pid, -1)
                 if pidx >= 0:
                     eta[row_idx, :] += gamma[pidx]
-
-        return 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
+        hazard = 1.0 / (1.0 + np.exp(-np.clip(eta, -30.0, 30.0)))
+        return hazard if time is None else self._to_person_period(hazard, time)
 
     def predict_survival(
-        self, X, provider_id=None, which: int = -1,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted survival probability at each time point.
+        """Predicted survival probability, ``S(t) = prod_{s<=t} (1 - h(s))``.
 
-        S(t) = prod_{s<=t} (1 - h(s))
-
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as :meth:`predict_hazard`.
         """
-        hazard = self.predict_hazard(X, provider_id, which)
-        return np.cumprod(1.0 - hazard, axis=1)
+        hazard = self.predict_hazard(X, provider_id=provider_id, lambda_value=lambda_value, which=which)
+        survival = np.cumprod(1.0 - hazard, axis=1)
+        return survival if time is None else self._to_person_period(survival, time)
 
 
-# ======================================================================
-# Cross-validated ProviderPenalizedDiscreteSurvival
-# ======================================================================
-
-class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
+class ProviderPenalizedDiscreteSurvivalCV(ProviderModel):
     """Cross-validated provider-penalized discrete-time survival model.
 
     Fits the full regularization path on all data, then selects
@@ -679,9 +693,10 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
     Parameters
     ----------
     n_folds : int, default=10
-    use_1se : bool, default=True
-        If True, select lambda_1se; else lambda_min.
+    se_rule : {"1se", "min"}, default="1se"
+        ``"1se"`` selects ``lambda_1se_``; ``"min"`` selects ``lambda_min_``.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_fold_retries : int, default=100
         Maximum retries for event-stratified fold assignment with
         timepoint coverage.
@@ -690,26 +705,26 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
         ``n_folds`` and the internal assignment logic.
     **kwargs
         Forwarded to ``ProviderPenalizedDiscreteSurvival``
-        (e.g., ``alpha_en``, ``gamma_bound``, ``n_lambda``,
+        (e.g., ``alpha``, ``provider_bound``, ``n_lambda``,
         ``penalty_factor``, ``standardize``, ``outer_tol``, etc.).
         ``lambda_path``, ``n_lambda``, ``lambda_min_ratio`` are only
         used for the full-data fit; fold models inherit the full-data
         lambda sequence.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     lambda_min_ : float
         Lambda with minimum mean CV error.
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (``lambda_1se_`` if ``use_1se`` else
+        Selected lambda (``lambda_1se_`` if ``se_rule="1se"`` else
         ``lambda_min_``).
     lambda_min_idx_ : int
     lambda_1se_idx_ : int
-    cv_mean_ : ndarray, shape (n_lambda,)
+    cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean CV error per lambda.
-    cv_se_ : ndarray, shape (n_lambda,)
+    cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV error per lambda.
     model_ : ProviderPenalizedDiscreteSurvival
         Full-data fit.
@@ -727,10 +742,11 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
     fold_assignment_ : ndarray of int, shape (n,)
     """
 
+
     def __init__(
         self,
         n_folds: int = 10,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_fold_retries: int = 100,
         fold_id: Optional[np.ndarray] = None,
@@ -738,7 +754,7 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
     ):
         """Cross-validated provider-penalized discrete survival."""
         self.n_folds = n_folds
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_fold_retries = max_fold_retries
         self.fold_id = fold_id
@@ -838,6 +854,8 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
         -------
         self
         """
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # =============================================================
         # 1. Fit full-data model to get the lambda path
         # =============================================================
@@ -1001,13 +1019,13 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
         # =============================================================
         # 6. Store fitted attributes
         # =============================================================
-        self.cv_mean_ = cv_mean
-        self.cv_se_ = cv_se
+        self.cv_mean_deviance_ = cv_mean
+        self.cv_se_deviance_ = cv_se
         self.lambda_min_ = float(lambda_min)
         self.lambda_1se_ = float(lambda_1se)
         self.lambda_min_idx_ = int(idx_min)
         self.lambda_1se_idx_ = int(idx_1se)
-        idx_selected = idx_1se if self.use_1se else idx_min
+        idx_selected = idx_1se if (self.se_rule == "1se") else idx_min
         self.lambda_ = float(lambda_path[idx_selected])
 
         # Full-data model and convenience accessors.
@@ -1043,50 +1061,42 @@ class ProviderPenalizedDiscreteSurvivalCV(BaseEstimator):
             )
 
     def predict_hazard(
-        self, X, provider_id=None, which=None,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted hazard at the selected lambda.
+        """Predicted hazard at the selected lambda (unless ``lambda_value`` or ``which`` is given).
 
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as ``ProviderPenalizedDiscreteSurvival.predict_hazard``.
         """
         self._check_is_fitted()
-        if which is None:
+        if which is None and lambda_value is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
-        return self.model_.predict_hazard(X, provider_id, which=which)
-
+        return self.model_.predict_hazard(X, provider_id=provider_id, time=time, lambda_value=lambda_value, which=which)
     def predict_survival(
-        self, X, provider_id=None, which=None,
+        self, X, provider_id=None, time=None, lambda_value=None, which=None,
     ) -> np.ndarray:
-        """Predicted survival at the selected lambda.
+        """Predicted survival at the selected lambda (unless ``lambda_value`` or ``which`` is given).
 
-        Returns
-        -------
-        ndarray, shape (n_new, n_timepoints)
+        Same arguments and shapes as ``ProviderPenalizedDiscreteSurvival.predict_survival``.
         """
         self._check_is_fitted()
-        if which is None:
+        if which is None and lambda_value is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
-        return self.model_.predict_survival(
-            X, provider_id, which=which,
-        )
-
+        return self.model_.predict_survival(X, provider_id=provider_id, time=time, lambda_value=lambda_value, which=which)
     def predict_provider_effect(self, which=None) -> pd.DataFrame:
         """Provider effects at the selected lambda."""
         self._check_is_fitted()
         if which is None:
             which = (
                 self.lambda_1se_idx_
-                if self.use_1se
+                if (self.se_rule == "1se")
                 else self.lambda_min_idx_
             )
         return self.model_.predict_provider_effect(which=which)

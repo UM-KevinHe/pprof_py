@@ -254,7 +254,7 @@ def test_alpha_out_of_range_raises():
 # ---------------------------------------------------------------------
 def test_cv_final_estimator_matches_direct_fit_at_selected_lambda():
     X, stop, event = _synthetic(n=300, p=8, seed=22)
-    cv = PenalizedCoxPHCV(alpha=1.0, n_folds=5, random_state=0, n_lambda=25)
+    cv = PenalizedCoxPHCV(alpha=1.0, n_folds=5, random_state=0, n_lambda=25, se_rule="min")
     cv.fit(X, duration=stop, event=event)
 
     direct = PenalizedCoxPH(alpha=1.0, lambda_path=cv.lambda_min_).fit(X, duration=stop, event=event)

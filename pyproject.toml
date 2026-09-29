@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pprof_py"
-version = "0.4.1"
+version = "0.5.0"
 description = "General statistical-computing package for provider profiling and healthcare analytics (logistic, linear, and Cox survival models)."
 requires-python = ">=3.9"
 readme = "README.md"
@@ -27,9 +27,7 @@ dependencies = [
     "numpy>=1.23",
     "pandas>=1.5",
     "scipy>=1.9",
-    "scikit-learn>=1.0",
     "matplotlib>=3.5",
-    "seaborn>=0.12",
     "numba>=0.56",
     "fast_poibin>=0.4",
 ]
@@ -55,4 +53,4 @@ legacy = ["rpy2", "pymer4"]
 
 [tool.setuptools.packages.find]
 include = ["pprof_py*"]
-exclude = ["pprof_py.tests*"]
+exclude = ["pprof_py.tests*", "pprof_py.r_reference*", "pprof_py.docs*"]

@@ -11,43 +11,16 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-    compute_group_indices,
-    elastic_net_penalty_value,
-    sparse_group_lasso_penalty_value,
-)
-from ...algorithms.coordinate_descent import (
-    compute_lambda_max,
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    solve_penalized_quadratic,
-    solve_sparse_group_penalized_quadratic,
-    PenalizedFitResult,
-    GroupPenalizedFitResult,
-)
-from ...algorithms.logistic.likelihood import (
-    logistic_loglik,
-    logistic_score,
-    logistic_information,
-    logistic_deviance,
-    logistic_null_deviance,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_intercept_update,
-    _safe_expit,
-)
-from ...algorithms.logistic.provider_effects import (
-    compute_provider_indices,
-    logistic_provider_newton_step,
-    provider_bound_clamp,
-)
+from scipy.special import expit
+from ...inference.count_tests import PlugIn, count_test, rows_by_provider
+from ...inference.effect_tests import effect_test, normalize_alternative, reference_effect
+from ...algorithms.penalty import (weighted_column_center_scale, rescale_penalty_factors, validate_groups, fit_group_multipliers, within_group_orthogonalize, unorthogonalize_coefs, resolve_penalty_alpha, unpenalized_columns,
+                                     interpolate_path)
+from ...algorithms.coordinate_descent import (compute_lambda_max, compute_group_lambda_max, solve_penalized_quadratic, solve_sparse_group_penalized_quadratic, add_unpenalized_block)
+from ...algorithms.logistic.likelihood import (logistic_loglik, logistic_score, logistic_information, logistic_deviance, logistic_null_deviance, logistic_unpenalized_null_fit, logistic_intercept_update)
+from ...algorithms.logistic.provider_effects import compute_provider_indices, logistic_provider_newton_step
 from ...exceptions import NotFittedError
 from .penalized import (
     DegenerateFeatureWarning, _resolve_lambda_path,
@@ -57,47 +30,44 @@ from .penalized import (
 logger = logging.getLogger(__name__)
 
 
-def _resolve_provider_alias(provider_id, provider):
-    """Resolve ``provider_id`` / ``provider`` alias pair.
-
-    Both names refer to the same concept (per-observation provider
-    identifiers).  Accepts either one; raises if both are supplied.
-    """
-    if provider_id is not None and provider is not None:
-        raise ValueError(
-            "Cannot specify both 'provider_id' and 'provider'; they "
-            "are aliases for the same argument."
-        )
-    return provider_id if provider_id is not None else provider
-
-
-class ProviderPenalizedLogistic(BaseEstimator):
+class ProviderPenalizedLogistic(ProviderModel):
     """Two-layer provider-penalized logistic regression.
 
     Unpenalized provider effects gamma_k (bounded by median-clamp)
     combined with penalized covariate effects beta (elastic net,
     group lasso, or sparse group lasso).
 
-    Matches R ``pp.lasso`` for binomial family.
+    Matches R ``grplasso`` for the binomial family: ``pp.lasso`` (the lasso,
+    ``penalty_type="elastic_net"`` with ``alpha=1``) and ``grp.lasso`` with
+    ``prov.char`` (``penalty_type="group_lasso"``).  With a single provider
+    the group path is ``GroupLassoLogistic``'s.
 
     Parameters
     ----------
     penalty_type : str, default='elastic_net'
         One of 'elastic_net', 'group_lasso', 'sparse_group_lasso'.
-    alpha : float, default=1.0
-        Elastic net mixing / sparse group mixing.
+    alpha : float or None, default=None
+        Mixing parameter.  'elastic_net': 0 = ridge, 1 = lasso (``None``
+        means 1).  'group_lasso': the pure group lasso; only ``None`` or 0
+        is accepted.  'sparse_group_lasso': required; 0 = group lasso,
+        1 = lasso.
     groups : array-like or None
-        Group labels (required for group_lasso/sparse_group_lasso).
+        Group labels (required for group_lasso/sparse_group_lasso); 0 marks
+        unpenalized columns, which must be contiguous.
     group_multiplier : array-like or None
-    gamma_bound : float, default=10.0
-        Maximum provider-effect deviation from median.  Alias:
-        ``provider_bound`` (accepted for cross-family consistency
-        with ``ProviderPenalizedCoxPH``).
+        One multiplier per penalized group; default sqrt(group size).
+    provider_bound : float, default=10.0
+        Maximum provider-effect deviation from median.
     n_lambda : int, default=100
     lambda_min_ratio : float or None
     lambda_path : array-like or None
     penalty_factor : array-like or None
     standardize : bool, default=True
+    orthogonalize : bool, default=True
+        Group penalties only.  Orthogonalize each penalized group within
+        itself, so the group penalty is the standardized group lasso that
+        ``GroupLassoLogistic`` and R's ``grp.lasso`` fit; ``False`` fits the
+        plain group lasso on the standardized columns.
     fit_intercept : bool, default=True
     max_outer_iter : int, default=100
     outer_tol : float, default=1e-7
@@ -109,7 +79,6 @@ class ProviderPenalizedLogistic(BaseEstimator):
     inner_tol : float, default=1e-10
     provider_max_iter : int, default=10
         Maximum provider-effect Newton steps per outer iteration.
-        Alias: ``max_provider_iter``.
     provider_tol : float or None, default=None
         Convergence tolerance for the provider-effect Newton loop.
         When *None*, falls back to ``outer_tol``.  Matches the
@@ -122,30 +91,34 @@ class ProviderPenalizedLogistic(BaseEstimator):
     intercept_path_ : ndarray, shape (n_lambda,)
     gamma_path_ : ndarray, shape (n_lambda, K)
     lambda_path_ : ndarray, shape (n_lambda,)
+    lambda_max_ : float
+        Smallest lambda at which every penalized coefficient is zero, from
+        the score at the null point (provider effects, intercept and
+        unpenalized coefficients at their joint MLE).
+    alpha_ : float
+        The mixing parameter used (see ``alpha``).
     provider_labels_ : ndarray, shape (K,)
     """
 
     def __init__(
         self,
         penalty_type: str = "elastic_net",
-        alpha: float = 1.0,
+        alpha: Optional[float] = None,
         groups: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
-        gamma_bound: float = 10.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
         penalty_factor: Optional[np.ndarray] = None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         fit_intercept: bool = True,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-7,
         max_inner_iter: int = 1000,
         inner_tol: float = 1e-10,
         provider_max_iter: int = 10,
-        # --- Cross-family aliases (ISSUE-016, -017, -018) ---
-        provider_bound: Optional[float] = None,
-        max_provider_iter: Optional[int] = None,
         provider_tol: Optional[float] = None,
     ):
         """Two-layer provider + penalized-covariate logistic."""
@@ -153,27 +126,66 @@ class ProviderPenalizedLogistic(BaseEstimator):
         self.alpha = alpha
         self.groups = groups
         self.group_multiplier = group_multiplier
-        # ISSUE-016: accept provider_bound as alias for gamma_bound
-        self.gamma_bound = (
-            provider_bound if provider_bound is not None else gamma_bound
-        )
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
         self.penalty_factor = penalty_factor
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.fit_intercept = fit_intercept
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
-        # ISSUE-017: accept max_provider_iter as alias for provider_max_iter
-        self.provider_max_iter = (
-            max_provider_iter if max_provider_iter is not None
-            else provider_max_iter
-        )
+        self.provider_max_iter = provider_max_iter
         # ISSUE-018: dedicated provider-effect convergence tolerance
         self.provider_tol = provider_tol
+
+    def _provider_null_point(self, X_fit, y, weight, offset, prov_idx,
+                             n_providers, unpenalized):
+        """Null point for ``lambda_max``: penalized β at 0; the provider
+        effects, the intercept and any unpenalized β at their joint MLE.
+
+        REV-001's rule with γ included (the logistic counterpart of REV-003):
+        γ is unpenalized, so the score that sets ``lambda_max`` is taken with
+        γ fitted.  R's ``set.lambda.grplasso`` does the same: its null
+        residual is taken at the provider means, and ``SerBIN.residuals``
+        fits any group-0 columns together with γ.
+
+        Returns ``(beta, gamma, intercept, score)``.
+        """
+        beta, _score, intercept = logistic_unpenalized_null_fit(
+            X_fit, y, weight, unpenalized=unpenalized, offset=offset,
+            fit_intercept=self.fit_intercept,
+        )
+        gamma = np.zeros(n_providers, dtype=np.float64)
+        idx = np.flatnonzero(unpenalized)
+        for _round in range(100):
+            eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
+            gamma_new = logistic_provider_newton_step(
+                y, eta, weight, prov_idx, n_providers,
+                gamma, gamma_bound=self.provider_bound,
+            )
+            change = float(np.max(np.abs(gamma_new - gamma)))
+            gamma = gamma_new
+            if idx.size:
+                # The intercept stays put: once every provider's score is
+                # zero, so is the intercept's.
+                eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
+                Xu = X_fit[:, idx]
+                g = logistic_score(Xu, y, eta, weight)
+                H = logistic_information(Xu, eta, weight)
+                try:
+                    step = np.linalg.solve(H, g)
+                except np.linalg.LinAlgError:
+                    step = np.linalg.lstsq(H, g, rcond=None)[0]
+                beta[idx] += step
+                change = max(change, float(np.max(np.abs(step))))
+            if change < 1e-10:
+                break
+        eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
+        return beta, gamma, float(intercept), logistic_score(X_fit, y, eta, weight)
 
     def fit(
         self,
@@ -182,8 +194,6 @@ class ProviderPenalizedLogistic(BaseEstimator):
         provider_id: np.ndarray = None,
         sample_weight: Optional[np.ndarray] = None,
         offset: Optional[np.ndarray] = None,
-        *,
-        provider: Optional[np.ndarray] = None,
     ) -> "ProviderPenalizedLogistic":
         """Fit the two-layer provider-penalized logistic model.
 
@@ -192,22 +202,20 @@ class ProviderPenalizedLogistic(BaseEstimator):
         X : ndarray or DataFrame, shape (n, p)
         y : ndarray, shape (n,)
         provider_id : ndarray, shape (n,)
-            Provider identifiers.  Alias: ``provider``.
+            Provider identifiers.
         sample_weight, offset : ndarray or None
-        provider : ndarray or None
-            Alias for *provider_id* (cross-family consistency with
-            ``ProviderPenalizedCoxPH``).
 
         Returns
         -------
         self
         """
-        provider_id = _resolve_provider_alias(provider_id, provider)
         if provider_id is None:
             raise ValueError(
                 "provider_id (or provider=) must be provided "
                 "(per-observation provider identifiers)."
             )
+        alpha = resolve_penalty_alpha(self.penalty_type, self.alpha)
+        self.alpha_ = alpha
         if isinstance(X, pd.DataFrame):
             self.feature_names_in_ = np.array(X.columns.tolist())
             X = X.values
@@ -267,49 +275,59 @@ class ProviderPenalizedLogistic(BaseEstimator):
         pf_fit = rescale_penalty_factors(pf_full[fit_cols], p_fit)
 
         # Group setup (for group/sparse group lasso penalty types).
-        use_groups = self.penalty_type in ("group_lasso", "sparse_group_lasso")
+        use_groups = self.penalty_type != "elastic_net"
+        QL_blocks = None
         if use_groups:
             if self.groups is None:
                 raise ValueError(
                     f"groups must be provided for penalty_type='{self.penalty_type}'"
                 )
-            groups_full = np.asarray(self.groups)
-            groups_fit = groups_full[fit_cols]
-            groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
-                groups_fit, p_fit,
+            groups_full, _sizes, _n_groups = validate_groups(
+                np.asarray(self.groups), p_full,
             )
-            gw_fit = rescale_group_multipliers(
-                None, group_sizes_fit, n_groups_fit,
+            groups_fit, _sizes_fit, n_groups_fit = validate_groups(
+                groups_full[fit_cols], p_fit,
             )
-            gs_arr, ge_arr = compute_group_indices(groups_fit, n_groups_fit)
+            gw_fit = fit_group_multipliers(
+                self.group_multiplier, groups_full, fit_cols,
+            )
+            # C8: within-group orthogonalization, as in GroupLassoLogistic and
+            # R's grp.lasso, so the group penalty is the standardized group
+            # lasso.  The block solver is exact for the resulting (non-scalar)
+            # information blocks.
+            if self.orthogonalize:
+                X_fit, QL_blocks = within_group_orthogonalize(
+                    X_fit, groups_fit, weight,
+                )
+            # Unpenalized (group 0) columns join the block solver as a block
+            # with no penalty (ISSUE-010).
+            _labels, gs_arr, ge_arr, gw_blocks, pf_blocks, _n_blocks, _added = (
+                add_unpenalized_block(groups_fit, n_groups_fit, gw_fit, pf_fit)
+            )
         else:
             groups_fit = None
-            n_groups_fit = 0
             gw_fit = None
-            gs_arr = ge_arr = None
+            gs_arr = ge_arr = gw_blocks = pf_blocks = None
 
         c = 1.0 / float(np.sum(weight))
 
-        # REV-001: the null point for lambda_max is not beta=0 everywhere --
-        # it is "penalized coefficients at 0, unpenalized ones at their own
-        # MLE".  Fitting them here corrects lambda_max and gives the path a
-        # warm start whose unpenalized coefficients are already right at the
-        # top of the path (mirrors the R reference's SerBIN.residuals).
-        unpen_mask = (pf_fit == 0.0)
-        if use_groups:
-            unpen_mask = unpen_mask | (groups_fit == 0)
-        beta_null, score_null, intercept_null = logistic_unpenalized_null_fit(
-            X_fit, y, weight, unpenalized=unpen_mask, offset=offset,
-            fit_intercept=self.fit_intercept,
+        unpen_mask = (
+            unpenalized_columns(groups_fit, gw_fit, pf_fit, alpha) if use_groups
+            else pf_fit == 0.0
+        )
+        beta_null, gamma_null, intercept_null, score_null = (
+            self._provider_null_point(
+                X_fit, y, weight, offset, prov_idx, n_providers, unpen_mask,
+            )
         )
 
         if use_groups:
             lam_max = compute_group_lambda_max(
-                score_null, c, groups_fit, gw_fit, pf_fit, self.alpha,
+                score_null, c, groups_fit, gw_fit, pf_fit, alpha,
             )
         else:
             lam_max = compute_lambda_max(
-                score_null, c, pf_fit, self.alpha,
+                score_null, c, pf_fit, alpha,
             )
 
         lambda_sequence, lam_min_ratio = _resolve_lambda_path(
@@ -318,9 +336,18 @@ class ProviderPenalizedLogistic(BaseEstimator):
         )
 
         # --- Two-layer path fitting ---
-        intercept = intercept_null if self.fit_intercept else 0.0
+        intercept_start = intercept_null if self.fit_intercept else 0.0
+        intercept = intercept_start
         beta = beta_null.copy()
-        gamma = np.zeros(n_providers, dtype=np.float64)
+        gamma = gamma_null.copy()
+        # lambda_max is the smallest lambda at which the null point solves the
+        # problem (for the elastic net only when alpha >= 1e-3, the floor
+        # compute_lambda_max divides by), so at or above it the null point is
+        # stored as is: iterating from it only adds rounding noise to its
+        # exact zeros.  (A generated path starts at exp(log(lambda_max)),
+        # which can fall an ulp below it.)
+        null_is_solution = use_groups or alpha >= 1e-3
+        lam_null = lam_max * (1.0 - 1e-12)
 
         coef_results = []
         intercept_results = []
@@ -331,10 +358,15 @@ class ProviderPenalizedLogistic(BaseEstimator):
 
         for lam_val in lambda_sequence:
             lam = float(lam_val)
-            converged = False
+            at_null = null_is_solution and lam >= lam_null
+            if at_null:
+                beta, gamma, intercept = (
+                    beta_null.copy(), gamma_null.copy(), intercept_start,
+                )
+            converged = at_null
             n_outer = 0
 
-            for outer_iter in range(1, self.max_outer_iter + 1):
+            for outer_iter in range(1, (0 if at_null else self.max_outer_iter) + 1):
                 n_outer = outer_iter
 
                 # Step 1: Provider-effect Newton steps.
@@ -342,7 +374,7 @@ class ProviderPenalizedLogistic(BaseEstimator):
                     eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
                     gamma_new = logistic_provider_newton_step(
                         y, eta, weight, prov_idx, n_providers,
-                        gamma, gamma_bound=self.gamma_bound,
+                        gamma, gamma_bound=self.provider_bound,
                     )
                     gamma_change = float(np.max(np.abs(gamma_new - gamma)))
                     gamma = gamma_new
@@ -356,9 +388,6 @@ class ProviderPenalizedLogistic(BaseEstimator):
                 # Update intercept.
                 if self.fit_intercept:
                     eta = X_fit @ beta + gamma[prov_idx] + offset + intercept
-                    from ...algorithms.logistic.likelihood import (
-                        logistic_intercept_update,
-                    )
                     intercept += logistic_intercept_update(y, eta, weight)
 
                 # Step 2: Build objective for beta (with fixed gamma, intercept).
@@ -381,14 +410,14 @@ class ProviderPenalizedLogistic(BaseEstimator):
                 if use_groups:
                     beta_new, n_inner, _ = \
                         solve_sparse_group_penalized_quadratic(
-                            A, linear_term, beta, lam, self.alpha,
-                            pf_fit, gs_arr, ge_arr, gw_fit,
+                            A, linear_term, beta, lam, alpha,
+                            pf_blocks, gs_arr, ge_arr, gw_blocks,
                             tol=self.inner_tol,
                             max_iter=self.max_inner_iter,
                         )
                 else:
                     beta_new, n_inner, _ = solve_penalized_quadratic(
-                        A, linear_term, beta, lam, self.alpha, pf_fit,
+                        A, linear_term, beta, lam, alpha, pf_fit,
                         tol=self.inner_tol, max_iter=self.max_inner_iter,
                     )
 
@@ -406,7 +435,11 @@ class ProviderPenalizedLogistic(BaseEstimator):
             eta_final = X_fit @ beta + gamma[prov_idx] + offset + intercept
             ll_final = logistic_loglik(y, eta_final, weight)
 
-            coef_results.append(beta / xs_full[fit_cols])
+            coef_fit = (
+                unorthogonalize_coefs(beta, groups_fit, QL_blocks)
+                if QL_blocks is not None else beta
+            )
+            coef_results.append(coef_fit / xs_full[fit_cols])
             intercept_results.append(intercept)
             gamma_results.append(gamma.copy())
             loglik_results.append(ll_final)
@@ -443,6 +476,7 @@ class ProviderPenalizedLogistic(BaseEstimator):
         self.penalty_factor_ = pf_full
         self._excluded_features_ = degenerate
         self._provider_idx_ = prov_idx
+        self._fit_data = (X, y, offset, weight)      # for test(): the training rows
 
         null_dev = logistic_null_deviance(y, weight)
         deviances = np.array([-2.0 * ll for ll in loglik_results])
@@ -465,6 +499,18 @@ class ProviderPenalizedLogistic(BaseEstimator):
                 f"This {type(self).__name__} is not fitted yet."
             )
 
+    def coef_at(self, lambda_value: float) -> np.ndarray:
+        """Covariate coefficients at an arbitrary lambda: linear interpolation in log(lambda) between
+        the bracketing path points, as every penalized path class does; the end points outside the path.
+        Predictions and provider effects use the nearest path point (``lambda_value=`` or ``which=``)."""
+        self._check_is_fitted()
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
+
+    def intercept_at(self, lambda_value: float) -> float:
+        """Intercept at an arbitrary lambda (log-lambda interpolation, as ``coef_at``)."""
+        self._check_is_fitted()
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
+
     def predict_provider_effect(self, which: int = -1) -> pd.DataFrame:
         """Provider effects at a given lambda index.
 
@@ -474,18 +520,17 @@ class ProviderPenalizedLogistic(BaseEstimator):
 
         Returns
         -------
-        DataFrame with columns 'provider' and 'gamma'.
+        DataFrame with columns 'provider_id' and 'gamma'.
         """
         self._check_is_fitted()
         gamma = self.gamma_path_[which]
         return pd.DataFrame({
-            "provider": self.provider_labels_,
+            "provider_id": self.provider_labels_,
             "gamma": gamma,
         })
 
     def predict_proba(
         self, X, provider_id=None, lambda_value=None, which: int = -1,
-        *, provider=None,
     ):
         """Predicted probabilities.
 
@@ -493,7 +538,6 @@ class ProviderPenalizedLogistic(BaseEstimator):
         ----------
         X : ndarray, shape (n_new, p)
         provider_id : ndarray or None, shape (n_new,)
-            Alias: ``provider``.
         lambda_value : float or None
             If given, selects the nearest ``lambda_path_`` entry
             (overrides *which* when *which* is at its default).
@@ -505,7 +549,6 @@ class ProviderPenalizedLogistic(BaseEstimator):
         ndarray, shape (n_new,)
         """
         self._check_is_fitted()
-        provider_id = _resolve_provider_alias(provider_id, provider)
         # ISSUE-015: wire lambda_value to a which index.
         if lambda_value is not None and which == -1:
             which = int(
@@ -542,6 +585,54 @@ class ProviderPenalizedLogistic(BaseEstimator):
 # ======================================================================
 # Provider-aware fold assignment
 # ======================================================================
+
+    def test(self, providers=None, *, test_method="poibin_exact", reference="median", null_model=None,
+             alternative="two_sided", level=0.95, critical=None, lambda_value=None, which=-1):
+        """Provider-effect tests at one point of the path (by default, the last).
+
+        The fixed-effect model's count test: each provider's event count is compared
+        with its Poisson-binomial distribution when its effect is the reference
+        ``gamma_0``, with the covariate effects, intercept and offset at the chosen
+        path point. ``ci_lower``/``ci_upper`` invert the test.
+
+        Parameters
+        ----------
+        providers : array-like, optional
+            Providers to test (default: all).
+        test_method : {"poibin_exact"}
+        reference, null_model, alternative, level, critical
+            As in :func:`~pprof_py.inference.provider_test`.
+        lambda_value : float, optional
+            The path point nearest to this lambda.
+        which : int, default -1
+            Path index.
+
+        Returns
+        -------
+        pandas.DataFrame
+            The shared provider-test table, indexed by ``provider_id``.
+        """
+        self._check_is_fitted()
+        if test_method != "poibin_exact":
+            raise ValueError("ProviderPenalizedLogistic.test supports test_method='poibin_exact' only.")
+        X, y, offset, weight = self._fit_data
+        if not np.all(weight == 1.0):
+            raise ValueError("test() needs an unweighted fit: the count test treats each row as one Bernoulli outcome.")
+        if lambda_value is not None and which == -1:
+            which = int(np.argmin(np.abs(self.lambda_path_ - lambda_value)))
+        alt = normalize_alternative(alternative)
+        gamma = np.asarray(self.gamma_path_[which], dtype=np.float64)
+        idx = np.asarray(self._provider_idx_).ravel()
+        g0 = reference_effect(gamma, np.bincount(idx, minlength=gamma.size), reference)
+        fixed = X @ self.coef_path_[which] + self.intercept_path_[which] + offset
+        rows_of = rows_by_provider(idx, gamma.size)
+        obs = np.array([y[rows].sum() for rows in rows_of])
+        nulls = [PlugIn(prob=lambda g, rows=rows: expit(g + fixed[rows])) for rows in rows_of]
+        wanted = None if providers is None else np.isin(self.provider_labels_, np.atleast_1d(providers))
+        z, limits = count_test(obs, nulls, g0, alternative=alt, start=gamma, wanted=wanted)
+        return effect_test(self.provider_labels_, gamma, z, g0, null_model=null_model, alternative=alt, level=level,
+                           critical=critical, providers=providers, test_method=test_method, limits=limits)
+
 
 def _provider_stratified_fold_assignment(
     y: np.ndarray,
@@ -616,7 +707,8 @@ def _provider_stratified_fold_assignment(
 # ProviderPenalizedLogisticCV
 # ======================================================================
 
-class ProviderPenalizedLogisticCV(BaseEstimator):
+
+class ProviderPenalizedLogisticCV(ProviderModel):
     """Cross-validated two-layer provider-penalized logistic regression.
 
     Fits the full regularization path on all data, then selects
@@ -629,15 +721,18 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
     ----------
     penalty_type : str, default='elastic_net'
         One of 'elastic_net', 'group_lasso', 'sparse_group_lasso'.
-    alpha : float, default=1.0
+    alpha : float or None, default=None
+        See ``ProviderPenalizedLogistic``.
     groups : array-like or None
     group_multiplier : array-like or None
-    gamma_bound : float, default=10.0
+    provider_bound : float, default=10.0
     n_lambda : int, default=100
     lambda_min_ratio : float or None
     lambda_path : array-like or None
     penalty_factor : array-like or None
     standardize : bool, default=True
+    orthogonalize : bool, default=True
+        Group penalties only; see ``ProviderPenalizedLogistic``.
     fit_intercept : bool, default=True
     max_outer_iter : int, default=100
     outer_tol : float, default=1e-7
@@ -648,9 +743,10 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
     n_folds : int, default=10
     fold_id : array-like or None
         User-supplied fold assignments (overrides n_folds).
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
         If True, select lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
 
     Attributes (after fit)
     ----------------------
@@ -672,15 +768,16 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
     def __init__(
         self,
         penalty_type: str = "elastic_net",
-        alpha: float = 1.0,
+        alpha: Optional[float] = None,
         groups: Optional[np.ndarray] = None,
         group_multiplier: Optional[np.ndarray] = None,
-        gamma_bound: float = 10.0,
+        provider_bound: float = 10.0,
         n_lambda: int = 100,
         lambda_min_ratio: Optional[float] = None,
         lambda_path: Optional[np.ndarray] = None,
         penalty_factor: Optional[np.ndarray] = None,
         standardize: bool = True,
+        orthogonalize: bool = True,
         fit_intercept: bool = True,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-7,
@@ -689,11 +786,8 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
         provider_max_iter: int = 10,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
-        # --- Cross-family aliases (ISSUE-016, -017, -018) ---
-        provider_bound: Optional[float] = None,
-        max_provider_iter: Optional[int] = None,
         provider_tol: Optional[float] = None,
     ):
         """Cross-validated provider-penalized logistic."""
@@ -701,26 +795,22 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
         self.alpha = alpha
         self.groups = groups
         self.group_multiplier = group_multiplier
-        self.gamma_bound = (
-            provider_bound if provider_bound is not None else gamma_bound
-        )
+        self.provider_bound = provider_bound
         self.n_lambda = n_lambda
         self.lambda_min_ratio = lambda_min_ratio
         self.lambda_path = lambda_path
         self.penalty_factor = penalty_factor
         self.standardize = standardize
+        self.orthogonalize = orthogonalize
         self.fit_intercept = fit_intercept
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
         self.max_inner_iter = max_inner_iter
         self.inner_tol = inner_tol
-        self.provider_max_iter = (
-            max_provider_iter if max_provider_iter is not None
-            else provider_max_iter
-        )
+        self.provider_max_iter = provider_max_iter
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.provider_tol = provider_tol
 
@@ -731,9 +821,10 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
             alpha=self.alpha,
             groups=self.groups,
             group_multiplier=self.group_multiplier,
-            gamma_bound=self.gamma_bound,
+            provider_bound=self.provider_bound,
             penalty_factor=self.penalty_factor,
             standardize=self.standardize,
+            orthogonalize=self.orthogonalize,
             fit_intercept=self.fit_intercept,
             max_outer_iter=self.max_outer_iter,
             outer_tol=self.outer_tol,
@@ -750,8 +841,6 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
         provider_id: np.ndarray = None,
         sample_weight: Optional[np.ndarray] = None,
         offset: Optional[np.ndarray] = None,
-        *,
-        provider: Optional[np.ndarray] = None,
     ) -> "ProviderPenalizedLogisticCV":
         """Fit CV to select lambda, then refit on full data.
 
@@ -766,7 +855,8 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
         -------
         self
         """
-        provider_id = _resolve_provider_alias(provider_id, provider)
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         if provider_id is None:
             raise ValueError(
                 "provider_id (or provider=) must be provided "
@@ -886,9 +976,9 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
         self.lambda_1se_ = float(lambda_1se)
         self.lambda_min_idx_ = idx_min
         self.lambda_1se_idx_ = idx_1se
-        self.lambda_ = float(lambda_1se if self.use_1se else lambda_min)
+        self.lambda_ = float(lambda_1se if (self.se_rule == "1se") else lambda_min)
 
-        idx_selected = idx_1se if self.use_1se else idx_min
+        idx_selected = idx_1se if (self.se_rule == "1se") else idx_min
         self.model_ = full_model
         self.coef_ = full_model.coef_path_[idx_selected]
         self.intercept_ = full_model.intercept_path_[idx_selected]
@@ -903,10 +993,8 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
 
     def predict_proba(
         self, X, provider_id=None, lambda_value=None, which=None,
-        *, provider=None,
     ):
         """Predicted probabilities at the selected lambda."""
-        provider_id = _resolve_provider_alias(provider_id, provider)
         if which is None:
             # ISSUE-015: honour lambda_value when which is unset.
             if lambda_value is not None:
@@ -915,24 +1003,34 @@ class ProviderPenalizedLogisticCV(BaseEstimator):
                 )
             else:
                 which = (
-                    self.lambda_1se_idx_ if self.use_1se
+                    self.lambda_1se_idx_ if (self.se_rule == "1se")
                     else self.lambda_min_idx_
                 )
         return self.model_.predict_proba(X, provider_id, which=which)
 
     def predict(
         self, X, provider_id=None, lambda_value=None,
-        which=None, threshold=0.5, *, provider=None,
+        which=None, threshold=0.5,
     ):
         """Binary predictions at the selected lambda."""
-        provider_id = _resolve_provider_alias(provider_id, provider)
         return (
             self.predict_proba(X, provider_id, lambda_value, which)
             >= threshold
         ).astype(int)
 
+    def test(self, providers=None, *, lambda_value=None, which=None, **kwargs):
+        """Provider-effect tests at the selected lambda (unless ``lambda_value`` or ``which`` is given).
+
+        See :meth:`ProviderPenalizedLogistic.test`.
+        """
+        if getattr(self, "model_", None) is None:
+            raise ValueError("The model must be fitted before testing.")
+        if which is None and lambda_value is None:
+            which = self.lambda_1se_idx_ if self.se_rule == "1se" else self.lambda_min_idx_
+        return self.model_.test(providers, lambda_value=lambda_value, which=-1 if which is None else which, **kwargs)
+
     def predict_provider_effect(self, which=None) -> pd.DataFrame:
         """Provider effects at the selected lambda."""
         if which is None:
-            which = self.lambda_1se_idx_ if self.use_1se else self.lambda_min_idx_
+            which = self.lambda_1se_idx_ if (self.se_rule == "1se") else self.lambda_min_idx_
         return self.model_.predict_provider_effect(which=which)

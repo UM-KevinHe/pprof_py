@@ -1,7 +1,13 @@
 (survival_validation_report)=
 # Validation report
 
-Regenerated on 2026-09-20 from a fresh clone (commit `4e98f58`, version 0.4.0) against real R output: R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8, on Python 3.12.3 with NumPy 1.26.4, pandas 3.0.6, scikit-learn 1.9.1, SciPy 1.17.1 and numba 0.59.1. The reference data and R results were produced by the scripts in `pprof_py/r_reference/`; the exact commands, and the workaround for the tests' split data directories, are in {ref}`survival_validation_tools`.
+```{note}
+This report is a snapshot of the run described below (2026-09-20, commit `4e98f58`). The failures it records have since been
+addressed: the full test suite at the current branch head has a single failure, `test_setup_logger`, which is environmental
+(a container without `tzdata`).
+```
+
+Regenerated on 2026-09-20 from a fresh clone (commit `4e98f58`, version 0.4.0) against real R output: R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8, on Python 3.12.3 with NumPy 1.26.4, pandas 3.0.6, scikit-learn 1.9.1, SciPy 1.17.1 and numba 0.59.1. The reference data and R results were produced by the scripts in `pprof_py/r_reference/`; run the three `generate_*.py` scripts, then the `run_*.R` scripts, from that directory (the committed `data/` and `results/` are their output).
 
 The numbers below come from that run. Last-digit differences from earlier reports are expected: they depend on the platform's BLAS and on R's build.
 
@@ -14,7 +20,7 @@ The numbers below come from that run. Last-digit differences from earlier report
 | Phase 3 — variable selection vs `step()` (`test_selector_r_comparison.py`) | **not reproducible** — the datasets it reads have no generator in the repository |
 | Phase 4 — cause-specific hazards, robust variance, `tmerge` | pass when both sides use the same tie method |
 | Phase 4 — Fine–Gray | right-censored agrees with R; **left-truncated does not** |
-| Whole `pprof_py/tests/survival` directory | 227 tests: 200 passed, 26 failed, 1 skipped — categorised in {ref}`survival_validation_tools` |
+| Whole `pprof_py/tests/survival` directory | 227 tests: 200 passed, 26 failed, 1 skipped (at the time of this run) |
 
 ## Phase 1–2: `CoxPH` against `survival::coxph()` (`test_r_comparison.py`)
 
@@ -87,7 +93,7 @@ The standing suite uses datasets of a few hundred to ~900 rows. The package has 
 1. **200,000 rows, 3,000 strata, 6 covariates**, with offset, weights and left truncation together, under both Breslow and Efron ties: coefficients and SEs matched R to 1e-14–1e-16 relative error, log-likelihood to ~2e-15 (Breslow) / ~1.4e-14 (Efron), and the baseline hazard over all 3,000 strata (21,590 matched time points) to a maximum relative error of ~4.5e-14 (Breslow) / ~2.6e-14 (Efron).
 2. **50,000 rows, 700 strata, 57 covariates**, checked the same way, with the same result.
 
-Neither dataset is in the repository. They were not regenerated in the 2026-09-20 re-run; the tool that produced them is documented in {ref}`survival_validation_tools`. Production-scale checking is what surfaced the performance problem that led to the numba kernels — and showed that the first attempt had only accelerated the Breslow path, which correctness tests alone would not have caught.
+Neither dataset is in the repository. They were not regenerated in the 2026-09-20 re-run; the tool that produced them is documented in {ref}`diagnostics-guide`. Production-scale checking is what surfaced the performance problem that led to the numba kernels — and showed that the first attempt had only accelerated the Breslow path, which correctness tests alone would not have caught.
 
 ## Engine self-consistency: compiled vs. pure Python
 

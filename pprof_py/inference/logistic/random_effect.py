@@ -1,5 +1,5 @@
-"""Covariate-level inference and posterior BLUP variance/SE for
-``LogisticRandomEffectModel``.  Mixed into the model class so that
+"""Covariate-level inference, posterior BLUP variance/SE, provider-effect
+tests (``test()``) and confidence intervals for ``LogisticRandomEffectModel``.  Mixed into the model class so that
 ``models/logistic/random_effect.py`` stays focused on configuration,
 fitting, and prediction.
 """
@@ -11,13 +11,18 @@ import numpy as np
 import pandas as pd
 from scipy.special import expit
 from scipy.stats import norm
+from ..count_tests import ClusterMixture, MonteCarlo, PlugIn, RowMixture, count_test, rows_by_provider
+from ..effect_tests import effect_test, normalize_alternative, reference_effect, resample_tails
+from typing import List, Union
 
 Array = np.ndarray
 
 
-class RandomEffectInferenceMixin:
+class LogisticRandomEffectInferenceMixin:
     """Fixed-effect summary and posterior BLUP variance/SE for
     `LogisticRandomEffectModel`."""
+
+    _POSTERIOR_NODES = 32   # Gauss-Hermite nodes of the exact tests, as in the mixed-effect model
 
     def summary(self) -> pd.DataFrame:
         self._check_is_fitted()
@@ -35,7 +40,7 @@ class RandomEffectInferenceMixin:
     # Posterior standard errors (conditional variance of BLUPs)
     # ------------------------------------------------------------------
 
-    def _get_posterior_var(self, group_var: Optional[str] = None) -> Array:
+    def _get_posterior_var(self, var: Optional[str] = None) -> Array:
         """Posterior variances of the random-effect BLUPs.
 
         For the spherical parameterization u ~ N(0, I) with b = sigma * u,
@@ -48,7 +53,7 @@ class RandomEffectInferenceMixin:
 
         Parameters
         ----------
-        group_var : str, optional
+        var : str, optional
             Which grouping factor's posterior variances to return.
             If None, returns all (concatenated).
 
@@ -57,6 +62,7 @@ class RandomEffectInferenceMixin:
         np.ndarray
             Posterior variances for each level of the group.
         """
+        var = self._provider_var if var is None else var
         self._check_is_fitted()
 
         # Rebuild H at final estimates
@@ -76,8 +82,8 @@ class RandomEffectInferenceMixin:
         diag_Hinv = np.diag(Hinv_cols)
 
         # Var(b_k[j]) = sigma_k^2 * diag_Hinv[j_idx]
-        if group_var is not None:
-            k = self._group_vars.index(group_var)
+        if var is not None:
+            k = self._group_vars.index(var)
             sl = self._q_slices[k]
             sigma_k = self._sigma[k]
             return sigma_k**2 * diag_Hinv[sl]
@@ -89,12 +95,12 @@ class RandomEffectInferenceMixin:
             posterior_vars[sl] = self._sigma[k] ** 2 * diag_Hinv[sl]
         return posterior_vars
 
-    def _get_posterior_se(self, group_var: Optional[str] = None) -> pd.Series:
+    def _get_posterior_se(self, var: Optional[str] = None) -> pd.Series:
         """Posterior standard errors of BLUPs for a grouping factor.
 
         Parameters
         ----------
-        group_var : str, optional
+        var : str, optional
             Which grouping factor. If None and only one exists, uses that.
 
         Returns
@@ -102,14 +108,351 @@ class RandomEffectInferenceMixin:
         pd.Series
             Standard errors indexed by group level labels.
         """
-        if group_var is None:
+        var = self._provider_var if var is None else var
+        if var is None:
             if len(self._group_vars) == 1:
-                group_var = self._group_vars[0]
+                var = self._group_vars[0]
             else:
                 raise ValueError(
-                    f"Specify group_var; available: {self._group_vars}"
+                    f"Specify var; available: {self._group_vars}"
                 )
-        k = self._group_vars.index(group_var)
-        pvar = self._get_posterior_var(group_var=group_var)
+        k = self._group_vars.index(var)
+        pvar = self._get_posterior_var(var=var)
         se = np.sqrt(np.maximum(pvar, 0.0))
         return pd.Series(se, index=self._group_labels[k], name="posterior_se")
+
+    # ------------------------------------------------------------------
+    # Hypothesis testing (aligned with LogisticFixedEffectModel API)
+    # ------------------------------------------------------------------
+
+    def test(
+        self,
+        providers=None,
+        *,
+        test_method: str = "wald",
+        reference=0.0,
+        null_model=None,
+        alternative: str = "two_sided",
+        level: float = 0.95,
+        critical: Optional[float] = None,
+        interval: str = "inversion",
+        n_resample: int = 10000,
+        seed=None,
+    ) -> pd.DataFrame:
+        """Test each group's random effect against the reference effect gamma_0.
+
+        Parameters
+        ----------
+        providers : array-like, optional
+            Report only these groups; gamma_0 and any empirical null use all.
+        test_method : {"wald", "exact", "poibin_exact", "resampling"}
+            ``"wald"``: ``(b_j - gamma_0) / SE(b_j)`` with the BLUP's posterior
+            SE. ``"exact"``: exact test of the group's event count with its
+            effect set to gamma_0 and one cluster effect per cluster, drawn from
+            its posterior and shared by the group's rows in that cluster (He et
+            al. 2013, step (ii)); needs exactly one cluster factor. The count's
+            distribution is a Gauss-Hermite mixture per cluster, convolved across
+            clusters. ``"poibin_exact"``: exact Poisson-binomial test with the
+            other random effects at their posterior means. ``"resampling"``: the
+            same test drawing the other random effects from their posterior for
+            each row (He et al. 2013); groups whose simulated tails reach the
+            Monte Carlo floor get the exact tails of that null, with a warning.
+        reference : "median", "mean", or float
+            The reference effect gamma_0 (default 0, the random-effect mean, as R pprof): the median of the estimated effects,
+            their size-weighted mean, or a value on the effect scale.
+        null_model : NullModel or callable, optional
+            Null for the z-statistics: :class:`~pprof_py.inference.TheoreticalNull`
+            by default, or an instance such as ``FixedNull(sd=...)``, or a callable
+            that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
+        alternative, level, critical, interval
+            As in :func:`~pprof_py.inference.provider_test`.
+            Intervals are available for the Wald test and, by inverting the
+            exact test, for ``"exact"`` and ``"poibin_exact"``.
+        n_resample, seed : int, optional
+            Monte Carlo draws and seed for ``"resampling"``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by provider with columns
+            :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
+            above gamma_0, -1 below, 0 not significant, NA not tested.
+        """
+        group_var = self._provider_var
+        self._check_is_fitted()
+        alt = normalize_alternative(alternative)
+        if test_method not in ("wald", "exact", "poibin_exact", "resampling"):
+            raise ValueError(f"test_method={test_method!r} is not supported; "
+                             "use 'wald', 'exact', 'poibin_exact', or 'resampling'.")
+        blups = self.get_random_effects(group_var)
+        post_se = self._get_posterior_se(group_var)
+        k = self._group_vars.index(group_var)
+        idx = np.asarray(self._group_indices[k]).ravel()
+        n_levels = self._n_groups[k]
+        g0 = reference_effect(blups.values, np.bincount(idx, minlength=n_levels), reference)
+        se = None
+        limits = None
+        if test_method == "wald":
+            se = np.asarray(post_se.values, dtype=np.float64)
+            z = (blups.values - g0) / np.maximum(se, 1e-15)
+        else:
+            rows_of = rows_by_provider(idx, n_levels)
+            obs = np.array([self._y[rows].sum() for rows in rows_of])
+            if test_method == "exact":
+                if len(self._group_vars) != 2:
+                    raise ValueError("test_method='exact' needs exactly one cluster factor (cluster_vars) besides the "
+                                     f"provider; this model has {len(self._group_vars) - 1}.")
+                c = 1 - k
+                cvar = self._group_vars[c]
+                codes = np.asarray(self._group_indices[c]).ravel()
+                mean_c = np.asarray(self.get_random_effects(cvar).values, dtype=np.float64)
+                var_c = np.asarray(self._get_posterior_se(cvar).values, dtype=np.float64) ** 2
+                nulls = [ClusterMixture(eta=lambda g, rows=rows: g + self.xbeta_[rows], cluster=codes[rows], mean=mean_c,
+                                        var=var_c, n_nodes=self._POSTERIOR_NODES)
+                         for rows in rows_of]
+            else:
+                re_mean = np.zeros(self._n)
+                re_var = np.zeros(self._n)
+                for j, gv in enumerate(self._group_vars):
+                    if gv == group_var:
+                        continue
+                    re_mean += self.get_random_effects(gv).values[self._group_indices[j]]
+                    re_var += self._get_posterior_se(gv).values[self._group_indices[j]] ** 2
+                if test_method == "poibin_exact":
+                    nulls = [PlugIn(prob=lambda g, rows=rows: expit(g + re_mean[rows] + self.xbeta_[rows])) for rows in rows_of]
+                else:
+                    rng = np.random.default_rng(seed)
+                    nulls = [MonteCarlo(simulate=lambda o, g, rows=rows: resample_tails(o, self.xbeta_[rows], re_mean[rows],
+                                                                                         re_var[rows], g, n_resample, rng),
+                                        n_resample=n_resample,
+                                        exact=RowMixture(eta=lambda g, rows=rows: g + re_mean[rows] + self.xbeta_[rows],
+                                                         var=re_var[rows], n_nodes=self._POSTERIOR_NODES))
+                             for rows in rows_of]
+            wanted = None if providers is None else np.isin(blups.index, np.atleast_1d(providers))
+            z, limits = count_test(obs, nulls, g0, alternative=alt, start=blups.values, wanted=wanted, floor_message=(
+                "test_method='resampling': {n} of {total} providers had simulated tails at the Monte Carlo floor "
+                "(0.5/n_resample = {floor:.2g}); their z-statistics use the exact tails of the same per-observation "
+                "null instead."))
+        return effect_test(blups.index, blups.values, z, g0, se=se, null_model=null_model, alternative=alt,
+                           level=level, critical=critical, interval=interval, providers=providers,
+                           test_method=test_method, limits=limits)
+
+    def calculate_confidence_intervals(
+        self,
+        providers: Optional[Union[List, Array]] = None,
+        level: float = 0.95,
+        option: str = "SM",
+        stdz: Union[str, List[str]] = "indirect",
+        reference: Union[str, float] = "median",
+        measure: Union[str, List[str]] = ("rate", "ratio"),
+        alternative: str = "two_sided",
+    ) -> dict:
+        """Compute confidence intervals for BLUPs or standardized measures.
+
+        Matches the API of ``LogisticFixedEffectModel.calculate_confidence_intervals()``.
+
+        Parameters
+        ----------
+        providers : list or np.ndarray, optional
+            Subset of providers. If None, all are included.
+        level : float, default 0.95
+            Confidence level.
+        option : {'alpha', 'SM'}, default='SM'
+            - 'alpha': CIs for BLUPs on the log-odds scale.
+            - 'SM': CIs for standardized measures (ratio and/or rate).
+        stdz : {'indirect', 'direct'} or list, default='indirect'
+            Standardization method(s) if option='SM'. Ignored if option='alpha'.
+        reference : {'median', 'mean'} or float, default='median'
+            Baseline norm for standardization. Ignored if option='alpha'.
+        measure : str or list, default=('rate', 'ratio')
+            Measures to produce CIs for if option='SM'.
+        alternative : {'two_sided', 'greater', 'less'}, default='two_sided'
+            Interval type. Must be 'two_sided' if option='alpha'.
+
+        Returns
+        -------
+        dict
+            If option='alpha':
+                {'alpha_ci': DataFrame [provider_id, alpha, alpha_lower, alpha_upper]}
+            If option='SM':
+                May include keys: 'indirect_ratio', 'indirect_rate',
+                'direct_ratio', 'direct_rate' depending on stdz and measure.
+        """
+        group_var = self._provider_var
+        self._check_is_fitted()
+        if option not in ("alpha", "SM"):
+            raise ValueError("option must be 'alpha' or 'SM'.")
+
+
+        blups = self.get_random_effects(group_var)
+        se = self._get_posterior_se(group_var)
+
+        # --- option = 'alpha': CIs for BLUPs on log-odds scale ---
+        if option == "alpha":
+            if alternative != "two_sided":
+                raise ValueError("For option='alpha', only two_sided is supported.")
+            z_crit = norm.ppf(1.0 - (1.0 - level) / 2.0)
+            ci_lower = blups.values - z_crit * se.values
+            ci_upper = blups.values + z_crit * se.values
+
+            alpha_ci = pd.DataFrame({
+                "provider_id": blups.index,
+                "alpha": blups.values,
+                "alpha_lower": ci_lower,
+                "alpha_upper": ci_upper,
+            })
+            if providers is not None:
+                alpha_ci = alpha_ci[
+                    alpha_ci["provider_id"].isin(np.asarray(providers))
+                ].reset_index(drop=True)
+            return {"alpha_ci": alpha_ci}
+
+        # --- option = 'SM': CIs for standardized measures ---
+        if isinstance(stdz, str):
+            stdz = [stdz]
+        if isinstance(measure, str):
+            measure = [measure]
+
+        # Determine null BLUP
+        if reference == "median":
+            gamma_null = float(np.median(blups.values))
+        elif reference == "mean":
+            gamma_null = float(np.mean(blups.values))
+        elif isinstance(reference, (int, float)):
+            gamma_null = float(reference)
+        else:
+            raise ValueError("null must be 'median', 'mean', or numeric.")
+
+        # Compute BLUP CI bounds (on log-odds scale)
+        alpha_val = 1.0 - level
+        if alternative == "two_sided":
+            z_crit = norm.ppf(1.0 - alpha_val / 2.0)
+            blup_lower = blups.values - z_crit * se.values
+            blup_upper = blups.values + z_crit * se.values
+        elif alternative == "greater":
+            z_crit = norm.ppf(1.0 - alpha_val)
+            blup_lower = blups.values - z_crit * se.values
+            blup_upper = np.full_like(blups.values, np.inf)
+        else:  # less
+            z_crit = norm.ppf(1.0 - alpha_val)
+            blup_lower = np.full_like(blups.values, -np.inf)
+            blup_upper = blups.values + z_crit * se.values
+
+        k = self._group_vars.index(group_var)
+        idx = self._group_indices[k]
+        n_levels = self._n_groups[k]
+        labels = self._group_labels[k]
+        xbeta = self.xbeta_
+        n_samples = len(self._y)
+        obs_total = float(np.sum(self._y))
+        population_rate = obs_total / n_samples * 100.0
+
+        results = {}
+
+        # --- Indirect SM CIs ---
+        if "indirect" in stdz:
+            # Expected under null for each group's own observations
+            p_null = expit(gamma_null + xbeta)
+            expected_by_group = np.bincount(idx, weights=p_null, minlength=n_levels)
+            observed_by_group = np.bincount(idx, weights=self._y, minlength=n_levels)
+
+            # Transform BLUP CI bounds → indirect ratio CI
+            # ratio = obs / expected(gamma); as gamma increases, expected increases
+            # Compute expected at lower and upper BLUP bounds
+            ratio_lower = np.empty(n_levels)
+            ratio_upper = np.empty(n_levels)
+            for j in range(n_levels):
+                mask_j = (idx == j)
+                xbeta_j = xbeta[mask_j]
+                obs_j = observed_by_group[j]
+                # Lower bound of gamma → lower expected → HIGHER ratio
+                # Upper bound of gamma → higher expected → LOWER ratio
+                # But for indirect: expected uses gamma_null, not the provider's gamma
+                # The BLUP CI translates via Delta method on log(SR)
+                exp_j = expected_by_group[j]
+                if exp_j > 0 and obs_j > 0:
+                    sr_j = obs_j / exp_j
+                    log_sr = np.log(sr_j)
+                    se_j = se.values[j]
+                    ratio_lower[j] = np.exp(log_sr - z_crit * se_j)
+                    ratio_upper[j] = np.exp(log_sr + z_crit * se_j)
+                else:
+                    ratio_lower[j] = np.nan
+                    ratio_upper[j] = np.nan
+
+            if "ratio" in measure:
+                sr = np.where(
+                    expected_by_group > 0,
+                    observed_by_group / expected_by_group,
+                    np.nan,
+                )
+                df_ir = pd.DataFrame({
+                    "provider_id": labels,
+                    "indirect_ratio": sr,
+                    "lower": ratio_lower,
+                    "upper": ratio_upper,
+                })
+                if providers is not None:
+                    df_ir = df_ir[df_ir["provider_id"].isin(np.asarray(providers))].reset_index(drop=True)
+                results["indirect_ratio"] = df_ir
+
+            if "rate" in measure:
+                sr = np.where(
+                    expected_by_group > 0,
+                    observed_by_group / expected_by_group,
+                    np.nan,
+                )
+                rate = np.clip(sr * population_rate, 0.0, 100.0)
+                rate_lower = np.clip(ratio_lower * population_rate, 0.0, 100.0)
+                rate_upper = np.clip(ratio_upper * population_rate, 0.0, 100.0)
+                df_irate = pd.DataFrame({
+                    "provider_id": labels,
+                    "indirect_rate": rate,
+                    "lower": rate_lower,
+                    "upper": rate_upper,
+                })
+                if providers is not None:
+                    df_irate = df_irate[df_irate["provider_id"].isin(np.asarray(providers))].reset_index(drop=True)
+                results["indirect_rate"] = df_irate
+
+        # --- Direct SM CIs ---
+        if "direct" in stdz:
+            # Direct: predicted_k = sum(expit(blup_k + xbeta_i)) over all obs
+            # CI: replace blup_k with blup_lower/upper
+            direct_pred = np.empty(n_levels)
+            direct_pred_lower = np.empty(n_levels)
+            direct_pred_upper = np.empty(n_levels)
+            for j in range(n_levels):
+                direct_pred[j] = float(np.sum(expit(blups.values[j] + xbeta)))
+                direct_pred_lower[j] = float(np.sum(expit(blup_lower[j] + xbeta)))
+                direct_pred_upper[j] = float(np.sum(expit(blup_upper[j] + xbeta)))
+
+            if "ratio" in measure:
+                dr = direct_pred / obs_total if obs_total > 0 else np.full(n_levels, np.nan)
+                dr_lower = direct_pred_lower / obs_total if obs_total > 0 else np.full(n_levels, np.nan)
+                dr_upper = direct_pred_upper / obs_total if obs_total > 0 else np.full(n_levels, np.nan)
+                df_dr = pd.DataFrame({
+                    "provider_id": labels,
+                    "direct_ratio": dr,
+                    "lower": dr_lower,
+                    "upper": dr_upper,
+                })
+                if providers is not None:
+                    df_dr = df_dr[df_dr["provider_id"].isin(np.asarray(providers))].reset_index(drop=True)
+                results["direct_ratio"] = df_dr
+
+            if "rate" in measure:
+                drate = np.clip(direct_pred / n_samples * 100.0, 0.0, 100.0)
+                drate_lower = np.clip(direct_pred_lower / n_samples * 100.0, 0.0, 100.0)
+                drate_upper = np.clip(direct_pred_upper / n_samples * 100.0, 0.0, 100.0)
+                df_drate = pd.DataFrame({
+                    "provider_id": labels,
+                    "direct_rate": drate,
+                    "lower": drate_lower,
+                    "upper": drate_upper,
+                })
+                if providers is not None:
+                    df_drate = df_drate[df_drate["provider_id"].isin(np.asarray(providers))].reset_index(drop=True)
+                results["direct_rate"] = df_drate
+
+        return results

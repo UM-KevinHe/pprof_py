@@ -10,7 +10,7 @@ Implemented in Python with NumPy, validated against R reference implementations,
 
 | Family                 | Classes                                                                                                                                              | Key features                                                                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticMixedEffectModel`                                                                  | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; provider tests (Wald, score, Poisson-binomial exact `poibin_exact`, bootstrap `bootstrap_exact`, resampling)                                                                      |
+| **Logistic**           | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`                                                                  | SerBIN algorithm for large-_m_ fixed effects; PIRLS+Laplace and Newton-Raphson+Gauss-Hermite for random/mixed effects; direct and indirect standardization; provider tests (Wald, score, Poisson-binomial exact `poibin_exact`, bootstrap `bootstrap_exact`, resampling)                                                                      |
 | **Penalized logistic** | `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` | Elastic net / ridge / LASSO with coordinate descent; group lasso for structured variable selection; two-stage provider + penalized covariate profiling; built-in cross-validation                                                                                                   |
 | **Linear**             | `LinearFixedEffectModel`, `LinearRandomEffectModel`                                                                                                  | Profile-based fixed effects; pure-Python lme4-style REML/ML random intercepts (single and crossed); direct and indirect standardization                                                                                                                                             |
 | **Penalized linear**   | `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear`                                                                                           | Elastic net / ridge / LASSO for linear models; group lasso; cross-validation                                                                                                                                                                                                        |
@@ -25,7 +25,7 @@ Implemented in Python with NumPy, validated against R reference implementations,
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticMixedEffectModel,
+    LogisticFERandomClusterModel, LogisticThreeStageModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -102,7 +102,7 @@ model.predict_survival_function(X_new, stratum=...)      # exp(-H(t))
 
 ```python
 model = LogisticFixedEffectModel()
-model.fit(df, y_var='event', x_vars=['x1', 'x2'], group_var='provider')   # or the array form: model.fit(X, y, groups)
+model.fit(df, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')   # or the array form: model.fit(X, y, provider_id)
 model.summary()
 model.test()
 model.calculate_standardized_measures()
@@ -112,11 +112,11 @@ model.calculate_standardized_measures()
 
 ```python
 model = LinearRandomEffectModel(verbose=False)
-model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], group_var='provider', reml=True)
+model.fit(data, y_var='outcome', x_vars=['x1', 'x2'], provider_var='provider', reml=True)
 
 model.coefficients_['beta']       # fixed effects
 model.coefficients_['alpha']      # BLUPs (random intercepts)
-model.random_effect_sd_           # {group_var: sigma_u}
+model.random_effect_sd_           # {provider_var: sigma_u}
 model.sigma_                      # residual SD
 model.summary()
 model.test()                      # reference 0 (the random-effect mean); 'median', 'mean' or a number also work
@@ -129,7 +129,7 @@ model.plot_provider_effects()
 
 ```python
 model = LogisticRandomEffectModel(verbose=False)
-model.fit(data, y_var='event', x_vars=['x1', 'x2'], group_var='provider')
+model.fit(data, y_var='event', x_vars=['x1', 'x2'], provider_var='provider')
 
 model.coefficients_['beta']       # fixed effects (log-odds)
 model.get_random_effects()        # BLUPs
@@ -146,7 +146,7 @@ from pprof_py import PenalizedCoxPHCV
 
 model = PenalizedCoxPHCV(alpha=0.5, n_lambda=50)  # elastic net
 model.fit(X, duration=time, event=event)
-model.coef_           # coefficients at the selected lambda (lambda_min_ by default)
+model.coef_           # coefficients at the selected lambda (lambda_1se_ by default; se_rule="min" selects lambda_min_)
 model.lambda_min_     # lambda with the minimum cross-validated deviance
 model.lambda_1se_     # largest lambda within one standard error of the minimum
 ```
@@ -161,7 +161,7 @@ pip install .
 
 Requires Python ≥ 3.9.
 
-**Core dependencies:** `numpy`, `pandas`, `scipy`, `scikit-learn`, `matplotlib`, `seaborn`, `numba`, `fast_poibin`.
+**Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `numba`, `fast_poibin`.
 
 **Optional:**
 
@@ -220,7 +220,7 @@ Indicative wall-clock times (1 vCPU, warm numba cache, full SHR-shaped combinati
 | Shared Gamma frailty (EM algorithm)                                  | ✅ implemented (`FrailtyCoxPH`)                   |
 | Time-varying coefficients                                            | ✅ implemented (`TimeVaryingCoxPH`)               |
 | Automated variable selection (forward/backward/both)                 | ✅                                                |
-| scikit-learn conventions (`BaseEstimator`, `coef_`-style attributes) | ✅                                                |
+| One base class (`ProviderModel`: `get_params`, `set_params`, `coef_`-style attributes) | ✅                                                |
 | Exact ties                                                           | ❌ not implemented                                |
 | Robust/sandwich variance, clustering                                 | ✅ validated against R                            |
 | Formula interface                                                    | ❌ not implemented — pass a numeric design matrix |

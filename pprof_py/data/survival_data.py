@@ -9,7 +9,7 @@ partial sums over this same field layout), without the user-facing
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List
 
 import numpy as np

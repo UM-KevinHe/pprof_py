@@ -16,11 +16,10 @@ the design vector in a risk set to depend on the current event time.
 """
 from __future__ import annotations
 
-from typing import Callable, Mapping, Sequence
+from typing import Mapping, Sequence
 
 import numpy as np
 
-from .ties import TieMethod
 from ...utils.numerical import safe_exp
 from ...utils.grouping import iter_stratum_indices
 

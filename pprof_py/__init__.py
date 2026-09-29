@@ -3,7 +3,7 @@ and healthcare analytics.
 
 Public API
 ----------
-    from pprof_py import LogisticFixedEffectModel, LogisticMixedEffectModel, LogisticRandomEffectModel
+    from pprof_py import LogisticFixedEffectModel, LogisticFERandomClusterModel, LogisticRandomEffectModel
     from pprof_py import LinearFixedEffectModel, LinearRandomEffectModel
     from pprof_py import CoxPH, PenalizedCoxPH, PenalizedCoxPHCV
     from pprof_py import GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH
@@ -30,8 +30,9 @@ from .models.linear import (
 )
 from .models.logistic import (
     LogisticFixedEffectModel,
-    LogisticMixedEffectModel,
+    LogisticFERandomClusterModel,
     LogisticRandomEffectModel,
+    LogisticThreeStageModel,
     PenalizedLogistic,
     PenalizedLogisticCV,
     GroupLassoLogistic,
@@ -60,7 +61,7 @@ from .exceptions import NotFittedError
 from .utils import setup_logger, proc_freq, sigmoid
 from .plotting import plot_caterpillar
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 __all__ = [
     # Linear
@@ -71,7 +72,8 @@ __all__ = [
     "GroupLassoLinear",
     # Logistic
     "LogisticFixedEffectModel",
-    "LogisticMixedEffectModel",
+    "LogisticFERandomClusterModel",
+    "LogisticThreeStageModel",
     "LogisticRandomEffectModel",
     "PenalizedLogistic",
     "PenalizedLogisticCV",

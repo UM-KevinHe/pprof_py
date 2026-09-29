@@ -16,7 +16,7 @@ no access to model state.
 from __future__ import annotations
 
 import numpy as np
-from ...utils.numerical import covariance_from_information, solve_information
+from ...utils.numerical import solve_information
 from scipy.linalg import block_diag
 
 

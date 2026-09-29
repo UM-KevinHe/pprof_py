@@ -60,9 +60,10 @@ selector = CoxPHSelector(direction="forward", criterion="aic").fit(
     X_wide, duration=cohort["time"], event=cohort["death"],
 )
 
-selector.selected_variables_
-selector.selection_history_
-selector.final_model_.summary()   # an ordinary, unpenalized CoxPH -- full summary() available
+print("selected:", selector.selected_variables_)
+print()
+print(selector.selection_history_.to_string())
+final = selector.final_model_.summary()   # an ordinary, unpenalized CoxPH -- full summary() available
 ```
 
 On the same ten-candidate cohort from Chapter 8:
@@ -70,13 +71,13 @@ On the same ten-candidate cohort from Chapter 8:
 ```
 selected: ['age', 'comorbidity_count', 'lab_b', 'diabetes']
 
-   step action                                  variables          aic
-0     0  start                                         []  4090.389913
-1     1    add                                      [age]  3988.176934
-2     2    add                   [age, comorbidity_count]  3977.696345
-3     3    add            [age, comorbidity_count, lab_b]  3976.663960
-4     4    add  [age, comorbidity_count, lab_b, diabetes]  3976.077701
-5     5   stop  [age, comorbidity_count, lab_b, diabetes]  3976.077701
+   step action           variable  n_variables                                  variables          aic
+0     0  start                NaN            0                                         []  4090.389913
+1     1    add                age            1                                      [age]  3988.176934
+2     2    add  comorbidity_count            2                   [age, comorbidity_count]  3977.696345
+3     3    add              lab_b            3            [age, comorbidity_count, lab_b]  3976.663960
+4     4    add           diabetes            4  [age, comorbidity_count, lab_b, diabetes]  3976.077701
+5     5   stop                NaN            4  [age, comorbidity_count, lab_b, diabetes]  3976.077701
 ```
 
 Notice `lab_b` — one of the two covariates built with genuinely zero
@@ -104,7 +105,7 @@ mandatory rather than up for selection):
 selector_bic = CoxPHSelector(direction="backward", criterion="bic").fit(
     X_wide, duration=cohort["time"], event=cohort["death"], forced=["age"],
 )
-selector_bic.selected_variables_
+print(selector_bic.selected_variables_)
 ```
 
 ```

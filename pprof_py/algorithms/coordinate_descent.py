@@ -27,13 +27,7 @@ from typing import Callable, NamedTuple, Optional, Sequence
 
 import numpy as np
 
-from .penalty import (
-    soft_threshold,
-    elastic_net_penalty_value,
-    sparse_group_lasso_penalty_value,
-    compute_group_indices,
-    njit, _HAS_NUMBA,
-)
+from .penalty import (elastic_net_penalty_value, sparse_group_lasso_penalty_value, compute_group_indices, njit, _HAS_NUMBA)
 
 logger = logging.getLogger(__name__)
 
@@ -645,9 +639,16 @@ def fit_regularization_path(
 def _sparse_group_coordinate_descent_numba(
     A, linear_term, beta, lam, alpha,
     penalty_factor, group_starts, group_ends, group_weights,
-    active_groups, tol, max_iter,
+    active_groups, tol, max_iter, block_major, block_lmax,
 ):
-    """Numba-accelerated block CD for sparse group lasso."""
+    """Numba-accelerated block CD for sparse group lasso.
+
+    ``block_major``/``block_lmax`` come from :func:`_group_block_majorizers`:
+    groups whose Hessian block is not a scalar multiple of the identity are
+    minimized exactly by majorized proximal-gradient steps (see
+    :func:`solve_sparse_group_penalized_quadratic`); every other group takes
+    the one-pass update, which is exact for them.
+    """
     p = beta.shape[0]
     n_groups = group_starts.shape[0]
     diagA = np.empty(p)
@@ -669,6 +670,61 @@ def _sparse_group_coordinate_descent_numba(
             pre_beta_g = np.empty(K)
             for jj in range(K):
                 pre_beta_g[jj] = beta[gs + jj]
+            if block_major[g_idx]:
+                # Non-scalar Hessian block: minimize the block exactly by
+                # proximal-gradient steps with step 1/v, v = lambda_max(A_gg).
+                # Each step applies the exact prox of the sparse-group penalty
+                # (L1 soft-threshold, then group shrinkage); the fixed point is
+                # the block minimizer.
+                vmaj = block_lmax[g_idx]
+                gthr = lam * (1.0 - alpha) * mw / vmaj
+                grad0 = np.empty(K)
+                for jj in range(K):
+                    grad0[jj] = A_beta[gs + jj] - linear_term[gs + jj]
+                b = pre_beta_g.copy()
+                s = np.empty(K)
+                for _block_iter in range(max_iter):
+                    for jj in range(K):
+                        gj = grad0[jj]
+                        for kk in range(K):
+                            gj += A[gs + jj, gs + kk] * (b[kk] - pre_beta_g[kk])
+                        sj = b[jj] - gj / vmaj
+                        tj = lam * alpha * penalty_factor[gs + jj] / vmaj
+                        if sj > tj:
+                            s[jj] = sj - tj
+                        elif sj < -tj:
+                            s[jj] = sj + tj
+                        else:
+                            s[jj] = 0.0
+                    s_norm_sq = 0.0
+                    for jj in range(K):
+                        s_norm_sq += s[jj] * s[jj]
+                    s_norm = s_norm_sq ** 0.5
+                    if s_norm <= gthr:
+                        for jj in range(K):
+                            s[jj] = 0.0
+                    else:
+                        shrink = 1.0 - gthr / s_norm
+                        for jj in range(K):
+                            s[jj] = s[jj] * shrink
+                    step = 0.0
+                    for jj in range(K):
+                        d_jj = abs(s[jj] - b[jj])
+                        if d_jj > step:
+                            step = d_jj
+                        b[jj] = s[jj]
+                    if step < tol:
+                        break
+                for jj in range(K):
+                    j = gs + jj
+                    delta_j = b[jj] - pre_beta_g[jj]
+                    if delta_j != 0.0:
+                        beta[j] = b[jj]
+                        for i in range(p):
+                            A_beta[i] += A[i, j] * delta_j
+                    if abs(delta_j) > max_change:
+                        max_change = abs(delta_j)
+                continue
             # Step 1: sequential element-wise L1 shrinkage.
             for jj in range(K):
                 j = gs + jj
@@ -737,7 +793,7 @@ def _sparse_group_coordinate_descent_numba(
 def _sparse_group_coordinate_descent_python(
     A, linear_term, beta, lam, alpha,
     penalty_factor, group_starts, group_ends, group_weights,
-    active_groups, tol, max_iter,
+    active_groups, tol, max_iter, block_major, block_lmax,
 ):
     """Pure-Python fallback for sparse group lasso block CD."""
     p = beta.shape[0]
@@ -756,6 +812,31 @@ def _sparse_group_coordinate_descent_python(
             K = ge - gs
             mw = group_weights[g_idx]
             pre_beta_g = beta[gs:ge].copy()
+            if block_major[g_idx]:
+                # Non-scalar Hessian block: exact block minimization by
+                # majorized proximal-gradient steps (see the Numba kernel).
+                vmaj = block_lmax[g_idx]
+                A_gg = A[gs:ge, gs:ge]
+                grad0 = A_beta[gs:ge] - linear_term[gs:ge]
+                thr_l1 = lam * alpha * penalty_factor[gs:ge] / vmaj
+                gthr = lam * (1.0 - alpha) * mw / vmaj
+                b = pre_beta_g.copy()
+                for _block_iter in range(max_iter):
+                    s = b - (grad0 + A_gg @ (b - pre_beta_g)) / vmaj
+                    s = np.sign(s) * np.maximum(np.abs(s) - thr_l1, 0.0)
+                    s_norm = float(np.sqrt(np.dot(s, s)))
+                    s = np.zeros(K) if s_norm <= gthr else s * (1.0 - gthr / s_norm)
+                    step = float(np.max(np.abs(s - b)))
+                    b = s
+                    if step < tol:
+                        break
+                delta_g = b - pre_beta_g
+                beta[gs:ge] = b
+                A_beta += A[:, gs:ge] @ delta_g
+                change_g = float(np.max(np.abs(delta_g)))
+                if change_g > max_change:
+                    max_change = change_g
+                continue
             for jj in range(K):
                 j = gs + jj
                 old_beta_j = beta[j]
@@ -803,6 +884,48 @@ def _sparse_group_coordinate_descent_python(
     return beta, n_iter, max_change
 
 
+# A group's Hessian block within this relative distance of v*I (v its mean
+# diagonal) takes the one-pass update, which is exact for a scalar block.
+# After within-group orthogonalization the distance is rounding, ~1e-15.
+_SCALAR_BLOCK_RTOL = 1e-10
+
+
+def _group_block_majorizers(A, group_starts, group_ends, group_weights, lam, alpha):
+    """Groups that need the exact block update, with its step-size bound.
+
+    The one-pass update (element-wise step divided by each diagonal entry,
+    then group shrinkage with the threshold divided by the mean diagonal) is
+    the exact block minimizer only when the group's Hessian block is a
+    scalar multiple of the identity -- the orthogonalized, majorized case.
+    It is also exact at convergence when no group shrinkage applies
+    (``alpha == 1``, a zero multiplier, or a singleton group).  Every other
+    group is flagged, with ``v = lambda_max(A_gg)`` as its majorizer.
+
+    Returns
+    -------
+    block_major : ndarray of bool, shape (G,)
+    block_lmax : ndarray, shape (G,)
+        Largest eigenvalue of each flagged block (1.0 elsewhere, unused).
+    """
+    n_groups = len(group_starts)
+    block_major = np.zeros(n_groups, dtype=np.bool_)
+    block_lmax = np.ones(n_groups, dtype=np.float64)
+    if lam <= 0.0 or alpha >= 1.0:
+        return block_major, block_lmax
+    for g in range(n_groups):
+        gs, ge = int(group_starts[g]), int(group_ends[g])
+        K = ge - gs
+        if K < 2 or group_weights[g] <= 0.0:
+            continue
+        B = A[gs:ge, gs:ge]
+        v = max(float(np.mean(np.maximum(np.diag(B), 1e-12))), 1e-12)
+        if float(np.max(np.abs(B - v * np.eye(K)))) <= _SCALAR_BLOCK_RTOL * v:
+            continue
+        block_major[g] = True
+        block_lmax[g] = max(float(np.linalg.eigvalsh(0.5 * (B + B.T))[-1]), 1e-12)
+    return block_major, block_lmax
+
+
 def solve_sparse_group_penalized_quadratic(
     A: np.ndarray,
     linear_term: np.ndarray,
@@ -819,6 +942,14 @@ def solve_sparse_group_penalized_quadratic(
 ) -> "tuple[np.ndarray, int, float]":
     """Solve the sparse-group-lasso-penalized quadratic by block CD.
 
+    Minimizes ``0.5 b'Ab - linear_term'b + lam * [(1-alpha) sum_g m_g ||b_g||
+    + alpha sum_j pf_j |b_j|]`` over the active groups.  A group whose
+    Hessian block is a scalar multiple of the identity (what within-group
+    orthogonalization with the 1/4 majorizer produces) takes the one-pass
+    update; any other block is minimized exactly by majorized
+    proximal-gradient steps, so the solution is the minimizer for every
+    positive semidefinite ``A``.
+
     Parameters
     ----------
     A : ndarray, shape (p, p)
@@ -831,6 +962,7 @@ def solve_sparse_group_penalized_quadratic(
     active_groups : ndarray of bool, shape (G,) or None
     tol : float
     max_iter : int
+        Maximum sweeps, and maximum proximal-gradient steps per block visit.
 
     Returns
     -------
@@ -846,19 +978,23 @@ def solve_sparse_group_penalized_quadratic(
         ag = np.ones(n_groups, dtype=np.bool_)
     else:
         ag = np.asarray(active_groups, dtype=np.bool_)
+    A = np.asarray(A, dtype=np.float64)
+    block_major, block_lmax = _group_block_majorizers(
+        A, gs, ge, gw, float(lam), float(alpha),
+    )
     if _HAS_NUMBA:
         beta, n_iter, max_change = _sparse_group_coordinate_descent_numba(
-            np.asarray(A, dtype=np.float64),
+            A,
             np.asarray(linear_term, dtype=np.float64),
             beta, float(lam), float(alpha), pf, gs, ge, gw, ag,
-            float(tol), int(max_iter),
+            float(tol), int(max_iter), block_major, block_lmax,
         )
     else:
         beta, n_iter, max_change = _sparse_group_coordinate_descent_python(
-            np.asarray(A, dtype=np.float64),
+            A,
             np.asarray(linear_term, dtype=np.float64),
             beta, float(lam), float(alpha), pf, gs, ge, gw, ag,
-            float(tol), int(max_iter),
+            float(tol), int(max_iter), block_major, block_lmax,
         )
     return beta, n_iter, max_change
 
@@ -921,9 +1057,10 @@ def compute_group_lambda_max(
         mw = group_weights[g - 1]
         K = len(g_abs_g)
         if mw <= 0 and alpha < 1.0:
+            # No group term: the group is zero iff every |g_j| <= lam*alpha*pf_j.
             pen_j = pf_g > 0
             if np.any(pen_j):
-                candidate = float(np.max(g_abs_g[pen_j] / pf_g[pen_j]))
+                candidate = float(np.max(g_abs_g[pen_j] / (alpha * pf_g[pen_j])))
                 if candidate > lam_max:
                     lam_max = candidate
             continue
@@ -1243,10 +1380,11 @@ def fit_single_lambda_group(
         kkt_threshold = max(10.0 * outer_tol, 1e-12)
         # See the matching comment in ``fit_single_lambda``.
         stall_kkt_tol = max(kkt_threshold, 1e-6)
+        # The KKT residual covers every group, active or not, so it certifies
+        # the point as it stands.  (C18: a further pass with every group
+        # active re-derived the same active set whenever a group was zero at
+        # the solution, and so looped to max_outer_iter.)
         if kkt_violation < kkt_threshold:
-            if use_active_set and not np.all(active_groups):
-                active_groups[:] = True
-                continue
             converged = True
             message = "converged (KKT)"
             break
@@ -1258,9 +1396,6 @@ def fit_single_lambda_group(
             and rel_obj_change < outer_tol
             and kkt_violation < stall_kkt_tol
         ):
-            if use_active_set and not np.all(active_groups):
-                active_groups[:] = True
-                continue
             converged = True
             message = "converged (beta/obj)"
             break
@@ -1273,6 +1408,53 @@ def fit_single_lambda_group(
         converged=converged, message=message, information=info,
         active_groups=active_snap, group_norms=gnorms, df=df,
         kkt_violation=float(kkt_violation),
+    )
+
+
+def add_unpenalized_block(groups, n_groups, group_weights, penalty_factor):
+    """Block structure with the unpenalized (group 0) columns as one more block.
+
+    ISSUE-010: the block solver updates only the blocks it is given, so the
+    group-0 columns join as a block with no penalty (multiplier 0, penalty
+    factors 0) instead of being skipped.  They must be contiguous.
+
+    Returns
+    -------
+    groups, group_starts, group_ends, group_weights, penalty_factor, n_blocks, added
+        Group labels with group 0 relabelled ``n_groups + 1``, the block
+        index arrays and parameters, the number of blocks, and whether the
+        unpenalized block was added.
+    """
+    groups_arr = np.asarray(groups, dtype=np.intp)
+    gw = np.asarray(group_weights, dtype=np.float64)
+    pf = np.asarray(penalty_factor, dtype=np.float64)
+    gs_arr, ge_arr = compute_group_indices(groups_arr, n_groups)
+    unpen_mask = groups_arr == 0
+    if not np.any(unpen_mask):
+        return groups_arr, gs_arr, ge_arr, gw, pf, n_groups, False
+    unpen_cols = np.where(unpen_mask)[0]
+    if not np.array_equal(
+        unpen_cols, np.arange(unpen_cols[0], unpen_cols[0] + len(unpen_cols))
+    ):
+        raise ValueError(
+            "Unpenalized (group=0) features must be contiguous "
+            f"in column ordering (got columns {unpen_cols.tolist()})"
+        )
+    groups_arr = groups_arr.copy()
+    groups_arr[unpen_mask] = n_groups + 1
+    gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
+    ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
+    gw = np.append(gw, 0.0)
+    pf = pf.copy()
+    pf[unpen_mask] = 0.0
+    return groups_arr, gs_arr, ge_arr, gw, pf, n_groups + 1, True
+
+
+def drop_unpenalized_block(result):
+    """The result without the unpenalized block's entries (see ``add_unpenalized_block``)."""
+    return result._replace(
+        active_groups=result.active_groups[:-1],
+        group_norms=result.group_norms[:-1],
     )
 
 
@@ -1320,34 +1502,9 @@ def fit_group_regularization_path(
         raise ValueError("lambda_sequence must contain finite non-negative values")
     if lam_arr.size > 1 and np.any(np.diff(lam_arr) > 0):
         raise ValueError("lambda_sequence must be sorted descending")
-    groups_arr = np.asarray(groups, dtype=np.intp)
-    gw = np.asarray(group_weights, dtype=np.float64)
-    pf = np.asarray(penalty_factor, dtype=np.float64)
-    gs_arr, ge_arr = compute_group_indices(groups_arr, n_groups)
-
-    # ISSUE-010: include unpenalized (group=0) columns as a pseudo-group
-    # with zero weight and zero penalty factor so the block-CD kernel
-    # updates them with no shrinkage instead of silently skipping them.
-    unpen_mask = groups_arr == 0
-    _has_unpen = np.any(unpen_mask)
-    if _has_unpen:
-        unpen_cols = np.where(unpen_mask)[0]
-        if not np.array_equal(
-            unpen_cols, np.arange(unpen_cols[0], unpen_cols[0] + len(unpen_cols))
-        ):
-            raise ValueError(
-                "Unpenalized (group=0) features must be contiguous "
-                f"in column ordering (got columns {unpen_cols.tolist()})"
-            )
-        pseudo_label = n_groups + 1
-        groups_arr = groups_arr.copy()
-        groups_arr[unpen_mask] = pseudo_label
-        gs_arr = np.append(gs_arr, np.intp(unpen_cols[0]))
-        ge_arr = np.append(ge_arr, np.intp(unpen_cols[-1] + 1))
-        gw = np.append(gw, 0.0)
-        pf = pf.copy()
-        pf[unpen_mask] = 0.0
-        n_groups += 1
+    groups_arr, gs_arr, ge_arr, gw, pf, n_groups, _has_unpen = (
+        add_unpenalized_block(groups, n_groups, group_weights, penalty_factor)
+    )
 
     beta = (
         np.zeros(p, dtype=np.float64)
@@ -1368,20 +1525,7 @@ def fit_group_regularization_path(
         # Strip the pseudo-group from the result so callers see the
         # original n_groups-sized arrays.
         if _has_unpen:
-            result = GroupPenalizedFitResult(
-                beta=result.beta,
-                log_likelihood=result.log_likelihood,
-                objective_value=result.objective_value,
-                n_outer_iter=result.n_outer_iter,
-                n_inner_iter_total=result.n_inner_iter_total,
-                converged=result.converged,
-                message=result.message,
-                information=result.information,
-                active_groups=result.active_groups[:-1],
-                group_norms=result.group_norms[:-1],
-                df=result.df,
-                kkt_violation=result.kkt_violation,
-            )
+            result = drop_unpenalized_block(result)
         results.append(result)
         beta = result.beta
     return results

@@ -202,7 +202,7 @@ def test_cross_validation():
     r_selected = pd.read_csv(os.path.join(RESULTS, "penalized_wide_cv_selected.csv"))
     r_coef_min = pd.read_csv(os.path.join(RESULTS, "penalized_wide_cv_coef_min.csv")).set_index("term")
 
-    m = PenalizedCoxPHCV(alpha=1.0, fold_id=fold_id, n_lambda=100)
+    m = PenalizedCoxPHCV(alpha=1.0, fold_id=fold_id, n_lambda=100, se_rule="min")
     m.fit(d[xcols], duration=d["stop"], event=d["event"])
 
     _check("cv: lambda_min_", [m.lambda_min_], [r_selected["lambda_min"].iloc[0]], atol=1e-6)

@@ -13,26 +13,15 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-)
+from ...algorithms.penalty import weighted_column_center_scale, rescale_penalty_factors, interpolate_path
 from ...algorithms.coordinate_descent import (
     compute_lambda_max,
     build_lambda_sequence,
     fit_regularization_path,
 )
-from ...algorithms.logistic.likelihood import (
-    build_logistic_objective,
-    logistic_null_score,
-    logistic_unpenalized_null_fit,
-    logistic_loglik,
-    logistic_deviance,
-    logistic_null_deviance,
-)
+from ...algorithms.logistic.likelihood import (build_logistic_objective, logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance)
 from ...exceptions import NotFittedError, DegenerateFeatureWarning
 
 logger = logging.getLogger(__name__)
@@ -91,7 +80,7 @@ def _stratified_fold_assignment(
 # PenalizedLogistic
 # ======================================================================
 
-class PenalizedLogistic(BaseEstimator):
+class PenalizedLogistic(ProviderModel):
     """Elastic-net-penalized logistic regression.
 
     Fits the regularization path over a grid of lambda values using
@@ -129,8 +118,8 @@ class PenalizedLogistic(BaseEstimator):
         When True, only variables with nonzero coefficients are updated
         in most inner iterations.
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     coef_path_ : ndarray, shape (n_lambda, p)
         Coefficient path.
     intercept_path_ : ndarray, shape (n_lambda,)
@@ -450,35 +439,12 @@ class PenalizedLogistic(BaseEstimator):
         ndarray, shape (p,)
         """
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def intercept_at(self, lambda_value: float) -> float:
         """Intercept at an arbitrary lambda."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return float(self.intercept_path_[0])
-        if lambda_value <= lam_path[-1]:
-            return float(self.intercept_path_[-1])
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return float(
-            (1.0 - frac) * self.intercept_path_[idx]
-            + frac * self.intercept_path_[idx + 1]
-        )
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict_proba(
         self, X: np.ndarray, lambda_value: Optional[float] = None,
@@ -530,7 +496,7 @@ class PenalizedLogistic(BaseEstimator):
 # PenalizedLogisticCV
 # ======================================================================
 
-class PenalizedLogisticCV(BaseEstimator):
+class PenalizedLogisticCV(ProviderModel):
     """Cross-validated penalized logistic regression.
 
     Fits the elastic-net regularization path on the full data, then
@@ -549,19 +515,20 @@ class PenalizedLogisticCV(BaseEstimator):
     n_folds : int, default=10
     fold_id : array-like or None
         User-supplied fold assignments (overrides n_folds).
-    use_1se : bool, default=True
+    se_rule : {"1se", "min"}, default="1se"
         If True, use lambda.1se; else lambda.min.
     random_state : int or None
+        Seed for the fold assignment. With ``None`` (the default) the folds, and so the selected lambda, change between calls.
     max_outer_iter, outer_tol, max_inner_iter, inner_tol
 
-    Attributes (after fit)
-    ----------------------
+    Attributes
+    ----------
     lambda_min_ : float
         Lambda that minimizes CV deviance.
     lambda_1se_ : float
         Largest lambda within 1 SE of the minimum.
     lambda_ : float
-        Selected lambda (lambda_1se_ if use_1se, else lambda_min_).
+        Selected lambda (``lambda_1se_`` if se_rule == "1se", else ``lambda_min_``).
     cv_mean_deviance_ : ndarray, shape (n_lambda,)
         Mean cross-validated deviance at each lambda.
     cv_std_deviance_ : ndarray, shape (n_lambda,)
@@ -569,9 +536,9 @@ class PenalizedLogisticCV(BaseEstimator):
     cv_se_deviance_ : ndarray, shape (n_lambda,)
         Standard error of CV deviance.
     lambda_min_idx_ : int
-        Index of lambda_min_ in lambda_path_.
+        Index of ``lambda_min_`` in ``lambda_path_``.
     lambda_1se_idx_ : int
-        Index of lambda_1se_ in lambda_path_.
+        Index of ``lambda_1se_`` in ``lambda_path_``.
     model_ : PenalizedLogistic
         Full-data model fitted at the selected lambda path.
     coef_ : ndarray, shape (p,)
@@ -597,7 +564,7 @@ class PenalizedLogisticCV(BaseEstimator):
         fit_intercept: bool = True,
         n_folds: int = 10,
         fold_id: Optional[np.ndarray] = None,
-        use_1se: bool = True,
+        se_rule: str = "1se",
         random_state: Optional[int] = None,
         max_outer_iter: int = 100,
         outer_tol: float = 1e-9,
@@ -615,7 +582,7 @@ class PenalizedLogisticCV(BaseEstimator):
         self.fit_intercept = fit_intercept
         self.n_folds = n_folds
         self.fold_id = fold_id
-        self.use_1se = use_1se
+        self.se_rule = se_rule
         self.random_state = random_state
         self.max_outer_iter = max_outer_iter
         self.outer_tol = outer_tol
@@ -631,6 +598,8 @@ class PenalizedLogisticCV(BaseEstimator):
         offset: Optional[np.ndarray] = None,
     ) -> "PenalizedLogisticCV":
         """Fit CV to select lambda, then refit on full data."""
+        if self.se_rule not in ("min", "1se"):
+            raise ValueError(f"se_rule must be 'min' or '1se', got {self.se_rule!r}")
         # --- Fit full-data model to get lambda path ---
         full_model = PenalizedLogistic(
             alpha=self.alpha,
@@ -721,7 +690,7 @@ class PenalizedLogisticCV(BaseEstimator):
         self.cv_se_deviance_ = cv_se
         self.lambda_min_ = float(lambda_min)
         self.lambda_1se_ = float(lambda_1se)
-        self.lambda_ = float(lambda_1se if self.use_1se else lambda_min)
+        self.lambda_ = float(lambda_1se if (self.se_rule == "1se") else lambda_min)
         self.lambda_min_idx_ = idx_min
         self.lambda_1se_idx_ = idx_1se
 

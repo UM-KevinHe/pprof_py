@@ -172,8 +172,8 @@ naive_cif = 1 - cause_specific[1].predict_survival_function(X.iloc[:200])
 correct_cif = 1 - fg.predict_survival_function(X.iloc[:200])
 
 t = naive_cif.index[len(naive_cif) * 3 // 4]
-print("naive (mis-specified) mean CIF:  ", naive_cif.loc[t].mean())
-print("correct Fine-Gray mean CIF:      ", correct_cif.loc[t].mean())
+print(f"naive (mis-specified) mean CIF:   {naive_cif.loc[t].mean():.4f}")
+print(f"correct Fine-Gray mean CIF:       {correct_cif.loc[t].mean():.4f}")
 ```
 
 ```

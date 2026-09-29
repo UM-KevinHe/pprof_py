@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import pandas as pd
 
 try:
@@ -22,7 +23,7 @@ def one_factor_validation():
 
     py_reml = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=500, tol_outer=1e-10
-    ).fit(df, "y", x_vars=["x"], group_var="g")
+    ).fit(df, "y", x_vars=["x"], provider_var="g")
 
     sm_reml = sm.MixedLM.from_formula(
         "y ~ x", groups="g", data=df
@@ -66,7 +67,7 @@ def crossed_validation():
 
     py = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=400, tol_outer=1e-9
-    ).fit(df, "y", x_vars=["x"], group_vars=["g1", "g2"])
+    ).fit(df, "y", x_vars=["x"], provider_var="g1", cluster_vars=["g2"])
 
     sm_fit = sm.MixedLM.from_formula(
         "y ~ x",
@@ -105,7 +106,7 @@ def ml_override_validation():
     model = LinearRandomEffectModel(
         verbose=False, reml=True, max_iter_outer=300
     )
-    fit = model.fit(df, "y", x_vars=["x"], group_var="g", reml=False)
+    fit = model.fit(df, "y", x_vars=["x"], provider_var="g", reml=False)
 
     ref = sm.MixedLM.from_formula(
         "y ~ x", groups="g", data=df
@@ -128,7 +129,7 @@ def offset_validation():
     fit = LinearRandomEffectModel(
         verbose=False, reml=False, max_iter_outer=200
     ).fit(
-        df, "y", x_vars=["x"], group_var="g", offset_var="off"
+        df, "y", x_vars=["x"], provider_var="g", offset_var="off"
     )
 
     ols = sm.OLS(y - offset, sm.add_constant(x)).fit()
@@ -146,3 +147,40 @@ if __name__ == "__main__":
         ml_override_validation()
         offset_validation()
         print("All validation tests passed.")
+
+
+@pytest.mark.parametrize("reference", ["median", "mean", 0.0, 0.3])
+def test_standardized_measures_use_the_reference(reference):
+    """C21: the indirect difference is u_k - u_0 at the requested reference, and the 'SM' limits shift with it;
+    reference=0 is R pprof's SM_output.linear_re (the BLUP itself)."""
+    rng = np.random.default_rng(8)
+    n = rng.integers(30, 80, 15)
+    prov = np.repeat(np.arange(15), n)
+    x = rng.normal(size=prov.size)
+    d = pd.DataFrame({"y": 2 + x + rng.normal(0, 1, 15)[prov] + rng.normal(size=prov.size), "x": x, "h": prov})
+    m = LinearRandomEffectModel().fit(d, y_var="y", x_vars=["x"], provider_var="h")
+    blup = np.asarray(m.coefficients_["alpha"]).ravel()
+    sizes = np.asarray(m.provider_sizes_)
+    u0 = {"median": np.median(blup), "mean": np.average(blup, weights=sizes)}.get(reference, reference)
+    sm = m.calculate_standardized_measures(stdz="indirect", reference=reference)["indirect"]
+    np.testing.assert_allclose(sm["indirect_difference"].to_numpy(), blup - u0, rtol=0, atol=1e-10)
+    ci = m.calculate_confidence_intervals(option="SM", stdz="indirect", reference=reference)["indirect_ci"]
+    ci0 = m.calculate_confidence_intervals(option="SM", stdz="indirect", reference=0.0)["indirect_ci"]
+    np.testing.assert_allclose(ci[["lower", "upper"]].to_numpy(), ci0[["lower", "upper"]].to_numpy() - u0, rtol=0, atol=1e-10)
+
+
+def test_logistic_random_effect_mean_reference_is_size_weighted():
+    """C21: reference='mean' is the provider-size-weighted mean BLUP, as documented and as the linear models use."""
+    from scipy.special import expit
+    from pprof_py import LogisticRandomEffectModel
+    rng = np.random.default_rng(9)
+    n = rng.integers(30, 150, 20)
+    prov = np.repeat(np.arange(20), n)
+    x = rng.normal(size=prov.size)
+    d = pd.DataFrame({"y": rng.binomial(1, expit(-0.5 + x + rng.normal(0, 0.6, 20)[prov])), "x": x, "h": prov})
+    m = LogisticRandomEffectModel(verbose=False, optimizer_stage1="powell").fit(d, y_var="y", x_vars=["x"], provider_var="h")
+    blup = m.get_random_effects().to_numpy()
+    u0 = np.average(blup, weights=np.bincount(prov))
+    sm = m.calculate_standardized_measures(stdz="indirect", reference="mean")["indirect"]
+    expected = np.bincount(prov, weights=expit(u0 + m.xbeta_))
+    np.testing.assert_allclose(sm["expected"].to_numpy(), expected, rtol=1e-12)

@@ -4,41 +4,23 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator
+from ...base import ProviderModel
 
-from ...algorithms.penalty import (
-    within_group_orthogonalize,
-    unorthogonalize_coefs,
-    weighted_column_scale,
-    weighted_column_center_scale,
-    rescale_penalty_factors,
-    validate_groups,
-    rescale_group_multipliers,
-)
-from ...algorithms.coordinate_descent import (
-    compute_group_lambda_max,
-    build_lambda_sequence,
-    fit_group_regularization_path,
-)
-from ...algorithms.linear.likelihood import (
-    build_linear_objective,
-    linear_null_score,
-    linear_unpenalized_null_fit,
-    linear_deviance,
-    linear_null_deviance,
-    linear_intercept_update,
-)
+from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns,
+                                     interpolate_path)
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
+from ...algorithms.linear.likelihood import (linear_unpenalized_null_fit, linear_deviance, linear_null_deviance, linear_intercept_update)
 from ...exceptions import NotFittedError
 from .penalized import DegenerateFeatureWarning, _resolve_lambda_path
 
 logger = logging.getLogger(__name__)
 
 
-class GroupLassoLinear(BaseEstimator):
+class GroupLassoLinear(ProviderModel):
     """Group lasso / sparse group lasso penalized linear regression.
 
     Parameters
@@ -50,20 +32,22 @@ class GroupLassoLinear(BaseEstimator):
     lambda_path : array-like or None
     penalty_factor : array-like or None
     group_multiplier : array-like or None
+        Per-group penalty multipliers.  Default: sqrt(group_size).
     standardize : bool, default=True
+    orthogonalize : bool, default=True
+        Orthogonalize each penalized group within itself, so the penalty is
+        the standardized group lasso R's ``grplasso`` fits.  ``False`` fits
+        the plain group lasso on the standardized columns.
     fit_intercept : bool, default=True
     use_active_set : bool, default=True
         Use the active-set strategy to accelerate coordinate descent.
     max_outer_iter : int, default=100
         Maximum outer (proximal Newton) iterations per lambda.
     outer_tol : float, default=1e-9
-        Outer-loop convergence tolerance.  Note that the group block
-        solver frequently fails to reach stationarity at this tolerance
-        on correlated within-group designs; ``converged_path_`` reports
-        that honestly rather than declaring success.  Inspect
-        ``kkt_violation_path_`` for the actual distance from
-        stationarity at each path point.
-        Outer convergence tolerance.
+        Outer-loop convergence tolerance: a path point is converged when
+        its relative KKT residual falls below ``10 * outer_tol`` (or below
+        ``max(10 * outer_tol, 1e-6)`` once the iterates stop moving);
+        ``kkt_violation_path_`` gives the residual at each point.
     max_inner_iter : int, default=1000
         Maximum inner (CD) iterations per outer step.
     inner_tol : float, default=1e-10
@@ -157,9 +141,9 @@ class GroupLassoLinear(BaseEstimator):
         groups_fit, group_sizes_fit, n_groups_fit = validate_groups(
             groups_fit, p_fit,
         )
-        gw_fit = rescale_group_multipliers(
-            None, group_sizes_fit, n_groups_fit,
-        )
+        # Multipliers of the groups that still have columns: the user's, or
+        # sqrt(remaining size) by default.
+        gw_fit = fit_group_multipliers(self.group_multiplier, groups_full, fit_cols)
 
         if self.penalty_factor is not None:
             pf_full = np.asarray(self.penalty_factor, dtype=np.float64)
@@ -169,17 +153,18 @@ class GroupLassoLinear(BaseEstimator):
 
         c = 1.0 / float(np.sum(weight))
         # C2: within-group orthogonalization (R/grplasso convention).
-        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I,
-        # which is what makes the block coordinate update exact -- see the
-        # scale-correction note in the group CD kernel.  The unpenalized
+        # Each penalized group is mapped so that X_g' diag(w) X_g / sum(w) = I;
+        # the Gaussian information is then the identity on every group block
+        # and the block update takes its one-pass form.  The unpenalized
         # pseudo-group (label 0) is left untouched, as in R.
         #
         # NOTE: this changes the ESTIMATOR, not just the algorithm.  In the
         # original coordinates the penalty becomes
         #     lam * sqrt(K_g) * sqrt( beta_g' (X_g' W X_g / sum w) beta_g )
         # i.e. the standardized group lasso (Simon & Tibshirani 2012), which
-        # is what R/grplasso fits.  Set orthogonalize=False only to reproduce
-        # pre-change results; that path is NOT a validated alternative.
+        # is what R/grplasso fits.  orthogonalize=False fits the plain group
+        # lasso on the standardized columns (the block update is exact for
+        # any Hessian block); R has no counterpart for it.
         QL_blocks = None
         if self.orthogonalize:
             X_fit, QL_blocks = within_group_orthogonalize(
@@ -194,7 +179,7 @@ class GroupLassoLinear(BaseEstimator):
         # at the top of the path (mirrors the R reference's SerBIN.residuals).
         beta_null, score_null, intercept_null = linear_unpenalized_null_fit(
             X_fit, y, weight,
-            unpenalized=((groups_fit == 0) | (pf_fit == 0.0)),
+            unpenalized=unpenalized_columns(groups_fit, gw_fit, pf_fit, self.alpha),
             offset=offset, fit_intercept=self.fit_intercept,
         )
         lam_max = compute_group_lambda_max(
@@ -326,35 +311,12 @@ class GroupLassoLinear(BaseEstimator):
         ndarray, shape (n_features,)
         """
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return self.coef_path_[0].copy()
-        if lambda_value <= lam_path[-1]:
-            return self.coef_path_[-1].copy()
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return (1.0 - frac) * self.coef_path_[idx] + frac * self.coef_path_[idx + 1]
+        return interpolate_path(self.lambda_path_, self.coef_path_, lambda_value)
 
     def intercept_at(self, lambda_value: float) -> float:
         """Intercept at an arbitrary lambda (log-lambda interpolation)."""
         self._check_is_fitted()
-        lam_path = self.lambda_path_
-        if lambda_value >= lam_path[0]:
-            return float(self.intercept_path_[0])
-        if lambda_value <= lam_path[-1]:
-            return float(self.intercept_path_[-1])
-        log_lam = np.log(lam_path)
-        log_val = np.log(lambda_value)
-        idx = np.searchsorted(-log_lam, -log_val) - 1
-        idx = max(0, min(idx, len(lam_path) - 2))
-        frac = (log_val - log_lam[idx]) / (log_lam[idx + 1] - log_lam[idx])
-        return float(
-            (1.0 - frac) * self.intercept_path_[idx]
-            + frac * self.intercept_path_[idx + 1]
-        )
+        return float(interpolate_path(self.lambda_path_, self.intercept_path_, lambda_value))
 
     def predict(self, X, lambda_value=None):
         """Predict responses at a given lambda.

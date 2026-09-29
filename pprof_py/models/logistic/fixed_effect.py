@@ -9,8 +9,10 @@ import logging
 from dataclasses import replace
 
 import numpy as np
+
+from ...base import ProviderModel
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from ...utils.metrics import roc_auc_score
 from typing import Optional, Union, List
 
 from ...data.validation import validate_and_convert_inputs
@@ -18,17 +20,18 @@ from ...data.preparation import DataPrepOptions
 from ...exceptions import NotFittedError
 from ...algorithms.logistic.fixed_effect import SerbinAlgorithm, BanAlgorithm, AlgorithmOptions
 from ...utils.numerical import sigmoid
-from ...inference.logistic import FixedEffectInferenceMixin
-from ...measures.logistic import FixedEffectMeasuresMixin
-from ...plotting.logistic import FixedEffectPlottingMixin
+from ...inference.logistic import LogisticFixedEffectInferenceMixin
+from ...measures.logistic import LogisticFixedEffectMeasuresMixin
+from ...plotting.logistic import LogisticFixedEffectPlottingMixin
 
 logger = logging.getLogger(__name__)
 
 
 class LogisticFixedEffectModel(
-    FixedEffectInferenceMixin,
-    FixedEffectMeasuresMixin,
-    FixedEffectPlottingMixin,
+    LogisticFixedEffectInferenceMixin,
+    LogisticFixedEffectMeasuresMixin,
+    LogisticFixedEffectPlottingMixin,
+    ProviderModel,
 ):
     """Logistic Regression Model with Fixed Effects.
 
@@ -40,11 +43,12 @@ class LogisticFixedEffectModel(
     Responsibilities are split across mixins so this class stays focused on
     configuration, input handling, fitting, and prediction:
 
-    - `FixedEffectInferenceMixin` (`pprof_py.inference.logistic`): variance estimation and
-      covariate (beta) hypothesis tests (Wald/LR/score), `summary()`.
-    - `FixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
-      provider-level confidence intervals, provider-effect (gamma) hypothesis testing, `test()`.
-    - `FixedEffectPlottingMixin` (`pprof_py.plotting.logistic`): funnel/caterpillar/forest plots.
+    - `LogisticFixedEffectInferenceMixin` (`pprof_py.inference.logistic`): variance estimation and
+      covariate (beta) hypothesis tests (Wald/LR/score), `summary()`; provider-effect tests,
+      `test()` and `test_standardized()`; confidence intervals.
+    - `LogisticFixedEffectMeasuresMixin` (`pprof_py.measures.logistic`): standardized rates/ratios,
+      `calculate_standardized_measures()`.
+    - `LogisticFixedEffectPlottingMixin` (`pprof_py.plotting.logistic`): funnel/caterpillar/forest plots.
 
     Parameters
     ----------
@@ -55,7 +59,7 @@ class LogisticFixedEffectModel(
     log_event_providers : bool, default=True
         Whether to log event providers during data preparation.
     cutoff : int, default=10
-        Minimum group size for screening.
+        Screening keeps groups with more than ``cutoff`` records.
     threshold_cor : float, default=0.9
         Correlation threshold for multicollinearity checks.
     threshold_vif : int, default=10
@@ -70,14 +74,18 @@ class LogisticFixedEffectModel(
     coefficients_ : dict
         Model coefficients: 'beta' (covariates), 'gamma' (group effects).
     variances_ : dict
-        Variance-covariance matrices: 'beta' (for covariates), 'gamma' (for group effects).
+        Inverse-information variances: ``'beta'`` (covariance matrix of the
+        covariate effects), ``'gamma'`` (variance of each provider effect,
+        R's ``logis_fe_var``) and ``'gamma_case_mix'`` (variance of each
+        provider effect at the average case mix, ``Var(gamma_j + xbar' beta)``,
+        which the provider tests and direct measures use; C34).
     fitted_ : np.ndarray
         Fitted probabilities.
     aic_ : float
         Akaike Information Criterion.
     bic_ : float
         Bayesian Information Criterion.
-    groups_ : np.ndarray
+    provider_ids_ : np.ndarray
         Unique group identifiers.
     """
 
@@ -122,9 +130,9 @@ class LogisticFixedEffectModel(
         self.aic_ = None
         self.bic_ = None
         self.auc_ = None
-        self.groups_ = None
-        self.group_indices_ = None
-        self.group_sizes_ = None
+        self.provider_ids_ = None
+        self.provider_indices_ = None
+        self.provider_sizes_ = None
         self.xbeta_ = None
         self.outcome_ = None
         self.obs_ids_ = None
@@ -143,10 +151,10 @@ class LogisticFixedEffectModel(
         self,
         X: Union[np.ndarray, pd.DataFrame],
         y: Optional[np.ndarray] = None,
-        groups: Optional[np.ndarray] = None,
+        provider_id: Optional[np.ndarray] = None,
         x_vars: Optional[List[str]] = None,
         y_var: Optional[str] = None,
-        group_var: Optional[str] = None,
+        provider_var: Optional[str] = None,
         n_var: Optional[str] = None,
         obs_id_var: Optional[str] = None,
         use_dataprep: Optional[bool] = None,
@@ -168,13 +176,13 @@ class LogisticFixedEffectModel(
             Covariates or dataset.
         y : Optional[np.ndarray], default=None
             Binary response variable.
-        groups : Optional[np.ndarray], default=None
+        provider_id : Optional[np.ndarray], default=None
             Group identifiers.
         x_vars : Optional[List[str]], default=None
             Covariate column names if X is a DataFrame.
         y_var : Optional[str], default=None
             Response column name if X is a DataFrame.
-        group_var : Optional[str], default=None
+        provider_var : Optional[str], default=None
             Group column name if X is a DataFrame.
         n_var : Optional[str], default=None
             Column name for the number of trials per observation (binomial N).
@@ -184,7 +192,8 @@ class LogisticFixedEffectModel(
         obs_id_var : Optional[str], default=None
             Column name for observation-level identifiers (e.g., patient ID,
             member ID). Required for cluster-robust variance estimation. If
-            provided, enables variance='robust' in test_standardized() and standardized_measure().
+            provided, enables variance='robust' (and the R-parity 'robust_fixed_beta') in test_standardized() and
+            standardized_measure().
         use_dataprep : Optional[bool], default=None
             Override default data preparation setting.
         screen_providers : Optional[bool], default=None
@@ -199,8 +208,9 @@ class LogisticFixedEffectModel(
             Override VIF threshold.
         max_iter : int, default=10000
             Maximum optimization iterations.
-        tol : float, default=1e-5
-            Convergence tolerance.
+        tol : float, default=1e-8
+            Convergence tolerance on the largest change in a regression
+            coefficient between iterations.
         bound : float, default=10.0
             Bound for group effects.
         backtrack : bool, default=True
@@ -232,13 +242,13 @@ class LogisticFixedEffectModel(
 
         # Validate and convert inputs
         validated = validate_and_convert_inputs(
-            X, y, groups, x_vars, y_var, group_var,
+            X, y, provider_id, x_vars, y_var, provider_var,
             n_var=n_var,
             obs_id_var=obs_id_var,
             use_dataprep=use_dataprep,
             dataprep_options=options,
         )
-        X, y, groups = validated.X, validated.y, validated.groups
+        X, y, provider_id = validated.X, validated.y, validated.provider_id
         self.covariate_names_ = validated.covariate_names
         self.obs_ids_ = validated.obs_ids
         self.N_ = validated.N
@@ -250,14 +260,14 @@ class LogisticFixedEffectModel(
         # Store data attributes
         self.X = X
         self.outcome_ = y
-        self.groups_, self.group_indices_ = np.unique(groups, return_inverse=True)
-        self.group_sizes_ = np.bincount(self.group_indices_)
+        self.provider_ids_, self.provider_indices_ = np.unique(provider_id, return_inverse=True)
+        self.provider_sizes_ = np.bincount(self.provider_indices_)
 
         # Prepare data for algorithm
-        data = np.column_stack((y, groups, X))
+        data = np.column_stack((y, provider_id, X))
         y_index = 0
         prov_index = 1
-        n_prov = self.group_sizes_
+        n_prov = self.provider_sizes_
         Y_bar = np.sum(y) / np.sum(self.N_)
         gamma_prov = np.repeat(np.log(Y_bar / (1 - Y_bar)), len(n_prov))
         beta = np.zeros(X.shape[1])
@@ -284,7 +294,7 @@ class LogisticFixedEffectModel(
 
         # Compute fitted values
         self.xbeta_ = np.dot(X, self.coefficients_['beta'])
-        gamma_obs = self.coefficients_['gamma'][self.group_indices_]
+        gamma_obs = self.coefficients_['gamma'][self.provider_indices_]
         linear_pred = self.xbeta_ + gamma_obs
         self.fitted_ = sigmoid(linear_pred)
 
@@ -327,7 +337,8 @@ class LogisticFixedEffectModel(
         model fitting.
 
         The added providers' standardized measures (direct rate, etc.) are
-        computed using the same patient-level xbeta as fitted providers:
+        computed using the same patient-level xbeta as fitted providers::
+
             direct_rate_j = sum(sigmoid(gamma_j + xbeta_i)) / N
 
         Parameters
@@ -363,7 +374,7 @@ class LogisticFixedEffectModel(
             return self
 
         # Separate into providers that already exist (replace) vs new (append)
-        existing_set = set(self.groups_.tolist())
+        existing_set = set(self.provider_ids_.tolist())
         existing_mask = np.array([p in existing_set for p in provider_ids])
         new_mask = ~existing_mask
 
@@ -371,64 +382,84 @@ class LogisticFixedEffectModel(
         n_replaced = int(existing_mask.sum())
         if n_replaced > 0:
             for idx in np.where(existing_mask)[0]:
-                j = np.where(self.groups_ == provider_ids[idx])[0][0]
+                j = np.where(self.provider_ids_ == provider_ids[idx])[0][0]
                 self.coefficients_["gamma"][j] = gamma[idx]
-                if self.variances_ is not None and "gamma" in self.variances_:
-                    self.variances_["gamma"][j] = se_gamma[idx] ** 2
-                if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-                    self.robust_variances_["gamma"][j] = se_gamma[idx] ** 2
+                if self.variances_ is not None:
+                    for key in ("gamma", "gamma_case_mix"):
+                        if key in self.variances_:
+                            self.variances_[key][j] = se_gamma[idx] ** 2
+                if self.robust_variances_ is not None:
+                    for key in ("gamma", "gamma_fixed_beta"):
+                        if key in self.robust_variances_:
+                            self.robust_variances_[key][j] = se_gamma[idx] ** 2
 
         # Append new providers
         n_new = int(new_mask.sum())
         if n_new > 0:
-            self.groups_ = np.concatenate([self.groups_, provider_ids[new_mask]])
+            self.provider_ids_ = np.concatenate([self.provider_ids_, provider_ids[new_mask]])
             self.coefficients_["gamma"] = np.concatenate([
                 self.coefficients_["gamma"].flatten(), gamma[new_mask]
             ])
             se_sq_new = se_gamma[new_mask] ** 2
-            if self.variances_ is not None and "gamma" in self.variances_:
-                self.variances_["gamma"] = np.concatenate([
-                    self.variances_["gamma"].flatten(), se_sq_new
-                ])
-            if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-                self.robust_variances_["gamma"] = np.concatenate([
-                    self.robust_variances_["gamma"].flatten(), se_sq_new
-                ])
+            if self.variances_ is not None:
+                for key in ("gamma", "gamma_case_mix"):
+                    if key in self.variances_:
+                        self.variances_[key] = np.concatenate([
+                            self.variances_[key].flatten(), se_sq_new
+                        ])
+            if self.robust_variances_ is not None:
+                for key in ("gamma", "gamma_fixed_beta"):
+                    if key in self.robust_variances_:
+                        self.robust_variances_[key] = np.concatenate([
+                            self.robust_variances_[key].flatten(), se_sq_new
+                        ])
             if group_sizes is not None:
                 gs_new = np.asarray(group_sizes, dtype=int)[new_mask]
             else:
                 gs_new = np.zeros(n_new, dtype=int)
-            self.group_sizes_ = np.concatenate([self.group_sizes_, gs_new])
+            self.provider_sizes_ = np.concatenate([self.provider_sizes_, gs_new])
 
-        # Sort all arrays by provider ID (matches R: gamma_summary[order(rownames), ])
-        sort_idx = np.argsort(self.groups_)
-        self.groups_ = self.groups_[sort_idx]
+        # Sort every per-provider array by provider ID (matches R: gamma_summary[order(rownames), ]),
+        # and remap provider_indices_ so each record still points at its own provider: added IDs can
+        # fall between existing ones, which moves the existing providers' positions.
+        sort_idx = np.argsort(self.provider_ids_, kind="stable")
+        new_position = np.empty_like(sort_idx)
+        new_position[sort_idx] = np.arange(sort_idx.size)
+        n_total = sort_idx.size
+        self.provider_ids_ = self.provider_ids_[sort_idx]
         self.coefficients_["gamma"] = self.coefficients_["gamma"].flatten()[sort_idx]
-        if self.variances_ is not None and "gamma" in self.variances_:
-            self.variances_["gamma"] = self.variances_["gamma"].flatten()[sort_idx]
-        if self.robust_variances_ is not None and "gamma" in self.robust_variances_:
-            self.robust_variances_["gamma"] = self.robust_variances_["gamma"].flatten()[sort_idx]
-        self.group_sizes_ = self.group_sizes_[sort_idx]
+        if self.variances_ is not None:
+            for key, value in self.variances_.items():            # every per-provider entry, not the beta matrix
+                value = np.asarray(value)
+                if key != "beta" and value.size == n_total:
+                    self.variances_[key] = value.flatten()[sort_idx]
+        if self.robust_variances_ is not None:
+            for key, value in self.robust_variances_.items():   # every per-provider entry, not the beta matrix
+                value = np.asarray(value)
+                if value.ndim == 1 and value.size == n_total:
+                    self.robust_variances_[key] = value[sort_idx]
+        self.provider_sizes_ = self.provider_sizes_[sort_idx]
+        self.provider_indices_ = new_position[np.asarray(self.provider_indices_)]
 
         n_pos = int(np.sum(gamma > 0))
         n_neg = int(np.sum(gamma < 0))
         logger.info(f"Added {n_new} new + replaced {n_replaced} existing providers "
                     f"({n_pos} all-event, {n_neg} zero-event). "
-                    f"Total providers: {len(self.groups_)}")
+                    f"Total providers: {len(self.provider_ids_)}")
         return self
 
-    def predict(self, X, groups=None, x_vars=None, group_var=None) -> np.ndarray:
+    def predict(self, X, provider_id=None, x_vars=None, provider_var=None) -> np.ndarray:
         """Predict using the LogisticFixedEffect model.
 
         Parameters
         ----------
         X : array-like or pd.DataFrame
             Design matrix (covariates) or complete dataset.
-        groups : array-like or None
-            Group identifiers or None if `group_var` is specified in a DataFrame.
+        provider_id : array-like or None
+            Group identifiers or None if `provider_var` is specified in a DataFrame.
         x_vars : list of str, optional
             Column names in X to be used as predictors, required if X is a DataFrame.
-        group_var : str, optional
+        provider_var : str, optional
             Column name in X to be used as group identifiers, required if X is a DataFrame.
 
         Returns
@@ -438,9 +469,9 @@ class LogisticFixedEffectModel(
         """
         self._check_is_fitted()
 
-        validated = validate_and_convert_inputs(X, None, groups, x_vars, None, group_var)
-        X, groups = validated.X, validated.groups
-        group_indices = np.searchsorted(self.groups_, groups)
+        validated = validate_and_convert_inputs(X, None, provider_id, x_vars, None, provider_var)
+        X, provider_id = validated.X, validated.provider_id
+        group_indices = np.searchsorted(self.provider_ids_, provider_id)
         beta = self.coefficients_["beta"]
         gamma = self.coefficients_["gamma"]
         xbeta = X @ beta
@@ -448,7 +479,7 @@ class LogisticFixedEffectModel(
         predictions = 1 / (1 + np.exp(-(xbeta + gamma_obs)))
         return predictions
 
-    def score(self, X, y=None, groups=None, x_vars=None, y_var=None, group_var=None):
+    def score(self, X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None):
         """Compute the accuracy score for the model.
 
         Parameters
@@ -457,13 +488,13 @@ class LogisticFixedEffectModel(
             Design matrix (covariates) or complete dataset.
         y : array-like, shape (n_samples,), optional
             True target values (if X is array-like).
-        groups : array-like, shape (n_samples,), optional
+        provider_id : array-like, shape (n_samples,), optional
             Group identifiers (if X is array-like).
         x_vars : list of str, optional
             Column names for predictors (if X is a DataFrame).
         y_var : str, optional
             Column name for the target variable (if X is a DataFrame).
-        group_var : str, optional
+        provider_var : str, optional
             Column name for group identifiers (if X is a DataFrame).
 
         Returns
@@ -474,11 +505,11 @@ class LogisticFixedEffectModel(
         self._check_is_fitted()
 
         # Validate and convert inputs
-        validated = validate_and_convert_inputs(X, y, groups, x_vars, y_var, group_var)
-        X, y, groups = validated.X, validated.y, validated.groups
+        validated = validate_and_convert_inputs(X, y, provider_id, x_vars, y_var, provider_var)
+        X, y, provider_id = validated.X, validated.y, validated.provider_id
 
         # Generate predictions (assuming predict returns probabilities)
-        y_pred = self.predict(X, groups)
+        y_pred = self.predict(X, provider_id)
 
         # Convert probabilities to class labels (adjust threshold if needed)
         y_pred_class = (y_pred > 0.5).astype(int)
@@ -496,7 +527,7 @@ class LogisticFixedEffectModel(
 
         .. note::
            Renamed from ``get_params`` in 0.4.0 to avoid collision with
-           ``sklearn.base.BaseEstimator.get_params()``, which returns
+           ``ProviderModel.get_params()``, which returns
            constructor arguments.
 
         Returns

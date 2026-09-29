@@ -38,7 +38,7 @@ $$
 \text{(offset } = \gamma_{k(ij)} \text{, solved exactly as Chapter 6's time-dependent offsets are)}
 $$
 
-Each lambda alternates, up to `max_provider_iter` times (default
+Each lambda alternates, up to `provider_max_iter` times (default
 **20**):
 
 1. **Update $\gamma$** given the current $\beta$: a per-facility
@@ -61,10 +61,8 @@ Each lambda alternates, up to `max_provider_iter` times (default
    own flag.
 
 The practical payoff of reusing proven machinery instead of a
-hand-rolled loop: on a cohort of comparable size to the one the
-[provider-penalized logistic chapter](../logistic/provider_penalized_logistic)
-uses, `converged_path_` here is `True` at all 100 lambdas, against 22
-of 100 there.
+hand-rolled loop: on this chapter's cohort `converged_path_` is `True`
+at all 100 lambdas.
 
 ## 12.3 The running example: the ESRD cohort, unmodified
 
@@ -79,17 +77,21 @@ from pprof_py import ProviderPenalizedCoxPH
 X = cohort[["age", "sex", "diabetes", "comorbidity_count", "vintage_years"]]
 
 model = ProviderPenalizedCoxPH(alpha=1.0)
-model.fit(X, duration=cohort["time"], event=cohort["death"], provider=cohort["facility_id"])
+model.fit(X, duration=cohort["time"], event=cohort["death"], provider_id=cohort["facility_id"])
 ```
 
-`fit()`'s provider argument is keyword-only.  Both `provider=` and
-`provider_id=` are accepted (the logistic chapter's class historically
-used only `provider_id`; both names now work on both classes).
+`fit()`'s `provider_id` argument is keyword-only, as in the logistic
+chapter's class.
 Omitting it raises a clear, explicit error:
 
 ```python
-ProviderPenalizedCoxPH(alpha=1.0).fit(X, duration=cohort["time"], event=cohort["death"])
-# ValueError: provider must be provided (per-observation provider identifier array)
+try:
+    ProviderPenalizedCoxPH(alpha=1.0).fit(X, duration=cohort["time"], event=cohort["death"])
+except ValueError as err:
+    print(f"ValueError: {err}")
+```
+```
+ValueError: provider_id must be provided (per-observation provider identifier array)
 ```
 
 Unlike the logistic class, `coef_at()` is inherited and works exactly
@@ -98,37 +100,42 @@ log-lambda interpolation, not a discrete index:
 
 ```python
 lam = model.lambda_path_[50]
-model.coef_at(lam)
+print(pd.Series(model.coef_at(lam), index=X.columns).round(4).to_string())
 ```
 ```
 age                  0.0470
-sex                 -0.0450
-diabetes             0.2067
+sex                 -0.0451
+diabetes             0.2068
 comorbidity_count    0.1772
 vintage_years       -0.0457
 ```
 
 `predict_linear()`/`predict_partial_hazard()`/`predict()` (inherited,
 covariate-only, no provider term) accept `lambda_value=` and it works
-correctly — confirmed directly. Provider
-effects have their own resolution method, `_resolve_gamma()`, and it
-behaves *differently* from `coef_at()` in one respect worth knowing:
-it snaps to the **nearest lambda on the grid** rather than
-interpolating. Both are exercised together by
-`predict_linear_with_provider()`, the one method genuinely specific to
-this class:
+correctly. Provider effects behave *differently* from `coef_at()` in
+one respect worth knowing: `predict_provider_effect(lambda_value=...)`
+snaps to the **nearest lambda on the grid** rather than interpolating.
+Both are used by `predict_linear_with_provider()`, the one prediction
+method specific to this class, which returns
+$\hat\gamma_{\text{provider}} + \mathbf{X}^\top\hat{\boldsymbol\beta}(\lambda)$:
 
 ```python
-model.predict_linear_with_provider(X.iloc[:3], cohort["facility_id"].iloc[:3], lambda_value=lam)
-# gamma[provider] + X @ coef_at(lam), confirmed equal to a manual
-# computation of exactly that sum, to full floating-point precision
+eta = model.predict_linear_with_provider(X.iloc[:3], cohort["facility_id"].iloc[:3], lambda_value=lam)
+gamma = model.predict_provider_effect(lambda_value=lam)[cohort["facility_id"].iloc[:3]]
+manual = gamma + X.iloc[:3].to_numpy() @ model.coef_at(lam)
+print(eta.round(4), bool(np.allclose(eta, manual, rtol=0, atol=1e-12)))
+```
+```
+[3.2784 2.3623 2.966 ] True
 ```
 
 ## 12.4 Reading the path
 
 ```python
-model.n_nonzero_path_[[0, 10, 20, 30, 40, 50, 70, 99]]
-# array([0, 1, 3, 4, 5, 5, 5, 5])
+print(model.n_nonzero_path_[[0, 10, 20, 30, 40, 50, 70, 99]])
+```
+```
+[0 1 3 4 5 5 5 5]
 ```
 
 All five covariates are in by `which=40`; `sex` — which has no real
@@ -145,7 +152,7 @@ gammas = model.predict_provider_effect(lambda_value=lam)   # array, provider_lab
 Correlation between estimated and true (known, since this is a seeded
 synthetic cohort) facility quality is `0.413` at this lambda —
 noticeably better than the
-[logistic chapter's](../logistic/provider_penalized_logistic) `0.217`,
+[logistic chapter's](../logistic/provider_penalized_logistic) `0.20` to `0.22`,
 consistent with Cox's fuller use of follow-up time (not just a binary
 30-day outcome) and a covariate set with a real, if imperfect, case-mix
 signal here. It is not a clean 1-to-1 recovery, and looking at
@@ -155,15 +162,19 @@ warns about: the facility with the single highest estimated $\hat\gamma$
 here (`0.641`) has a true quality of only `0.125` — elevated, but not
 dramatically so — while a facility with true quality *below* average
 (`-0.479`) still lands with the second-highest estimated $\hat\gamma$
-(`0.615`). With roughly 100 patients per facility and only ~300 total
-events across the whole cohort, no single facility's estimate carries
+(`0.615`). With roughly 100 patients per facility and only 259 deaths
+across the whole cohort, no single facility's estimate carries
 enough information to trust in isolation — precisely the argument for
 looking at reliability (IUR) and confidence intervals, not point
 estimates alone, before flagging any one facility as a true outlier.
 
 ```python
 import numpy as np
-np.exp(gammas)   # hazard ratio relative to the median facility
+hazard_ratio = np.exp(gammas)   # relative to the median facility
+print(hazard_ratio.round(2)[:8])
+```
+```
+[1.59 1.14 1.81 0.58 1.57 1.01 0.93 1.18]
 ```
 A facility with $\hat\gamma = 0.641$ has a hazard ratio of
 `exp(0.641) ≈ 1.90` relative to the *median* facility in this fit —
@@ -183,12 +194,15 @@ gap, the fix is a manual fold loop, built from the same pieces
 `GroupLassoCoxPHCV` (Chapter 11) uses internally — provider-level fold
 assignment (every observation from one facility in the same fold, so
 no facility's own data leaks between train and validation), and
-per-fold deviance via `cox_partial_likelihood` and `cox_deviance`:
+per-fold deviance via `cox_partial_likelihood` and `cox_deviance`. The
+held-out deviance uses the facility-stratified partial likelihood, in
+which each facility's effect cancels, so the held-out facilities'
+unknown effects never enter:
 
 ```python
 import numpy as np
-from pprof_py.algorithms.survival.cox_likelihood import cox_partial_likelihood, precompute_stratum_indices
-from pprof_py.statistics.deviance import saturated_log_likelihood, cox_deviance
+from pprof_py.algorithms.survival.cox_likelihood import cox_partial_likelihood
+from pprof_py.utils.deviance import saturated_log_likelihood, cox_deviance
 
 rng = np.random.RandomState(0)
 n_folds = 5
@@ -198,20 +212,48 @@ prov_fold = {p: rng.randint(0, n_folds) for p in unique_provs}   # whole facilit
 fold_id = np.array([prov_fold[p] for p in provider_arr])
 
 full = ProviderPenalizedCoxPH(alpha=1.0, n_lambda=30).fit(
-    X, duration=cohort["time"], event=cohort["death"], provider=provider_arr,
+    X, duration=cohort["time"], event=cohort["death"], provider_id=provider_arr,
 )
 lambda_path = full.lambda_path_
-# ... fit one ProviderPenalizedCoxPH per fold at lambda_path, score each
-# lambda's held-out deviance the same way GroupLassoCoxPHCV does internally ...
+
+# Held-out deviance from the facility-stratified partial likelihood: provider
+# effects cancel within a facility, so the held-out facilities' unknown effects
+# do not enter (the Verweij-van Houwelingen difference, as GroupLassoCoxPHCV).
+Xa = X.to_numpy(dtype=float)
+t = cohort["time"].to_numpy(dtype=float)
+d = cohort["death"].to_numpy(dtype=float)
+start, w = np.zeros_like(t), np.ones_like(t)
+strata = np.unique(provider_arr, return_inverse=True)[1]
+
+def deviance(rows, beta):
+    loglik, _, _ = cox_partial_likelihood(Xa[rows], start[rows], t[rows], d[rows], beta,
+                                          weight=w[rows], strata=strata[rows])
+    return cox_deviance(loglik, saturated_log_likelihood(t[rows], d[rows], w[rows], strata[rows]))
+
+everyone = np.ones(t.size, dtype=bool)
+cv_dev = np.zeros((n_folds, lambda_path.size))
+for k in range(n_folds):
+    train = fold_id != k
+    fold = ProviderPenalizedCoxPH(alpha=1.0, lambda_path=lambda_path).fit(
+        X[train], duration=cohort["time"][train], event=cohort["death"][train],
+        provider_id=provider_arr[train],
+    )
+    for j, beta in enumerate(fold.coef_path_):
+        cv_dev[k, j] = (deviance(everyone, beta) - deviance(train, beta)) / d[~train].sum()
+
+lambda_min = lambda_path[np.argmin(cv_dev.mean(axis=0))]
+print(f"lambda_min (5-fold manual CV): {lambda_min:.6f}")
+print("coef at lambda_min:")
+print(pd.Series(full.coef_at(lambda_min), index=X.columns).round(4).to_string())
 ```
 ```
-lambda_min (5-fold manual CV): 0.002322
+lambda_min (5-fold manual CV): 0.002299
 coef at lambda_min:
-  age                0.0447
-  sex                0.0000
-  diabetes           0.1472
-  comorbidity_count  0.1547
-  vintage_years     -0.0287
+age                  0.0447
+sex                  0.0000
+diabetes             0.1479
+comorbidity_count    0.1550
+vintage_years       -0.0289
 ```
 
 `sex` — correctly, since it has no real effect in this cohort's
@@ -223,8 +265,6 @@ zeroes out entirely.
 Chapter 13 moves to discrete-time survival models — a standalone
 family, not a `PenalizedCoxPH` extension, for data where events are
 only observed to occur within an interval rather than at an exact
-time. The
-[provider-penalized logistic chapter](../logistic/provider_penalized_logistic)
-this chapter paired with is the last of Deliverable 3; from here, the
-package's remaining undocumented surface is the discrete-time survival
-family and the infrastructure/utility reference pages.
+time. Its
+[provider-level counterpart](14_provider_discrete_survival) follows in
+Chapter 14.
