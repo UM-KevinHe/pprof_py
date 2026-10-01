@@ -9,7 +9,29 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
-## Unreleased
+## 0.6.0 (2026-10-01)
+
+The presentation layer: figures, tables and reports that show validated results without recomputing them, with
+funnel limits from the same test as the flags, and documentation on reading each display; plus the provider-test
+additions it rests on. Statistical results are unchanged from 0.5.0: estimates, tests and intervals are
+bit-identical. This release requires Python 3.10 or newer, and the earlier plotting calls now draw through the
+presentation layer; their deprecated options are removed in 0.7.0.
+
+### Migrating from 0.5.0
+
+- Python 3.10 or newer is required, and `numba` 0.57 or newer.
+- The plotting methods and the standalone `pprof_py.plot_caterpillar` and `pprof_py.plotting.plot_funnel` return a
+  `FigureResult`, which still unpacks as `fig, ax`. `plot_caterpillar` no longer returns `None` or calls
+  `plt.show()`: display the result in a notebook, or write it with `.save(path)`.
+- Styling keywords of the plotting calls are ignored with a `DeprecationWarning`; pass `theme=` (see
+  `Theme.derive`). They raise in 0.7.0.
+- `LogisticRandomEffectModel.plot_funnel()` draws the funnel of the exact count test. The linear random-effect
+  `plot_funnel()` and `plot_standardized_measures()` of models other than the logistic fixed-effect model keep their
+  earlier drawing with a `DeprecationWarning`, and are removed in 0.7.0.
+- `plot_caterpillar()` reads `ci_lower` and `ci_upper` by default; `lower` and `upper` are used with a warning until
+  0.7.0.
+- The full table of earlier calls and their replacements is in the migration guide (Presentation → Migrating to the
+  presentation layer).
 
 ### Requirements and CI
 
@@ -51,7 +73,7 @@ feature attributions as a best reconstruction. There is no released
 - No estimate, test result or interval changes: the count-test kernels were split into reusable parts with identical
   arithmetic.
 
-### Presentation layer (in progress)
+### Presentation layer
 
 - `import pprof_py` no longer imports `matplotlib.pyplot`, or Matplotlib at all: the plotting functions import it
   when they are called, and their output is unchanged. Importing the package is about a quarter faster.

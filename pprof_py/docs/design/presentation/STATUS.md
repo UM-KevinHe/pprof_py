@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-6 (quality review) complete under decisions D9–D67. All phases delivered; awaiting the maintainer's review. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+6 (quality review) complete under decisions D9–D68. All phases delivered; release 0.6.0 prepared for the merge into `main`. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
 |---|---|---|
@@ -24,6 +24,7 @@
 | P5-3 | Decision guide (with a tested family matrix); theme, export and accessibility guide; migration guide (D65) | delivered |
 | P6-1 | Adversarial review: five hostile datasets, six defects fixed with tests (`03_quality_review.md`, D66) | delivered |
 | P6-2 | Eight-area review (all PASS), analyst-question test, final report (`03_quality_review.md`, `04_final_report.md`, D67) | delivered |
+| Release | Version 0.6.0, dated 2026-10-01 (`round_release_0_6_0.diff`, D68) | delivered |
 
 Phase 3 rounds:
 
@@ -38,6 +39,11 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## Release 0.6.0 evidence
+- Version 0.6.0 in `pyproject.toml`, `pprof_py.__version__` and the docs (`release`, `version`); changelog section `0.6.0 (2026-10-01)` with a summary and "Migrating from 0.5.0"; docs home note updated. The provider-table goldens pin a synthetic `package_version` and are unchanged; the one version-bearing docs output (Presentation reference page) changed only in its four version strings and prints its stored output on both stacks.
+- Wheel `pprof_py-0.6.0-py3-none-any.whl`: `Version: 0.6.0`, `Requires-Python: >=3.10`, 44 presentation modules, `excel` extra, no docs extension.
+- Full suite (run in five groups): 1 failed (`test_setup_logger`, environmental) / 946 passed / 1 skipped, as before the bump. Docs: 4 warnings (intersphinx); the built site shows 0.6.0.
 
 ## P6-2 evidence
 - Eight-area review: all PASS (`03_quality_review.md` part 2) — identity battery 24/24; performance budgets met in isolation (interval plot 1.6–2.1 s at 50,000; `funnel_limits` +5.1 s at 10,000; import 1.17 s vs 1.55 s for v0.5.0); API introspection; preset accessibility; pyflakes clean.

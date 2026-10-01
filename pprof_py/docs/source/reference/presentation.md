@@ -64,7 +64,7 @@ U15       128        42      30.1                −0.86 (−1.26 to −0.48)   
 ==============================================================================
 ᵃ Estimates: fixed effect (unshrunken); 95% test-inversion intervals from the same test as the flags; an interval excludes the reference exactly when the provider is flagged. Reference: median provider effect −1.37.
 ᵇ ▲ above or ▼ below the reference; ● not different; NT not tested. Test: exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1).
-Source: LogisticFixedEffectModel; pprof_py 0.5.0. 16 providers.
+Source: LogisticFixedEffectModel; pprof_py 0.6.0. 16 providers.
 
 ```
 
@@ -93,7 +93,7 @@ Covariate  Odds ratio (95% CI)ᵃ  p-value
 x              1.97 (1.73–2.25)   <0.001
 ========================================
 ᵃ 95% intervals from LogisticFixedEffectModel.summary(). Each estimate is adjusted for the other covariates and the provider effects; associations are not causal, and covariates have their own units. Odds ratios are the exponentiated coefficients and bounds; p-values are those of the coefficients.
-Source: LogisticFixedEffectModel; pprof_py 0.5.0.
+Source: LogisticFixedEffectModel; pprof_py 0.6.0.
 
 ```
 
@@ -117,7 +117,7 @@ Provider  Recordsᵃ  Issue
 --------  --------  -----
 =========================
 ᵃ Records per provider.
-Source: LogisticFixedEffectModel; exact Poisson-binomial test, two-sided, 95% level per provider; pprof_py 0.5.0.
+Source: LogisticFixedEffectModel; exact Poisson-binomial test, two-sided, 95% level per provider; pprof_py 0.6.0.
 
 ```
 
@@ -328,7 +328,7 @@ Null group  Providers  Fitted null: Null mean  Fitted null: Null SD  Flagged: Th
 1                  16                    0.60                  2.52  ▲ 5 / ▼ 2                  ▲ 0 / ▼ 0                             7
 =======================================================================================================================================
 ᵃ ▲ above / ▼ below the reference. Test: score test, two-sided, 95% level per provider; empirical null, mean 0.60 and SD 2.52. Changed: providers whose flag differs between the two nulls.
-Source: LogisticFixedEffectModel; pprof_py 0.5.0.
+Source: LogisticFixedEffectModel; pprof_py 0.6.0.
 
 ```
 
