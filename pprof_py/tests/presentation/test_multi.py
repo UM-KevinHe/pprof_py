@@ -88,3 +88,25 @@ def test_table_and_determinism(col):
         x, y = make(), make()
         for fmt in ("svg", "pdf", "png"):
             assert x.to_bytes(fmt) == y.to_bytes(fmt)
+
+
+def test_agreement_does_not_place_providers_without_a_finite_estimate():
+    from pprof_py.presentation._synthetic import provider_data
+
+    d = provider_data(60)
+    zero = d.attrs["planted"]["zero_events"]
+    fits = {}
+    for label, outcome in (("A", "y"), ("B", "y2")):
+        m = LogisticFixedEffectModel()
+        m.fit(d, y_var=outcome, x_vars=["x1"], provider_var="provider_id")
+        fits[label] = ProviderProfile.from_model(m, test_method="wald")
+    col = ProfileCollection(fits)
+    r = measure_agreement(col)
+    placed = np.concatenate([np.asarray(p.get_offsets()) for k in ("same", "opposite", "one", "neither", "untested")
+                             for p in _gid(r.figure, f"agreement-{k}")])
+    zero_in = [z for z in zero if z in col.common()]
+    assert zero_in and r.counts["not_placed"] >= len(zero_in) and len(placed) == len(col.common()) - r.counts["not_placed"]
+    est = col["A"].data.loc[zero_in, "estimate"].to_numpy()
+    assert not np.isin(placed[:, 0], est).any()                                 # the bound estimates are not drawn
+    lo, hi = r.axes.get_xlim()
+    assert hi - lo < 10 and "without a finite estimate" in r.long_description

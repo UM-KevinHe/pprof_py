@@ -97,6 +97,13 @@ survival/14_provider_discrete_survival
 ```
 
 ```{toctree}
+:maxdepth: 1
+:caption: Presentation
+
+presentation/index
+```
+
+```{toctree}
 :maxdepth: 2
 :caption: Validation and R Compatibility
 

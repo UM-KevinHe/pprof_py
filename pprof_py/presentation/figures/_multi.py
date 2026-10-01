@@ -181,9 +181,12 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
     ids = col.common()
     fx, fy = col[x].data.reindex(ids), col[y].data.reindex(ids)
     ex, ey = fx["estimate"].to_numpy(dtype=float), fy["estimate"].to_numpy(dtype=float)
-    ok = np.isfinite(ex) & np.isfinite(ey)
+    finite = (fx["finite_estimate"].fillna(True).to_numpy(dtype=bool)
+              & fy["finite_estimate"].fillna(True).to_numpy(dtype=bool))
+    ok = np.isfinite(ex) & np.isfinite(ey) & finite            # solver-bound estimates would set the axes (M1)
     joint = joint_status(fx["flag"], fy["flag"])
-    counts = {key: int((joint == key).sum()) for key, *_ in _JOINT}
+    counts = {key: int(((joint == key).to_numpy() & ok).sum()) for key, *_ in _JOINT}
+    not_placed = int((~ok).sum())
     nx, ny = float(np.nanmedian(fx["null_value"])), float(np.nanmedian(fy["null_value"]))
     from matplotlib.collections import LineCollection
     from matplotlib.lines import Line2D
@@ -196,7 +199,9 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
     note = (f"{fmt_count(len(ids))} providers in both measures" + (f" ({fmt_count(only_x)} only in {x}, "
             f"{fmt_count(only_y)} only in {y})" if only_x or only_y else "") + f". Crosses: each measure's "
             f"interval; lines: each measure's reference. {x}: {test_text(col[x].provenance)}; {y}: "
-            f"{test_text(col[y].provenance)}. Joint status counts the two tests' flags. Agreement between estimates "
+            f"{test_text(col[y].provenance)}. Joint status counts the two tests' flags"
+            + (f"; {fmt_count(not_placed)} provider{'s' if not_placed != 1 else ''} without a finite estimate in at "
+               "least one measure are not placed" if not_placed else "") + ". Agreement between estimates "
             "is attenuated by estimation noise, so the cloud understates how closely true provider effects agree; a "
             "flag on one measure says nothing by itself about the other.")
     with th.rc_context():
@@ -234,8 +239,9 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                    fontsize=th.typography.legend)
         freeze_layout(fig)
-    alt = (f"Agreement of {x} and {y} for {fmt_count(len(ids))} providers: {fmt_count(counts['same'])} flagged on both "
+    alt = (f"Agreement of {x} and {y} for {fmt_count(int(ok.sum()))} providers: {fmt_count(counts['same'])} flagged on both "
            f"in the same direction, {fmt_count(counts['opposite'])} in opposite directions, {fmt_count(counts['one'])} "
            f"on one measure only, {fmt_count(counts['neither'])} on neither.")
     return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note,
-                        provenance={"x": x, "y": y}, counts=counts, kind="measure_agreement")
+                        provenance={"x": x, "y": y}, counts={**counts, "not_placed": not_placed},
+                        kind="measure_agreement")

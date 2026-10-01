@@ -1,6 +1,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../..'))  # Repository root (one level above pprof_py/)
+sys.path.insert(0, os.path.abspath('_ext'))  # local extensions (the presentation gallery)
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -31,6 +32,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'myst_parser',
     'matplotlib.sphinxext.plot_directive',
+    'pprof_gallery',
 ]
 
 # -- MyST (Markdown) configuration -------------------------------------------
@@ -54,7 +56,7 @@ bibtex_reference_style = 'author_year'
 autosummary_generate = False  # no page uses autosummary directives
 
 # templates_path = ['_templates']  # No custom templates yet
-exclude_patterns = []
+exclude_patterns = ['presentation/_gallery_items.md']  # generated, included by presentation/gallery.md
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
