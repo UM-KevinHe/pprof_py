@@ -121,6 +121,32 @@ Source: LogisticFixedEffectModel; exact Poisson-binomial test, two-sided, 95% le
 
 ```
 
+## Null calibration
+
+The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the
+fitted null, and compares the flags of the two nulls. A model is tested twice; the flags are the test's own.
+
+```python
+from pprof_py.inference import EmpiricalNull
+from pprof_py.presentation import null_calibration, null_calibration_table
+
+empirical = EmpiricalNull.fitter()
+print(null_calibration(model, test_method="score", null_model=empirical).alt_text)
+print(null_calibration_table(model, test_method="score", null_model=empirical).to_text())
+```
+```text
+Null-calibration diagnostic for 16 providers in 1 group; fitted null means 0.60 to 0.60 and SDs 2.52 to 2.52; flagged under the theoretical null: 7, under the fitted null: 0; 7 flags change.
+Null calibration: 16 providers
+==================================================================================
+Null group  Providers  Null mean  Null SD  Theoretical null  Fitted null  Changedᵃ
+----------  ---------  ---------  -------  ----------------  -----------  --------
+1                  16       0.60     2.52  ▲ 5 / ▼ 2         ▲ 0 / ▼ 0           7
+==================================================================================
+ᵃ ▲ above / ▼ below the reference. Test: score test, two-sided, 95% level per provider; empirical null, mean 0.60 and SD 2.52. Changed: providers whose flag differs between the two nulls.
+Source: LogisticFixedEffectModel; pprof_py 0.5.0.
+
+```
+
 ## Migrating from the model plot methods
 
 The model methods keep working: most now delegate to the new displays, and the others keep their earlier drawing with

@@ -3,10 +3,11 @@
 :func:`provider_table` builds the provider summary table from a model, a ``test()`` result or a profile; its
 footnotes come from the test's settings and the providers' statuses (spec §3; brief §6).
 """
+from ._calibration import null_calibration_table
 from ._coefficients import coefficient_table
 from ._quality import data_quality_table
 from ._provider import TableResult, provider_table
 from ._spec import Column, TableSpec, render_html, render_latex, render_markdown, render_text
 
-__all__ = ["Column", "TableResult", "TableSpec", "coefficient_table", "data_quality_table", "provider_table", "render_html", "render_latex", "render_markdown",
+__all__ = ["Column", "TableResult", "TableSpec", "coefficient_table", "data_quality_table", "null_calibration_table", "provider_table", "render_html", "render_latex", "render_markdown",
            "render_text"]

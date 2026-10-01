@@ -24,7 +24,7 @@ STATUSES = ("above", "below", "not_different", "not_tested", "suppressed")
 """Primary statuses: one per provider, from ``flag``; ``suppressed`` only under :meth:`ProviderProfile.with_min_volume`."""
 
 TEST_COLUMNS = ("estimate", "se", "ci_lower", "ci_upper", "null_value", "flag", "p_value", "z_raw", "z_adjusted",
-                "null_group")
+                "null_mean", "null_sd", "null_group")
 _COUNT_COLUMNS = ("observed", "expected", "denominator", "person_time")
 _FUNNEL_COLUMNS = ("funnel_estimate", "funnel_precision", "funnel_lower", "funnel_upper")
 _ATTRIBUTE_COLUMNS = ("zero_events", "all_events", "finite_estimate")

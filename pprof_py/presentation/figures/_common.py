@@ -53,7 +53,8 @@ def note_rows(text: str, width_mm: float, font_pt: float, family: str) -> Tuple[
 
 
 def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note: str, *,
-             width_ratios: Optional[Sequence[float]] = None, sharey: bool = True):
+             width_ratios: Optional[Sequence[float]] = None, sharey: bool = True,
+             grid: Optional[Tuple[int, int]] = None):
     """Figure with three stacked sub-figures: data, legend and footnote, each sized from its content.
 
     With ``width_ratios`` the data row holds that many axes side by side, sharing the y axis; otherwise one axes.
@@ -71,7 +72,9 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     wrapped, note_mm = note_rows(note, usable, theme.typography.footnote, family)
     fig = Figure(figsize=(width_in, (main_mm + key_mm + note_mm) / 25.4), layout="constrained")
     top, key, foot = fig.subfigures(3, 1, height_ratios=[main_mm, max(key_mm, 0.01), note_mm])
-    if width_ratios is None:
+    if grid is not None:                            # panels in rows and columns, sharing the x axis
+        ax = tuple(top.subplots(grid[0], grid[1], squeeze=False, sharex=True).ravel())
+    elif width_ratios is None:
         ax = top.add_subplot()
     else:
         ax = tuple(top.subplots(1, len(width_ratios), sharey=sharey,

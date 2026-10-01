@@ -9,7 +9,8 @@
 |---|---|---|
 | P4-1 | Coefficient forest and coefficient table (`CoefficientProfile`); logistic RE `summary()` intervals (D47) | delivered |
 | P4-2 | Data-quality panel and table (`data_quality`, `data_quality_table`) | delivered |
-| P4-3 | Null-calibration diagnostics | next |
+| P4-3 | Null-calibration diagnostics and table (`null_calibration`, `null_calibration_table`) | delivered |
+| P4-4 | Observed versus expected | next |
 
 Phase 3 rounds:
 
@@ -24,6 +25,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-3 evidence
+- Histograms equal `np.histogram` of each group's `z_raw` over the drawn edges; fitted densities equal `n * width * N(null_mean, null_sd)` exactly and peak at the null mean; flag counts and changes equal an independent cross-tabulation of the two `test()` results; the theoretical-null and profile paths say why there is no comparison.
+- Visual QA [viewed]: 598 providers, empirical null in 3 size groups (SD 1.20 to 1.77; 78 flagged under the theoretical null, 23 under the fitted null).
+- 5 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutation: the fitted density drawn with SD 1 fails 1 test.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 884 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-2 evidence
 - Accounting equals the profile's statuses and the model's exclusion record (in the data = analysed + excluded); unrecorded exclusions read "not recorded" in figure and table; bars, volume points per group (checked against an independent grouping), excluded providers' records and the minimum-volume line equal their sources; excluded providers stay off an axis in other units.
