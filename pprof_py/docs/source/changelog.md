@@ -88,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- Displays on hostile data (quality review): log axes over many decades label only powers of ten; the
+  observed-versus-expected axes use ticks even in square-root space; null calibration keeps the bulk of the statistics
+  in view and counts extreme ones at the axis edge; the funnel always shows its test-level limits; the variation display
+  states when sigma is estimated at 0 instead of drawing a degenerate density; shrinkage labels avoid the points.
 - Documentation: **Which display answers my question?** (the analyst's questions mapped to displays and tables, and a
   family-support matrix that the tests check), **Theme, export and accessibility**, and **Migrating to the
   presentation layer** (the table of earlier calls, which moves there from the Presentation reference page).

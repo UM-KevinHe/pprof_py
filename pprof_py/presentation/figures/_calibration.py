@@ -57,7 +57,11 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
     ncol = min(g, 3)
     nrow = math.ceil(g / ncol)
     finite = z[tested & np.isfinite(z)]
-    lo, hi = float(np.floor(finite.min() * 2) / 2), float(np.ceil(finite.max() * 2) / 2)
+    med = float(np.median(finite))                            # a few extreme statistics must not flatten the bulk:
+    bound = max(6.0, abs(med) + 6.0 * 1.4826 * float(np.median(np.abs(finite - med))))   # median + 6 robust SDs
+    lo = max(float(np.floor(finite.min() * 2) / 2), -np.ceil(bound))
+    hi = min(float(np.ceil(finite.max() * 2) / 2), np.ceil(bound))
+    beyond = int(((finite < lo) | (finite > hi)).sum())
     edges = np.arange(lo, hi + 0.5, 0.5) if (hi - lo) / 0.5 <= 60 else np.linspace(lo, hi, 61)
     width = float(edges[1] - edges[0])
     grid = np.linspace(lo, hi, 400)
@@ -71,6 +75,9 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
     if fitted_differs:
         entries.append((Line2D([], [], color=th.limit, lw=th.lines.reference), "Fitted null"))
     note = _footnote(prov, summary, theoretical is not None and fitted_differs, len(f), fitted_differs)
+    if beyond:
+        note += (f" {fmt_count(beyond)} provider{'s' if beyond != 1 else ''} with a raw z beyond the axis "
+                 f"(\u00b1{fmt_number(hi, 0)}) {'are' if beyond != 1 else 'is'} counted at its edge.")
     with th.rc_context():
         fig, axes, key, ncol_legend, inset = scaffold(th, size, nrow * 42.0 + 10.0, [lab for _, lab in entries], note,
                                                       grid=(nrow, ncol))
@@ -92,6 +99,13 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
                         lw=th.lines.reference, zorder=3.0, gid=f"calibration-fitted-{key_}")
             label = "All providers" if key_ == "all" else f"Group {key_}"
             ax.set_title(f"{label} ({fmt_count(row['providers'])})", loc="left", fontsize=th.typography.label)
+            for side, n_out, xpos, ha in (("left", int((zg < lo).sum()), 0.0, "left"),
+                                          ("right", int((zg > hi).sum()), 1.0, "right")):
+                if n_out:
+                    arrow = "\u2190" if side == "left" else "\u2192"
+                    text_ = f"{arrow} {fmt_count(n_out)}" if side == "left" else f"{fmt_count(n_out)} {arrow}"
+                    ax.text(xpos, 0.03, text_, transform=ax.transAxes, ha=ha, va="bottom",
+                            fontsize=th.typography.annotation, color=th.muted, gid=f"calibration-beyond-{side}-{key_}")
             fitted = int(row["above_fitted"] + row["below_fitted"])
             text = (f"mean {fmt_number(row['null_mean'], 2)}, SD {fmt_number(row['null_sd'], 2)}" if fitted_differs
                     else "theoretical null")

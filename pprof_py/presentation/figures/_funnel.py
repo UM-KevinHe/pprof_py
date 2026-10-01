@@ -108,7 +108,10 @@ def funnel(source: Any, *args: Any, levels: Iterable[float] = (0.95, 0.998), hig
         x0, x1 = float(xs.min()), float(xs.max())
         span = math.log10(x1 / x0) if x1 > x0 else 1.0
         left = x0 / 10 ** (0.05 * span)
-        ylo, yhi = _y_range(y[shown & ~nofinite & np.isfinite(y)], ref, ratio)
+        body = shown & np.isfinite(lo) & np.isfinite(hi)
+        if body.any():                                  # keep the acceptance region in view (not only the points)
+            body &= x >= np.median(x[body])
+        ylo, yhi = _y_range(np.r_[y[shown & ~nofinite & np.isfinite(y)], lo[body], hi[body]], ref, ratio)
         ax.set_ylim(ylo, yhi)
         discrete = "count boundaries" in (fa.get("limit_rule") or "")
         labels = _draw_limits(ax, th, curves, exact_curves, discrete, x, lo, hi, shown, dense, test_level)

@@ -123,7 +123,13 @@ def log_ticks(axis: Any) -> None:
     from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 
     axis.set_major_locator(LogLocator(base=10.0, subs=(1.0, 2.0, 5.0)))
-    axis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.10g}"))
+
+    def label(v: float, _: Any) -> str:
+        lo, hi = sorted(axis.get_view_interval())
+        if lo > 0 and hi / lo > 10 ** 2.3 and not np.isclose(np.log10(v), np.round(np.log10(v))):
+            return ""                                   # over many decades only powers of ten are labelled
+        return f"{v:,.10g}"
+    axis.set_major_formatter(FuncFormatter(label))
     axis.set_minor_formatter(NullFormatter())
 
 

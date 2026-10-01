@@ -69,7 +69,9 @@ def provider_variation(model: Any, *, level: float = 0.95, theme: Union[str, The
     counts, _ = np.histogram(b, bins=edges)
     grid = np.linspace(-half, half, 400)
     scale = n * width
-    peak = max(float(counts.max()), scale * norm.pdf(0.0, 0.0, min(v.sigma, v.lower or v.sigma)))
+    degenerate = not np.isfinite(v.sigma) or v.sigma < 1e-6     # sigma estimated at 0: no density to draw
+    drawn = [s_ for s_ in ((v.sigma,) + ((v.lower, v.upper) if v.lower is not None else ())) if s_ and s_ >= 1e-6]
+    peak = max([float(counts.max())] + [scale * norm.pdf(0.0, 0.0, s_) for s_ in drawn])
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
 
@@ -86,24 +88,34 @@ def provider_variation(model: Any, *, level: float = 0.95, theme: Union[str, The
             f"{fmt_number(v.z, 2)}\u03c3 = {_range_text(v)}, computed for display from \u03c3.")
     if v.lower is None:
         note += " The model reports no interval for \u03c3, so its uncertainty is not shown."
+    if not np.isfinite(v.sigma) or v.sigma < 1e-6:                 # degenerate: nothing of the above is drawn
+        note = (f"{fmt_count(n)} providers, {v.model}. Bars: the BLUPs. \u03c3 is estimated at 0, so the model detects "
+                "no between-provider variation and no fitted distribution or range is drawn"
+                + (f"; {_sigma_text(v)}" if v.lower is not None else "") + ".")
     with th.rc_context():
         fig, ax, key, ncol, inset = scaffold(th, size, 60.0, [lab for _, lab in entries], note)
         ax.stairs(counts, edges, fill=True, color=th.volume, linewidth=0, zorder=1.0, gid="variation-histogram")
-        ax.plot(grid, scale * norm.pdf(grid, 0.0, v.sigma), color=th.limit, lw=th.lines.data, zorder=3.0,
-                gid="variation-fitted")
+        if not degenerate:
+            ax.plot(grid, scale * norm.pdf(grid, 0.0, v.sigma), color=th.limit, lw=th.lines.data, zorder=3.0,
+                    gid="variation-fitted")
         if v.lower is not None:
             for name, s in (("lower", v.lower), ("upper", v.upper)):
-                ax.plot(grid, scale * norm.pdf(grid, 0.0, s), color=th.limit, lw=th.lines.grid,
-                        linestyle=(0, (3.0, 2.0)), zorder=2.5, gid=f"variation-bound-{name}")
+                if s >= 1e-6:
+                    ax.plot(grid, scale * norm.pdf(grid, 0.0, s), color=th.limit, lw=th.lines.grid,
+                            linestyle=(0, (3.0, 2.0)), zorder=2.5, gid=f"variation-bound-{name}")
         yb = 1.18 * peak
+        if degenerate:
+            ax.text(0.5, 0.62, "\u03c3 is estimated at 0: no between-provider\nvariation is detected", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=th.typography.annotation, color=th.ink, gid="variation-degenerate")
         ax.plot([0.0, 0.0], [0.0, 1.06 * peak], color=th.reference, lw=th.lines.reference, zorder=1.5,
                 gid="reference")                                # stops below the bracket and its label
-        ax.plot([v.range_lower, v.range_upper], [yb, yb], color=th.ink, lw=th.lines.interval, zorder=4.0,
-                gid="variation-range")
-        for xv in (v.range_lower, v.range_upper):
-            ax.plot([xv, xv], [yb - 0.03 * peak, yb + 0.03 * peak], color=th.ink, lw=th.lines.interval, zorder=4.0)
-        ax.text(0.0, yb + 0.05 * peak, f"{pct(level)} of true effects if normal:\n{_range_text(v)}", ha="center",
-                va="bottom", fontsize=th.typography.annotation, color=th.ink, zorder=5.0, linespacing=1.25)
+        if not degenerate:
+            ax.plot([v.range_lower, v.range_upper], [yb, yb], color=th.ink, lw=th.lines.interval, zorder=4.0,
+                    gid="variation-range")
+            for xv in (v.range_lower, v.range_upper):
+                ax.plot([xv, xv], [yb - 0.03 * peak, yb + 0.03 * peak], color=th.ink, lw=th.lines.interval, zorder=4.0)
+            ax.text(0.0, yb + 0.05 * peak, f"{pct(level)} of true effects if normal:\n{_range_text(v)}", ha="center",
+                    va="bottom", fontsize=th.typography.annotation, color=th.ink, zorder=5.0, linespacing=1.25)
         ax.text(0.02, 0.97, _sigma_text(v), transform=ax.transAxes, ha="left", va="top",
                 fontsize=th.typography.annotation, color=th.ink, gid="variation-sigma")
         ax.set_xlim(-half, half)

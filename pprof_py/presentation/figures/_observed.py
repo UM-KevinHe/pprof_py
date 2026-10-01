@@ -25,6 +25,27 @@ def _sqrt_axis(axis_setter: Any) -> None:
     axis_setter("function", functions=(lambda v: np.sqrt(np.maximum(v, 0.0)), np.square))
 
 
+def _nice(v: float) -> float:
+    e = 10.0 ** np.floor(np.log10(v))
+    m = v / e
+    return float((1.0 if m < 1.5 else 2.0 if m < 3.0 else 5.0 if m < 7.0 else 10.0) * e)
+
+
+def sqrt_ticks(top: float) -> list:
+    """Nice tick values evenly spaced on a square-root axis from 0 to ``top`` (linear spacing crowds at the top)."""
+    raw = np.linspace(0.0, np.sqrt(top), 6)[1:] ** 2
+    ticks = sorted({_nice(v) for v in raw if v > 0})
+    return [0.0] + [v for v in ticks if v <= top and (v >= 1.0 or top < 3.0)]
+
+
+def _set_sqrt_ticks(axis: Any, top: float) -> None:
+    from matplotlib.ticker import FixedLocator, FuncFormatter, NullLocator
+
+    axis.set_major_locator(FixedLocator(sqrt_ticks(top)))
+    axis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.10g}"))
+    axis.set_minor_locator(NullLocator())
+
+
 def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]] = None,
                       theme: Union[str, Theme, None] = "publication", size: Union[str, float] = "single",
                       title: Optional[str] = None, **test_kwargs: Any) -> FigureResult:
@@ -105,6 +126,8 @@ def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]
         _sqrt_axis(ax.set_yscale)
         ax.set_xlim(0.0, top)
         ax.set_ylim(0.0, top)
+        _set_sqrt_ticks(ax.xaxis, top)
+        _set_sqrt_ticks(ax.yaxis, top)
         line = np.linspace(0.0, top, 200)
         ax.plot(line, line, color=th.reference, lw=th.lines.reference, zorder=1.2, gid="identity")
         for ratio in (0.5, 2.0):

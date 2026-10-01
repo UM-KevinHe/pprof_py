@@ -103,12 +103,19 @@ def shrinkage(fixed: Any, random: Any, *, fe_reference: Any = "mean", highlight:
                 if m.any():
                     ax.scatter(edge[m], y[~fin][m], marker=side, s=22.0, color=th.muted, linewidths=0, zorder=3.5,
                                clip_on=False, gid=f"shrinkage-offscale-{'left' if side == '<' else 'right'}")
-        # shrinkage leaves two regions empty: above the diagonal on the right, above the zero line on the left
         span = hi - lo
-        ax.text(lo + 0.62 * span, lo + 0.70 * span, "no shrinkage", ha="right", va="bottom",
-                fontsize=th.typography.annotation, color=th.reference)
-        ax.text(lo + 0.02 * span, 0.0 + 0.015 * span, "complete pooling", ha="left", va="bottom",
-                fontsize=th.typography.annotation, color=th.muted)
+        px, py = x[fin], y[fin]
+
+        def crowd(cx: float, cy: float) -> int:          # points near a candidate label position
+            return int(((np.abs(px - cx) < 0.12 * span) & (np.abs(py - cy) < 0.05 * span)).sum())
+        diag = [(lo + t * span, lo + t * span + 0.07 * span, "right") for t in (0.62, 0.85, 0.35, 0.15)]
+        cx, cy, ha = min(diag, key=lambda c: crowd(c[0] - 0.06 * span, c[1] + 0.02 * span))
+        ax.text(cx, cy, "no shrinkage", ha=ha, va="bottom", fontsize=th.typography.annotation, color=th.reference)
+        pool = [(lo + 0.02 * span, 0.015 * span, "left", "bottom"), (hi - 0.02 * span, 0.015 * span, "right", "bottom"),
+                (lo + 0.02 * span, -0.015 * span, "left", "top"), (hi - 0.02 * span, -0.015 * span, "right", "top")]
+        cx, cy, ha, va = min(pool, key=lambda c: crowd(c[0] + (0.08 if c[2] == "left" else -0.08) * span,
+                                                      c[1] + (0.02 if c[3] == "bottom" else -0.02) * span))
+        ax.text(cx, cy, "complete pooling", ha=ha, va=va, fontsize=th.typography.annotation, color=th.muted)
         if highlight is not None:
             ids = f.index
             for i in np.flatnonzero(np.asarray(ids.isin(list(highlight))) & fin):

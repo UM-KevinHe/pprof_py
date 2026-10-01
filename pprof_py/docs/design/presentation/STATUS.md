@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-5 (docs and gallery) complete under decisions D9–D65; Phase 6 (quality review) next. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+6 (quality review) in progress under decisions D9–D66. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
 |---|---|---|
@@ -22,7 +22,8 @@
 | P5-1 | Presentation docs section and build-time gallery (`_ext/pprof_gallery.py`, `_synthetic.provider_data`); agreement-plot fix (D63) | delivered |
 | P5-2 | Interpretation pages, one per display, and the tables page (D64) | delivered |
 | P5-3 | Decision guide (with a tested family matrix); theme, export and accessibility guide; migration guide (D65) | delivered |
-| Phase 6 | Quality review (brief §3.6) | next |
+| P6-1 | Adversarial review: five hostile datasets, six defects fixed with tests (`03_quality_review.md`, D66) | delivered |
+| P6-2 | Eight-area review with PASS/FAIL and evidence; analyst-question check; final report | next |
 
 Phase 3 rounds:
 
@@ -37,6 +38,11 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P6-1 evidence
+- 60 calls (every applicable display, the provider table and a report) on five hostile datasets: no failure, no unexpected warning, no wrong value; six layout and degenerate-case defects (A to F in `03_quality_review.md`) fixed, re-checked on contact sheets [viewed], and covered by `test_adversarial.py` (5 tests, both stacks; the decade rule's negative control fails). A first robust bound for null calibration failed the test with 60 providers and was replaced by a MAD-based bound.
+- After the fixes: the 60 calls succeed; the executed documentation pages print their stored outputs.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 944 passed / 1 skipped (cold-interpreter determinism included). Docs: 4 warnings (intersphinx); gallery regenerated.
 
 ## P5-3 evidence
 - Decision guide: every cell of its family matrix exercised on fitted models (supported cells draw, refused cells raise with a message); encoded as `test_capability_matrix.py`. The guide's first footnote was corrected: logistic RE funnels default to `poibin_exact`, and `test_method="wald"` is refused by `funnel_limits()`.
@@ -174,4 +180,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-Phase 6 quality review (brief §3.6): eight areas with PASS/FAIL and evidence, an adversarial dataset per display, and the analyst-question check.
+P6-2: eight-area review (statistical correctness, visual quality, API consistency, accessibility, performance, dependency health, maintainability, documentation) with PASS/FAIL and evidence; analyst-question check; final report.
