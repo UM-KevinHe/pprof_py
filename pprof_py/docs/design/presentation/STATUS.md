@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) in progress under decisions D9–D29. Rounds apply in strict order; each is one self-contained diff.
+3 (MVP) in progress under decisions D9–D33. Rounds apply in strict order; each is one self-contained diff.
 
 | Round | Content | State |
 |---|---|---|
@@ -12,8 +12,16 @@
 | R2 | `pprof_py.presentation`: `Theme`, `formatting`, accessibility metrics; layering tests; lazy pyplot imports in `plotting/` | delivered |
 | R3 | `pprof_py.inference.funnel_limits` and model methods; `degenerate_providers`; `at_bound` guard; excluded-provider records; CoxPH metadata; reference page *Funnel limits* | delivered |
 | R4 | Presentation data: `ProviderProfile` (adapters `from_model`, `from_test`, `from_frame`), statuses, provenance, capabilities and `CapabilityError`, S3/S4 checks on user frames, minimum-volume rule | delivered |
-| R5 | Funnel renderer and `FigureResult` (Figure API, theme `rc_context`, deterministic export, alt text, layout rules) | next |
-| R6–R8 | Interval plot; tables (+ `excel` extra); delegates, deprecations, acceptance | pending |
+| R5 | Funnel renderer and `FigureResult`: Figure API (no pyplot), theme `rc_context`, frozen layout, deterministic SVG/PDF/PNG, alt text, provenance footnote, dense mode | delivered |
+| R6 | Interval plot with volume panel and dense mode | next |
+| R7–R8 | Tables (+ `excel` extra); delegates, deprecations, acceptance | pending |
+
+## R5 evidence
+- Drawn artists equal the profile: status points, zero-event markers, limit curves and per-provider marks match `ProviderProfile` (and so `funnel_limits`) exactly; legend counts equal `status_counts()`.
+- Visual QA [viewed]: 10, 58, 100 (notebook preset, double width), 1,000 and 10,000 providers; score, exact (marks with Poisson references), grouped empirical null, linear Wald and CoxPH funnels; grayscale and simulated deutan, protan and tritan vision; Matplotlib 3.11.2 and 3.5.0. Fixed during QA: footnote overflow and squeezed data axes (sub-figures, D30), dashes on step-like curves (D31), the reference line crossing its label.
+- Determinism: repeated saves and two interpreters give identical SVG, PDF and PNG bytes after freezing the layout (constrained layout drifted between saves, ADR-006); no pyplot import.
+- Cost: 10,000 providers render in 0.20 s plus 0.21 s for a 300-dpi PNG; SVG 0.36 MB (budgets 3 s and 2 MB).
+- 14 new tests pass on Python 3.12 and on the 3.10 floor stack (Matplotlib 3.5.0). Mutations: points drawn 0.01 % off fail 2 tests; swapped limit marks fail 1. Full suite: 1 failed (`test_setup_logger`, environmental) / 811 passed / 1 skipped. Docs: 4 warnings (intersphinx).
 
 ## R4 evidence
 - Profiles equal their sources: every `test()` column, every funnel column (`FunnelLimits.providers`, curves), and the counts and denominators (`degenerate_providers`, `provider_sizes_`, CoxPH `observed`/`expected`/`person_time`). 18 of 18 profiles built from `test()` across families and methods (empirical nulls, one-sided, `critical`, both CoxPH tests) show no interval/flag disagreement, direction included.
@@ -42,4 +50,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-R5: the funnel renderer and `FigureResult`. Matplotlib `Figure` objects built directly inside the theme's `rc_context` (no pyplot); per-provider limit marks for exact count tests and exact curves otherwise, labelled with test, level and null model; reference levels as labelled curves; zero-event providers at O/E = 0 with an outline marker (ADR-005); dense mode above 2,000 providers with flagged providers on top; provenance footnote and generated alt text; deterministic SVG/PDF/PNG; `CapabilityError` for profiles without funnel limits; render, determinism and accessibility tests.
+R6: the interval plot ("caterpillar") with a volume panel. Intervals as segments from `ci_lower` to `ci_upper` (so shifted empirical-null intervals render correctly), ordered by estimate for legibility ("Providers, ordered by estimate"), reference line, status encodings, zero-event and no-finite-estimate providers as off-scale markers with their exact one-sided intervals (ADR-005), volume bars labelled by denominator kind, labels up to 150 providers and a dense mode above, provenance footnote, alt text, frozen layout and deterministic export; `CapabilityError` for profiles without intervals.

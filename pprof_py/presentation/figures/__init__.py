@@ -1,0 +1,8 @@
+"""Figures: deterministic, accessible renderings of presentation data (spec §2, §7, §9).
+
+Every renderer returns a :class:`FigureResult`; none uses pyplot or leaves global state behind.
+"""
+from ._funnel import funnel
+from ._result import FigureResult
+
+__all__ = ["FigureResult", "funnel"]

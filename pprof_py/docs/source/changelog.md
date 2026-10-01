@@ -58,6 +58,13 @@ feature attributions as a best reconstruction. There is no released
   events and no finite estimate as separate attributes. Denominators, exclusions and the test's settings travel with
   it, and `require()` raises `CapabilityError` when a display needs something the profile lacks. Frames whose
   intervals or funnel limits contradict their flags trigger a warning that names the providers.
+- `pprof_py.presentation.funnel(source, ...)`: a funnel plot whose control limits come from the same test as the flags
+  (through `funnel_limits`), so a provider lies outside its limits exactly when it is flagged. Score, Wald and CoxPH
+  funnels draw exact limit curves; exact count tests draw each provider's own limits, with Poisson reference curves.
+  Statuses are encoded by shape, fill and colour, zero-event providers sit at O/E = 0 with an outline marker, and
+  above 2,000 providers the not-different points are rasterized while flagged providers stay on top. Each figure
+  carries a provenance footnote and alt text, and returns a `FigureResult` whose SVG, PDF and PNG exports are
+  byte-identical for the same input and environment; no pyplot state is involved.
 
 ## 0.5.0 (2026-09-29)
 

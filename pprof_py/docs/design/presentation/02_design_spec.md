@@ -192,7 +192,7 @@ Immutable `Theme` objects; users derive new themes, there is no styling kwarg sp
 2. Direct labels at line ends are de-overlapped.
 3. Log axes use plain-number 1-2-5 tick formatters.
 4. The main axes keep at least 50% of the figure width.
-5. Remaining prototype defects to fix in the MVP: the dense plot's legend row overprints the first provenance line; the funnel's "1.00" label collides with the y tick.
+5. Remaining prototype defects to fix in the MVP: the dense plot's legend row overprints the first provenance line; the funnel's "1.00" label collides with the y tick. *Fixed in R5:* legend and footnote are separate sub-figures sized from measured text (D30); the reference value is labelled inside a label strip right of the data, and lines end before it.
 
 ---
 

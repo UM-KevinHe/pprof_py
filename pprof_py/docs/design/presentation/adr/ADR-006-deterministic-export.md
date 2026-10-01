@@ -17,3 +17,7 @@ Two separate processes with no `SOURCE_DATE_EPOCH` and no global rcParams produc
 
 ## Consequences
 Byte identity is guaranteed per environment (Matplotlib and FreeType versions change glyph outlines); tests compare outputs within one environment.
+
+## Implementation (R5, 2026-10-01)
+* `FigureResult.to_bytes()` renders inside the theme's `rc_context` with `metadata={"Date": None}` (SVG), `{"CreationDate": None, "ModDate": None, "Title", "Subject"}` (PDF) and `{"Title", "Description"}` (PNG); SVG output gets `role="img"`, `aria-labelledby` and `<title>`/`<desc>` with fixed ids.
+* **Layout freezing (D30).** Constrained layout restarts from the current positions on every draw and is not idempotent: saving one figure four times gave four different SVGs, differing in the fourth decimal of coordinates. Renderers therefore draw once on an Agg canvas inside the theme context and then switch the layout engine off (`set_layout_engine("none")`, or `set_constrained_layout(False)` on Matplotlib 3.5). Verified: repeated saves and two separate interpreters give identical SVG, PDF and PNG bytes, on Matplotlib 3.11.2 and 3.5.0.
