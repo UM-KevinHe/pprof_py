@@ -350,5 +350,7 @@ a `DeprecationWarning` until 0.7.0.
 | `plt.show()` after a plot call | Not needed in notebooks; in scripts, save the result. |
 | `plot_caterpillar(df)` with `lower`/`upper` columns | The defaults are now `ci_lower`/`ci_upper`, the columns of `test()`; `lower`/`upper` are used with a warning until 0.7.0. |
 | A hand-built `limits_df` for `pprof_py.plotting.plot_funnel` | `pprof_py.inference.funnel_limits(model)`, or `funnel(model)`. |
+| `pprof_py.plotting.plot_funnel(df, limits_df, ...)` | Still works and now draws through `funnel()`: the supplied curves as given, each provider's limits read off the curve of the largest `alpha`, and a warning when flags contradict them. Returns a `FigureResult` (`fig, ax = ...` still works). Styling keywords are deprecated and ignored; `ax=` keeps the earlier drawing until 0.7.0. |
+| `pprof_py.plot_caterpillar(df, ...)` | Still works and now draws through `caterpillar()`, returning a `FigureResult` instead of `None` (no `plt.show()`). Styling keywords are deprecated and ignored; no intervals, `refline_value=None`, `sort_by_estimate=False` and `orientation='horizontal'` keep the earlier drawing until 0.7.0. For model results, `caterpillar(model)` also marks providers without a finite estimate. |
 | (new) | `provider_table(model)`: HTML, Markdown, LaTeX, text, DataFrame and Excel. |
 | `model.plot_coefficient_forest(...)` | `forest(model)` and `coefficient_table(model)` (the method itself is unchanged for now). |

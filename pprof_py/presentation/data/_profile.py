@@ -174,6 +174,24 @@ def _model_counts(model: Any, index: pd.Index) -> Dict[str, Any]:
     return {}
 
 
+_CURVE_COLUMNS = ("null_group", "level", "critical", "test_level", "precision", "lower", "upper")
+
+
+def _supplied_curves(curves: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    """Validate user-supplied funnel curves and put them in the ``FunnelLimits.curves`` layout."""
+    if curves is None:
+        return None
+    missing = [c for c in ("level", "test_level", "precision", "lower", "upper") if c not in curves.columns]
+    if missing:
+        raise ValueError(f"curves must have the columns {missing}")
+    out = curves.copy()
+    for c in ("null_group", "critical"):
+        if c not in out.columns:
+            out[c] = np.nan
+    out["test_level"] = out["test_level"].astype(bool)
+    return out[list(_CURVE_COLUMNS)].reset_index(drop=True)
+
+
 class ProviderProfile:
     """One provider test, ready for display: values, statuses, provenance and capabilities.
 
@@ -356,7 +374,8 @@ class ProviderProfile:
 
     @classmethod
     def from_frame(cls, df: pd.DataFrame, *, roles: Mapping[str, str], provenance: Optional[Mapping[str, Any]] = None,
-                   excluded: Optional[pd.DataFrame] = None) -> "ProviderProfile":
+                   excluded: Optional[pd.DataFrame] = None,
+                   curves: Optional[pd.DataFrame] = None) -> "ProviderProfile":
         """Build a profile from any frame, mapping profile roles to its columns.
 
         Parameters
@@ -370,6 +389,10 @@ class ProviderProfile:
         provenance : mapping, optional
             Settings to show with the display (``level``, ``reference``, ``null_model``, ``test_method``,
             ``estimator``, ...); missing essentials are recorded as ``None`` and shown as not stated.
+        curves : pandas.DataFrame, optional
+            Funnel-limit curves supplied with the data, in the layout of ``FunnelLimits.curves``: ``level``,
+            ``test_level``, ``precision``, ``lower``, ``upper`` (``null_group`` and ``critical`` optional). They are
+            drawn as supplied; per-provider limits, if any, come from the ``funnel_*`` roles.
 
         Warns
         -----
@@ -412,7 +435,7 @@ class ProviderProfile:
         _warn_violations("S3", s3)
         _warn_violations("S4", s4)
         prov["s3_violations"], prov["s4_violations"] = tuple(s3), tuple(s4)
-        return cls(frame, prov, excluded=excluded)
+        return cls(frame, prov, excluded=excluded, curves=_supplied_curves(curves))
 
     # ----------------------------------------------------------------------------------------- internals
     @staticmethod

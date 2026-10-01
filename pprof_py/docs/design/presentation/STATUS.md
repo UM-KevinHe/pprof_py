@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-4 (expand) in progress under decisions D9–D49. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+4 (expand) in progress under decisions D9–D60. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
 |---|---|---|
@@ -16,7 +16,9 @@
 | P4-7 | Shrinkage display and table (`shrinkage`, `shrinkage_table`) | delivered |
 | P4-8 | Flag stability display and table (`flag_stability`, `flag_stability_table`) | delivered |
 | P4-9 | Multi-measure displays and table (`ProfileCollection`, `multi_measure`, `measure_agreement`, `multi_measure_table`) | delivered |
-| Tier 2 check-in | Maintainer review of the Tier 2 displays before Phase 5 | **next (STOP)** |
+| Tier 2 check-in | Maintainer review of the Tier 2 displays | approved (D59) |
+| P4-10 | Standalone `plot_funnel` and `plot_caterpillar` as delegates (D45, D60) | delivered |
+| P4-11 | HTML report object | next |
 
 Phase 3 rounds:
 
@@ -31,6 +33,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-10 evidence
+- `plot_funnel`: supplied curves drawn exactly as given per level; each provider's marks equal an independent interpolation of the 95% curve; contradicting flags warn (S4); styling keywords warn, unknown ones raise; `ax=` keeps the earlier drawing with a warning; `save_path` writes. `plot_caterpillar`: intervals and reference equal the frame; R8's `lower`/`upper` fallback and its message unchanged; legacy-only options warn. Model mixins still call the `_legacy_*` functions.
+- Visual QA [viewed]: hand-built funnel (60 providers, 95% and 99.8% curves) and a `test()` frame interval plot.
+- 4 new tests pass on Python 3.12 and on the 3.10 floor stack (Matplotlib 3.5's pyparsing deprecations ignored as library-internal); R8's delegate tests unchanged and passing. Mutation: limits read off the 99.8% curve fail 1 test. Docs pages calling these functions print their stored outputs.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 920 passed / 1 skipped. Docs: 4 warnings (intersphinx).
 
 ## P4-9 evidence
 - Collection union and intersection; small-multiple points and segments equal each measure's profile in the common row order, with "n/a" for each provider a measure lacks; agreement points equal both estimates for the providers in both, and joint counts equal an independent cross-tabulation of the two tests' flags; table cells, flattened headers and values equal the profiles; golden files of earlier tables unchanged.
@@ -138,4 +146,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-STOP for the Tier 2 check-in (brief §3.1): the maintainer reviews the Tier 2 displays (P4-2 to P4-9) and the Tier 1 forest (P4-1). Then Phase 5 (docs, gallery, migration guide) and Phase 6 (quality review).
+P4-11: HTML report object (title, sections, text, figures, tables, methods and provenance appendix; single self-contained file with a print stylesheet). Then Phase 5.

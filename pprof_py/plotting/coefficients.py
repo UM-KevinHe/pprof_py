@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Tuple, Literal
 from . import style as _style
 
 
-def plot_caterpillar(
+def _legacy_plot_caterpillar(
     df: pd.DataFrame,
     estimate_col: str = 'estimate',
     ci_lower_col: Optional[str] = 'ci_lower',
@@ -316,3 +316,25 @@ def plot_caterpillar(
     else:
         plt.show()
 
+
+def plot_caterpillar(df: pd.DataFrame, estimate_col: str = "estimate", ci_lower_col: Optional[str] = "ci_lower",
+                     ci_upper_col: Optional[str] = "ci_upper", group_col: Optional[str] = None,
+                     flag_col: Optional[str] = None, *, refline_value: Optional[float] = 0.0,
+                     sort_by_estimate: bool = True, orientation: str = "vertical",
+                     plot_title: str = "Caterpillar Plot", save_path: Optional[str] = None,
+                     dpi: int = _style.SAVE_DPI, **style: object):
+    """Interval plot from a DataFrame, drawn through :func:`pprof_py.presentation.caterpillar` (D45).
+
+    Intervals are drawn from ``ci_lower_col`` to ``ci_upper_col``, the reference line at ``refline_value``, and
+    flags (``flag_col``; without one, providers read "not tested") with the package's status encodings. Returns a
+    :class:`~pprof_py.presentation.FigureResult` instead of ``None`` and no longer calls ``plt.show()``. Styling
+    keywords are deprecated and ignored; options the presentation layer does not offer (no intervals, no reference
+    line, ``sort_by_estimate=False``, ``orientation="horizontal"``) keep the earlier drawing, also deprecated
+    (removal in 0.7.0).
+    """
+    from ._standalone import caterpillar_from_frame
+
+    return caterpillar_from_frame(df, estimate_col, ci_lower_col, ci_upper_col, group_col, flag_col,
+                                  refline_value=refline_value, sort_by_estimate=sort_by_estimate,
+                                  orientation=orientation, plot_title=plot_title, save_path=save_path, dpi=dpi,
+                                  style=style, legacy=_legacy_plot_caterpillar)

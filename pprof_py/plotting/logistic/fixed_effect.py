@@ -14,8 +14,8 @@ import pandas as pd
 from scipy.stats import norm, t
 from fast_poibin import PoiBin
 
-from ...plotting import plot_caterpillar
-from ...plotting.funnel import plot_funnel as _render_funnel
+from ...plotting.coefficients import _legacy_plot_caterpillar as plot_caterpillar
+from ...plotting.funnel import _legacy_plot_funnel as _render_funnel
 from ...plotting import style as _style
 
 

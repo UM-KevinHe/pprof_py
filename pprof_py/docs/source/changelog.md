@@ -88,6 +88,13 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- The standalone `pprof_py.plotting.plot_funnel` and `pprof_py.plot_caterpillar` now draw through the presentation
+  layer and return a `FigureResult` (`plot_caterpillar` returned `None` and no longer calls `plt.show()`; `fig, ax =`
+  still works for both). `plot_funnel` draws the supplied `limits_df` curves as given and warns when flags contradict
+  them. Styling keywords are deprecated and ignored; options the new layer does not offer (`ax=`, no intervals,
+  `refline_value=None`, `sort_by_estimate=False`, `orientation="horizontal"`) keep the earlier drawing with a
+  `DeprecationWarning`; both are removed in 0.7.0.
+- `ProviderProfile.from_frame(..., curves=)` accepts funnel-limit curves supplied with the data.
 - `pprof_py.presentation.ProfileCollection` (several measures of the same providers), `multi_measure()` (one
   interval panel per measure, common row order), `measure_agreement()` (two measures per provider with interval
   crosses and the joint flag status of their tests) and `multi_measure_table()` (each measure under a grouped header).
