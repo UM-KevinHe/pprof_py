@@ -88,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.reliability(iur)` and `reliability_table(iur)`: each provider's reliability at its size and
+  the overall IUR from a fitted `BootstrapIUR`, and a table of the overall IUR, its variance decomposition and
+  reliability by size decile (also for `DirectIUR`, and the split-half statistics of `SplitHalfIUR`); both state that
+  reliability is a property of the measure, not a score for any provider.
 - `pprof_py.presentation.observed_expected(source)`: observed against expected events on square-root axes (Poisson
   noise has roughly constant spread there, so departures are comparable across volumes), with the line O = E, guides
   at O/E = 0.5 and 2, and the test's funnel limits converted to events (half-integer counts for count tests).

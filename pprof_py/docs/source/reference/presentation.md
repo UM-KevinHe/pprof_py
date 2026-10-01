@@ -135,6 +135,49 @@ print(observed_expected(profile).alt_text)
 Observed against expected events for 16 providers: 5 above and 2 below the reference at the 95% level; observed minus expected ranges from −14.3 to 22.1 events.
 ```
 
+## Reliability
+
+The reliability display shows how well a measure separates providers of each size: each provider's reliability at
+its size, the curve it traces, and the overall inter-unit reliability (IUR). Reliability is a property of the
+measure, not a score for any provider.
+
+```python
+from pprof_py.measures.iur import BootstrapIUR
+from pprof_py.presentation import reliability, reliability_table
+
+iur = BootstrapIUR(n_boot=50).fit(y.astype(float), np.full(y.size, y.mean()), pid)
+print(reliability(iur).alt_text)
+print(reliability_table(iur).to_text())
+```
+```text
+Reliability by provider size for 16 providers: from 0.54 at size 30 to 0.85 at size 143; overall IUR 0.79 at the effective size 99.
+Reliability of the measure (BootstrapIUR)
+======================================
+Quantity                        Valueᵃ
+------------------------------  ------
+Overall IUR                       0.79
+Effective size n′                   99
+Between-provider variance       0.1208
+Within-provider variance        3.0911
+Providers                           16
+Reliability: Smallest provider    0.54
+Reliability: Decile 1             0.56
+Reliability: Decile 2             0.70
+Reliability: Decile 3             0.72
+Reliability: Decile 4             0.79
+Reliability: Decile 5             0.80
+Reliability: Decile 6             0.82
+Reliability: Decile 7             0.83
+Reliability: Decile 8             0.84
+Reliability: Decile 9             0.84
+Reliability: Decile 10            0.85
+Reliability: Largest provider     0.85
+======================================
+ᵃ Reliability at a size n is s² between / (s² between + s² within / n); deciles are groups of providers by size, from the smallest to the largest. Reliability is a property of the measure at a given volume, not a score for any provider.
+Source: BootstrapIUR.
+
+```
+
 ## Null calibration
 
 The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the
