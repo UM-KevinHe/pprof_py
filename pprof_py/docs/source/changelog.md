@@ -88,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.flag_stability(model, ...)` and `flag_stability_table(...)`: the flags of each provider
+  flagged in at least one scenario, one `test()` call per scenario (by default an alternative reference, the other
+  null, and for three-stage models the bounds of sigma's interval from `sigma_sensitivity()`), with the providers
+  whose status changes marked; the table counts flags per scenario or lists the changing providers.
 - `pprof_py.presentation.shrinkage(fixed, random)` and `shrinkage_table(fixed, random)`: each provider's fixed-effect
   (unshrunken) estimate against its random-effect BLUP, both relative to their own test's reference (the fixed-effect
   test with `reference="mean"` by default), sized by volume, with the lines of no shrinkage and complete pooling;

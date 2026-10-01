@@ -257,6 +257,33 @@ Source: LogisticFixedEffectModel and LogisticRandomEffectModel.
 
 ```
 
+## Flag stability
+
+The flag-stability display runs the model's test once per scenario (by default an alternative reference and the
+other null) and lines up the flags of every provider flagged in at least one scenario. Agreement across a few
+scenarios does not make a flag robust.
+
+```python
+from pprof_py.presentation import flag_stability, flag_stability_table
+
+print(flag_stability(model).alt_text)
+print(flag_stability_table(model).to_text())
+```
+```text
+Flag stability across 3 scenarios for 16 providers: 7 flagged in at least one scenario, 0 of them identically in every scenario; 7 providers change status.
+Flag sensitivity: 16 providers, 3 scenarios
+============================================================================================================================================================================================================================
+Scenario         Above  Below  Not different  Not tested  Changed from baseᵃ  Test
+---------------  -----  -----  -------------  ----------  ------------------  ----------------------------------------------------------------------------------------------------------------------------------------------
+Base                 5      2              9           0                   —  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: median provider effect −1.37
+Reference: mean      5      2              9           0                   0  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: size-weighted mean provider effect −1.28
+Empirical null       0      0             16           0                   7  exact Poisson-binomial test, two-sided, 95% level per provider; empirical null, mean 0.55 and SD 2.44; reference: median provider effect −1.37
+============================================================================================================================================================================================================================
+ᵃ Providers whose flag (or tested status) differs from the base scenario. Each scenario is a separate test; agreement across them does not make a flag robust (risk adjustment, data preparation and the model are not varied).
+Source: LogisticFixedEffectModel, one test() per scenario.
+
+```
+
 ## Null calibration
 
 The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the

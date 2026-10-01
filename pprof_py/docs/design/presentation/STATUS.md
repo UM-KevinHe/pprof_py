@@ -14,7 +14,8 @@
 | P4-5 | Reliability display and table (`reliability`, `reliability_table`) | delivered |
 | P4-6 | Between-provider variation (`provider_variation`, `provider_variation_table`); export determinism fix (D55) | delivered |
 | P4-7 | Shrinkage display and table (`shrinkage`, `shrinkage_table`) | delivered |
-| P4-8 | Flag stability | next |
+| P4-8 | Flag stability display and table (`flag_stability`, `flag_stability_table`) | delivered |
+| P4-9 | Multi-measure displays | next |
 
 Phase 3 rounds:
 
@@ -29,6 +30,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-8 evidence
+- Every scenario column equals its own `test()` call (base, alternative reference, empirical null, custom scenarios); three-stage sigma columns equal `sigma_sensitivity()`; CoxPH gets no reference scenario; drawn cells, row order and change markers equal the flag matrix; table counts and changes equal independent computations; change detection treats "not tested" as a status (unit test).
+- Visual QA [viewed]: logistic FE (58 providers, 3 scenarios, 6 changing under the empirical null) and the three-stage model (30 providers, 5 scenarios including sigma's bounds).
+- 5 new tests pass on Python 3.12 and on the 3.10 floor stack (a pandas 1.5 object-array issue fixed with explicit boolean conversion). Mutation: "not tested" treated as "not different" fails 1 test (after adding the unit test; the first version could not detect it).
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 910 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-7 evidence
 - Pairs equal each test's estimate minus its null value (fixed effects with `reference="mean"`; BLUPs against 0); volumes equal the records per provider (checked against the data); drawn points, edge markers, diagonal and equal limits equal the pairs; the table's change equals random minus fixed, with NE where the fixed effect is not finite; mismatched or swapped families raise.
