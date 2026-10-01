@@ -24,3 +24,5 @@ Newest last. "Maintainer" decisions were given explicitly; "Claude" decisions fa
 | D18 | 2026-10-01 | No rankings in the MVP | Maintainer | Displays order by estimate for legibility only | brief §5.4 |
 | D19 | 2026-10-01 | House style: clean, modern, restrained, publication-quality scientific style; uncertainty, readability, accessibility, consistent typography and spacing, minimal chartjunk, clear provider-volume context | Maintainer | Theme tokens and renderer defaults (R2, R5, R6) | spec §4 |
 | D20 | 2026-10-01 | Design documents in `pprof_py/docs/design/presentation/`; branch `test/plotting`; one diff per round | Maintainer | Round R1 adds this folder | — |
+| D21 | 2026-10-01 | Tables show "not different" as ● (the figures' marker); ○ means "not tested" in figures and NT in tables | Claude | One symbol set across figures and tables | ADR-008, spec §3.4 |
+| D22 | 2026-10-01 | Accessibility tests use CIELAB ΔE (CIE76) with vendored Machado (2009) matrices; thresholds 40 / 25 / ΔL\* 15 | Claude | No test dependency; vendored simulation matches colorspacious to 1e-16 | ADR-008 |

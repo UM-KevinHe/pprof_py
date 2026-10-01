@@ -14,11 +14,12 @@ pattern as :func:`~pprof_py.plotting.coefficients.plot_caterpillar`.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+if TYPE_CHECKING:  # annotations only; functions import pyplot when called
+    import matplotlib.pyplot as plt
 
 from . import style as _style
 
@@ -97,6 +98,7 @@ def plot_funnel(
     fig, ax : matplotlib Figure and Axes
     """
     # ---- figure / axes ------------------------------------------------
+    import matplotlib.pyplot as plt
     if ax is None:
         fig, ax = plt.subplots(figsize=figure_size)
     else:

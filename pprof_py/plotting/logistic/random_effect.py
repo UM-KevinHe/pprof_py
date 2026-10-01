@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import norm
 
 from ...plotting import plot_caterpillar
@@ -514,6 +513,7 @@ class LogisticRandomEffectPlottingMixin:
         dpi : int, default 300
             Resolution for saving.
         """
+        import matplotlib.pyplot as plt
         self._check_is_fitted()
         if orientation not in ("vertical", "horizontal"):
             raise ValueError("orientation must be 'vertical' or 'horizontal'")

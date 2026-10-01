@@ -157,7 +157,7 @@ Pure, vectorized functions with explicit precision:
 - `fmt_p`: `<0.001`, never `0`.
 - `fmt_ratio`: two decimals by default.
 - `fmt_rate`: the scale goes in the header.
-- `fmt_flag`: ▲ ▼ ○ NT.
+- `fmt_flag`: ▲ ▼ ● NT (● is the figures' solid "not different" marker; ○ means "not tested" in figures, D21).
 - Missing-value symbols: `—` not applicable, `NE` no finite estimate, `NT` not tested, `S` suppressed, `NI` no interval.
 
 S12 rounding-collision rule: if a flagged provider's displayed bound equals the displayed null value, or an unflagged one's displayed bound excludes it, add digits until the display agrees, up to a cap, then footnote.

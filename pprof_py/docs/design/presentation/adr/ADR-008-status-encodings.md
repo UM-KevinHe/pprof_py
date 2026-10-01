@@ -25,5 +25,5 @@ Reference line: black, solid, 0.8 pt, direct label. Control limits: #4D4D4D, das
 
 Six candidate pairs were scored; four passed contrast and CVD thresholds; only this pair also separates in grayscale tone. Brown/azure (#994F00 / #006CD1) is the runner-up, with larger CVD distance but ΔL\* 4.3.
 
-## Test thresholds (become automated accessibility tests)
-Contrast ≥ 3:1 against the background for every status ink. ΔE ≥ 20 between above and below under every simulation, ΔE ≥ 15 against not different, ΔL\* ≥ 15 between above and below. Every status has a unique (marker, fill) pair.
+## Test thresholds (automated in `tests/presentation/test_accessibility.py`)
+Contrast ≥ 3:1 against the background for every status ink and line, text ≥ 4.5:1. Colour differences are CIE76 ΔE in CIELAB under the Machado (2009) simulations, vendored as three matrices so no dependency is added (they reproduce colorspacious to 1e-16; D22): above vs below ≥ 40 in every condition (shipped palette: worst 59.1, tritan), above or below vs not different ≥ 25 (worst 33.7), ΔL\* above vs below ≥ 15 (20.7). Every status has a unique (marker, fill) pair. A red/green pair fails (ΔE 7.3 under deuteranopia), which the tests check as a negative control. The CAM02-UCS figures above come from the Phase 2 spike.

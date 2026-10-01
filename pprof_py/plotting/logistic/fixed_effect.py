@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple, Union, Literal
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import norm, t
 from fast_poibin import PoiBin
 
@@ -587,6 +586,7 @@ class LogisticFixedEffectPlottingMixin:
             If the model is not fitted or if an invalid orientation is provided.
         """
         # Preconditions
+        import matplotlib.pyplot as plt
         if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
             raise ValueError("Model must be fitted before plotting coefficients.")
         if orientation not in ("vertical", "horizontal"):

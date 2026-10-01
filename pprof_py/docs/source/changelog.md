@@ -18,6 +18,14 @@ feature attributions as a best reconstruction. There is no released
   installed together with it).
 - **Test workflow.** `.github/workflows/tests.yml` runs the test suite on Python 3.10 and 3.14 for pushes to `main`,
   pull requests and manual runs. The documentation workflow builds on Python 3.10.
+### Presentation layer (in progress)
+
+- `import pprof_py` no longer imports `matplotlib.pyplot`, or Matplotlib at all: the plotting functions import it
+  when they are called, and their output is unchanged. Importing the package is about a quarter faster.
+- New provisional namespace `pprof_py.presentation`: `Theme` (immutable design tokens with `publication`,
+  `notebook` and `report` presets, varied through `Theme.derive`) and `formatting` (numbers, counts, intervals,
+  p-values and flags, with one set of missing-value symbols). The namespace grows with the presentation layer and
+  may change until it is complete.
 
 ## 0.5.0 (2026-09-29)
 

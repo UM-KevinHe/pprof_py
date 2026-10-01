@@ -7,7 +7,6 @@ fixed-effect and random-effect plotting mixins.
 import numpy as np
 import pandas as pd
 
-import matplotlib.pyplot as plt
 import warnings
 from typing import Optional, List, Dict, Tuple, Literal
 
@@ -129,6 +128,7 @@ def plot_caterpillar(
         Resolution for saving the plot.
     """
     # --- Input Validation ---
+    import matplotlib.pyplot as plt
     required_cols = [estimate_col]
     plot_ci = False
     if ci_lower_col and ci_upper_col:

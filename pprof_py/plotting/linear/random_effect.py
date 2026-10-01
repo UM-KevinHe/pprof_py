@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import norm, t, probplot
 
 from ...plotting import plot_caterpillar
@@ -549,6 +548,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model is not fitted or if an invalid orientation is provided.
         """
+        import matplotlib.pyplot as plt
         if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
             raise ValueError("Model must be fitted before plotting coefficients.")
         if orientation not in ("vertical", "horizontal"):
@@ -741,6 +741,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.fitted_ is None or self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting residuals.")
 
@@ -817,6 +818,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting QQ plot.")
 
