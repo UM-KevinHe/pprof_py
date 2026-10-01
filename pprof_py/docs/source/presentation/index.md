@@ -13,9 +13,12 @@ byte-identical SVG, PDF and PNG; tables export to HTML, Markdown, LaTeX, text an
 ```{toctree}
 :maxdepth: 1
 
+decision_guide
 gallery
 displays/index
 tables
+theme_export_accessibility
+migration
 ```
 
 The worked examples and the migration table are on {doc}`../reference/presentation`.

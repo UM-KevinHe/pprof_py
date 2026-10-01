@@ -80,7 +80,7 @@ def flag_stability(model: Any, *args: Any, scenarios: Optional[Mapping[str, Mapp
             f"estimate for legibility, not a ranking); {fmt_count(n - m)} never flagged; {fmt_count(c_all)} change "
             f"status between scenarios. Scenarios, each a separate test of {sc.model}: {descs}. Agreement across these "
             f"{k} scenarios does not make a flag robust: risk adjustment, data preparation and the model itself are "
-            "not varied.")
+            "not varied." + "".join(" " + n for n in sc.notes))
     with th.rc_context():
         fig, ax, key, ncol, inset = scaffold(th, size, max(m, 1) * row_mm + 16.0, [lab for _, lab in entries], note)
         y = np.arange(m - 1, -1, -1, dtype=float)

@@ -3,8 +3,9 @@ this module only runs the tests and lines up their flags)."""
 from __future__ import annotations
 
 import inspect
-from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional
+import warnings
+from dataclasses import dataclass, field
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ class FlagScenarios:
     estimate: pd.Series
     descriptions: Dict[str, str]
     model: str
+    notes: Tuple[str, ...] = field(default=())
 
 
 def _default_reference(model: Any) -> Any:
@@ -95,8 +97,17 @@ def flag_scenarios(model: Any, args: tuple = (), base: Optional[Mapping[str, Any
         specs[label] = merged.get("reference", default_ref)
     flags = pd.DataFrame({label: res["flag"].reindex(first.index) for label, res in runs.items()})
     descriptions = {label: _describe(res, specs[label]) for label, res in runs.items()}
+    notes: Tuple[str, ...] = ()
+    sens = None
     if scenarios is None and hasattr(model, "sigma_sensitivity"):
-        sens = model.sigma_sensitivity(**{k: v for k, v in base.items() if k != "providers"})
+        try:
+            sens = model.sigma_sensitivity(**{k: v for k, v in base.items() if k != "providers"})
+        except Exception as exc:                                     # report the statistical layer's failure
+            message = (f"sigma_sensitivity() failed ({type(exc).__name__}: {exc}), so the scenarios at the bounds of "
+                       "sigma's interval are omitted")
+            warnings.warn(message, UserWarning, stacklevel=3)
+            notes = (message[0].upper() + message[1:] + ".",)
+    if sens is not None:
         sigma = sens["sigma"]
         for col, label in (("lower", "\u03c3 at lower bound"), ("upper", "\u03c3 at upper bound")):
             flags[label] = sens["flags"][col].reindex(first.index).astype("Int64")
@@ -105,7 +116,7 @@ def flag_scenarios(model: Any, args: tuple = (), base: Optional[Mapping[str, Any
                                    "sigma_sensitivity()")
     flags = flags.astype("Int64")
     return FlagScenarios(flags=flags, estimate=first["estimate"].astype(float), descriptions=descriptions,
-                         model=type(model).__name__)
+                         model=type(model).__name__, notes=notes)
 
 
 def stability_summary(sc: FlagScenarios) -> pd.DataFrame:

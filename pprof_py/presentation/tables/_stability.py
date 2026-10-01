@@ -25,6 +25,7 @@ def flag_stability_table(model: Any, *args: Any, scenarios: Optional[Mapping[str
     labels = list(sc.flags.columns)
     caution = ("Each scenario is a separate test; agreement across them does not make a flag robust (risk adjustment, "
                "data preparation and the model are not varied).")
+    caution += "".join(" " + n for n in sc.notes)
     if details:
         sel = changing(sc)
         f = sc.flags.loc[sel]

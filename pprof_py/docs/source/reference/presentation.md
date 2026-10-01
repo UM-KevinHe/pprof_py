@@ -353,23 +353,5 @@ print(report.outline())
 
 ## Migrating from the model plot methods
 
-The model methods keep working: most now delegate to the new displays, and the others keep their earlier drawing with
-a `DeprecationWarning` until 0.7.0.
-
-| Earlier call | Now |
-|---|---|
-| `model.plot_funnel(...)` (logistic and linear fixed effects) | Delegates to `funnel(model, ...)` and returns a `FigureResult`; `fig, ax = model.plot_funnel()` still works. `alpha` sets the curve levels. |
-| `model.plot_funnel()` (logistic random effects) | The funnel of the exact count test (`test_method="poibin_exact"`); the default `"wald"` warns, is replaced, and raises in 0.7.0. |
-| `model.plot_funnel()` (linear random effects) | Deprecated: no funnel can agree with the test of shrunken estimates. Use `caterpillar(model)`. |
-| `model.plot_provider_effects(...)` | Delegates to `caterpillar(model, ...)`. |
-| `model.plot_standardized_measures(...)` (logistic fixed effects) | Delegates to `caterpillar` with the profile of `model.test_standardized(...)`. |
-| `model.plot_standardized_measures(...)` (other models) | Deprecated: their measure-scale intervals do not come from the flagging test. Use `caterpillar(model)`. |
-| Styling keywords (`point_colors`, `labels`, `figsize`, ...), `target=`, `use_flags=False` | No effect; `DeprecationWarning` now, `TypeError` in 0.7.0. Use `theme=`. |
-| `save_path=` | Still works; or `result.save(path)`. |
-| `plt.show()` after a plot call | Not needed in notebooks; in scripts, save the result. |
-| `plot_caterpillar(df)` with `lower`/`upper` columns | The defaults are now `ci_lower`/`ci_upper`, the columns of `test()`; `lower`/`upper` are used with a warning until 0.7.0. |
-| A hand-built `limits_df` for `pprof_py.plotting.plot_funnel` | `pprof_py.inference.funnel_limits(model)`, or `funnel(model)`. |
-| `pprof_py.plotting.plot_funnel(df, limits_df, ...)` | Still works and now draws through `funnel()`: the supplied curves as given, each provider's limits read off the curve of the largest `alpha`, and a warning when flags contradict them. Returns a `FigureResult` (`fig, ax = ...` still works). Styling keywords are deprecated and ignored; `ax=` keeps the earlier drawing until 0.7.0. |
-| `pprof_py.plot_caterpillar(df, ...)` | Still works and now draws through `caterpillar()`, returning a `FigureResult` instead of `None` (no `plt.show()`). Styling keywords are deprecated and ignored; no intervals, `refline_value=None`, `sort_by_estimate=False` and `orientation='horizontal'` keep the earlier drawing until 0.7.0. For model results, `caterpillar(model)` also marks providers without a finite estimate. |
-| (new) | `provider_table(model)`: HTML, Markdown, LaTeX, text, DataFrame and Excel. |
-| `model.plot_coefficient_forest(...)` | `forest(model)` and `coefficient_table(model)` (the method itself is unchanged for now). |
+The model methods and the standalone plotting functions keep working; the table of earlier calls and their
+replacements, the visible changes and the move from styling keywords to themes are in {doc}`../presentation/migration`.
