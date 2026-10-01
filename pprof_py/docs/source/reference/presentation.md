@@ -73,6 +73,30 @@ The figure objects export with `fig.save("funnel.svg")` (or `.pdf`, `.png`), giv
 `to_text()`, `to_frame()` and, with the optional `excel` extra, `to_excel()`. Styles come from a
 {class}`~pprof_py.presentation.Theme` (`theme="publication"`, `"notebook"` or `"report"`, or a derived theme).
 
+## Covariate effects
+
+The coefficient forest and table show a model's `summary()`: one row per term (the intercept is left out unless
+requested), with odds or hazard ratios on a log axis for logistic and Cox models.
+
+```python
+from pprof_py.presentation import coefficient_table, forest
+
+print(forest(model).alt_text)
+print(coefficient_table(model).to_text())
+```
+```text
+Forest plot of 1 terms (odds ratios) with 95% intervals: 1 of them exclude 1.
+Covariate effects: odds ratios, 1 terms
+========================================
+Covariate  Odds ratio (95% CI)ᵃ  p-value
+---------  --------------------  -------
+x              1.97 (1.73–2.25)   <0.001
+========================================
+ᵃ 95% intervals from LogisticFixedEffectModel.summary(). Each estimate is adjusted for the other covariates and the provider effects; associations are not causal, and covariates have their own units. Odds ratios are the exponentiated coefficients and bounds; p-values are those of the coefficients.
+Source: LogisticFixedEffectModel; pprof_py 0.5.0.
+
+```
+
 ## Migrating from the model plot methods
 
 The model methods keep working: most now delegate to the new displays, and the others keep their earlier drawing with
@@ -92,3 +116,4 @@ a `DeprecationWarning` until 0.7.0.
 | `plot_caterpillar(df)` with `lower`/`upper` columns | The defaults are now `ci_lower`/`ci_upper`, the columns of `test()`; `lower`/`upper` are used with a warning until 0.7.0. |
 | A hand-built `limits_df` for `pprof_py.plotting.plot_funnel` | `pprof_py.inference.funnel_limits(model)`, or `funnel(model)`. |
 | (new) | `provider_table(model)`: HTML, Markdown, LaTeX, text, DataFrame and Excel. |
+| `model.plot_coefficient_forest(...)` | `forest(model)` and `coefficient_table(model)` (the method itself is unchanged for now). |

@@ -8,11 +8,11 @@ funnel plot (:func:`funnel`) and the interval plot (:func:`caterpillar`), return
 and the provider table (:func:`provider_table`, returning a :class:`TableResult`).
 """
 from . import formatting
-from .data import PROFILE_COLUMNS, STATUSES, CapabilityError, ProviderProfile
-from .figures import FigureResult, caterpillar, funnel
-from .tables import Column, TableResult, TableSpec, provider_table
+from .data import PROFILE_COLUMNS, STATUSES, CapabilityError, CoefficientProfile, ProviderProfile
+from .figures import FigureResult, caterpillar, forest, funnel
+from .tables import Column, TableResult, TableSpec, coefficient_table, provider_table
 from .theme import STATUS_KEYS, Lines, StatusStyle, Theme, Typography, get_theme
 
-__all__ = ["CapabilityError", "Column", "FigureResult", "PROFILE_COLUMNS", "ProviderProfile", "STATUSES", "STATUS_KEYS",
+__all__ = ["CapabilityError", "CoefficientProfile", "Column", "FigureResult", "PROFILE_COLUMNS", "ProviderProfile", "STATUSES", "STATUS_KEYS",
            "Lines", "StatusStyle", "TableResult", "TableSpec", "Theme", "Typography", "caterpillar", "formatting",
-           "funnel", "get_theme", "provider_table"]
+           "coefficient_table", "forest", "funnel", "get_theme", "provider_table"]

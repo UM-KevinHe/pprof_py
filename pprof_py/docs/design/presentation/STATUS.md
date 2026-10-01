@@ -3,7 +3,14 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) **complete** under decisions D9–D46. **STOP: the maintainer reviews the rendered output** (`r8_mvp_samples.zip`) before Phase 4. Rounds applied in strict order; each was one self-contained diff.
+4 (expand) in progress under decisions D9–D49. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+
+| Round | Content | State |
+|---|---|---|
+| P4-1 | Coefficient forest and coefficient table (`CoefficientProfile`); logistic RE `summary()` intervals (D47) | delivered |
+| P4-2 | Data-quality panel | next |
+
+Phase 3 rounds:
 
 | Round | Content | State |
 |---|---|---|
@@ -17,9 +24,10 @@
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
 
-## Review at this gate
-- Look at: `r8_mvp_samples.zip` (funnels, interval plots and provider tables at 20, 1,000 and 10,000 providers; survival Chapter 10 rebuilt; the logistic tutorial's figures) and the earlier sample sheets (R5, R6), plus the docs page *Presentation layer (preview)*.
-- Decide: (1) the visual design (theme, status encodings, layout) as the basis for Phase 4; (2) the deprecation behaviour for the model plot methods; (3) Phase 4 order: Tier 2 displays (observed vs expected, between-provider variation, shrinkage, reliability, null calibration, flag stability, multi-measure, data quality), the coefficient forest (logistic RE `summary()` intervals first, spec §7), delegating the standalone `plot_funnel` and `plot_caterpillar`, reports.
+## P4-1 evidence
+- `LogisticRandomEffectModel.summary()`: existing columns bit-identical to R8; the new interval equals `Estimate -/+ z * Std.Error` and excludes 0 exactly when `Pr(>|z|) < 1 - level` (levels 0.90, 0.95, 0.99).
+- `CoefficientProfile` values equal each family's `summary()` columns (logistic FE and RE, linear FE and RE, CoxPH); exponentiation equals `exp` of the source exactly; forest segments, points, row order, reference line and text column equal the profile. Visual QA [viewed]: logistic odds ratios, linear RE with intercept, CoxPH hazard ratios (narrow range ticks).
+- 15 new tests pass on Python 3.12 and on the 3.10 floor stack. Full suite: 1 failed (`test_setup_logger`, environmental) / 873 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's new example prints its stored output on both stacks.
 
 ## R8 evidence
 - Delegates: 12 new tests (delegated methods return `FigureResult`s that unpack to `(fig, ax)`; logistic RE `plot_funnel` re-routed with a warning; legacy displays warn and still draw; styling keywords, `target=`, `use_flags=False` warn; `save_path` works; no pyplot import on delegated paths). `plot_caterpillar` reads `test()` frames by default and falls back to `lower`/`upper` with a warning.

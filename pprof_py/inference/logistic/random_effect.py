@@ -24,15 +24,33 @@ class LogisticRandomEffectInferenceMixin:
 
     _POSTERIOR_NODES = 32   # Gauss-Hermite nodes of the exact tests, as in the mixed-effect model
 
-    def summary(self) -> pd.DataFrame:
+    def summary(self, level: float = 0.95) -> pd.DataFrame:
+        """Fixed-effect coefficients with Wald z-tests and intervals.
+
+        Parameters
+        ----------
+        level : float, default 0.95
+            Confidence level of ``ci_lower`` and ``ci_upper``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by term: ``Estimate``, ``Std.Error``, ``z value``, ``Pr(>|z|)`` (as lme4) and the Wald interval
+            ``Estimate -/+ z_(1 - (1 - level)/2) * Std.Error`` as ``ci_lower``, ``ci_upper``; the interval excludes 0
+            exactly when the two-sided p-value is below ``1 - level``.
+        """
         self._check_is_fitted()
+        if not 0.0 < float(level) < 1.0:
+            raise ValueError("level must lie strictly between 0 and 1.")
         fe = self.coefficients_["beta"]
         vcov = self.variances_["beta"]
         se = np.sqrt(np.maximum(np.diag(vcov.to_numpy()), 0.0))
         z = np.divide(fe.to_numpy(), se, out=np.full_like(fe.to_numpy(), np.nan), where=se > 0)
         p = 2.0 * norm.sf(np.abs(z))
+        half = norm.ppf(1.0 - (1.0 - float(level)) / 2.0) * np.where(se > 0, se, np.nan)
         return pd.DataFrame(
-            {"Estimate": fe.to_numpy(), "Std.Error": se, "z value": z, "Pr(>|z|)": p},
+            {"Estimate": fe.to_numpy(), "Std.Error": se, "z value": z, "Pr(>|z|)": p,
+             "ci_lower": fe.to_numpy() - half, "ci_upper": fe.to_numpy() + half},
             index=fe.index,
         )
 

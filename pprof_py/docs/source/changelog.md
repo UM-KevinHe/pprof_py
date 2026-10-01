@@ -41,6 +41,9 @@ feature attributions as a best reconstruction. There is no released
   list the providers that data preparation removed, with their record counts and the reason; `None` when the model
   did not prepare the data.
 - **CoxPH test metadata.** `CoxPH.test()` records `attrs["measure"] = "indirect_ratio"` and `attrs["reference"] = 1.0`.
+- **Random-effect coefficient intervals.** `LogisticRandomEffectModel.summary(level=0.95)` adds the Wald interval
+  `ci_lower`, `ci_upper`; the existing columns are unchanged, and an interval excludes 0 exactly when the p-value is
+  below `1 - level`.
 - **Standardized-test metadata.** `LogisticFixedEffectModel.test_standardized()` records `attrs["test_method"]`
   (`"score"` for indirect measures tested with the null variance on the identity scale, which is the score
   statistic; `"wald"` otherwise), `attrs["variance"]` and `attrs["reference"]` (the reference effect gamma_0, as in
@@ -85,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.forest(model)` and `coefficient_table(model)`: covariate effects from `summary()` with their
+  intervals, as odds or hazard ratios on a log axis for logistic and Cox models (exponentiated for display through
+  `CoefficientProfile.exponentiate()`), with a footnote that the associations are adjusted, not causal, and in each
+  covariate's own units.
 - **Model plot methods delegate to the presentation layer.** `plot_funnel` (logistic and linear fixed effects),
   `plot_provider_effects` (all four models) and `plot_standardized_measures` (logistic fixed effects) now draw with
   `funnel` and `caterpillar` and return a `FigureResult` (`fig, ax = ...` still works); they no longer call
