@@ -12,7 +12,8 @@
 | P4-3 | Null-calibration diagnostics and table (`null_calibration`, `null_calibration_table`) | delivered |
 | P4-4 | Observed versus expected (`observed_expected`) | delivered |
 | P4-5 | Reliability display and table (`reliability`, `reliability_table`) | delivered |
-| P4-6 | Between-provider variation | next |
+| P4-6 | Between-provider variation (`provider_variation`, `provider_variation_table`); export determinism fix (D55) | delivered |
+| P4-7 | Shrinkage | next |
 
 Phase 3 rounds:
 
@@ -27,6 +28,11 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-6 evidence
+- Variation: the SD, interval and BLUPs equal `sigma_`/`profile_sigma()` (logistic) and `random_effect_sd_` (linear, not the residual `sigma_`); the histogram equals the BLUPs binned over the drawn edges; fitted and bound densities equal n * width * N(0, s) exactly; the range equals -/+ z sigma and its odds ratios exp of it. Visual QA [viewed]: logistic RE (sigma 0.53, profile interval 0.40-0.71) and linear RE (no interval). Mutation: reading the linear residual SD fails 2 tests.
+- Determinism (D55): a figure built after earlier drawing could differ from a cold build (SVG ids; "-0" in PDF), a latent defect since R5. Fixed by quantised frozen layouts and canonical SVG ids; mismatch rates 5/12 (reliability SVG) and 2/3 (observed-versus-expected PDF) fell to 0/12 and 0/10. New test: every figure type cold in its own interpreter, SVG, PDF and PNG.
+- 12 new tests (4 variation, 8 cold-interpreter determinism) pass on Python 3.12 and on the 3.10 floor stack; the determinism test passed 4 of 4 repeated runs (32 cold interpreters) and the presentation tests 3 of 3 runs. Full suite: 1 failed (`test_setup_logger`, environmental) / 902 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-5 evidence
 - Points equal `BootstrapIUR.group_sizes_` and `iur_groups_`; the curve joins them in size order; the overall line and n' marker equal `iur_` and `n_prime_`; tables equal the attributes, `decile_table()` and `SplitHalfIUR.summary()`; `DirectIUR` gets the table and a capability error for the figure.

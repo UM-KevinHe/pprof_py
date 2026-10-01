@@ -21,3 +21,18 @@ Byte identity is guaranteed per environment (Matplotlib and FreeType versions ch
 ## Implementation (R5, 2026-10-01)
 * `FigureResult.to_bytes()` renders inside the theme's `rc_context` with `metadata={"Date": None}` (SVG), `{"CreationDate": None, "ModDate": None, "Title", "Subject"}` (PDF) and `{"Title", "Description"}` (PNG); SVG output gets `role="img"`, `aria-labelledby` and `<title>`/`<desc>` with fixed ids.
 * **Layout freezing (D30).** Constrained layout restarts from the current positions on every draw and is not idempotent: saving one figure four times gave four different SVGs, differing in the fourth decimal of coordinates. Renderers therefore draw once on an Agg canvas inside the theme context and then switch the layout engine off (`set_layout_engine("none")`, or `set_constrained_layout(False)` on Matplotlib 3.5). Verified: repeated saves and two separate interpreters give identical SVG, PDF and PNG bytes, on Matplotlib 3.11.2 and 3.5.0.
+
+## Implementation note (P4-6): output must not depend on earlier drawing
+
+A figure built after another figure was drawn or saved in the same process could differ from the same figure built
+first. Drawing leaves FreeType state behind, so text measured later can differ in its last bit; constrained layout
+then placed axes and sub-figures ~1e-16 apart. That changed Matplotlib's SVG clip and marker ids (they hash the
+full-precision coordinates) and could leave a sub-figure at -0.0, which the PDF writer prints as "-0". Earlier
+determinism tests compared figures built after other drawing, so they never saw a cold build.
+
+Fix: `freeze_layout` rounds axes positions and sub-figure boxes to 1e-10 of the figure and normalises negative zero;
+the scaffold rounds its measured heights; `FigureResult` renames the hashed SVG ids in document order. Evidence: the
+reliability figure's SVG differed in 5 of 12 fresh processes and the observed-versus-expected PDF in 2 of 3; after
+the fix, 0 of 12 and 0 of 10. `tests/presentation/test_determinism_after_save.py` builds every figure type cold in
+its own interpreter, then again after saving, and compares SVG, PDF and PNG. Because the effect is intermittent, one
+run detects a regression only with some probability.

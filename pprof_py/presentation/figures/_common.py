@@ -70,6 +70,9 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     usable = (width_mm - 3.0) * 0.98              # rendered text boxes are about 1.5 % wider than the outlines
     ncol, key_mm = legend_rows(labels, usable, theme.typography.legend, family)
     wrapped, note_mm = note_rows(note, usable, theme.typography.footnote, family)
+    # measured text heights carry font-cache state in their last bits (a save leaves FreeType state behind); round
+    # them so the layout cannot depend on what was drawn before
+    key_mm, note_mm, main_mm = round(key_mm, 6), round(note_mm, 6), round(main_mm, 6)
     fig = Figure(figsize=(width_in, (main_mm + key_mm + note_mm) / 25.4), layout="constrained")
     top, key, foot = fig.subfigures(3, 1, height_ratios=[main_mm, max(key_mm, 0.01), note_mm])
     if grid is not None:                            # panels in rows and columns, sharing the x axis
@@ -99,6 +102,20 @@ def freeze_layout(fig: Any) -> None:
         fig.set_layout_engine("none")
     else:                                           # Matplotlib 3.5
         fig.set_constrained_layout(False)
+    # Text extents measured during the layout can differ in the last bit after an earlier save (shared FreeType
+    # state), which moves the axes by ~1e-16 and changes hashed SVG clip ids. Quantise the frozen positions to
+    # 1e-10 of the figure (about 10 picometres at single-column width) so output does not depend on history.
+    # Sub-figure boxes are placed by the same layout pass, so they are quantised too; "+ 0.0" turns a rounded -0.0
+    # into 0.0 (a PDF writes it as "-0").
+    import numpy as np
+    from matplotlib.axes import Axes
+    from matplotlib.figure import SubFigure
+
+    for sub in fig.findobj(SubFigure):
+        sub.bbox_relative.set_points(np.round(sub.bbox_relative.get_points(), 10) + 0.0)
+    for ax in fig.findobj(Axes):
+        x0, y0, w, h = ax.get_position().bounds
+        ax.set_position([round(x0, 10) + 0.0, round(y0, 10) + 0.0, round(w, 10) + 0.0, round(h, 10) + 0.0])
 
 
 def log_ticks(axis: Any) -> None:

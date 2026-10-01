@@ -1,6 +1,8 @@
 """FigureResult: a rendered figure with deterministic export, alt text and provenance (ADR-006; §7.3, §7.4)."""
 from __future__ import annotations
 
+import re
+
 import io
 from pathlib import Path
 from types import MappingProxyType
@@ -80,7 +82,7 @@ class FigureResult:
             self._figure.savefig(buf, format=fmt, metadata=meta, dpi=self._theme.dpi if dpi is None else dpi)
         data = buf.getvalue()
         if fmt == "svg":
-            data = _accessible_svg(data.decode("utf-8"), self._alt, self._long).encode("utf-8")
+            data = _accessible_svg(_canonical_ids(data.decode("utf-8")), self._alt, self._long).encode("utf-8")
         return data
 
     def to_svg(self) -> str:
@@ -99,6 +101,26 @@ class FigureResult:
 
     def _repr_png_(self) -> bytes:
         return self.to_bytes("png", dpi=150)
+
+
+_HASHED_ID = re.compile(r'id="([pm][0-9a-f]{10})"')
+_HASHED_TOKEN = re.compile(r"\b[pm][0-9a-f]{10}\b")
+
+
+def _canonical_ids(svg: str) -> str:
+    """Rename Matplotlib's content-hashed SVG ids (clip paths ``p...``, markers ``m...``) in order of definition.
+
+    The hashes take the full-precision ``repr`` of coordinates, so last-bit noise from text measurement (which
+    depends on earlier drawing and on string-hash order) changed them although the drawing was identical
+    (ADR-006). The ids are opaque; the drawn coordinates are unchanged.
+    """
+    mapping: Dict[str, str] = {}
+    for old in _HASHED_ID.findall(svg):
+        if old not in mapping:
+            mapping[old] = f"{old[0]}{len(mapping) + 1:05d}"
+    if not mapping:
+        return svg
+    return _HASHED_TOKEN.sub(lambda m: mapping.get(m.group(0), m.group(0)), svg)
 
 
 def _accessible_svg(svg: str, title: str, desc: str) -> str:

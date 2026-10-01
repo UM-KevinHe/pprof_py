@@ -88,6 +88,12 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.provider_variation(model)` and `provider_variation_table(model)`: for logistic and linear
+  random-effect models, the BLUPs against the fitted between-provider distribution, the random-effect SD (with its
+  profile-likelihood interval for logistic models) and the range of true effects it implies under normality.
+- Figure exports no longer depend on what was drawn earlier in the same process: frozen layouts (axes and sub-figure
+  boxes) are quantised with negative zero normalised, and Matplotlib's content-hashed SVG ids are renamed in document
+  order. SVG ids of all figures change (`p00001`, `m00001`, ...); drawn content is unchanged.
 - `pprof_py.presentation.reliability(iur)` and `reliability_table(iur)`: each provider's reliability at its size and
   the overall IUR from a fitted `BootstrapIUR`, and a table of the overall IUR, its variance decomposition and
   reliability by size decile (also for `DirectIUR`, and the split-half statistics of `SplitHalfIUR`); both state that

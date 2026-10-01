@@ -178,6 +178,43 @@ Source: BootstrapIUR.
 
 ```
 
+## Between-provider variation
+
+For random-effect models, the variation display compares the shrunken provider effects (BLUPs) with the fitted
+between-provider distribution, states the random-effect SD with its interval where the model provides one, and shows
+the range in which most true provider effects would lie if that distribution is normal.
+
+```python
+from pprof_py import LogisticRandomEffectModel
+from pprof_py.presentation import provider_variation, provider_variation_table
+
+re_model = LogisticRandomEffectModel(verbose=False)
+re_model.fit(pd.DataFrame({"y": y, "x": x, "unit": [f"U{j:02d}" for j in pid]}), y_var="y", x_vars=["x"],
+             provider_var="unit")
+print(provider_variation(re_model).alt_text)
+print(provider_variation_table(re_model).to_text())
+```
+```text
+Between-provider variation in 16 providers: random-effect SD 0.48 (95% profile likelihood interval 0.31–0.76); 95% of true provider effects would lie within −0.94 to 0.94 (odds ratios 0.39 to 2.55) under a normal random-effect distribution; the BLUPs range from −0.68 to 0.76.
+Between-provider variation (LogisticRandomEffectModel)
+===========================================
+Quantity                             Valueᵃ
+-----------------------------------  ------
+Random-effect SD (σ)                   0.48
+σ, 95% interval: lower                 0.31
+σ, 95% interval: upper                 0.76
+Range of 95% of true effects: lower   −0.94
+Range of 95% of true effects: upper    0.94
+As odds ratios: lower                  0.39
+As odds ratios: upper                  2.55
+Providers                                16
+SD of the BLUPs (descriptive)          0.43
+===========================================
+ᵃ Effects on the log-odds scale, relative to the average provider. The range is ±1.96σ and assumes normal random effects; the BLUPs spread less than σ because they are shrunk toward the average.
+Source: LogisticRandomEffectModel; profile likelihood interval for σ.
+
+```
+
 ## Null calibration
 
 The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the
