@@ -332,6 +332,25 @@ Source: LogisticFixedEffectModel; pprof_py 0.5.0.
 
 ```
 
+## Reports
+
+A `Report` composes figures and tables into one self-contained HTML file with a print stylesheet: sections, text,
+numbered figures (SVG with their alt text and description) and tables, and an appendix listing the model, test, null
+model, reference and level recorded with each. It loads nothing from the network, adds no timestamp unless given a
+`date`, and notes that its tables carry provider-level values.
+
+```python
+from pprof_py.presentation import Report
+
+report = (Report("Provider profile", subtitle="Synthetic example")
+          .section("Results").figure(funnel(profile)).table(provider_table(profile))
+          .section("Data quality").table(data_quality_table(profile)))
+print(report.outline())
+```
+```text
+['Section: Results', 'Figure 1: funnel', 'Table 1: Provider results: Provider effect (log-odds), 16 providers', 'Section: Data quality', 'Table 2: Data quality: 16 analysed providers', 'Appendix: methods and provenance']
+```
+
 ## Migrating from the model plot methods
 
 The model methods keep working: most now delegate to the new displays, and the others keep their earlier drawing with

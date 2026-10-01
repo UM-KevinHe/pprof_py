@@ -88,6 +88,9 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.Report`: sections, text, figures and tables composed into one self-contained HTML file with a
+  print stylesheet and a generated methods and provenance appendix (`.to_html()`, `.save()`, `.outline()`); no
+  scripts, no network, no timestamp unless `date=` is given, and a note when tables carry provider-level values.
 - The standalone `pprof_py.plotting.plot_funnel` and `pprof_py.plot_caterpillar` now draw through the presentation
   layer and return a `FigureResult` (`plot_caterpillar` returned `None` and no longer calls `plt.show()`; `fig, ax =`
   still works for both). `plot_funnel` draws the supplied `limits_df` curves as given and warns when flags contradict

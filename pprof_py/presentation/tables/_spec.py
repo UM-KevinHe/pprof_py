@@ -117,10 +117,23 @@ color:#1a1a1a}
 @media print{.pprof-table{font-size:9pt}.pprof-table thead{display:table-header-group}}"""
 
 
+TABLE_CSS = _CSS
+
+
 def render_html(spec: TableSpec, *, standalone: bool = True) -> str:
     """Self-contained HTML: ``<caption>``, ``<th scope>``, footnotes in ``<tfoot>``; no scripts, fonts or links."""
     e = html.escape
-    out = ['<table class="pprof-table">', f"<caption>{e(spec.caption)}</caption>", "<thead>"]
+    table = table_markup(spec)
+    if not standalone:
+        return f"<style>{_CSS}</style>\n{table}\n"
+    return ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            f"<title>{e(spec.caption)}</title>\n<style>{_CSS}</style>\n</head>\n<body>\n{table}\n</body>\n</html>\n")
+
+
+def table_markup(spec: TableSpec, *, caption_prefix: str = "") -> str:
+    """The ``<table>`` element alone (style it with :data:`TABLE_CSS`); ``caption_prefix`` precedes the caption."""
+    e = html.escape
+    out = ['<table class="pprof-table">', f"<caption>{e(caption_prefix)}{e(spec.caption)}</caption>", "<thead>"]
     groups = _spanners(spec)
     if any(name for name, _ in groups):
         cells = "".join(f'<th scope="colgroup" colspan="{n}" class="center">{e(name)}</th>' if name
@@ -142,11 +155,7 @@ def render_html(spec: TableSpec, *, standalone: bool = True) -> str:
     if notes:
         out.append(f'<tfoot><tr><td colspan="{len(spec.columns)}">{"".join(notes)}</td></tr></tfoot>')
     out.append("</table>")
-    table = "\n".join(out)
-    if not standalone:
-        return f"<style>{_CSS}</style>\n{table}\n"
-    return ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-            f"<title>{e(spec.caption)}</title>\n<style>{_CSS}</style>\n</head>\n<body>\n{table}\n</body>\n</html>\n")
+    return "\n".join(out)
 
 
 # --------------------------------------------------------------------------------------------------- Markdown

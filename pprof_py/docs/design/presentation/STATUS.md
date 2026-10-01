@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-4 (expand) in progress under decisions D9–D60. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+4 (expand) complete under decisions D9–D61; Phase 5 next. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
 |---|---|---|
@@ -18,7 +18,8 @@
 | P4-9 | Multi-measure displays and table (`ProfileCollection`, `multi_measure`, `measure_agreement`, `multi_measure_table`) | delivered |
 | Tier 2 check-in | Maintainer review of the Tier 2 displays | approved (D59) |
 | P4-10 | Standalone `plot_funnel` and `plot_caterpillar` as delegates (D45, D60) | delivered |
-| P4-11 | HTML report object | next |
+| P4-11 | HTML report object (`Report`) | delivered |
+| Phase 5 | Docs and gallery: gallery, interpretation guides, migration guide | next |
 
 Phase 3 rounds:
 
@@ -33,6 +34,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-11 evidence
+- Report: each image decodes exactly to its figure's SVG with its alt text and long description; table markup is embedded unchanged with its number; the appendix rows follow the figures and tables with their recorded test and model; the disclosure note appears only with tables; no scripts, links or external URLs; unique ids and resolving ARIA references; text escaped; rebuilds and saved files byte-identical. `render_html` output unchanged (golden files).
+- Visual QA: the embedded figures are the renders viewed in earlier rounds; the HTML page itself could not be rendered in this container (no browser), so its layout was checked structurally only.
+- 3 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutation: unescaped report text fails 1 test.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 923 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-10 evidence
 - `plot_funnel`: supplied curves drawn exactly as given per level; each provider's marks equal an independent interpolation of the 95% curve; contradicting flags warn (S4); styling keywords warn, unknown ones raise; `ax=` keeps the earlier drawing with a warning; `save_path` writes. `plot_caterpillar`: intervals and reference equal the frame; R8's `lower`/`upper` fallback and its message unchanged; legacy-only options warn. Model mixins still call the `_legacy_*` functions.
@@ -146,4 +153,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-P4-11: HTML report object (title, sections, text, figures, tables, methods and provenance appendix; single self-contained file with a print stylesheet). Then Phase 5.
+Phase 5 (brief §3.1, no gate): gallery generated at docs-build time, one interpretation page per display (spec sheet, how to read it, how it can mislead), theme/export/accessibility guide, migration guide. Then Phase 6 quality review.
