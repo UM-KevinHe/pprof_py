@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pprof_py"
 version = "0.5.0"
 description = "General statistical-computing package for provider profiling and healthcare analytics (logistic, linear, and Cox survival models)."
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -28,7 +28,7 @@ dependencies = [
     "pandas>=1.5",
     "scipy>=1.9",
     "matplotlib>=3.5",
-    "numba>=0.56",
+    "numba>=0.57",
     "fast_poibin>=0.4",
 ]
 

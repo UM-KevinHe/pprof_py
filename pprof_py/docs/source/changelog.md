@@ -9,6 +9,16 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased
+
+### Requirements and CI
+
+- **Python 3.10 or newer.** Python 3.9 reached end of life in October 2025, and `fast_poibin` 0.4.2 already requires
+  3.10. The `numba` floor is now 0.57, the lowest version `fast_poibin` 0.4 accepts (`numba>=0.56` could not be
+  installed together with it).
+- **Test workflow.** `.github/workflows/tests.yml` runs the test suite on Python 3.10 and 3.14 for pushes to `main`,
+  pull requests and manual runs. The documentation workflow builds on Python 3.10.
+
 ## 0.5.0 (2026-09-29)
 
 The three-stage model, one inference layer for every provider test, standardized measures and provider tests for Cox

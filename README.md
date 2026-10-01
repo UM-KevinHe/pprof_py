@@ -159,7 +159,7 @@ cd pprof_py
 pip install .
 ```
 
-Requires Python ≥ 3.9.
+Requires Python ≥ 3.10.
 
 **Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `numba`, `fast_poibin`.
 
