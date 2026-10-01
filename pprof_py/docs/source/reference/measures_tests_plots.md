@@ -257,6 +257,12 @@ Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provi
 
 ## Plotting methods
 
+```{note}
+The model plot methods now delegate to the presentation layer (the funnel and interval plots of
+`pprof_py.presentation`); some keywords described below no longer have an effect and warn until 0.7.0. See
+{ref}`presentation-guide` for the displays and the migration table.
+```
+
 All plots use Matplotlib and return `None` (they draw on the current figure). Common arguments: `group_ids` (subset of providers), `level`,
 `use_flags` (colour by `flag`), `reference`, and `**plot_kwargs` (titles, sizes; see the docstrings). The plots pass their `reference` to `test()` as
 `reference`; a provider the test could not evaluate (`flag` is `NA`) is drawn as not flagged.

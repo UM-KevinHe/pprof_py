@@ -159,7 +159,7 @@ cd pprof_py
 pip install .
 ```
 
-Requires Python ≥ 3.9.
+Requires Python ≥ 3.10.
 
 **Core dependencies:** `numpy`, `pandas`, `scipy`, `matplotlib`, `numba`, `fast_poibin`.
 
@@ -168,6 +168,7 @@ Requires Python ≥ 3.9.
 ```bash
 pip install ".[dev]"            # pytest + statsmodels (cross-validation tests)
 pip install ".[random-effect]"  # nlopt (optional solver for LogisticRandomEffectModel)
+pip install ".[excel]"          # XlsxWriter (Excel output of presentation tables)
 ```
 
 ## Validation

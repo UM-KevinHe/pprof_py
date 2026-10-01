@@ -23,7 +23,8 @@ from .empirical_null import (BISQUARE_RLM, DEFAULT_ESTIMATOR, HUBER_RLM, MM_RLM,
 from .decision import PROVIDER_TEST_COLUMNS, calibrate, flags, intervals, p_values, provider_test, resolve_null_model
 from .effect_tests import bootstrap_tails, effect_test, poibin_tails, resample_tails, z_from_tails
 from .count_tests import ClusterMixture, MonteCarlo, PlugIn, RowMixture, count_test
-from .standardized import MEASURES, StandardPopulation, at_bound, standardized_measure
+from .standardized import MEASURES, StandardPopulation, at_bound, degenerate_providers, standardized_measure
+from .funnel import FunnelLimits, funnel_limits
 
 __all__ = [
     "LocationScale", "MEstimator", "DEFAULT_ESTIMATOR", "HUBER_RLM", "BISQUARE_RLM", "MM_RLM",
@@ -34,5 +35,6 @@ __all__ = [
     "calibrate", "p_values", "flags", "intervals", "provider_test", "resolve_null_model", "PROVIDER_TEST_COLUMNS",
     "effect_test", "poibin_tails", "resample_tails", "bootstrap_tails", "z_from_tails", "t_to_z", "z_to_t",
     "count_test", "PlugIn", "RowMixture", "ClusterMixture", "MonteCarlo",
-    "StandardPopulation", "standardized_measure", "at_bound", "MEASURES",
+    "StandardPopulation", "standardized_measure", "at_bound", "degenerate_providers", "MEASURES",
+    "FunnelLimits", "funnel_limits",
 ]

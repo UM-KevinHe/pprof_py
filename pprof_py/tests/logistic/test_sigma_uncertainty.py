@@ -75,4 +75,4 @@ def test_sigma_sensitivity():
     assert flags["stable"].equals(flags[["lower", "estimate", "upper"]].nunique(axis=1) == 1)
     # the refits at the interval's ends are real refits: their test statistics differ
     lower, upper = (sens["tests"][k].select_dtypes("number") for k in ("lower", "upper"))
-    assert not np.allclose(lower.to_numpy(float), upper.to_numpy(float), equal_nan=True)
+    assert not np.allclose(lower.to_numpy(float, na_value=np.nan), upper.to_numpy(float, na_value=np.nan), equal_nan=True)

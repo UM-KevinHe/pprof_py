@@ -24,15 +24,33 @@ class LogisticRandomEffectInferenceMixin:
 
     _POSTERIOR_NODES = 32   # Gauss-Hermite nodes of the exact tests, as in the mixed-effect model
 
-    def summary(self) -> pd.DataFrame:
+    def summary(self, level: float = 0.95) -> pd.DataFrame:
+        """Fixed-effect coefficients with Wald z-tests and intervals.
+
+        Parameters
+        ----------
+        level : float, default 0.95
+            Confidence level of ``ci_lower`` and ``ci_upper``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Indexed by term: ``Estimate``, ``Std.Error``, ``z value``, ``Pr(>|z|)`` (as lme4) and the Wald interval
+            ``Estimate -/+ z_(1 - (1 - level)/2) * Std.Error`` as ``ci_lower``, ``ci_upper``; the interval excludes 0
+            exactly when the two-sided p-value is below ``1 - level``.
+        """
         self._check_is_fitted()
+        if not 0.0 < float(level) < 1.0:
+            raise ValueError("level must lie strictly between 0 and 1.")
         fe = self.coefficients_["beta"]
         vcov = self.variances_["beta"]
         se = np.sqrt(np.maximum(np.diag(vcov.to_numpy()), 0.0))
         z = np.divide(fe.to_numpy(), se, out=np.full_like(fe.to_numpy(), np.nan), where=se > 0)
         p = 2.0 * norm.sf(np.abs(z))
+        half = norm.ppf(1.0 - (1.0 - float(level)) / 2.0) * np.where(se > 0, se, np.nan)
         return pd.DataFrame(
-            {"Estimate": fe.to_numpy(), "Std.Error": se, "z value": z, "Pr(>|z|)": p},
+            {"Estimate": fe.to_numpy(), "Std.Error": se, "z value": z, "Pr(>|z|)": p,
+             "ci_lower": fe.to_numpy() - half, "ci_upper": fe.to_numpy() + half},
             index=fe.index,
         )
 
@@ -236,6 +254,50 @@ class LogisticRandomEffectInferenceMixin:
         return effect_test(blups.index, blups.values, z, g0, se=se, null_model=null_model, alternative=alt,
                            level=level, critical=critical, interval=interval, providers=providers,
                            test_method=test_method, limits=limits)
+
+    def funnel_limits(self, providers=None, *, test_method: str = "poibin_exact", reference=0.0, null_model=None,
+                      alternative: str = "two_sided", level: float = 0.95, critical: Optional[float] = None,
+                      levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        Only count tests have a funnel here (ADR-004): their statistic is the provider's event count, so observed
+        over expected events is the plotted measure. The default Wald test of the shrunken estimates has none.
+
+        Parameters
+        ----------
+        providers, reference, null_model, alternative, level, critical
+            As in :meth:`test`.
+        test_method : {"poibin_exact", "exact"}, default "poibin_exact"
+            The count test whose flags the limits reproduce (exact limits per provider at half-integer counts).
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        if test_method == "wald":
+            raise ValueError("test_method='wald' tests the shrunken estimates (BLUPs), so no funnel of observed versus "
+                             "expected events can agree with its flags (ADR-004). Use test_method='poibin_exact' or "
+                             "'exact', or an interval plot.")
+        if test_method == "resampling":
+            raise ValueError("test_method='resampling' is a Monte Carlo test and has no funnel limits; use "
+                             "'poibin_exact' or 'exact'.")
+        from ..funnel import build_funnel_limits
+        return build_funnel_limits(
+            self, lambda: self.test(providers, test_method=test_method, reference=reference, null_model=null_model,
+                                    alternative=alternative, level=level, critical=critical),
+            order=self.get_random_effects(self._provider_var).index, levels=levels)
+
+    def _provider_event_counts(self):
+        """Provider ids, events, trials and finite-estimate status (see ``degenerate_providers``)."""
+        k = self._group_vars.index(self._provider_var)
+        idx = np.asarray(self._group_indices[k]).ravel()
+        n = self._n_groups[k]
+        events = np.bincount(idx, weights=np.asarray(self._y, dtype=np.float64).ravel(), minlength=n)
+        return (pd.Index(self.get_random_effects(self._provider_var).index, name="provider_id"), events,
+                np.bincount(idx, minlength=n).astype(np.float64), np.ones(n, dtype=bool))
 
     def calculate_confidence_intervals(
         self,

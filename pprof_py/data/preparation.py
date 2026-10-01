@@ -48,6 +48,20 @@ class DataPrepOptions:
     binary_response: bool = False
 
 
+def exclusion_record(provider_id=(), n_records=(), reason: str = "") -> pd.DataFrame:
+    """Providers removed by data preparation: indexed by ``provider_id``, with ``n_records`` and ``reason``.
+
+    Sorted by provider where the identifiers can be ordered, so the record does not depend on row order.
+    """
+    rec = pd.DataFrame({"n_records": np.asarray(n_records, dtype=np.int64),
+                        "reason": np.full(len(n_records), reason, dtype=object)},
+                       index=pd.Index(np.asarray(provider_id), name="provider_id"))
+    try:
+        return rec.sort_index(kind="stable")
+    except TypeError:
+        return rec
+
+
 class DataPrep:
     """Prepare and validate data for regression models.
 
@@ -124,6 +138,7 @@ class DataPrep:
         self.prov_char = prov_char
         self.n_char = n_char
         self.cutoff = options.cutoff
+        self.excluded_providers_ = exclusion_record()
         self.check = check
         self.screen_providers = options.screen_providers
         self.log_event_providers = options.log_event_providers
@@ -182,6 +197,9 @@ class DataPrep:
         Drops 'prov_size' and 'included' columns after filtering.
         """
         total_prov = self.data[self.prov_char].nunique()
+        small = self.data.loc[self.data["included"] == 0, [self.prov_char, "prov_size"]].drop_duplicates(self.prov_char)
+        self.excluded_providers_ = exclusion_record(small[self.prov_char].to_numpy(), small["prov_size"].to_numpy(),
+                                                    f"at most {self.cutoff} records")
         n_prov_small = self.data[self.data["included"] == 0][self.prov_char].nunique()
         if n_prov_small > 0:
             self.logging.warning(f"{n_prov_small} out of {total_prov} providers are small and will be filtered out.")

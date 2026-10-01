@@ -14,16 +14,17 @@ pattern as :func:`~pprof_py.plotting.coefficients.plot_caterpillar`.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+if TYPE_CHECKING:  # annotations only; functions import pyplot when called
+    import matplotlib.pyplot as plt
 
 from . import style as _style
 
 
-def plot_funnel(
+def _legacy_plot_funnel(
     df: pd.DataFrame,
     limits_df: pd.DataFrame,
     *,
@@ -97,6 +98,7 @@ def plot_funnel(
     fig, ax : matplotlib Figure and Axes
     """
     # ---- figure / axes ------------------------------------------------
+    import matplotlib.pyplot as plt
     if ax is None:
         fig, ax = plt.subplots(figsize=figure_size)
     else:
@@ -264,3 +266,24 @@ def plot_funnel(
         plt.show()
 
     return fig, ax
+
+
+def plot_funnel(df: pd.DataFrame, limits_df: pd.DataFrame, *, estimate_col: str = "estimate",
+                precision_col: str = "precision", flag_col: Optional[str] = "flag", target: float = 1.0,
+                alpha_levels: Optional[List[float]] = None, plot_title: str = "Funnel Plot",
+                save_path: Optional[str] = None, dpi: int = _style.SAVE_DPI, ax: Optional["plt.Axes"] = None,
+                **style: object):
+    """Funnel plot from precomputed data and hand-built limits (the escape hatch; D45).
+
+    Draws through :func:`pprof_py.presentation.funnel`: the curves of ``limits_df`` (columns ``precision``,
+    ``control_lower``, ``control_upper``, ``alpha``) are drawn as supplied, and each provider's limits are read off
+    the curve with the largest ``alpha`` (the flags' level) at its precision, so providers whose flags contradict
+    the supplied limits are reported (S4). Returns a :class:`~pprof_py.presentation.FigureResult`, which still
+    unpacks as ``fig, ax``. Styling keywords are deprecated and ignored; ``ax=`` keeps the earlier drawing, also
+    deprecated (removal in 0.7.0).
+    """
+    from ._standalone import funnel_from_frame
+
+    return funnel_from_frame(df, limits_df, estimate_col=estimate_col, precision_col=precision_col, flag_col=flag_col,
+                             target=target, alpha_levels=alpha_levels, plot_title=plot_title, save_path=save_path,
+                             dpi=dpi, ax=ax, style=style, legacy=_legacy_plot_funnel)

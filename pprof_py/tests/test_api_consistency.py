@@ -95,11 +95,18 @@ def test_untested_providers_are_drawn_as_their_own_category(crossed):
 
     fe = _quiet(LogisticFixedEffectModel(use_dataprep=False, screen_providers=False).fit, crossed, y_var="y",
                 x_vars=["x"], provider_var="provider")
-    real = fe.test(test_method="poibin_exact")
-    patched = real.copy()
-    patched.loc[patched.index[0], "flag"] = np.nan              # one provider without a test result
-    fe.test = lambda *args, **kwargs: patched
+    real_test = fe.test
+
+    def patched_test(*args, **kwargs):                          # the real test, one provider left without a result
+        out = real_test(*args, **kwargs).copy()
+        out.loc[out.index[0], "flag"] = np.nan
+        return out
+    fe.test = patched_test
     out = _quiet(fe.plot_funnel)
-    ax = out[1] if isinstance(out, tuple) else plt.gca()
-    assert "Not tested (1)" in _legend_texts(ax)
+    if isinstance(out, tuple):
+        texts = _legend_texts(out[1])
+    else:                                                       # a FigureResult: its legend belongs to the figure
+        from matplotlib.legend import Legend
+        texts = [t.get_text() for leg in out.figure.findobj(Legend) for t in leg.get_texts()]
+    assert "Not tested (1)" in texts
     plt.close("all")

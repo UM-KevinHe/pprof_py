@@ -11,11 +11,10 @@ from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import norm, t, probplot
 
-from ...plotting import plot_caterpillar
-from ...plotting.funnel import plot_funnel as _render_funnel
+from ...plotting.coefficients import _legacy_plot_caterpillar as plot_caterpillar
+from ...plotting.funnel import _legacy_plot_funnel as _render_funnel
 from ...plotting import style as _style
 
 
@@ -44,7 +43,42 @@ class LinearRandomEffectPlottingMixin:
     """Funnel, provider-effect, standardized-measure, coefficient-forest,
     and residual/Q-Q plots for `LinearRandomEffectModel`."""
 
-    def plot_funnel(
+    def plot_funnel(self, *args: Any, **kwargs: Any):
+        """Deprecated for this model; removed in 0.7.0 (a funnel cannot agree with the Wald test of shrunken estimates that flags the providers (ADR-004)).
+
+        Keeps the earlier drawing, with a ``DeprecationWarning``; see :mod:`pprof_py.presentation` for the displays
+        that agree with this model's flags.
+        """
+        from .._delegates import legacy
+        legacy("plot_funnel", "a funnel cannot agree with the Wald test of shrunken estimates that flags the providers (ADR-004); use pprof_py.presentation.caterpillar(model)")
+        return self._legacy_plot_funnel(*args, **kwargs)
+
+    def plot_provider_effects(self, group_ids=None, level: float = 0.95, use_flags: bool = True,
+                              reference: Union[str, float] = 0, test_method: Optional[str] = None,
+                              **plot_kwargs: Any):
+        """Interval plot of the provider effects with the intervals of their own test, and a volume panel.
+
+        Delegates to :func:`pprof_py.presentation.caterpillar` and returns its
+        :class:`~pprof_py.presentation.FigureResult`. ``group_ids`` selects providers; ``save_path``, ``theme``,
+        ``size``, ``title`` and ``highlight`` are passed on. Styling keywords and ``use_flags=False`` no longer have
+        an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        """
+        from .._delegates import caterpillar_delegate
+        return caterpillar_delegate(self, "plot_provider_effects", use_flags=use_flags, kwargs=plot_kwargs,
+                                    ignored=[] if test_method is None else ["test_method= (the test is the Wald test)"],
+                                    test_kwargs={"providers": group_ids, "level": level, "reference": reference})
+
+    def plot_standardized_measures(self, *args: Any, **kwargs: Any):
+        """Deprecated for this model; removed in 0.7.0 (its measure-scale intervals do not come from the test that flags the providers).
+
+        Keeps the earlier drawing, with a ``DeprecationWarning``; see :mod:`pprof_py.presentation` for the displays
+        that agree with this model's flags.
+        """
+        from .._delegates import legacy
+        legacy("plot_standardized_measures", "its measure-scale intervals do not come from the test that flags the providers; use pprof_py.presentation.caterpillar(model) for the provider effects with their own test")
+        return self._legacy_plot_standardized_measures(*args, **kwargs)
+
+    def _legacy_plot_funnel(
         self,
         stdz: str = "indirect",
         reference: Union[str, float] = "median",
@@ -229,7 +263,7 @@ class LinearRandomEffectPlottingMixin:
             legend_location=legend_location,
         )
 
-    def plot_provider_effects(
+    def _legacy_plot_provider_effects(
         self, 
         group_ids=None, 
         level: float = 0.95,
@@ -335,7 +369,7 @@ class LinearRandomEffectPlottingMixin:
             **plot_kwargs
         )
 
-    def plot_standardized_measures(
+    def _legacy_plot_standardized_measures(
         self,
         group_ids=None, 
         level: float = 0.95, 
@@ -549,6 +583,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model is not fitted or if an invalid orientation is provided.
         """
+        import matplotlib.pyplot as plt
         if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
             raise ValueError("Model must be fitted before plotting coefficients.")
         if orientation not in ("vertical", "horizontal"):
@@ -741,6 +776,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.fitted_ is None or self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting residuals.")
 
@@ -817,6 +853,7 @@ class LinearRandomEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting QQ plot.")
 

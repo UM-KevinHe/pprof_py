@@ -88,3 +88,6 @@ $RECYCLE.BIN/
 # Sphinx documentation build output
 pprof_py/docs/_build/
 pprof_py/docs/build/
+pprof_py/docs/source/_static/gallery/
+pprof_py/docs/source/presentation/_gallery_items.md
+pprof_py/docs/source/presentation/_figures/

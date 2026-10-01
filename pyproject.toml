@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pprof_py"
-version = "0.5.0"
+version = "0.6.0"
 description = "General statistical-computing package for provider profiling and healthcare analytics (logistic, linear, and Cox survival models)."
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -28,7 +28,7 @@ dependencies = [
     "pandas>=1.5",
     "scipy>=1.9",
     "matplotlib>=3.5",
-    "numba>=0.56",
+    "numba>=0.57",
     "fast_poibin>=0.4",
 ]
 
@@ -47,6 +47,8 @@ docs = [
 # Optional solver used by LogisticRandomEffectModel; scipy fallbacks are
 # used automatically when nlopt is unavailable.
 random-effect = ["nlopt"]
+# Excel output of presentation tables (TableResult.to_excel).
+excel = ["XlsxWriter>=3.0.1"]
 # R interoperability tools for comparison and validation workflows;
 # never imported by the package itself.
 legacy = ["rpy2", "pymer4"]

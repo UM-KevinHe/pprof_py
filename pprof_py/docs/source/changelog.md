@@ -9,6 +9,186 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## 0.6.0 (2026-10-01)
+
+The presentation layer: figures, tables and reports that show validated results without recomputing them, with
+funnel limits from the same test as the flags, and documentation on reading each display; plus the provider-test
+additions it rests on. Statistical results are unchanged from 0.5.0: estimates, tests and intervals are
+bit-identical. This release requires Python 3.10 or newer, and the earlier plotting calls now draw through the
+presentation layer; their deprecated options are removed in 0.7.0.
+
+### Migrating from 0.5.0
+
+- Python 3.10 or newer is required, and `numba` 0.57 or newer.
+- The plotting methods and the standalone `pprof_py.plot_caterpillar` and `pprof_py.plotting.plot_funnel` return a
+  `FigureResult`, which still unpacks as `fig, ax`. `plot_caterpillar` no longer returns `None` or calls
+  `plt.show()`: display the result in a notebook, or write it with `.save(path)`.
+- Styling keywords of the plotting calls are ignored with a `DeprecationWarning`; pass `theme=` (see
+  `Theme.derive`). They raise in 0.7.0.
+- `LogisticRandomEffectModel.plot_funnel()` draws the funnel of the exact count test. The linear random-effect
+  `plot_funnel()` and `plot_standardized_measures()` of models other than the logistic fixed-effect model keep their
+  earlier drawing with a `DeprecationWarning`, and are removed in 0.7.0.
+- `plot_caterpillar()` reads `ci_lower` and `ci_upper` by default; `lower` and `upper` are used with a warning until
+  0.7.0.
+- The full table of earlier calls and their replacements is in the migration guide (Presentation → Migrating to the
+  presentation layer).
+
+### Requirements and CI
+
+- **Python 3.10 or newer.** Python 3.9 reached end of life in October 2025, and `fast_poibin` 0.4.2 already requires
+  3.10. The `numba` floor is now 0.57, the lowest version `fast_poibin` 0.4 accepts (`numba>=0.56` could not be
+  installed together with it).
+- **Test workflow.** `.github/workflows/tests.yml` runs the test suite on Python 3.10 and 3.14 for pushes to `main`,
+  pull requests and manual runs. The documentation workflow builds on Python 3.10.
+- The test workflow also installs the `excel` extra, so the Excel output tests run in CI.
+
+### Provider tests: funnel limits, zero-event status and exclusions
+
+- **Funnel limits that agree with the flags.** `pprof_py.inference.funnel_limits(model, ...)`, and a `funnel_limits`
+  method on `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`,
+  `LogisticThreeStageModel`, `LinearFixedEffectModel` and `CoxPH`, return a `FunnelLimits`: the `test()` result, each
+  provider's funnel coordinates and control limits, and limit curves. The limits come from the same test, null and
+  decision rule as the flags, so a provider lies outside its limits exactly when it is flagged; count tests place
+  their limits half-way between counts, so no provider lies on a line. Logistic fixed-effect funnels use the score
+  test by default. Random-effect models have funnels for their count tests (`poibin_exact`, `exact`) only; linear
+  random-effect models and Monte Carlo tests have none. See the new reference page *Funnel limits*.
+- **Zero-event status.** `pprof_py.inference.degenerate_providers(model)` reports, for binary-outcome models, each
+  provider's events and trials, whether it has no events or only events, and whether its effect has a finite
+  estimate.
+- **`at_bound()` refuses models it does not apply to.** It raises an informative `TypeError` for models without fixed
+  provider effects (random-effect models raised `KeyError: 'gamma'`) and for continuous outcomes (it returned every
+  provider of a linear model). Results for logistic fixed-effect models are unchanged.
+- **Excluded providers are recorded.** `DataPrep.excluded_providers_`, `GLMMPreparedData.excluded_providers`, and the
+  fitted `excluded_providers_` of `LogisticFixedEffectModel`, `LinearFixedEffectModel` and `LogisticThreeStageModel`
+  list the providers that data preparation removed, with their record counts and the reason; `None` when the model
+  did not prepare the data.
+- **CoxPH test metadata.** `CoxPH.test()` records `attrs["measure"] = "indirect_ratio"` and `attrs["reference"] = 1.0`.
+- **Random-effect coefficient intervals.** `LogisticRandomEffectModel.summary(level=0.95)` adds the Wald interval
+  `ci_lower`, `ci_upper`; the existing columns are unchanged, and an interval excludes 0 exactly when the p-value is
+  below `1 - level`.
+- **Standardized-test metadata.** `LogisticFixedEffectModel.test_standardized()` records `attrs["test_method"]`
+  (`"score"` for indirect measures tested with the null variance on the identity scale, which is the score
+  statistic; `"wald"` otherwise), `attrs["variance"]` and `attrs["reference"]` (the reference effect gamma_0, as in
+  `test()`).
+- No estimate, test result or interval changes: the count-test kernels were split into reusable parts with identical
+  arithmetic.
+
+### Presentation layer
+
+- `import pprof_py` no longer imports `matplotlib.pyplot`, or Matplotlib at all: the plotting functions import it
+  when they are called, and their output is unchanged. Importing the package is about a quarter faster.
+- New provisional namespace `pprof_py.presentation`: `Theme` (immutable design tokens with `publication`,
+  `notebook` and `report` presets, varied through `Theme.derive`) and `formatting` (numbers, counts, intervals,
+  p-values and flags, with one set of missing-value symbols). The namespace grows with the presentation layer and
+  may change until it is complete.
+- `pprof_py.presentation.ProviderProfile`: one provider test ready for display, built from a fitted model
+  (`from_model`, optionally with the funnel limits of the same test), a `test()` result (`from_test`) or any frame
+  with a role map (`from_frame`). It keeps the test's values unchanged and gives each provider one status from its
+  flag (above, below, not different, not tested; suppressed only under an explicit minimum-volume rule), with zero
+  events and no finite estimate as separate attributes. Denominators, exclusions and the test's settings travel with
+  it, and `require()` raises `CapabilityError` when a display needs something the profile lacks. Frames whose
+  intervals or funnel limits contradict their flags trigger a warning that names the providers.
+- `pprof_py.presentation.funnel(source, ...)`: a funnel plot whose control limits come from the same test as the flags
+  (through `funnel_limits`), so a provider lies outside its limits exactly when it is flagged. Score, Wald and CoxPH
+  funnels draw exact limit curves; exact count tests draw each provider's own limits, with Poisson reference curves.
+  Statuses are encoded by shape, fill and colour, zero-event providers sit at O/E = 0 with an outline marker, and
+  above 2,000 providers the not-different points are rasterized while flagged providers stay on top. Each figure
+  carries a provenance footnote and alt text, and returns a `FigureResult` whose SVG, PDF and PNG exports are
+  byte-identical for the same input and environment; no pyplot state is involved.
+- `pprof_py.presentation.caterpillar(source, ...)`: an interval plot of provider estimates with the intervals of their
+  own test and a volume panel of denominators. Providers are ordered by estimate for legibility only (the axis says
+  so and never shows a rank); each interval is drawn from its lower to its upper bound, so intervals shifted by an
+  empirical null render as they are; providers without a finite estimate are marked at the axis edge with any
+  one-sided interval drawn from there, and the solver's clamp is never drawn. Up to 60 providers are labelled; above
+  2,000 the not-different providers are rasterized and flagged providers stay on top.
+- Presentation themes render text without font hinting, so text keeps the same width at every raster resolution and
+  footnotes wrap identically in PNG, SVG and PDF output.
+- `pprof_py.presentation.provider_table(source, ...)`: the provider summary table, with denominators, observed and
+  expected counts, estimates with the intervals of the same test, flags and optional p-values. Its footnotes are
+  generated from the test's settings and the providers' statuses (`NE` no finite estimate, `NT` not tested, `NI` no
+  interval, `S` suppressed), and an interval gets extra decimals where rounding would blur whether it excludes the
+  reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
+  rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
+- New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- Displays on hostile data (quality review): log axes over many decades label only powers of ten; the
+  observed-versus-expected axes use ticks even in square-root space; null calibration keeps the bulk of the statistics
+  in view and counts extreme ones at the axis edge; the funnel always shows its test-level limits; the variation display
+  states when sigma is estimated at 0 instead of drawing a degenerate density; shrinkage labels avoid the points.
+- Documentation: **Which display answers my question?** (the analyst's questions mapped to displays and tables, and a
+  family-support matrix that the tests check), **Theme, export and accessibility**, and **Migrating to the
+  presentation layer** (the table of earlier calls, which moves there from the Presentation reference page).
+- `flag_stability()` no longer fails when a three-stage model's `sigma_sensitivity()` raises: it omits the scenarios at
+  sigma's bounds, warns, and says so in its footnote and table note.
+- Documentation: one page per display under **Presentation → Reading the displays**, each with its spec sheet (what
+  it answers, the quantities and their source, uncertainty, denominator, reference, misreadings and mitigations, and
+  behaviour from 10 to 50,000 providers), how to read it and how it can mislead, with executed counterexamples on the
+  same synthetic data (for example, the funnel against a league table); and a **Tables** page with every table function,
+  the symbol set and the formatting rules.
+- Documentation: a **Presentation** section with a gallery of every figure, rendered at build time from synthetic data
+  by a local Sphinx extension (`docs/source/_ext/pprof_gallery.py`) with the same deterministic renderers; nothing is
+  saved by hand. The private generator `pprof_py.presentation._synthetic.provider_data()` (planted outliers,
+  overdispersion, zero-event providers) is shared by the docs and the tests.
+- `measure_agreement()` no longer places providers without a finite estimate in either measure (their solver-bound
+  intervals set the axes); the footnote counts them.
+- `pprof_py.presentation.Report`: sections, text, figures and tables composed into one self-contained HTML file with a
+  print stylesheet and a generated methods and provenance appendix (`.to_html()`, `.save()`, `.outline()`); no
+  scripts, no network, no timestamp unless `date=` is given, and a note when tables carry provider-level values.
+- The standalone `pprof_py.plotting.plot_funnel` and `pprof_py.plot_caterpillar` now draw through the presentation
+  layer and return a `FigureResult` (`plot_caterpillar` returned `None` and no longer calls `plt.show()`; `fig, ax =`
+  still works for both). `plot_funnel` draws the supplied `limits_df` curves as given and warns when flags contradict
+  them. Styling keywords are deprecated and ignored; options the new layer does not offer (`ax=`, no intervals,
+  `refline_value=None`, `sort_by_estimate=False`, `orientation="horizontal"`) keep the earlier drawing with a
+  `DeprecationWarning`; both are removed in 0.7.0.
+- `ProviderProfile.from_frame(..., curves=)` accepts funnel-limit curves supplied with the data.
+- `pprof_py.presentation.ProfileCollection` (several measures of the same providers), `multi_measure()` (one
+  interval panel per measure, common row order), `measure_agreement()` (two measures per provider with interval
+  crosses and the joint flag status of their tests) and `multi_measure_table()` (each measure under a grouped header).
+  Providers missing from a measure are marked, never dropped.
+- Markdown and plain-text tables write a grouped header as a prefix of its columns' headers
+  (`Readmission: Estimate (CI)`), since those formats cannot span columns.
+- `pprof_py.presentation.flag_stability(model, ...)` and `flag_stability_table(...)`: the flags of each provider
+  flagged in at least one scenario, one `test()` call per scenario (by default an alternative reference, the other
+  null, and for three-stage models the bounds of sigma's interval from `sigma_sensitivity()`), with the providers
+  whose status changes marked; the table counts flags per scenario or lists the changing providers.
+- `pprof_py.presentation.shrinkage(fixed, random)` and `shrinkage_table(fixed, random)`: each provider's fixed-effect
+  (unshrunken) estimate against its random-effect BLUP, both relative to their own test's reference (the fixed-effect
+  test with `reference="mean"` by default), sized by volume, with the lines of no shrinkage and complete pooling;
+  the table lists both estimates and the change in source order.
+- `pprof_py.presentation.provider_variation(model)` and `provider_variation_table(model)`: for logistic and linear
+  random-effect models, the BLUPs against the fitted between-provider distribution, the random-effect SD (with its
+  profile-likelihood interval for logistic models) and the range of true effects it implies under normality.
+- Figure exports no longer depend on what was drawn earlier in the same process: frozen layouts (axes and sub-figure
+  boxes) are quantised with negative zero normalised, and Matplotlib's content-hashed SVG ids are renamed in document
+  order. SVG ids of all figures change (`p00001`, `m00001`, ...); drawn content is unchanged.
+- `pprof_py.presentation.reliability(iur)` and `reliability_table(iur)`: each provider's reliability at its size and
+  the overall IUR from a fitted `BootstrapIUR`, and a table of the overall IUR, its variance decomposition and
+  reliability by size decile (also for `DirectIUR`, and the split-half statistics of `SplitHalfIUR`); both state that
+  reliability is a property of the measure, not a score for any provider.
+- `pprof_py.presentation.observed_expected(source)`: observed against expected events on square-root axes (Poisson
+  noise has roughly constant spread there, so departures are comparable across volumes), with the line O = E, guides
+  at O/E = 0.5 and 2, and the test's funnel limits converted to events (half-integer counts for count tests).
+- `pprof_py.presentation.null_calibration(model, ...)` and `null_calibration_table(...)`: raw z-statistics of each null
+  group against the theoretical and the fitted null, with the flags of both nulls compared (the model is tested twice;
+  no flag is decided by the display). Profiles now carry `null_mean` and `null_sd`.
+- `pprof_py.presentation.data_quality(source)` and `data_quality_table(source, details=False)`: every provider
+  accounted for (in the data, excluded by data preparation, analysed by flag, not tested, suppressed; no finite
+  estimate, zero events and no interval as attributes), with each group's volumes; counts the source does not record
+  are shown as "not recorded", never as zero.
+- `pprof_py.presentation.forest(model)` and `coefficient_table(model)`: covariate effects from `summary()` with their
+  intervals, as odds or hazard ratios on a log axis for logistic and Cox models (exponentiated for display through
+  `CoefficientProfile.exponentiate()`), with a footnote that the associations are adjusted, not causal, and in each
+  covariate's own units.
+- **Model plot methods delegate to the presentation layer.** `plot_funnel` (logistic and linear fixed effects),
+  `plot_provider_effects` (all four models) and `plot_standardized_measures` (logistic fixed effects) now draw with
+  `funnel` and `caterpillar` and return a `FigureResult` (`fig, ax = ...` still works); they no longer call
+  `plt.show()`. Logistic random-effect `plot_funnel` draws the funnel of the exact count test, and its default
+  `test_method="wald"` warns. Linear random-effect `plot_funnel` and the other models' `plot_standardized_measures`
+  keep their earlier drawing with a `DeprecationWarning`. Styling keywords, `target=` and `use_flags=False` no longer
+  have an effect and warn. Everything deprecated here is removed in 0.7.0; see the migration table on the new page
+  *Presentation layer (preview)*.
+- `plot_caterpillar` reads intervals from `ci_lower`/`ci_upper` (the columns of `test()`) by default; frames with
+  `lower`/`upper` still work, with a `DeprecationWarning`, until 0.7.0.
+
 ## 0.5.0 (2026-09-29)
 
 The three-stage model, one inference layer for every provider test, standardized measures and provider tests for Cox

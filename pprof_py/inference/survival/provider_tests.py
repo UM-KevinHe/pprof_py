@@ -133,6 +133,40 @@ class CoxPHInferenceMixin:
         out["observed"], out["expected"] = obs, exp_
         out["person_time"] = m["person_time"].to_numpy(dtype=np.float64)
         out.attrs["test_method"] = test_method
+        out.attrs["measure"] = "indirect_ratio"
+        out.attrs["reference"] = 1.0
         if providers is not None:
             out = out[out.index.isin(np.atleast_1d(providers))]
         return out
+
+    def funnel_limits(self, X, duration=None, event=None, start=None, stop=None, *, provider_id, offset=None,
+                      providers=None, test_method: str = "midp", null_model=None, level: float = 0.95, levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        For each provider, the smallest event count the test flags high and the largest it flags low under its
+        Poisson null; limits sit half-way between counts on the O/E scale, so no provider lies on a line. Curves
+        over the expected count E are exact.
+
+        Parameters
+        ----------
+        X, duration, event, start, stop, provider_id, offset, providers, test_method, null_model, level
+            As in :meth:`test`.
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        from ..funnel import poisson_funnel_limits
+        res = self.test(X, duration, event, start, stop, provider_id=provider_id, offset=offset, providers=providers,
+                        test_method=test_method, null_model=null_model, level=level)
+        alpha = 1.0 - float(level)
+        if test_method == "midp":
+            def zfun(o, e):
+                return poisson_midp_zscore(o, e)
+        else:
+            def zfun(o, e):
+                return np.sign(o - e) * norm.isf(poisson_exact_test(o, e, alpha=alpha)[0] / 2.0)
+        return poisson_funnel_limits(self, res, zfun, levels)

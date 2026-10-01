@@ -9,13 +9,14 @@ from __future__ import annotations
 import warnings
 from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
+from .._delegates import UNSET
+
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.stats import norm, t, probplot
 
-from ...plotting import plot_caterpillar
-from ...plotting.funnel import plot_funnel as _render_funnel
+from ...plotting.coefficients import _legacy_plot_caterpillar as plot_caterpillar
+from ...plotting.funnel import _legacy_plot_funnel as _render_funnel
 from ...plotting import style as _style
 
 
@@ -42,7 +43,52 @@ class LinearFixedEffectPlottingMixin:
     """Funnel, provider-effect, standardized-measure, coefficient-forest,
     and residual/Q-Q plots for `LinearFixedEffectModel`."""
 
-    def plot_funnel(
+    def plot_funnel(self, stdz: str = "indirect", reference: Union[str, float] = "median", target: Any = UNSET,
+                    alpha: Union[float, List[float]] = 0.05, **kwargs: Any):
+        """Funnel plot whose control limits come from the same test as the flags.
+
+        Delegates to :func:`pprof_py.presentation.funnel` and returns its
+        :class:`~pprof_py.presentation.FigureResult` (``fig, ax = model.plot_funnel()`` still works). ``alpha`` sets
+        the levels of the limit curves; ``save_path``, ``theme``, ``size``, ``title`` and ``highlight`` are passed on.
+        Styling keywords and ``target`` no longer have an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+
+        The funnel shows the provider effects with the limits of their Student-t Wald test; ``stdz`` no longer has
+        an effect.
+        """
+        import warnings
+        from .._delegates import REMOVAL, funnel_delegate
+        if stdz != "indirect":
+            warnings.warn(f"plot_funnel(): stdz= has no effect; the funnel shows the provider effects of test(). It "
+                          f"will raise a TypeError in {REMOVAL}.", DeprecationWarning, stacklevel=2)
+        return funnel_delegate(self, "plot_funnel", test_kwargs={"reference": reference}, alpha=alpha, target=target,
+                               kwargs=kwargs)
+
+    def plot_provider_effects(self, group_ids=None, level: float = 0.95, use_flags: bool = True,
+                              reference: Union[str, float] = "median", test_method: Optional[str] = None,
+                              **plot_kwargs: Any):
+        """Interval plot of the provider effects with the intervals of their own test, and a volume panel.
+
+        Delegates to :func:`pprof_py.presentation.caterpillar` and returns its
+        :class:`~pprof_py.presentation.FigureResult`. ``group_ids`` selects providers; ``save_path``, ``theme``,
+        ``size``, ``title`` and ``highlight`` are passed on. Styling keywords and ``use_flags=False`` no longer have
+        an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        """
+        from .._delegates import caterpillar_delegate
+        return caterpillar_delegate(self, "plot_provider_effects", use_flags=use_flags, kwargs=plot_kwargs,
+                                    ignored=[] if test_method is None else ["test_method= (the test is the Wald test)"],
+                                    test_kwargs={"providers": group_ids, "level": level, "reference": reference})
+
+    def plot_standardized_measures(self, *args: Any, **kwargs: Any):
+        """Deprecated for this model; removed in 0.7.0 (no standardized-measure test exists for linear models).
+
+        Keeps the earlier drawing, with a ``DeprecationWarning``; see :mod:`pprof_py.presentation` for the displays
+        that agree with this model's flags.
+        """
+        from .._delegates import legacy
+        legacy("plot_standardized_measures", "no standardized-measure test exists for linear models; the provider effects of test() make the same comparison with their own test: use pprof_py.presentation.caterpillar(model)")
+        return self._legacy_plot_standardized_measures(*args, **kwargs)
+
+    def _legacy_plot_funnel(
         self,
         stdz: str = "indirect",
         reference: Union[str, float] = "median",
@@ -215,7 +261,7 @@ class LinearFixedEffectPlottingMixin:
             legend_location=legend_location,
         )
 
-    def plot_provider_effects(
+    def _legacy_plot_provider_effects(
         self, 
         group_ids=None, 
         level: float = 0.95,
@@ -310,7 +356,7 @@ class LinearFixedEffectPlottingMixin:
             **plot_kwargs
         )
 
-    def plot_standardized_measures(
+    def _legacy_plot_standardized_measures(
         self,
         group_ids=None, 
         level: float = 0.95, 
@@ -506,6 +552,7 @@ class LinearFixedEffectPlottingMixin:
             If the model is not fitted or if an invalid orientation is provided.
         """
         # Preconditions
+        import matplotlib.pyplot as plt
         if self.coefficients_ is None or self.variances_ is None or self.covariate_names_ is None:
             raise ValueError("Model must be fitted before plotting coefficients.")
         if orientation not in ("vertical", "horizontal"):
@@ -698,6 +745,7 @@ class LinearFixedEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.fitted_ is None or self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting residuals.")
 
@@ -772,6 +820,7 @@ class LinearFixedEffectPlottingMixin:
         ValueError
             If the model has not been fitted.
         """
+        import matplotlib.pyplot as plt
         if self.residuals_ is None:
             raise ValueError("Model must be fitted before plotting QQ plot.")
 

@@ -28,6 +28,7 @@ from typing import Callable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
+from ._recording import record
 from .effect_tests import (EXACT_P_FLOOR, clustered_poibin_tails, integrated_poibin_tails, invert_decreasing,
                            normalize_alternative, poibin_tails, z_from_tails)
 
@@ -132,6 +133,7 @@ def count_test(obs: np.ndarray, nulls: Sequence[CountNull], g0: float, *, altern
     alt = normalize_alternative(alternative)
     two = alt == "two_sided"
     n = len(nulls)
+    record("count", obs=np.asarray(obs, dtype=np.float64).copy(), nulls=tuple(nulls), g0=float(g0), alternative=alt)
 
     def z_of(tails, floor):
         t = np.atleast_2d(tails)
