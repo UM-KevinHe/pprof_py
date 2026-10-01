@@ -10,7 +10,8 @@
 | P4-1 | Coefficient forest and coefficient table (`CoefficientProfile`); logistic RE `summary()` intervals (D47) | delivered |
 | P4-2 | Data-quality panel and table (`data_quality`, `data_quality_table`) | delivered |
 | P4-3 | Null-calibration diagnostics and table (`null_calibration`, `null_calibration_table`) | delivered |
-| P4-4 | Observed versus expected | next |
+| P4-4 | Observed versus expected (`observed_expected`) | delivered |
+| P4-5 | Reliability | next |
 
 Phase 3 rounds:
 
@@ -25,6 +26,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-4 evidence
+- Points equal the profile's expected and observed counts; count marks equal the funnel limits times E (half-integer counts for exact tests) and agree with the flags in count space (S4); CoxPH count curves equal the funnel curves times their expected counts; Poisson reference curves of exact count tests are not drawn as limits.
+- Visual QA [viewed]: logistic FE exact and score tests (58 providers, a zero-event provider at O = 0) and CoxPH (50 providers).
+- 4 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutation: lower limits left in ratio units fail 1 test.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 888 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-3 evidence
 - Histograms equal `np.histogram` of each group's `z_raw` over the drawn edges; fitted densities equal `n * width * N(null_mean, null_sd)` exactly and peak at the null mean; flag counts and changes equal an independent cross-tabulation of the two `test()` results; the theoretical-null and profile paths say why there is no comparison.

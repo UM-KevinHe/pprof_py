@@ -121,6 +121,20 @@ Source: LogisticFixedEffectModel; exact Poisson-binomial test, two-sided, 95% le
 
 ```
 
+## Observed versus expected
+
+The observed-versus-expected plot shows each provider's observed and expected events on square-root axes, where
+Poisson noise has roughly constant spread, with the line O = E and the test's limits converted to events.
+
+```python
+from pprof_py.presentation import observed_expected
+
+print(observed_expected(profile).alt_text)
+```
+```text
+Observed against expected events for 16 providers: 5 above and 2 below the reference at the 95% level; observed minus expected ranges from −14.3 to 22.1 events.
+```
+
 ## Null calibration
 
 The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the

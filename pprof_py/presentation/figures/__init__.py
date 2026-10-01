@@ -7,6 +7,7 @@ from ._caterpillar import caterpillar
 from ._forest import forest
 from ._quality import data_quality
 from ._funnel import funnel
+from ._observed import observed_expected
 from ._result import FigureResult
 
-__all__ = ["FigureResult", "caterpillar", "data_quality", "forest", "funnel", "null_calibration"]
+__all__ = ["FigureResult", "caterpillar", "data_quality", "forest", "funnel", "null_calibration", "observed_expected"]

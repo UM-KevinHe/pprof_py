@@ -88,6 +88,9 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.observed_expected(source)`: observed against expected events on square-root axes (Poisson
+  noise has roughly constant spread there, so departures are comparable across volumes), with the line O = E, guides
+  at O/E = 0.5 and 2, and the test's funnel limits converted to events (half-integer counts for count tests).
 - `pprof_py.presentation.null_calibration(model, ...)` and `null_calibration_table(...)`: raw z-statistics of each null
   group against the theoretical and the fitted null, with the flags of both nulls compared (the model is tested twice;
   no flag is decided by the display). Profiles now carry `null_mean` and `null_sd`.
