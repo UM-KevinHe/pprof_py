@@ -18,9 +18,12 @@ R (``glmm.data.prep``)     pprof_py
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+from .preparation import exclusion_record
 
 
 @dataclass(frozen=True)
@@ -40,12 +43,15 @@ class GLMMPreparedData:
         with the provider varying fastest (R's ``as.integer(ftable(table(fac, hosp)))``).
     n_providers, n_clusters : int
         Providers and clusters after screening.
+    excluded_providers : pandas.DataFrame
+        Providers removed by the screening (see :func:`~pprof_py.data.preparation.exclusion_record`).
     """
 
     data: pd.DataFrame
     cell_sizes: np.ndarray
     n_providers: int
     n_clusters: int
+    excluded_providers: Optional[pd.DataFrame] = None
 
 
 def glmm_data_prep(data: pd.DataFrame, y_var: str, provider_var: str, cluster_var: str,
@@ -88,6 +94,9 @@ def glmm_data_prep(data: pd.DataFrame, y_var: str, provider_var: str, cluster_va
     size = d.groupby(provider_var, sort=False)[provider_var].transform("size").to_numpy()
     d["provider_size"] = size
     keep = size > cutoff
+    small = d.loc[~keep, [provider_var, "provider_size"]].drop_duplicates(provider_var)
+    excluded = exclusion_record(small[provider_var].to_numpy(), small["provider_size"].to_numpy(),
+                                f"at most {cutoff} records")
     d, size = d[keep].reset_index(drop=True), size[keep]
     events = d.groupby(provider_var, sort=False)[y_var].transform("sum").to_numpy(np.float64)
     d["y_adj"] = d[y_var].to_numpy(np.float64) + (events == 0) * 0.01 / size - (events == size) * 0.01 / size
@@ -112,4 +121,4 @@ def glmm_data_prep(data: pd.DataFrame, y_var: str, provider_var: str, cluster_va
     cell_sizes = np.bincount(c_codes * n_prov_levels + p_codes,
                              minlength=len(d[cluster_var].cat.categories) * n_prov_levels)
     return GLMMPreparedData(data=d, cell_sizes=cell_sizes, n_providers=int(d[provider_var].nunique()),
-                            n_clusters=int(d[cluster_var].nunique()))
+                            n_clusters=int(d[cluster_var].nunique()), excluded_providers=excluded)

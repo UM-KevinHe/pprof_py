@@ -12,6 +12,7 @@ from ...utils.numerical import covariance_from_information
 import pandas as pd
 from scipy.stats import t
 from ..effect_tests import effect_test, normalize_alternative, reference_effect
+from .._recording import record
 from ..zstat import t_to_z
 from typing import Union
 
@@ -392,6 +393,32 @@ class LinearFixedEffectInferenceMixin:
         df = self.fitted_.size - len(self.coefficients_["beta"]) - gamma.size
         g0 = reference_effect(gamma, self.provider_sizes_, reference)
         z = t_to_z((gamma - g0) / se, df)
+        record("wald", df=df)
         return effect_test(self.provider_ids_, gamma, z, g0, se=se, df=df, null_model=null_model,
                            alternative=normalize_alternative(alternative), level=level, critical=critical,
                            interval=interval, providers=providers, test_method="wald")
+
+    def funnel_limits(self, providers=None, *, reference="median", null_model=None, alternative: str = "two_sided",
+                      level: float = 0.95, critical: Optional[float] = None, levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        The limits invert the Student-t Wald test: ``reference + q(null_mean +/- c * null_sd) * SE`` for the provider
+        effect, with smooth curves in the precision ``1/SE^2``.
+
+        Parameters
+        ----------
+        providers, reference, null_model, alternative, level, critical
+            As in :meth:`test`.
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        from ..funnel import build_funnel_limits
+        return build_funnel_limits(
+            self, lambda: self.test(providers, reference=reference, null_model=null_model, alternative=alternative,
+                                    level=level, critical=critical),
+            order=self.provider_ids_, levels=levels)

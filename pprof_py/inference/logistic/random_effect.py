@@ -237,6 +237,50 @@ class LogisticRandomEffectInferenceMixin:
                            level=level, critical=critical, interval=interval, providers=providers,
                            test_method=test_method, limits=limits)
 
+    def funnel_limits(self, providers=None, *, test_method: str = "poibin_exact", reference=0.0, null_model=None,
+                      alternative: str = "two_sided", level: float = 0.95, critical: Optional[float] = None,
+                      levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        Only count tests have a funnel here (ADR-004): their statistic is the provider's event count, so observed
+        over expected events is the plotted measure. The default Wald test of the shrunken estimates has none.
+
+        Parameters
+        ----------
+        providers, reference, null_model, alternative, level, critical
+            As in :meth:`test`.
+        test_method : {"poibin_exact", "exact"}, default "poibin_exact"
+            The count test whose flags the limits reproduce (exact limits per provider at half-integer counts).
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        if test_method == "wald":
+            raise ValueError("test_method='wald' tests the shrunken estimates (BLUPs), so no funnel of observed versus "
+                             "expected events can agree with its flags (ADR-004). Use test_method='poibin_exact' or "
+                             "'exact', or an interval plot.")
+        if test_method == "resampling":
+            raise ValueError("test_method='resampling' is a Monte Carlo test and has no funnel limits; use "
+                             "'poibin_exact' or 'exact'.")
+        from ..funnel import build_funnel_limits
+        return build_funnel_limits(
+            self, lambda: self.test(providers, test_method=test_method, reference=reference, null_model=null_model,
+                                    alternative=alternative, level=level, critical=critical),
+            order=self.get_random_effects(self._provider_var).index, levels=levels)
+
+    def _provider_event_counts(self):
+        """Provider ids, events, trials and finite-estimate status (see ``degenerate_providers``)."""
+        k = self._group_vars.index(self._provider_var)
+        idx = np.asarray(self._group_indices[k]).ravel()
+        n = self._n_groups[k]
+        events = np.bincount(idx, weights=np.asarray(self._y, dtype=np.float64).ravel(), minlength=n)
+        return (pd.Index(self.get_random_effects(self._provider_var).index, name="provider_id"), events,
+                np.bincount(idx, minlength=n).astype(np.float64), np.ones(n, dtype=bool))
+
     def calculate_confidence_intervals(
         self,
         providers: Optional[Union[List, Array]] = None,

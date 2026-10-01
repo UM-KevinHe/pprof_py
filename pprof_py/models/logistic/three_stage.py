@@ -104,6 +104,7 @@ class LogisticThreeStageModel(ProviderModel):
         if OFFSET in data.columns:
             raise ValueError(f"data must not have a column named {OFFSET!r}; the model adds it.")
         prep = glmm_data_prep(data, y_var, provider_var, cluster_var, cutoff=self.cutoff)
+        self.excluded_providers_ = prep.excluded_providers
         d = prep.data
         stage1 = LogisticFixedEffectModel(use_dataprep=False, screen_providers=False)
         stage1.fit(X=d[d["included"] == 1], y_var=y_var, x_vars=x_vars, provider_var="cell_id")
@@ -176,6 +177,13 @@ class LogisticThreeStageModel(ProviderModel):
     def test(self, *args, **kwargs) -> pd.DataFrame:
         """Stage 3's provider tests; see :meth:`LogisticFERandomClusterModel.test`."""
         return self._stage3().test(*args, **kwargs)
+
+    def funnel_limits(self, *args, **kwargs):
+        """Stage 3's funnel limits; see :meth:`LogisticFERandomClusterModel.funnel_limits`."""
+        return self._stage3().funnel_limits(*args, **kwargs)
+
+    def _provider_event_counts(self):
+        return self._stage3()._provider_event_counts()
 
     def calculate_standardized_measures(self, *args, **kwargs):
         """Stage 3's standardized measures; see :meth:`LogisticFERandomClusterModel.calculate_standardized_measures`."""

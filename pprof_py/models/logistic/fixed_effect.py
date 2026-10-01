@@ -252,6 +252,7 @@ class LogisticFixedEffectModel(
         self.covariate_names_ = validated.covariate_names
         self.obs_ids_ = validated.obs_ids
         self.N_ = validated.N
+        self.excluded_providers_ = validated.excluded_providers
 
         # Set binomial N: default to 1 (Bernoulli) if not provided
         if self.N_ is None:

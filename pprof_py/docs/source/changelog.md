@@ -18,6 +18,31 @@ feature attributions as a best reconstruction. There is no released
   installed together with it).
 - **Test workflow.** `.github/workflows/tests.yml` runs the test suite on Python 3.10 and 3.14 for pushes to `main`,
   pull requests and manual runs. The documentation workflow builds on Python 3.10.
+
+### Provider tests: funnel limits, zero-event status and exclusions
+
+- **Funnel limits that agree with the flags.** `pprof_py.inference.funnel_limits(model, ...)`, and a `funnel_limits`
+  method on `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`,
+  `LogisticThreeStageModel`, `LinearFixedEffectModel` and `CoxPH`, return a `FunnelLimits`: the `test()` result, each
+  provider's funnel coordinates and control limits, and limit curves. The limits come from the same test, null and
+  decision rule as the flags, so a provider lies outside its limits exactly when it is flagged; count tests place
+  their limits half-way between counts, so no provider lies on a line. Logistic fixed-effect funnels use the score
+  test by default. Random-effect models have funnels for their count tests (`poibin_exact`, `exact`) only; linear
+  random-effect models and Monte Carlo tests have none. See the new reference page *Funnel limits*.
+- **Zero-event status.** `pprof_py.inference.degenerate_providers(model)` reports, for binary-outcome models, each
+  provider's events and trials, whether it has no events or only events, and whether its effect has a finite
+  estimate.
+- **`at_bound()` refuses models it does not apply to.** It raises an informative `TypeError` for models without fixed
+  provider effects (random-effect models raised `KeyError: 'gamma'`) and for continuous outcomes (it returned every
+  provider of a linear model). Results for logistic fixed-effect models are unchanged.
+- **Excluded providers are recorded.** `DataPrep.excluded_providers_`, `GLMMPreparedData.excluded_providers`, and the
+  fitted `excluded_providers_` of `LogisticFixedEffectModel`, `LinearFixedEffectModel` and `LogisticThreeStageModel`
+  list the providers that data preparation removed, with their record counts and the reason; `None` when the model
+  did not prepare the data.
+- **CoxPH test metadata.** `CoxPH.test()` records `attrs["measure"] = "indirect_ratio"` and `attrs["reference"] = 1.0`.
+- No estimate, test result or interval changes: the count-test kernels were split into reusable parts with identical
+  arithmetic.
+
 ### Presentation layer (in progress)
 
 - `import pprof_py` no longer imports `matplotlib.pyplot`, or Matplotlib at all: the plotting functions import it

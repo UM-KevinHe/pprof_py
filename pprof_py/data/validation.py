@@ -236,6 +236,7 @@ class ValidatedInputs:
     covariate_names: List[str]
     obs_ids: Optional[np.ndarray] = None
     N: Optional[np.ndarray] = None
+    excluded_providers: Optional[pd.DataFrame] = None
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +337,7 @@ def validate_and_convert_inputs(
         )
 
     # -- DataPrep (structural checks + provider screening) ---------------
+    excluded_providers = None
     if use_dataprep:
         # Lazy import to avoid circular dependency:
         # preparation.py imports check functions from this module;
@@ -365,6 +367,7 @@ def validate_and_convert_inputs(
             n_char=n_char,
         )
         prepared_data = dataprep.data_prep()
+        excluded_providers = dataprep.excluded_providers_
 
         X_array = prepared_data[X_char].to_numpy()
         y_array = prepared_data[Y_char].to_numpy()
@@ -381,4 +384,5 @@ def validate_and_convert_inputs(
         covariate_names=covariate_names,
         obs_ids=obs_ids,
         N=N_,
+        excluded_providers=excluded_providers,
     )

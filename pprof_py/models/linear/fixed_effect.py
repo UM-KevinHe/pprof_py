@@ -119,6 +119,7 @@ class LinearFixedEffectModel(
         validated = validate_and_convert_inputs(X, y, provider_id, x_vars, y_var, provider_var)
         X, y, provider_id = validated.X, validated.y, validated.provider_id
         self.covariate_names_ = validated.covariate_names
+        self.excluded_providers_ = validated.excluded_providers
 
         self.outcome_ = y
 

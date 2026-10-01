@@ -54,6 +54,15 @@ def poibin_tails(obs: float, probs: np.ndarray, trials: Optional[np.ndarray] = N
 
     ``trials`` expands each probability into that many Bernoulli trials (binomial data).
     """
+    o = int(round(float(obs)))
+    pb = PoiBin(_poibin_probs(probs, trials))
+    cdf, pmf = pb.cdf[o], pb.pmf[o]
+    cdf_below = pb.cdf[o - 1] if o > 0 else 0.0
+    return 1.0 - cdf + 0.5 * pmf, cdf - 0.5 * pmf, (1.0 - cdf_below) if o > 0 else 1.0, cdf
+
+
+def _poibin_probs(probs: np.ndarray, trials: Optional[np.ndarray] = None) -> np.ndarray:
+    """The clipped per-trial probabilities :func:`poibin_tails` uses (binomial trials expanded)."""
     probs = np.clip(np.asarray(probs, dtype=np.float64), 1e-10, 1 - 1e-10)
     if trials is not None and np.any(trials != 1):
         n = np.asarray(trials)
@@ -63,11 +72,22 @@ def poibin_tails(obs: float, probs: np.ndarray, trials: Optional[np.ndarray] = N
             raise ValueError(f"The exact test would need {int(n.sum())} trials for one provider; "
                              "use test_method='score' or 'bootstrap_exact' for large binomial counts.")
         probs = np.repeat(probs, n.astype(int))
-    o = int(round(float(obs)))
-    pb = PoiBin(probs)
-    cdf, pmf = pb.cdf[o], pb.pmf[o]
-    cdf_below = pb.cdf[o - 1] if o > 0 else 0.0
-    return 1.0 - cdf + 0.5 * pmf, cdf - 0.5 * pmf, (1.0 - cdf_below) if o > 0 else 1.0, cdf
+    return probs
+
+
+def poibin_tails_all(probs: np.ndarray, trials: Optional[np.ndarray] = None
+                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    """:func:`poibin_tails` at every count ``0..n`` at once, plus the expected count.
+
+    Elementwise the same arithmetic as :func:`poibin_tails`, so each count's tails are identical to a separate
+    call. Returns ``(upper_mid, lower_mid, p_ge, p_le, expected)``.
+    """
+    p = _poibin_probs(probs, trials)
+    pb = PoiBin(p)
+    cdf, pmf = np.asarray(pb.cdf, dtype=np.float64), np.asarray(pb.pmf, dtype=np.float64)
+    p_ge = 1.0 - np.r_[0.0, cdf[:-1]]
+    p_ge[0] = 1.0
+    return 1.0 - cdf + 0.5 * pmf, cdf - 0.5 * pmf, p_ge, cdf, float(p.sum())
 
 
 def resample_tails(obs: float, eta_fixed: np.ndarray, re_mean: np.ndarray, re_var: np.ndarray,
@@ -189,10 +209,14 @@ def integrated_poibin_tails(obs: float, eta: np.ndarray, var: np.ndarray, n_node
     is Poisson-binomial: this is the limit of :func:`resample_tails` as ``n_resample`` grows.
     Returns ``(upper_mid, lower_mid, p_ge, p_le)`` like :func:`poibin_tails`.
     """
+    return poibin_tails(obs, _integrated_probs(eta, var, n_nodes))
+
+
+def _integrated_probs(eta: np.ndarray, var: np.ndarray, n_nodes: int = 20) -> np.ndarray:
+    """Row probabilities ``E[expit(eta_i + a_i)]``, ``a_i ~ N(0, var_i)``, of :func:`integrated_poibin_tails`."""
     z, w = _std_normal_nodes(n_nodes)
     s = np.sqrt(np.maximum(np.asarray(var, dtype=np.float64), 0.0))
-    probs = expit(np.asarray(eta, dtype=np.float64)[:, None] + s[:, None] * z[None, :]) @ w
-    return poibin_tails(obs, probs)
+    return expit(np.asarray(eta, dtype=np.float64)[:, None] + s[:, None] * z[None, :]) @ w
 
 
 def _poibin_pmf_rows(p: np.ndarray) -> np.ndarray:
@@ -217,6 +241,12 @@ def clustered_poibin_tails(obs: float, eta: np.ndarray, cluster: np.ndarray, clu
     total's distribution is the convolution of the cluster mixtures.
     Returns ``(upper_mid, lower_mid, p_ge, p_le)`` like :func:`poibin_tails`.
     """
+    return _pmf_tails(_clustered_pmf(eta, cluster, cluster_mean, cluster_var, n_nodes), obs)
+
+
+def _clustered_pmf(eta: np.ndarray, cluster: np.ndarray, cluster_mean: np.ndarray, cluster_var: np.ndarray,
+                   n_nodes: int = 20) -> np.ndarray:
+    """The count distribution :func:`clustered_poibin_tails` uses (convolution of the cluster mixtures)."""
     z, w = _std_normal_nodes(n_nodes)
     eta = np.asarray(eta, dtype=np.float64)
     cluster = np.asarray(cluster)
@@ -226,6 +256,11 @@ def clustered_poibin_tails(obs: float, eta: np.ndarray, cluster: np.ndarray, clu
         s = np.sqrt(max(float(cluster_var[h]), 0.0))
         p = expit(e[None, :] + float(cluster_mean[h]) + s * z[:, None])
         pmf = np.convolve(pmf, w @ _poibin_pmf_rows(p))
+    return pmf
+
+
+def _pmf_tails(pmf: np.ndarray, obs: float) -> Tuple[float, float, float, float]:
+    """Tails ``(upper_mid, lower_mid, p_ge, p_le)`` of the count distribution ``pmf`` at ``obs``."""
     o = int(round(float(obs)))
     eq = float(pmf[o]) if 0 <= o < pmf.size else 0.0
     gt, lt = float(pmf[o + 1:].sum()), float(pmf[:max(o, 0)].sum())

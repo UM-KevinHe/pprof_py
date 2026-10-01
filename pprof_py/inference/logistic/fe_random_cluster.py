@@ -165,6 +165,42 @@ class LogisticFERandomClusterInferenceMixin:
                            level=level, critical=critical, providers=providers, test_method=test_method,
                            limits=limits)
 
+    def funnel_limits(self, providers=None, *, test_method: str = "exact", reference="median", null_model=None,
+                      alternative: str = "two_sided", level: float = 0.95, critical: Optional[float] = None,
+                      levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        Parameters
+        ----------
+        providers, reference, null_model, alternative, level, critical
+            As in :meth:`test`.
+        test_method : {"exact", "poibin_exact"}, default "exact"
+            The count test whose flags the limits reproduce (exact limits per provider at half-integer counts).
+            ``"resampling"`` is a Monte Carlo test and has no funnel limits.
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        if test_method == "resampling":
+            raise ValueError("test_method='resampling' is a Monte Carlo test and has no funnel limits; use "
+                             "'exact' or 'poibin_exact'.")
+        from ..funnel import build_funnel_limits
+        return build_funnel_limits(
+            self, lambda: self.test(providers, test_method=test_method, reference=reference, null_model=null_model,
+                                    alternative=alternative, level=level, critical=critical),
+            order=self.provider_ids_, levels=levels)
+
+    def _provider_event_counts(self):
+        """Provider ids, events, trials and finite-estimate status (see ``degenerate_providers``)."""
+        idx = np.asarray(self._provider_idx).ravel()
+        events = np.bincount(idx, weights=np.asarray(self._obs, dtype=np.float64).ravel(), minlength=self.n_providers_)
+        size = np.bincount(idx, minlength=self.n_providers_).astype(np.float64)
+        return pd.Index(self.provider_ids_, name="provider_id"), events, size, ~((events <= 0) | (events >= size))
+
     def calculate_confidence_intervals(
         self,
         providers: Optional[Union[List, np.ndarray]] = None,

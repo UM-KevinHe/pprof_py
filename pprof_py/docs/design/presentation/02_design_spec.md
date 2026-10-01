@@ -281,10 +281,10 @@ Penalized models are out of the MVP; they were not assessed.
 
 | Accessor | Purpose | Proposal | Status |
 |---|---|---|---|
-| `funnel_limits` | S4 by construction (D1) | ADR-003: function `pprof_py.inference.funnel_limits(model, *, levels=(0.95,), **test_kwargs)` and a method on supported families; per-provider and curve rows; `attrs` from `test()` | **API and discrete convention to confirm** |
-| Degeneracy status | D4 across families | `at_bound()` raises an informative `TypeError` outside its families (today: `KeyError` on RE, all-True on linear); new `degenerate_providers(model)` returning zero- and all-event status for binomial families | needs approval |
-| Exclusion record | S6 "excluded" | `DataPrep` and fitted models record `excluded_providers_` (id, reason, n) | needs approval |
-| CoxPH `attrs` | S2 provenance | `attrs["measure"] = "indirect_ratio"`, `attrs["reference"] = 1.0` | needs approval |
+| `funnel_limits` | S4 by construction (D1) | ADR-003: function `pprof_py.inference.funnel_limits(model, *, levels=(0.95,), **test_kwargs)` and a method on supported families; per-provider and curve rows; `attrs` from `test()` | implemented (R3; D10, D11, D13) |
+| Degeneracy status | D4 across families | `at_bound()` raises an informative `TypeError` outside its families (today: `KeyError` on RE, all-True on linear); new `degenerate_providers(model)` returning zero- and all-event status for binomial families | implemented (R3; D10, D11, D13) |
+| Exclusion record | S6 "excluded" | `DataPrep` and fitted models record `excluded_providers_` (id, reason, n) | implemented (R3; D10, D11, D13) |
+| CoxPH `attrs` | S2 provenance | `attrs["measure"] = "indirect_ratio"`, `attrs["reference"] = 1.0` | implemented (R3; D10, D11, D13) |
 | Logistic RE `summary()` CIs | forest without recomputation | add `ci_lower`, `ci_upper` at `level` | needs approval (Phase 4) |
 
 Each accessor ships with invariant tests: S4 for `funnel_limits` across families and nulls, plus a negative control that perturbs one limit and must fail.
@@ -417,8 +417,8 @@ Notes:
 | Same, 50,000 providers | 2.32 s | ≤ 10 s |
 | Funnel render + save, PNG, 10,000 | 0.45 s (standalone funnel) | ≤ 3 s |
 | SVG size, interval plot, 10,000 (dense, rasterized layers) | 3.4 MB (current, vector) | ≤ 2 MB |
-| `funnel_limits`, count tests, ~1,000 providers | ≈ 6 s (spike, Python loop) | ≤ 2 s (vectorized PMF per provider) |
-| `funnel_limits`, count tests, 10,000 | — | ≤ 20 s |
+| `funnel_limits`, count tests, ~1,000 providers | ≈ 6 s (spike, Python loop) | revised in R3 (D24): ≤ 1 s over `test()`; measured +0.42 to +0.59 s. `test(poibin_exact)` itself takes ≈ 5.3 s, almost all exact-interval inversion, unchanged by design |
+| `funnel_limits`, count tests, 10,000 | — | ≤ 10 s over `test()` (not yet measured) |
 | Provider table HTML, 10,000 rows | — | ≤ 2 s, ≤ 5 MB |
 | `import pprof_py` | 1.6–1.8 s, imports pyplot | no pyplot import; no regression |
 

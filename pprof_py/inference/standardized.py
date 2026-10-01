@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 import numpy as np
+import pandas as pd
 
 from ..utils.numerical import sigmoid
 from .zstat import MeasureFrame
@@ -230,7 +231,23 @@ def at_bound(model, tol: float = 0.1) -> np.ndarray:
     ``|gamma|`` with ``bound``, which depends on the covariates' origin and
     missed providers that stopped short of the clamp.  Useful as
     ``fit_mask=~at_bound(model)`` when fitting an empirical null.
+
+    Raises
+    ------
+    TypeError
+        For models without fixed provider effects on a binary outcome (random effects, continuous outcomes);
+        :func:`degenerate_providers` covers every binary-outcome model.
     """
+    try:
+        model.coefficients_["gamma"]
+    except (AttributeError, KeyError, TypeError, IndexError):
+        raise TypeError(f"at_bound() needs a fitted model with fixed provider effects (coefficients_['gamma']); "
+                        f"{type(model).__name__} has none. degenerate_providers(model) reports providers with no "
+                        "events or only events for every binary-outcome model.") from None
+    outcome = getattr(model, "outcome_", None)
+    if outcome is not None and not _binary_outcome(outcome, getattr(model, "N_", None)):
+        raise TypeError(f"at_bound() applies to binary outcomes; {type(model).__name__} models a continuous outcome, "
+                        "so its provider effects always have finite estimates.")
     gamma = np.asarray(model.coefficients_["gamma"], dtype=np.float64).ravel()
     algorithm = getattr(model, "algorithm", None)
     bound = getattr(algorithm, "bound", None) if algorithm is not None else None
@@ -247,3 +264,49 @@ def at_bound(model, tol: float = 0.1) -> np.ndarray:
     total = np.bincount(idx, weights=trials, minlength=gamma.size)
     degenerate = (total > 0) & ((events <= 0) | (events >= total))
     return degenerate | clamped
+
+
+def _binary_outcome(y, trials) -> bool:
+    """Whether outcomes are event indicators (0/1), or event counts no larger than their binomial trials."""
+    y = np.asarray(y, dtype=np.float64).ravel()
+    if not np.all(np.isfinite(y)) or np.any(y < 0):
+        return False
+    if trials is None:
+        return bool(np.all((y == 0) | (y == 1)))
+    n = np.asarray(trials, dtype=np.float64).ravel()
+    return bool(np.all(y == np.round(y)) and np.all(y <= n))
+
+
+def degenerate_providers(model) -> pd.DataFrame:
+    """Providers whose event count sits at an end of its range, for binary-outcome models.
+
+    Parameters
+    ----------
+    model
+        A fitted :class:`~pprof_py.LogisticFixedEffectModel`, :class:`~pprof_py.LogisticRandomEffectModel`,
+        :class:`~pprof_py.LogisticFERandomClusterModel` or :class:`~pprof_py.LogisticThreeStageModel`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indexed by ``provider_id``: ``events``, ``trials`` (records, or binomial trials), ``zero_events``,
+        ``all_events`` and ``finite_estimate``. ``finite_estimate`` is False where the provider's effect has no finite
+        estimate: the providers of :func:`at_bound` for logistic fixed effects, providers with no events or only
+        events for Stage 3's fixed effects; random effects (BLUPs) are always finite. Nothing is recomputed: the
+        counts are the model's own data.
+
+    Raises
+    ------
+    TypeError
+        For models without provider event counts: continuous outcomes, and CoxPH, whose ``test()`` reports each
+        provider's observed events.
+    """
+    counts = getattr(model, "_provider_event_counts", None)
+    if counts is None:
+        raise TypeError(f"degenerate_providers() applies to binary-outcome provider models; {type(model).__name__} "
+                        "has no provider event counts (for CoxPH, test() reports observed events per provider).")
+    ids, events, trials, finite = counts()
+    events, trials = np.asarray(events, dtype=np.float64), np.asarray(trials, dtype=np.float64)
+    return pd.DataFrame({"events": events, "trials": trials, "zero_events": events <= 0,
+                         "all_events": (trials > 0) & (events >= trials),
+                         "finite_estimate": np.asarray(finite, dtype=bool)}, index=ids)

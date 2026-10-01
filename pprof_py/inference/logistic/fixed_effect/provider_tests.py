@@ -16,6 +16,7 @@ import pandas as pd
 
 from ....utils.numerical import sigmoid
 from ....inference.decision import provider_test, resolve_null_model
+from ....inference._recording import record
 from ....inference.count_tests import MonteCarlo, PlugIn, count_test, rows_by_provider
 from ....inference.effect_tests import bootstrap_tails, effect_test, normalize_alternative, reference_effect
 from ....inference.standardized import standardized_measure
@@ -111,6 +112,7 @@ class _ProviderTestMethods:
             observed = np.bincount(idx, weights=y, minlength=m)
             with np.errstate(divide="ignore", invalid="ignore"):
                 z = np.where(var0 >= 1e-14, (observed - expected) / np.sqrt(var0), 0.0)
+            record("score", observed=observed, expected=expected, var0=var0)
         elif test_method in ("poibin_exact", "bootstrap_exact"):
             rows_of = rows_by_provider(idx, m)
             obs = np.array([y[rows].sum() for rows in rows_of])
@@ -133,6 +135,47 @@ class _ProviderTestMethods:
         sizes = dict(zip(self.provider_ids_, self.provider_sizes_))
         result.attrs["provider_size"] = {g: sizes[g] for g in result.index}
         return result
+
+    def funnel_limits(self, providers=None, *, test_method: str = "score", reference="median", null_model=None,
+                      alternative: str = "two_sided", level: float = 0.95, critical: Optional[float] = None,
+                      levels=None):
+        """Funnel coordinates and control limits that agree with :meth:`test` by construction.
+
+        Parameters
+        ----------
+        providers, reference, null_model, alternative, level, critical
+            As in :meth:`test`.
+        test_method : {"score", "poibin_exact", "wald"}, default "score"
+            The test whose flags the limits reproduce. ``"score"`` (the funnel default) gives smooth limit curves
+            in the precision ``E^2/V0``; ``"poibin_exact"`` (the default of :meth:`test`) gives exact limits per
+            provider at half-integer counts; ``"wald"`` gives limits for the effect in ``1/SE^2``.
+            ``"bootstrap_exact"`` is a Monte Carlo test and has no funnel limits.
+        levels : sequence of float, optional
+            Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
+
+        Returns
+        -------
+        FunnelLimits
+            See :func:`pprof_py.inference.funnel_limits`.
+        """
+        if test_method == "bootstrap_exact":
+            raise ValueError("test_method='bootstrap_exact' is a Monte Carlo test and has no funnel limits; use "
+                             "'score', 'poibin_exact' or 'wald'.")
+        from ....inference.funnel import build_funnel_limits
+        return build_funnel_limits(
+            self, lambda: self.test(providers, test_method=test_method, reference=reference, null_model=null_model,
+                                    alternative=alternative, level=level, critical=critical),
+            order=self.provider_ids_, levels=levels)
+
+    def _provider_event_counts(self):
+        """Provider ids, events, trials and finite-estimate status (see ``degenerate_providers``)."""
+        from ....inference.standardized import at_bound
+        m = np.asarray(self.coefficients_["gamma"]).size
+        idx = np.asarray(self.provider_indices_).ravel()
+        y = np.asarray(self.outcome_, dtype=np.float64).ravel()
+        trials = np.ones(idx.size) if self.N_ is None else np.asarray(self.N_, dtype=np.float64).ravel()
+        return (pd.Index(self.provider_ids_, name="provider_id"), np.bincount(idx, weights=y, minlength=m),
+                np.bincount(idx, weights=trials, minlength=m), ~at_bound(self))
 
     def test_standardized(
         self,

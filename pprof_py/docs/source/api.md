@@ -332,6 +332,12 @@ Provider testing: z-statistics, null models and decisions (see {ref}`empirical-n
 
 .. autofunction:: pprof_py.inference.at_bound
 
+.. autofunction:: pprof_py.inference.degenerate_providers
+
+.. autofunction:: pprof_py.inference.funnel_limits
+
+.. autoclass:: pprof_py.inference.FunnelLimits
+
 .. autoclass:: pprof_py.inference.TheoreticalNull
 
 .. autoclass:: pprof_py.inference.FixedNull
