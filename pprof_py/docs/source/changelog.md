@@ -18,6 +18,7 @@ feature attributions as a best reconstruction. There is no released
   installed together with it).
 - **Test workflow.** `.github/workflows/tests.yml` runs the test suite on Python 3.10 and 3.14 for pushes to `main`,
   pull requests and manual runs. The documentation workflow builds on Python 3.10.
+- The test workflow also installs the `excel` extra, so the Excel output tests run in CI.
 
 ### Provider tests: funnel limits, zero-event status and exclusions
 
@@ -84,6 +85,16 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- **Model plot methods delegate to the presentation layer.** `plot_funnel` (logistic and linear fixed effects),
+  `plot_provider_effects` (all four models) and `plot_standardized_measures` (logistic fixed effects) now draw with
+  `funnel` and `caterpillar` and return a `FigureResult` (`fig, ax = ...` still works); they no longer call
+  `plt.show()`. Logistic random-effect `plot_funnel` draws the funnel of the exact count test, and its default
+  `test_method="wald"` warns. Linear random-effect `plot_funnel` and the other models' `plot_standardized_measures`
+  keep their earlier drawing with a `DeprecationWarning`. Styling keywords, `target=` and `use_flags=False` no longer
+  have an effect and warn. Everything deprecated here is removed in 0.7.0; see the migration table on the new page
+  *Presentation layer (preview)*.
+- `plot_caterpillar` reads intervals from `ci_lower`/`ci_upper` (the columns of `test()`) by default; frames with
+  `lower`/`upper` still work, with a `DeprecationWarning`, until 0.7.0.
 
 ## 0.5.0 (2026-09-29)
 

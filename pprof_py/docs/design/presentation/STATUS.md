@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) in progress under decisions D9–D42. Rounds apply in strict order; each is one self-contained diff.
+3 (MVP) **complete** under decisions D9–D46. **STOP: the maintainer reviews the rendered output** (`r8_mvp_samples.zip`) before Phase 4. Rounds applied in strict order; each was one self-contained diff.
 
 | Round | Content | State |
 |---|---|---|
@@ -15,7 +15,19 @@
 | R5 | Funnel renderer and `FigureResult`: Figure API (no pyplot), theme `rc_context`, frozen layout, deterministic SVG/PDF/PNG, alt text, provenance footnote, dense mode | delivered |
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
-| R8 | Delegates, deprecations, acceptance, samples | next |
+| R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## Review at this gate
+- Look at: `r8_mvp_samples.zip` (funnels, interval plots and provider tables at 20, 1,000 and 10,000 providers; survival Chapter 10 rebuilt; the logistic tutorial's figures) and the earlier sample sheets (R5, R6), plus the docs page *Presentation layer (preview)*.
+- Decide: (1) the visual design (theme, status encodings, layout) as the basis for Phase 4; (2) the deprecation behaviour for the model plot methods; (3) Phase 4 order: Tier 2 displays (observed vs expected, between-provider variation, shrinkage, reliability, null calibration, flag stability, multi-measure, data quality), the coefficient forest (logistic RE `summary()` intervals first, spec §7), delegating the standalone `plot_funnel` and `plot_caterpillar`, reports.
+
+## R8 evidence
+- Delegates: 12 new tests (delegated methods return `FigureResult`s that unpack to `(fig, ax)`; logistic RE `plot_funnel` re-routed with a warning; legacy displays warn and still draw; styling keywords, `target=`, `use_flags=False` warn; `save_path` works; no pyplot import on delegated paths). `plot_caterpillar` reads `test()` frames by default and falls back to `lower`/`upper` with a warning.
+- Docs that call plot methods (11 pages, 90 code blocks): printed output identical to R7 block by block, no exceptions. New page's code prints its stored output on both stacks.
+- Acceptance, survival Chapter 10 (run from the chapters' own code): observed identical; expected within 4.3e-4 of the chapter's per-record computation (totals 259.000 vs 259.013); O/E within 8.6e-5; mid-p p-values within 1.1e-4; flags identical except facility 32, where the chapter's report had p = 0.044 with an interval containing 1 (unflagged) and the new layer, from one `CoxPH.test()`, gives p = 0.044 with the test's own interval 0.049-0.974 (flagged below); 0 interval/flag disagreements; funnel outside-the-limits providers = flagged providers. Logistic FE tutorial: its three delegated plot calls produce the new funnel and interval plots (titles kept).
+- Demo (`demo_mvp.py`): 20, 1,000 and 10,000 providers in 1.2, 5.2 and 1.6 s for figures and table (the 1,000-provider exact intervals dominate).
+- One existing test updated: `test_api_consistency.py::test_untested_providers_are_drawn_as_their_own_category` patched `test()` with a stub and read the legend from `plt.gca()`; it now wraps the real test (the funnel reuses its internals) and reads the returned figure's legend; its intent (an untested provider is drawn as "Not tested (1)") is unchanged.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 858 passed / 1 skipped; the floor stack passes all 121 presentation and metadata tests. Docs: 4 warnings (intersphinx).
 
 ## R7 evidence
 - `test_standardized()` metadata: 24 of 24 outputs bit-identical to R6 (frames); only the standardized test's `attrs` gain `test_method`, `variance` and `reference`. Its default indirect-ratio statistic equals `test(test_method="score")` (z to 1e-9, identical flags), which the `"score"` label claims.
@@ -63,4 +75,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-R8: delegates and acceptance. The existing model `plot_funnel`, `plot_provider_effects` and `plot_standardized_measures` methods become thin delegates to the new renderers (single rendering path; tuple unpacking kept) with `DeprecationWarning`s for removed keyword arguments and removal in 0.7.0 (D12; logistic RE `plot_funnel` re-routed to the count-test funnel, linear RE warning); `plot_caterpillar`'s defaults follow `PROVIDER_TEST_COLUMNS`; migration table; acceptance: survival Chapter 10's report and the logistic tutorial reproduced with the new layer; samples at 20, 1,000 and 10,000 providers; demo script. Then STOP for the maintainer's review of rendered output.
+STOP. After the maintainer's review of the rendered output: Phase 4 in the agreed order (each tier with the full checklist of brief §1), then Phase 5 (docs, gallery, migration guide) and Phase 6 (quality review).

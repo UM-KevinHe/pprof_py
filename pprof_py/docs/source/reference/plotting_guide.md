@@ -1,6 +1,12 @@
 (plotting-guide)=
 # Plotting: Caterpillar and Funnel Plots
 
+```{note}
+The model plot methods now delegate to the presentation layer (the funnel and interval plots of
+`pprof_py.presentation`); some keywords described below no longer have an effect and warn until 0.7.0. See
+{ref}`presentation-guide` for the displays and the migration table.
+```
+
 Two chart types cover most provider-profiling visualization needs:
 one estimate per provider with an uncertainty interval, sorted
 (**caterpillar**), and one estimate per provider plotted against its

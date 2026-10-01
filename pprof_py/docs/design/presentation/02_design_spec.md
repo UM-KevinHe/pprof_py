@@ -417,6 +417,8 @@ Notes:
 4. **Styling kwargs** map onto theme derivation and are deprecated per policy.
 5. The docs migration table (old call → new call) ships with the delegates.
 
+*Implemented in R8 (D43–D45):* `plot_funnel` (logistic and linear fixed effects; logistic random effects re-routed to the exact count test), `plot_provider_effects` (all four models) and `plot_standardized_measures` (logistic fixed effects) delegate to `funnel` and `caterpillar` and return a `FigureResult`; the remaining displays keep their drawing with a `DeprecationWarning`; styling keywords, `target=` and `use_flags=False` warn; `plot_caterpillar` defaults to `ci_lower`/`ci_upper`. Removal of everything deprecated: 0.7.0 (D12). The migration table is on the docs page *Presentation layer (preview)*.
+
 ## 14. Performance budgets
 
 | Operation | Baseline [run] | Budget [proposal] |

@@ -16,8 +16,8 @@ from . import style as _style
 def plot_caterpillar(
     df: pd.DataFrame,
     estimate_col: str = 'estimate',
-    ci_lower_col: Optional[str] = 'lower', # Changed default
-    ci_upper_col: Optional[str] = 'upper', # Changed default
+    ci_lower_col: Optional[str] = 'ci_lower',
+    ci_upper_col: Optional[str] = 'ci_upper',
     group_col: Optional[str] = None, # If None, uses DataFrame index
     flag_col: Optional[str] = None,
     labels: List[str] = _style.FLAG_LABELS, # For flags -1, 0, 1
@@ -61,9 +61,9 @@ def plot_caterpillar(
         DataFrame containing the data to plot. Index should represent groups if group_col is None.
     estimate_col : str, default='estimate'
         Column name for point estimates (plotted on x-axis).
-    ci_lower_col : str or None, default='lower'
+    ci_lower_col : str or None, default='ci_lower'
         Column name for lower confidence interval bounds. If None, no error bars.
-    ci_upper_col : str or None, default='upper'
+    ci_upper_col : str or None, default='ci_upper'
         Column name for upper confidence interval bounds. If None, no error bars.
     group_col : str or None, default=None
         Column name for group identifiers. If None, uses the DataFrame index.
@@ -131,6 +131,13 @@ def plot_caterpillar(
     import matplotlib.pyplot as plt
     required_cols = [estimate_col]
     plot_ci = False
+    if ((ci_lower_col, ci_upper_col) == ("ci_lower", "ci_upper") and not {"ci_lower", "ci_upper"} <= set(df.columns)
+            and {"lower", "upper"} <= set(df.columns)):
+        warnings.warn("plot_caterpillar() now reads intervals from 'ci_lower' and 'ci_upper' by default (the columns of "
+                      "test()); this frame has 'lower' and 'upper', which are used for now. Pass ci_lower_col='lower', "
+                      "ci_upper_col='upper' explicitly; this fallback will be removed in 0.7.0.", DeprecationWarning,
+                      stacklevel=2)
+        ci_lower_col, ci_upper_col = "lower", "upper"
     if ci_lower_col and ci_upper_col:
         if ci_lower_col in df.columns and ci_upper_col in df.columns:
             required_cols += [ci_lower_col, ci_upper_col]

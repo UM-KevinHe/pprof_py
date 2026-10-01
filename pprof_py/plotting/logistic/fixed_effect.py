@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Protocol, Tuple, Union, Literal
 
+from .._delegates import UNSET
+
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, t
@@ -41,7 +43,53 @@ class LogisticFixedEffectPlottingMixin:
     """Funnel, provider-effect, standardized-measure, and coefficient-forest
     plots for `LogisticFixedEffectModel`."""
 
-    def plot_funnel(
+    def plot_funnel(self, test_method: str = "score", reference: Union[str, float] = "median", target: Any = UNSET,
+                    alpha: Union[float, List[float]] = 0.05, **kwargs: Any):
+        """Funnel plot whose control limits come from the same test as the flags.
+
+        Delegates to :func:`pprof_py.presentation.funnel` and returns its
+        :class:`~pprof_py.presentation.FigureResult` (``fig, ax = model.plot_funnel()`` still works). ``alpha`` sets
+        the levels of the limit curves; ``save_path``, ``theme``, ``size``, ``title`` and ``highlight`` are passed on.
+        Styling keywords and ``target`` no longer have an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        """
+        from .._delegates import funnel_delegate
+        return funnel_delegate(self, "plot_funnel", test_kwargs={"test_method": test_method, "reference": reference},
+                               alpha=alpha, target=target, kwargs=kwargs)
+
+    def plot_provider_effects(self, group_ids=None, level: float = 0.95, test_method: str = "wald",
+                              use_flags: bool = True, reference: Union[str, float] = "median", **plot_kwargs: Any):
+        """Interval plot of the provider effects with the intervals of their own test, and a volume panel.
+
+        Delegates to :func:`pprof_py.presentation.caterpillar` and returns its
+        :class:`~pprof_py.presentation.FigureResult`. ``group_ids`` selects providers; ``save_path``, ``theme``,
+        ``size``, ``title`` and ``highlight`` are passed on. Styling keywords and ``use_flags=False`` no longer have
+        an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        """
+        from .._delegates import caterpillar_delegate
+        return caterpillar_delegate(self, "plot_provider_effects", use_flags=use_flags, kwargs=plot_kwargs,
+                                    test_kwargs={"providers": group_ids, "level": level, "test_method": test_method,
+                                                 "reference": reference})
+
+    def plot_standardized_measures(self, group_ids=None, level: float = 0.95, stdz: str = "indirect",
+                                   measure: str = "ratio", test_method: str = "score", use_flags: bool = True,
+                                   reference: Union[str, float] = "median", **plot_kwargs: Any):
+        """Interval plot of a standardized measure with the intervals of its own test (``test_standardized()``).
+
+        Delegates to :func:`pprof_py.presentation.caterpillar` with the profile of
+        ``test_standardized(measure=f"{stdz}_{measure}")``; ``test_method="score"`` evaluates the variance of the
+        observed count under the null (indirect measures), ``"wald"`` at the fitted effect.
+        """
+        from ...presentation import ProviderProfile
+        from .._delegates import caterpillar_delegate
+        kw: Dict[str, Any] = {"measure": f"{stdz}_{measure}", "providers": group_ids, "level": level,
+                              "reference": reference}
+        if stdz == "indirect":
+            kw["indirect_variance"] = "null" if test_method == "score" else "fitted"
+        profile = ProviderProfile.from_test(self.test_standardized(**kw), model=self)
+        return caterpillar_delegate(self, "plot_standardized_measures", source=profile, use_flags=use_flags,
+                                    kwargs=plot_kwargs)
+
+    def _legacy_plot_funnel(
         self,
         test_method: str = "score", # "score" or "poibin_exact"
         reference: Union[str, float] = "median",
@@ -283,7 +331,7 @@ class LogisticFixedEffectPlottingMixin:
             legend_location=legend_location,
         )
 
-    def plot_provider_effects(
+    def _legacy_plot_provider_effects(
         self,
         group_ids=None,
         level: float = 0.95,
@@ -381,7 +429,7 @@ class LogisticFixedEffectPlottingMixin:
             **plot_kwargs
         )
         
-    def plot_standardized_measures(
+    def _legacy_plot_standardized_measures(
         self,
         group_ids=None,
         level: float = 0.95,
