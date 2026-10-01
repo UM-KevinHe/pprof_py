@@ -65,6 +65,14 @@ feature attributions as a best reconstruction. There is no released
   above 2,000 providers the not-different points are rasterized while flagged providers stay on top. Each figure
   carries a provenance footnote and alt text, and returns a `FigureResult` whose SVG, PDF and PNG exports are
   byte-identical for the same input and environment; no pyplot state is involved.
+- `pprof_py.presentation.caterpillar(source, ...)`: an interval plot of provider estimates with the intervals of their
+  own test and a volume panel of denominators. Providers are ordered by estimate for legibility only (the axis says
+  so and never shows a rank); each interval is drawn from its lower to its upper bound, so intervals shifted by an
+  empirical null render as they are; providers without a finite estimate are marked at the axis edge with any
+  one-sided interval drawn from there, and the solver's clamp is never drawn. Up to 60 providers are labelled; above
+  2,000 the not-different providers are rasterized and flagged providers stay on top.
+- Presentation themes render text without font hinting, so text keeps the same width at every raster resolution and
+  footnotes wrap identically in PNG, SVG and PDF output.
 
 ## 0.5.0 (2026-09-29)
 

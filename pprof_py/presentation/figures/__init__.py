@@ -2,7 +2,8 @@
 
 Every renderer returns a :class:`FigureResult`; none uses pyplot or leaves global state behind.
 """
+from ._caterpillar import caterpillar
 from ._funnel import funnel
 from ._result import FigureResult
 
-__all__ = ["FigureResult", "funnel"]
+__all__ = ["FigureResult", "caterpillar", "funnel"]

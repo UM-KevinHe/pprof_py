@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) in progress under decisions D9–D33. Rounds apply in strict order; each is one self-contained diff.
+3 (MVP) in progress under decisions D9–D37. Rounds apply in strict order; each is one self-contained diff.
 
 | Round | Content | State |
 |---|---|---|
@@ -13,8 +13,15 @@
 | R3 | `pprof_py.inference.funnel_limits` and model methods; `degenerate_providers`; `at_bound` guard; excluded-provider records; CoxPH metadata; reference page *Funnel limits* | delivered |
 | R4 | Presentation data: `ProviderProfile` (adapters `from_model`, `from_test`, `from_frame`), statuses, provenance, capabilities and `CapabilityError`, S3/S4 checks on user frames, minimum-volume rule | delivered |
 | R5 | Funnel renderer and `FigureResult`: Figure API (no pyplot), theme `rc_context`, frozen layout, deterministic SVG/PDF/PNG, alt text, provenance footnote, dense mode | delivered |
-| R6 | Interval plot with volume panel and dense mode | next |
-| R7–R8 | Tables (+ `excel` extra); delegates, deprecations, acceptance | pending |
+| R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
+| R7 | Tables: `TableSpec`, HTML/Markdown/LaTeX/text renderers, provider table, `excel` extra | next |
+| R8 | Delegates, deprecations, acceptance, samples | pending |
+
+## R6 evidence
+- Drawn artists equal the profile: points and interval segments (clipped only at infinite bounds), rows in estimate order with ties in source order, volume bars equal the denominators row by row, reference at the test's null value; legend counts equal `status_counts()`.
+- Visual QA [viewed]: 30 (notebook preset), 40, 50 and 58 providers (labelled; publication single and double width), 1,000 and 10,000 (unlabelled; rasterized above 2,000) with highlights; effect scale (logistic Wald and exact, linear) and ratio scale (`test_standardized`, CoxPH) with zero-event providers; grayscale. Fixed during QA: footnote overflow at low raster resolution (D37), colliding x labels at single width (two-line volume labels), Wald intervals of providers without a finite estimate drawn across the whole axis (D36), overlapping labels in the notebook preset (row height from the tick size, D34).
+- Cost: 10,000 providers in 0.51 s plus 0.41 s for a 300-dpi PNG; SVG 0.43 MB (budgets 3 s and 2 MB).
+- 14 new tests pass on Python 3.12 and on the 3.10 floor stack (with R5's, 26 figure tests). Mutations: reversed ordering fails 4 tests; misaligned volume bars fail 1. Full suite: 1 failed (`test_setup_logger`, environmental) / 825 passed / 1 skipped. Docs: 4 warnings (intersphinx).
 
 ## R5 evidence
 - Drawn artists equal the profile: status points, zero-event markers, limit curves and per-provider marks match `ProviderProfile` (and so `funnel_limits`) exactly; legend counts equal `status_counts()`.
@@ -47,7 +54,8 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - `dev` extra: `statsmodels>=0.13` cannot be installed from wheels on Python 3.10 (0.13.0 has no 3.10 wheel; its source build fails); 0.13.1 is the lowest installable. Raise it before adding a minimum-version job.
 - Minimum-version job (D16): the floor stack passes everything except `test_setup_logger` (no tzdata in this container) and the R1b test.
 - `test(test_method="poibin_exact")` takes about 5 s at 1,000 providers, almost all of it inverting the exact test for each provider's interval; a vectorised inversion could shorten it but would change validated code (not proposed).
+- `test_standardized()` records neither `test_method` nor `reference` in its `attrs` (like CoxPH before D13), so displays say "test method not stated" and "reference not stated" for standardized-measure profiles; adding them is a statistical-layer change (needs approval).
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-R6: the interval plot ("caterpillar") with a volume panel. Intervals as segments from `ci_lower` to `ci_upper` (so shifted empirical-null intervals render correctly), ordered by estimate for legibility ("Providers, ordered by estimate"), reference line, status encodings, zero-event and no-finite-estimate providers as off-scale markers with their exact one-sided intervals (ADR-005), volume bars labelled by denominator kind, labels up to 150 providers and a dense mode above, provenance footnote, alt text, frozen layout and deterministic export; `CapabilityError` for profiles without intervals.
+R7: tables. A library-independent `TableSpec` (typed columns with roles, spanners, footnote markers, caption, source note, missing-value rules) and hand-written renderers for HTML (self-contained, `<caption>`, `<th scope>`, footnotes in `<tfoot>`), Markdown (GFM), LaTeX (booktabs, `longtable` above 40 rows) and plain text, plus Excel through XlsxWriter as the optional `excel` extra (D14); the provider table built from `ProviderProfile` with generated provenance and missingness footnotes (S2, S6) and the S12 rounding rule; golden-file tests and determinism.

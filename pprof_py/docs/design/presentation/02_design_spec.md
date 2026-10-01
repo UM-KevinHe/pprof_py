@@ -95,6 +95,8 @@
    - 50,000: rasterized line collection.
    - Legend and alt text always report full N [run: dense prototype at N = 998].
 
+*Implemented in R6 (D34–D36):* rows are labelled up to 60 providers, with row height from the theme's tick size; the volume panel shows the profile's denominator by kind; the reference value is part of the x-axis label; providers without a finite estimate get an interval segment only from the axis edge to a finite bound.
+
 ### 2.3 Provider summary table
 Spec in §3. Its key mitigation: flags never appear without their level, reference, null model and test method, because the footnotes are generated from `attrs`.
 

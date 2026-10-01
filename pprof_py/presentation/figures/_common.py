@@ -60,7 +60,8 @@ def null_text(nm: Any) -> str:
 
 
 def test_text(p: Mapping[str, Any]) -> str:
-    parts = [f"{_METHODS.get(p.get('test_method'), p.get('test_method') or 'unstated')} test"]
+    method = p.get("test_method")
+    parts = [f"{_METHODS.get(method, method)} test" if method else "test method not stated"]
     if p.get("alternative"):
         parts.append(_ALTERNATIVES.get(p["alternative"], p["alternative"]))
     if p.get("critical") is not None:
@@ -136,8 +137,11 @@ def note_rows(text: str, width_mm: float, font_pt: float, family: str) -> Tuple[
     return wrapped, (wrapped.count("\n") + 1) * font_pt * PT_MM * 1.3 + 0.8
 
 
-def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note: str):
+def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note: str, *,
+             width_ratios: Optional[Sequence[float]] = None):
     """Figure with three stacked sub-figures: data, legend and footnote, each sized from its content.
+
+    With ``width_ratios`` the data row holds that many axes side by side, sharing the y axis; otherwise one axes.
 
     Sub-figures keep the legend and footnote at the full figure width; in one grid, constrained layout would align
     them with the data axes and shrink those axes to make room.
@@ -147,11 +151,16 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     width_in, _ = theme.figsize(size)
     width_mm = width_in * 25.4
     family = theme.typography.family
-    ncol, key_mm = legend_rows(labels, width_mm - 3.0, theme.typography.legend, family)
-    wrapped, note_mm = note_rows(note, width_mm - 3.0, theme.typography.footnote, family)
+    usable = (width_mm - 3.0) * 0.98              # rendered text boxes are about 1.5 % wider than the outlines
+    ncol, key_mm = legend_rows(labels, usable, theme.typography.legend, family)
+    wrapped, note_mm = note_rows(note, usable, theme.typography.footnote, family)
     fig = Figure(figsize=(width_in, (main_mm + key_mm + note_mm) / 25.4), layout="constrained")
     top, key, foot = fig.subfigures(3, 1, height_ratios=[main_mm, max(key_mm, 0.01), note_mm])
-    ax = top.add_subplot()
+    if width_ratios is None:
+        ax = top.add_subplot()
+    else:
+        ax = tuple(top.subplots(1, len(width_ratios), sharey=True,
+                                gridspec_kw={"width_ratios": list(width_ratios), "wspace": 0.02}))
     inset = 1.5 / width_mm
     foot.text(inset, 1.0, wrapped, ha="left", va="top", fontsize=theme.typography.footnote, color=theme.muted,
               linespacing=1.25)

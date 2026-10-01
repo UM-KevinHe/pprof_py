@@ -235,6 +235,7 @@ class Theme:
             "grid.linewidth": ln.grid, "legend.frameon": False, "axes.unicode_minus": True,
             "svg.hashsalt": self.svg_hashsalt, "svg.fonttype": "path" if self.svg_text_as_paths else "none",
             "pdf.fonttype": 42, "ps.fonttype": 42, "savefig.dpi": self.dpi, "path.simplify": True,
+            "text.hinting": "no_hinting",   # text keeps its outline width at every raster resolution
         }
 
     def rc_context(self) -> Any:
