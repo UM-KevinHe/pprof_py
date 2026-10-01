@@ -56,7 +56,7 @@ bibtex_reference_style = 'author_year'
 autosummary_generate = False  # no page uses autosummary directives
 
 # templates_path = ['_templates']  # No custom templates yet
-exclude_patterns = ['presentation/_gallery_items.md']  # generated, included by presentation/gallery.md
+exclude_patterns = ['presentation/_gallery_items.md', 'presentation/_figures/*']  # generated includes
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

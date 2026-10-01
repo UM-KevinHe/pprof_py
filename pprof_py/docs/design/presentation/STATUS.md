@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-5 (docs and gallery) in progress under decisions D9–D63; Phase 4 complete. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
+5 (docs and gallery) in progress under decisions D9–D64; Phase 4 complete. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
 |---|---|---|
@@ -20,8 +20,8 @@
 | P4-10 | Standalone `plot_funnel` and `plot_caterpillar` as delegates (D45, D60) | delivered |
 | P4-11 | HTML report object (`Report`) | delivered |
 | P5-1 | Presentation docs section and build-time gallery (`_ext/pprof_gallery.py`, `_synthetic.provider_data`); agreement-plot fix (D63) | delivered |
-| P5-2 | Interpretation pages, one per display | next |
-| P5-3 | Decision guide; theme, export and accessibility guide; migration guide | planned |
+| P5-2 | Interpretation pages, one per display, and the tables page (D64) | delivered |
+| P5-3 | Decision guide; theme, export and accessibility guide; migration guide | next |
 
 Phase 3 rounds:
 
@@ -36,6 +36,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P5-2 evidence
+- 11 display pages (spec sheet, reading, misreadings, call) and a tables page; built pages carry 12 figures, all with generated alt text; docs build exit 0 with 4 warnings (the baseline).
+- Executed counterexamples (funnel against a league table, ends of the interval-plot ordering, null calibration) print their stored outputs on Python 3.12 and on the 3.10 floor stack; the first funnel claim was false for the data (all ten highest ratios were flagged) and was rewritten to what the output shows.
+- New test: every gallery figure has a page with all eight spec-sheet items and both interpretation sections; renaming one item fails it.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 928 passed / 1 skipped. Docs: 4 warnings (intersphinx).
 
 ## P5-1 evidence
 - Docs build with the gallery: exit 0, 4 warnings (intersphinx, the baseline), 56 s (+6 s); 12 figures and the include file generated; a second build rewrites nothing. Gallery figures checked as a contact sheet [viewed] at 200 providers; the agreement plot's axes were set by a solver-bound interval (fixed, D63).
@@ -160,4 +166,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-P5-2: one interpretation page per display (spec sheet, how to read it, how it can mislead, a counterexample), linked from the gallery. Then P5-3 and Phase 6.
+P5-3: decision guide ("which display answers my question?"); theme, export and accessibility guide; migration guide. Then Phase 6 quality review.

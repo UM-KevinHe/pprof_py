@@ -88,6 +88,11 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- Documentation: one page per display under **Presentation → Reading the displays**, each with its spec sheet (what
+  it answers, the quantities and their source, uncertainty, denominator, reference, misreadings and mitigations, and
+  behaviour from 10 to 50,000 providers), how to read it and how it can mislead, with executed counterexamples on the
+  same synthetic data (for example, the funnel against a league table); and a **Tables** page with every table function,
+  the symbol set and the formatting rules.
 - Documentation: a **Presentation** section with a gallery of every figure, rendered at build time from synthetic data
   by a local Sphinx extension (`docs/source/_ext/pprof_gallery.py`) with the same deterministic renderers; nothing is
   saved by hand. The private generator `pprof_py.presentation._synthetic.provider_data()` (planted outliers,

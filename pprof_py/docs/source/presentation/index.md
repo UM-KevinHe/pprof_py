@@ -14,6 +14,8 @@ byte-identical SVG, PDF and PNG; tables export to HTML, Markdown, LaTeX, text an
 :maxdepth: 1
 
 gallery
+displays/index
+tables
 ```
 
 The worked examples and the migration table are on {doc}`../reference/presentation`.

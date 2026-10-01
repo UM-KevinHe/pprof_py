@@ -3,7 +3,9 @@ script during the build, never saved by hand).
 
 On ``builder-inited`` it fits models to the package's synthetic data (``pprof_py.presentation._synthetic``), renders
 every figure type with the deterministic renderers into ``_static/gallery/``, and writes
-``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call). Files are rewritten only when
+``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call) and one
+``presentation/_figures/<name>.md`` per figure (the image with its alt text, included by the display pages). Files are
+rewritten only when
 their bytes change, so repeated builds do not trigger rebuilds.
 """
 from __future__ import annotations
@@ -12,6 +14,11 @@ import logging
 import warnings
 from pathlib import Path
 from typing import Iterator, Tuple
+
+PAGES = {"funnel": "funnel", "caterpillar": "caterpillar", "observed_expected": "observed_expected", "forest": "forest",
+         "data_quality": "data_quality", "null_calibration": "null_calibration", "reliability": "reliability",
+         "provider_variation": "provider_variation", "shrinkage": "shrinkage", "flag_stability": "flag_stability",
+         "multi_measure": "several_measures", "measure_agreement": "several_measures"}
 
 ITEMS = {
     "funnel": ("Funnel plot", "Which providers depart from the reference by more than volume-driven noise explains?",
@@ -81,6 +88,8 @@ def build(app) -> None:
     src = Path(app.srcdir)
     images = src / "_static" / "gallery"
     images.mkdir(parents=True, exist_ok=True)
+    per_figure = src / "presentation" / "_figures"
+    per_figure.mkdir(parents=True, exist_ok=True)
     lines = []
     logging.disable(logging.WARNING)
     try:
@@ -89,8 +98,10 @@ def build(app) -> None:
             for name, fig in figures():
                 _write(images / f"{name}.svg", fig.to_bytes("svg"))
                 title, question, call = ITEMS[name]
-                lines += [f"(gallery-{name.replace('_', '-')})=", f"## {title}", "", f"*Answers:* {question}", "",
-                          f"![{_alt(fig.alt_text)}](/_static/gallery/{name}.svg)", "", "```{code-block} python",
+                image = f"![{_alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
+                _write(per_figure / f"{name}.md", (image + "\n").encode("utf-8"))
+                lines += [f"(gallery-{name.replace('_', '-')})=", f"## {title}", "", f"*Answers:* {question} "
+                          f"{{doc}}`How to read it <displays/{PAGES[name]}>`", "", image, "", "```{code-block} python",
                           call, "```", ""]
     finally:
         logging.disable(logging.NOTSET)
