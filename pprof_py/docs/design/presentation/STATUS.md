@@ -8,7 +8,8 @@
 | Round | Content | State |
 |---|---|---|
 | P4-1 | Coefficient forest and coefficient table (`CoefficientProfile`); logistic RE `summary()` intervals (D47) | delivered |
-| P4-2 | Data-quality panel | next |
+| P4-2 | Data-quality panel and table (`data_quality`, `data_quality_table`) | delivered |
+| P4-3 | Null-calibration diagnostics | next |
 
 Phase 3 rounds:
 
@@ -23,6 +24,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-2 evidence
+- Accounting equals the profile's statuses and the model's exclusion record (in the data = analysed + excluded); unrecorded exclusions read "not recorded" in figure and table; bars, volume points per group (checked against an independent grouping), excluded providers' records and the minimum-volume line equal their sources; excluded providers stay off an axis in other units.
+- Visual QA [viewed]: 58 providers with exclusions, a zero-event provider and suppression; 10,000 providers (the 910 providers without a finite estimate are all small).
+- 6 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutations: unrecorded exclusions shown as 0 fails 1 test; no-finite-estimate providers hidden among the analysed fails 1 (after adding the independent grouping check, which the first version lacked).
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 879 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-1 evidence
 - `LogisticRandomEffectModel.summary()`: existing columns bit-identical to R8; the new interval equals `Estimate -/+ z * Std.Error` and excludes 0 exactly when `Pr(>|z|) < 1 - level` (levels 0.90, 0.95, 0.99).

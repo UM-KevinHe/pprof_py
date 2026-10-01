@@ -9,7 +9,8 @@ import numpy as np
 from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
 from .._provenance import counts_text, interval_method, null_text, pct, reference_text, test_text
-from ._common import freeze_layout, resolve_profile, scaffold, spread
+from ..data._resolve import resolve_profile
+from ._common import freeze_layout, scaffold, spread
 from ._result import FigureResult
 
 __all__ = ["caterpillar"]

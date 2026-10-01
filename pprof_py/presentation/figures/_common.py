@@ -5,28 +5,9 @@ import math
 from typing import Any, List, Optional, Sequence, Tuple
 
 import numpy as np
-import pandas as pd
 
-from ..data import CapabilityError, ProviderProfile
 
 PT_MM = 25.4 / 72.0
-
-
-def resolve_profile(source: Any, args: tuple, kwargs: dict, *, display: str, limits: bool,
-                    levels: Optional[Sequence[float]] = None) -> ProviderProfile:
-    """A profile from a fitted model (tested once here), a ``test()`` result, or a profile as given."""
-    if isinstance(source, ProviderProfile):
-        if args or kwargs:
-            raise TypeError(f"{display}(): the test settings come from the profile; build a new profile to change "
-                            f"them (got {sorted(kwargs) or 'positional arguments'})")
-        return source
-    if isinstance(source, pd.DataFrame):
-        if limits:
-            raise CapabilityError(f"{display}() needs control limits from the same test as the flags, and a test() "
-                                  "result has none; pass the fitted model, or ProviderProfile.from_model(model, "
-                                  "limits=True).")
-        return ProviderProfile.from_test(source)
-    return ProviderProfile.from_model(source, *args, limits=limits, levels=levels if limits else None, **kwargs)
 
 
 def text_width_mm(text: str, font_pt: float, family: str) -> float:
@@ -72,7 +53,7 @@ def note_rows(text: str, width_mm: float, font_pt: float, family: str) -> Tuple[
 
 
 def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note: str, *,
-             width_ratios: Optional[Sequence[float]] = None):
+             width_ratios: Optional[Sequence[float]] = None, sharey: bool = True):
     """Figure with three stacked sub-figures: data, legend and footnote, each sized from its content.
 
     With ``width_ratios`` the data row holds that many axes side by side, sharing the y axis; otherwise one axes.
@@ -93,7 +74,7 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     if width_ratios is None:
         ax = top.add_subplot()
     else:
-        ax = tuple(top.subplots(1, len(width_ratios), sharey=True,
+        ax = tuple(top.subplots(1, len(width_ratios), sharey=sharey,
                                 gridspec_kw={"width_ratios": list(width_ratios), "wspace": 0.02}))
     inset = 1.5 / width_mm
     foot.text(inset, 1.0, wrapped, ha="left", va="top", fontsize=theme.typography.footnote, color=theme.muted,

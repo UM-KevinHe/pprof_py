@@ -4,7 +4,8 @@ Every renderer returns a :class:`FigureResult`; none uses pyplot or leaves globa
 """
 from ._caterpillar import caterpillar
 from ._forest import forest
+from ._quality import data_quality
 from ._funnel import funnel
 from ._result import FigureResult
 
-__all__ = ["FigureResult", "caterpillar", "forest", "funnel"]
+__all__ = ["FigureResult", "caterpillar", "data_quality", "forest", "funnel"]

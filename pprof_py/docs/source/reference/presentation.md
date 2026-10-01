@@ -97,6 +97,30 @@ Source: LogisticFixedEffectModel; pprof_py 0.5.0.
 
 ```
 
+## Data quality
+
+The data-quality panel and table account for every provider: those excluded by data preparation (as the model
+recorded them), untested and suppressed providers, and providers without a finite estimate, with each group's
+volumes. A count the source does not record is shown as "not recorded", never as zero.
+
+```python
+from pprof_py.presentation import data_quality, data_quality_table
+
+print(data_quality(profile).alt_text)
+print(data_quality_table(profile, details=True).to_text())
+```
+```text
+Data-quality summary: 16 providers in the data, 0 excluded by data preparation, 16 analysed (5 above, 2 below, 9 not different, 0 not tested); 0 without a finite estimate; records per provider from 30 to 143 (median 108).
+Data quality: 0 providers with an issue
+=========================
+Provider  Recordsᵃ  Issue
+--------  --------  -----
+=========================
+ᵃ Records per provider.
+Source: LogisticFixedEffectModel; exact Poisson-binomial test, two-sided, 95% level per provider; pprof_py 0.5.0.
+
+```
+
 ## Migrating from the model plot methods
 
 The model methods keep working: most now delegate to the new displays, and the others keep their earlier drawing with

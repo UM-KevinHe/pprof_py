@@ -88,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.data_quality(source)` and `data_quality_table(source, details=False)`: every provider
+  accounted for (in the data, excluded by data preparation, analysed by flag, not tested, suppressed; no finite
+  estimate, zero events and no interval as attributes), with each group's volumes; counts the source does not record
+  are shown as "not recorded", never as zero.
 - `pprof_py.presentation.forest(model)` and `coefficient_table(model)`: covariate effects from `summary()` with their
   intervals, as odds or hazard ratios on a log axis for logistic and Cox models (exponentiated for display through
   `CoefficientProfile.exponentiate()`), with a footnote that the associations are adjusted, not causal, and in each

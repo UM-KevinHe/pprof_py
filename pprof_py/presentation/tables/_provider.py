@@ -9,7 +9,7 @@ import pandas as pd
 
 from .._provenance import counts_text, interval_method, null_text, pct, reference_text, test_text
 from ..data import CapabilityError
-from ..figures._common import resolve_profile
+from ..data._resolve import resolve_profile
 from ..formatting import FLAG_SYMBOLS, MISSING, fmt_count, fmt_flag, fmt_interval, fmt_number, fmt_p, resolve_digits
 from ._spec import Column, TableSpec, excel_bytes, render_html, render_latex, render_markdown, render_text
 

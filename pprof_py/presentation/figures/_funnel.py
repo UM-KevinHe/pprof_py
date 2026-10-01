@@ -10,7 +10,8 @@ import pandas as pd
 from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
 from .._provenance import counts_text, null_text, pct, reference_text, test_text
-from ._common import PT_MM, freeze_layout, log_ticks, resolve_profile, scaffold, spread, text_width_mm
+from ..data._resolve import resolve_profile
+from ._common import PT_MM, freeze_layout, log_ticks, scaffold, spread, text_width_mm
 from ._result import FigureResult
 
 __all__ = ["funnel"]
