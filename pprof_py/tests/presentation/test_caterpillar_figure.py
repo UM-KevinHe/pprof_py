@@ -169,7 +169,7 @@ def test_zero_events_on_a_ratio_scale(fe):
     assert len(zero.get_offsets()) == prof.status_counts()["zero_events"] == 1
     assert np.all(np.asarray(zero.get_offsets())[:, 0] == 0.0)
     assert r.axes.get_xlabel().startswith("Indirectly standardized ratio (O/E)")
-    assert "test method not stated" in r.long_description         # test_standardized() does not record it
+    assert "score test" in r.long_description and "where the measure equals 1.00" in r.long_description
 
 
 def test_dense_mode_rasterizes_the_bulk_and_keeps_flags_on_top():

@@ -168,6 +168,7 @@ Requires Python ≥ 3.10.
 ```bash
 pip install ".[dev]"            # pytest + statsmodels (cross-validation tests)
 pip install ".[random-effect]"  # nlopt (optional solver for LogisticRandomEffectModel)
+pip install ".[excel]"          # XlsxWriter (Excel output of presentation tables)
 ```
 
 ## Validation

@@ -47,6 +47,8 @@ docs = [
 # Optional solver used by LogisticRandomEffectModel; scipy fallbacks are
 # used automatically when nlopt is unavailable.
 random-effect = ["nlopt"]
+# Excel output of presentation tables (TableResult.to_excel).
+excel = ["XlsxWriter>=3.0.1"]
 # R interoperability tools for comparison and validation workflows;
 # never imported by the package itself.
 legacy = ["rpy2", "pymer4"]

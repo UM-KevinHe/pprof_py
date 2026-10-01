@@ -8,8 +8,8 @@ import numpy as np
 
 from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
-from ._common import counts_text, freeze_layout, null_text, pct, reference_text, resolve_profile, scaffold, spread
-from ._common import test_text
+from .._provenance import counts_text, interval_method, null_text, pct, reference_text, test_text
+from ._common import freeze_layout, resolve_profile, scaffold, spread
 from ._result import FigureResult
 
 __all__ = ["caterpillar"]
@@ -197,14 +197,6 @@ def _legend_entries(th: Theme, status: np.ndarray, drawn: np.ndarray, nofinite: 
     return entries
 
 
-def _interval_method(prov: Any) -> str:
-    if prov.get("limits") == "test inversion" or prov.get("interval") == "inversion":
-        return "test-inversion "
-    if prov.get("interval") == "scale_only":
-        return "null-scaled "
-    return ""
-
-
 def _footnote(prof: Any, prov: Any, ratio: bool, n_nofinite: int, n_nointerval: int, n_clipped: int, volume: Any,
               kind: Optional[str], level: float) -> str:
     bits = [counts_text(prof)]
@@ -216,7 +208,7 @@ def _footnote(prof: Any, prov: Any, ratio: bool, n_nofinite: int, n_nointerval: 
     if n_clipped:
         bits.append(f"{fmt_count(n_clipped)} intervals extend beyond the axis and are drawn to its edge")
     text = "; ".join(bits) + "."
-    text += f" Intervals: {pct(level)} {_interval_method(prov)}intervals from the same test as the flags"
+    text += f" Intervals: {pct(level)} {interval_method(prov)}intervals from the same test as the flags"
     if prov.get("alternative") == "two_sided" and not prov.get("s3_violations"):
         text += "; an interval excludes the reference exactly when the provider is flagged"
     text += (f". Test: {test_text(prov)}; {null_text(prov.get('null_model'))}; reference: "

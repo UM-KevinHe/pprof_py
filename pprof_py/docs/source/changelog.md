@@ -40,6 +40,10 @@ feature attributions as a best reconstruction. There is no released
   list the providers that data preparation removed, with their record counts and the reason; `None` when the model
   did not prepare the data.
 - **CoxPH test metadata.** `CoxPH.test()` records `attrs["measure"] = "indirect_ratio"` and `attrs["reference"] = 1.0`.
+- **Standardized-test metadata.** `LogisticFixedEffectModel.test_standardized()` records `attrs["test_method"]`
+  (`"score"` for indirect measures tested with the null variance on the identity scale, which is the score
+  statistic; `"wald"` otherwise), `attrs["variance"]` and `attrs["reference"]` (the reference effect gamma_0, as in
+  `test()`).
 - No estimate, test result or interval changes: the count-test kernels were split into reusable parts with identical
   arithmetic.
 
@@ -73,6 +77,13 @@ feature attributions as a best reconstruction. There is no released
   2,000 the not-different providers are rasterized and flagged providers stay on top.
 - Presentation themes render text without font hinting, so text keeps the same width at every raster resolution and
   footnotes wrap identically in PNG, SVG and PDF output.
+- `pprof_py.presentation.provider_table(source, ...)`: the provider summary table, with denominators, observed and
+  expected counts, estimates with the intervals of the same test, flags and optional p-values. Its footnotes are
+  generated from the test's settings and the providers' statuses (`NE` no finite estimate, `NT` not tested, `NI` no
+  interval, `S` suppressed), and an interval gets extra decimals where rounding would blur whether it excludes the
+  reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
+  rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
+- New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
 
 ## 0.5.0 (2026-09-29)
 

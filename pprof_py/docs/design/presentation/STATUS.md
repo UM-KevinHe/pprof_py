@@ -3,7 +3,7 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) in progress under decisions D9–D37. Rounds apply in strict order; each is one self-contained diff.
+3 (MVP) in progress under decisions D9–D42. Rounds apply in strict order; each is one self-contained diff.
 
 | Round | Content | State |
 |---|---|---|
@@ -14,8 +14,13 @@
 | R4 | Presentation data: `ProviderProfile` (adapters `from_model`, `from_test`, `from_frame`), statuses, provenance, capabilities and `CapabilityError`, S3/S4 checks on user frames, minimum-volume rule | delivered |
 | R5 | Funnel renderer and `FigureResult`: Figure API (no pyplot), theme `rc_context`, frozen layout, deterministic SVG/PDF/PNG, alt text, provenance footnote, dense mode | delivered |
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
-| R7 | Tables: `TableSpec`, HTML/Markdown/LaTeX/text renderers, provider table, `excel` extra | next |
-| R8 | Delegates, deprecations, acceptance, samples | pending |
+| R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
+| R8 | Delegates, deprecations, acceptance, samples | next |
+
+## R7 evidence
+- `test_standardized()` metadata: 24 of 24 outputs bit-identical to R6 (frames); only the standardized test's `attrs` gain `test_method`, `variance` and `reference`. Its default indirect-ratio statistic equals `test(test_method="score")` (z to 1e-9, identical flags), which the `"score"` label claims.
+- Tables: golden HTML, Markdown, LaTeX and text files reviewed and pinned; HTML has `<caption>`, `<th scope>`, notes for every header marker, no scripts or links; LaTeX escapes specials including `<`, `>`, `|` and maps flags, minus and infinity; Excel cells numeric with formats, header frozen, notes sheet, byte-identical across time (XlsxWriter 3.0.1 and 3.2.9).
+- 21 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutations: the rounding-collision rule switched off fails 5 tests; Excel numbers written as text fail 1. Full suite: 1 failed (`test_setup_logger`, environmental) / 846 passed / 1 skipped. Docs: 4 warnings (intersphinx).
 
 ## R6 evidence
 - Drawn artists equal the profile: points and interval segments (clipped only at infinite bounds), rows in estimate order with ties in source order, volume bars equal the denominators row by row, reference at the test's null value; legend counts equal `status_counts()`.
@@ -54,8 +59,8 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - `dev` extra: `statsmodels>=0.13` cannot be installed from wheels on Python 3.10 (0.13.0 has no 3.10 wheel; its source build fails); 0.13.1 is the lowest installable. Raise it before adding a minimum-version job.
 - Minimum-version job (D16): the floor stack passes everything except `test_setup_logger` (no tzdata in this container) and the R1b test.
 - `test(test_method="poibin_exact")` takes about 5 s at 1,000 providers, almost all of it inverting the exact test for each provider's interval; a vectorised inversion could shorten it but would change validated code (not proposed).
-- `test_standardized()` records neither `test_method` nor `reference` in its `attrs` (like CoxPH before D13), so displays say "test method not stated" and "reference not stated" for standardized-measure profiles; adding them is a statistical-layer change (needs approval).
+- CI installs `.[dev]`, so the Excel tests skip there (with a reason); adding `excel` to the workflow's install line would run them (CI change; needs approval).
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-R7: tables. A library-independent `TableSpec` (typed columns with roles, spanners, footnote markers, caption, source note, missing-value rules) and hand-written renderers for HTML (self-contained, `<caption>`, `<th scope>`, footnotes in `<tfoot>`), Markdown (GFM), LaTeX (booktabs, `longtable` above 40 rows) and plain text, plus Excel through XlsxWriter as the optional `excel` extra (D14); the provider table built from `ProviderProfile` with generated provenance and missingness footnotes (S2, S6) and the S12 rounding rule; golden-file tests and determinism.
+R8: delegates and acceptance. The existing model `plot_funnel`, `plot_provider_effects` and `plot_standardized_measures` methods become thin delegates to the new renderers (single rendering path; tuple unpacking kept) with `DeprecationWarning`s for removed keyword arguments and removal in 0.7.0 (D12; logistic RE `plot_funnel` re-routed to the count-test funnel, linear RE warning); `plot_caterpillar`'s defaults follow `PROVIDER_TEST_COLUMNS`; migration table; acceptance: survival Chapter 10's report and the logistic tutorial reproduced with the new layer; samples at 20, 1,000 and 10,000 providers; demo script. Then STOP for the maintainer's review of rendered output.

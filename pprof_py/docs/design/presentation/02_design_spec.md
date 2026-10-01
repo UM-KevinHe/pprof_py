@@ -141,6 +141,8 @@ class TableSpec:
 
 [run] The hand-written Markdown, HTML and LaTeX renderers are byte-identical across processes. Great Tables 1.0.0 and `pandas.Styler` HTML are not; their LaTeX is (ADR-002).
 
+*Implemented in R7 (D39–D42):* `TableSpec` (columns with roles and markers, formatted cells, tidy values with Excel number formats, caption, notes, source note, provenance) with hand-written renderers; `provider_table` generates its notes from the profile (estimates and intervals, flags and test, `NE`, `NT`, `NI`, `S`, extra decimals, `—`); golden files pin the HTML, Markdown, LaTeX and text output.
+
 ### 3.3 Table taxonomy
 1. Provider results — **MVP**.
 2. Covariate effects.

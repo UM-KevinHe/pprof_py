@@ -19,7 +19,7 @@ from ....inference.decision import provider_test, resolve_null_model
 from ....inference._recording import record
 from ....inference.count_tests import MonteCarlo, PlugIn, count_test, rows_by_provider
 from ....inference.effect_tests import bootstrap_tails, effect_test, normalize_alternative, reference_effect
-from ....inference.standardized import standardized_measure
+from ....inference.standardized import _reference_gamma, standardized_measure
 from ....inference.zstat import z_statistic
 
 logger = logging.getLogger(__name__)
@@ -250,6 +250,14 @@ class _ProviderTestMethods:
                 bounds = (0.0, np.inf)
         result = provider_test(z, null, alternative=alternative, level=level, critical=critical,
                                interval=interval, bounds=bounds)
+        indirect = measure in ("indirect_rate", "indirect_ratio")
+        # (O/E - 1) with the variance of O at gamma_0 on the identity scale is the score statistic
+        score = indirect and indirect_variance == "null" and z.transform.name == "identity"
+        result.attrs["test_method"] = "score" if score else "wald"
+        result.attrs["variance"] = indirect_variance if indirect else variance
+        result.attrs["reference"] = _reference_gamma(np.asarray(self.coefficients_["gamma"], dtype=np.float64).ravel(),
+                                                     np.asarray(self.provider_sizes_, dtype=np.float64).ravel(),
+                                                     reference)
         if providers is not None:
             result = result.loc[result.index.isin(np.atleast_1d(providers))]
         return result
