@@ -15,7 +15,8 @@
 | P4-6 | Between-provider variation (`provider_variation`, `provider_variation_table`); export determinism fix (D55) | delivered |
 | P4-7 | Shrinkage display and table (`shrinkage`, `shrinkage_table`) | delivered |
 | P4-8 | Flag stability display and table (`flag_stability`, `flag_stability_table`) | delivered |
-| P4-9 | Multi-measure displays | next |
+| P4-9 | Multi-measure displays and table (`ProfileCollection`, `multi_measure`, `measure_agreement`, `multi_measure_table`) | delivered |
+| Tier 2 check-in | Maintainer review of the Tier 2 displays before Phase 5 | **next (STOP)** |
 
 Phase 3 rounds:
 
@@ -30,6 +31,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-9 evidence
+- Collection union and intersection; small-multiple points and segments equal each measure's profile in the common row order, with "n/a" for each provider a measure lacks; agreement points equal both estimates for the providers in both, and joint counts equal an independent cross-tabulation of the two tests' flags; table cells, flattened headers and values equal the profiles; golden files of earlier tables unchanged.
+- Visual QA [viewed]: two correlated measures of 40 providers (2 missing from one), small multiples and agreement; fixed a dash for missing providers that read as a short interval.
+- 4 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutation: same and opposite joint status swapped fails 1 test.
+- The cold-interpreter determinism test now covers all 10 figure types (2 added here). Full suite: 1 failed (`test_setup_logger`, environmental) / 916 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-8 evidence
 - Every scenario column equals its own `test()` call (base, alternative reference, empirical null, custom scenarios); three-stage sigma columns equal `sigma_sensitivity()`; CoxPH gets no reference scenario; drawn cells, row order and change markers equal the flag matrix; table counts and changes equal independent computations; change detection treats "not tested" as a status (unit test).
@@ -131,4 +138,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-STOP. After the maintainer's review of the rendered output: Phase 4 in the agreed order (each tier with the full checklist of brief §1), then Phase 5 (docs, gallery, migration guide) and Phase 6 (quality review).
+STOP for the Tier 2 check-in (brief §3.1): the maintainer reviews the Tier 2 displays (P4-2 to P4-9) and the Tier 1 forest (P4-1). Then Phase 5 (docs, gallery, migration guide) and Phase 6 (quality review).

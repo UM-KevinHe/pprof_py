@@ -230,26 +230,26 @@ print(shrinkage_table(model, re_model).to_text())
 ```text
 Shrinkage of 16 providers: fixed-effect estimates from −0.94 to 0.91, random-effect estimates from −0.68 to 0.76 (log-odds).
 Shrinkage: 16 providers
-=========================================================
-Provider  Records  Fixed effectᵃ  Random effectᵇ  Changeᶜ
---------  -------  -------------  --------------  -------
-U00           143           0.64            0.54    −0.10
-U01           105          −0.94           −0.67     0.26
-U02           112           0.91            0.76    −0.15
-U03           137          −0.12           −0.11     0.01
-U04            99           0.59            0.47    −0.12
-U05           123          −0.29           −0.24     0.04
-U06           130           0.19            0.14    −0.04
-U07            57           0.71            0.52    −0.20
-U08            36           0.09            0.05    −0.04
-U09            66          −0.16           −0.12     0.04
-U10            64          −0.64           −0.42     0.22
-U11           134          −0.19           −0.17     0.02
-U12           139          −0.86           −0.68     0.18
-U13            30          −0.08           −0.05     0.03
-U14            89          −0.27           −0.21     0.06
-U15           128           0.41            0.34    −0.07
-=========================================================
+=============================================================================
+Provider  Records  Estimate: Fixed effectᵃ  Estimate: Random effectᵇ  Changeᶜ
+--------  -------  -----------------------  ------------------------  -------
+U00           143                     0.64                      0.54    −0.10
+U01           105                    −0.94                     −0.67     0.26
+U02           112                     0.91                      0.76    −0.15
+U03           137                    −0.12                     −0.11     0.01
+U04            99                     0.59                      0.47    −0.12
+U05           123                    −0.29                     −0.24     0.04
+U06           130                     0.19                      0.14    −0.04
+U07            57                     0.71                      0.52    −0.20
+U08            36                     0.09                      0.05    −0.04
+U09            66                    −0.16                     −0.12     0.04
+U10            64                    −0.64                     −0.42     0.22
+U11           134                    −0.19                     −0.17     0.02
+U12           139                    −0.86                     −0.68     0.18
+U13            30                    −0.08                     −0.05     0.03
+U14            89                    −0.27                     −0.21     0.06
+U15           128                     0.41                      0.34    −0.07
+=============================================================================
 ᵃ Unshrunken, LogisticFixedEffectModel, relative to the size-weighted mean of the fixed effects.
 ᵇ Shrunken BLUP, LogisticRandomEffectModel, relative to the model's intercept; it depends on the assumed normal random-effect distribution and is not the true effect.
 ᶜ Random minus fixed, computed for display; NE: no finite fixed-effect estimate.
@@ -272,16 +272,38 @@ print(flag_stability_table(model).to_text())
 ```text
 Flag stability across 3 scenarios for 16 providers: 7 flagged in at least one scenario, 0 of them identically in every scenario; 7 providers change status.
 Flag sensitivity: 16 providers, 3 scenarios
-============================================================================================================================================================================================================================
-Scenario         Above  Below  Not different  Not tested  Changed from baseᵃ  Test
----------------  -----  -----  -------------  ----------  ------------------  ----------------------------------------------------------------------------------------------------------------------------------------------
-Base                 5      2              9           0                   —  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: median provider effect −1.37
-Reference: mean      5      2              9           0                   0  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: size-weighted mean provider effect −1.28
-Empirical null       0      0             16           0                   7  exact Poisson-binomial test, two-sided, 95% level per provider; empirical null, mean 0.55 and SD 2.44; reference: median provider effect −1.37
-============================================================================================================================================================================================================================
+========================================================================================================================================================================================================================================================================
+Scenario         Providers: Above  Providers: Below  Providers: Not different  Providers: Not tested  Changed from baseᵃ  Test
+---------------  ----------------  ----------------  ------------------------  ---------------------  ------------------  ----------------------------------------------------------------------------------------------------------------------------------------------
+Base                            5                 2                         9                      0                   —  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: median provider effect −1.37
+Reference: mean                 5                 2                         9                      0                   0  exact Poisson-binomial test, two-sided, 95% level per provider; theoretical null N(0, 1); reference: size-weighted mean provider effect −1.28
+Empirical null                  0                 0                        16                      0                   7  exact Poisson-binomial test, two-sided, 95% level per provider; empirical null, mean 0.55 and SD 2.44; reference: median provider effect −1.37
+========================================================================================================================================================================================================================================================================
 ᵃ Providers whose flag (or tested status) differs from the base scenario. Each scenario is a separate test; agreement across them does not make a flag robust (risk adjustment, data preparation and the model are not varied).
 Source: LogisticFixedEffectModel, one test() per scenario.
 
+```
+
+## Several measures
+
+A `ProfileCollection` holds several measures of the same providers. The small multiples show each measure in its own
+panel with a common row order, the agreement plot compares two measures provider by provider, and the table puts each
+measure under its own grouped header. A provider missing from a measure is marked, never dropped.
+
+```python
+from pprof_py.presentation import ProfileCollection, measure_agreement, multi_measure, multi_measure_table
+
+y2 = np.random.default_rng(7).binomial(1, 0.2, size=y.size)
+model2 = LogisticFixedEffectModel()
+model2.fit(pd.DataFrame({"y": y2, "x": x, "unit": [f"U{j:02d}" for j in pid]}), y_var="y", x_vars=["x"],
+           provider_var="unit")
+measures = ProfileCollection({"Outcome 1": model, "Outcome 2": model2})
+print(multi_measure(measures).alt_text)
+print(measure_agreement(measures).alt_text)
+```
+```text
+Small multiples of 2 measures for 16 providers: Outcome 1: 5 above, 2 below; Outcome 2: 0 above, 0 below.
+Agreement of Outcome 1 and Outcome 2 for 16 providers: 0 flagged on both in the same direction, 0 in opposite directions, 7 on one measure only, 9 on neither.
 ```
 
 ## Null calibration
@@ -300,11 +322,11 @@ print(null_calibration_table(model, test_method="score", null_model=empirical).t
 ```text
 Null-calibration diagnostic for 16 providers in 1 group; fitted null means 0.60 to 0.60 and SDs 2.52 to 2.52; flagged under the theoretical null: 7, under the fitted null: 0; 7 flags change.
 Null calibration: 16 providers
-==================================================================================
-Null group  Providers  Null mean  Null SD  Theoretical null  Fitted null  Changedᵃ
-----------  ---------  ---------  -------  ----------------  -----------  --------
-1                  16       0.60     2.52  ▲ 5 / ▼ 2         ▲ 0 / ▼ 0           7
-==================================================================================
+=======================================================================================================================================
+Null group  Providers  Fitted null: Null mean  Fitted null: Null SD  Flagged: Theoretical null  Flagged: Fitted null  Flagged: Changedᵃ
+----------  ---------  ----------------------  --------------------  -------------------------  --------------------  -----------------
+1                  16                    0.60                  2.52  ▲ 5 / ▼ 2                  ▲ 0 / ▼ 0                             7
+=======================================================================================================================================
 ᵃ ▲ above / ▼ below the reference. Test: score test, two-sided, 95% level per provider; empirical null, mean 0.60 and SD 2.52. Changed: providers whose flag differs between the two nulls.
 Source: LogisticFixedEffectModel; pprof_py 0.5.0.
 

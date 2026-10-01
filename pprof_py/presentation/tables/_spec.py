@@ -154,13 +154,18 @@ def _sup(marker: str) -> str:
     return "".join(_SUPERSCRIPTS.get(ch, ch) for ch in marker)
 
 
+def _flat_header(c: Column) -> str:
+    """A header for formats without column spans (Markdown, text): the spanner, if any, becomes a prefix."""
+    return (f"{c.spanner}: {c.header}" if c.spanner else c.header) + _sup(c.marker)
+
+
 def render_markdown(spec: TableSpec) -> str:
     """GitHub-flavoured Markdown with an alignment row; footnotes as lines below the table."""
     def cell(text: str) -> str:
         return text.replace("|", "\\|")
     align = {"left": ":--", "right": "--:", "center": ":-:"}
     lines = [f"**{cell(spec.caption)}**", ""]
-    lines.append("| " + " | ".join(cell(c.header + _sup(c.marker)) for c in spec.columns) + " |")
+    lines.append("| " + " | ".join(cell(_flat_header(c)) for c in spec.columns) + " |")
     lines.append("|" + "|".join(align[c.align] for c in spec.columns) + "|")
     lines += ["| " + " | ".join(cell(v) for v in row) + " |" for row in spec.rows()]
     for m, t in spec.notes:                         # one paragraph per note: no trailing-space line breaks
@@ -225,7 +230,7 @@ def render_latex(spec: TableSpec) -> str:
 def render_text(spec: TableSpec) -> str:
     """Plain text with aligned columns and rules; footnotes below."""
     rows = spec.rows()
-    headers = [c.header + _sup(c.marker) for c in spec.columns]
+    headers = [_flat_header(c) for c in spec.columns]
     widths = [max([len(h)] + [len(r[i]) for r in rows]) for i, h in enumerate(headers)]
 
     def line(values: Sequence[str]) -> str:

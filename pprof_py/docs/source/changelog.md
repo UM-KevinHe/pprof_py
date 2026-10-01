@@ -88,6 +88,12 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.ProfileCollection` (several measures of the same providers), `multi_measure()` (one
+  interval panel per measure, common row order), `measure_agreement()` (two measures per provider with interval
+  crosses and the joint flag status of their tests) and `multi_measure_table()` (each measure under a grouped header).
+  Providers missing from a measure are marked, never dropped.
+- Markdown and plain-text tables write a grouped header as a prefix of its columns' headers
+  (`Readmission: Estimate (CI)`), since those formats cannot span columns.
 - `pprof_py.presentation.flag_stability(model, ...)` and `flag_stability_table(...)`: the flags of each provider
   flagged in at least one scenario, one `test()` call per scenario (by default an alternative reference, the other
   null, and for three-stage models the bounds of sigma's interval from `sigma_sensitivity()`), with the providers

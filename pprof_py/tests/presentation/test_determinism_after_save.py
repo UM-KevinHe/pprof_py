@@ -37,6 +37,13 @@ SCRIPT = textwrap.dedent('''
         from pprof_py import LogisticRandomEffectModel
         re = fit(LogisticRandomEffectModel, verbose=False)
         make = lambda: P.provider_variation(re)
+    elif name in ("multi_measure", "measure_agreement"):
+        from pprof_py import LogisticFixedEffectModel
+        fe1, fe2 = fit(LogisticFixedEffectModel), LogisticFixedEffectModel()
+        fe2.fit(d.assign(y=1 - d["y"]), y_var="y", x_vars=["x1"], provider_var="provider_id")
+        col = P.ProfileCollection({"A": P.ProviderProfile.from_model(fe1, test_method="wald"),
+                                   "B": P.ProviderProfile.from_model(fe2, test_method="wald")})
+        make = (lambda: P.multi_measure(col)) if name == "multi_measure" else (lambda: P.measure_agreement(col))
     elif name == "reliability":
         from pprof_py.measures.iur import BootstrapIUR
         iur = BootstrapIUR(n_boot=20).fit(y.astype(float), np.full(y.size, y.mean()), pid)
@@ -58,7 +65,7 @@ SCRIPT = textwrap.dedent('''
     print("SAME" if first == again else "DIFFERENT")
 ''')
 NAMES = ["funnel", "caterpillar", "forest", "data_quality", "observed_expected", "null_calibration", "reliability",
-         "provider_variation"]
+         "provider_variation", "multi_measure", "measure_agreement"]
 
 
 @pytest.mark.parametrize("name", NAMES)

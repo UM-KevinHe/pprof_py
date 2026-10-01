@@ -4,7 +4,8 @@
 displays consume profiles and raise :class:`CapabilityError` when a profile lacks what they need.
 """
 from ._coefficients import COEFFICIENT_COLUMNS, CoefficientProfile
+from ._collection import ProfileCollection
 from ._profile import PROFILE_COLUMNS, STATUSES, CapabilityError, ProviderProfile
 
-__all__ = ["COEFFICIENT_COLUMNS", "CapabilityError", "CoefficientProfile", "PROFILE_COLUMNS", "ProviderProfile",
+__all__ = ["COEFFICIENT_COLUMNS", "CapabilityError", "CoefficientProfile", "PROFILE_COLUMNS", "ProfileCollection", "ProviderProfile",
            "STATUSES"]
