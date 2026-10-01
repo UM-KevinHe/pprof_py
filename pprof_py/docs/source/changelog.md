@@ -51,6 +51,13 @@ feature attributions as a best reconstruction. There is no released
   `notebook` and `report` presets, varied through `Theme.derive`) and `formatting` (numbers, counts, intervals,
   p-values and flags, with one set of missing-value symbols). The namespace grows with the presentation layer and
   may change until it is complete.
+- `pprof_py.presentation.ProviderProfile`: one provider test ready for display, built from a fitted model
+  (`from_model`, optionally with the funnel limits of the same test), a `test()` result (`from_test`) or any frame
+  with a role map (`from_frame`). It keeps the test's values unchanged and gives each provider one status from its
+  flag (above, below, not different, not tested; suppressed only under an explicit minimum-volume rule), with zero
+  events and no finite estimate as separate attributes. Denominators, exclusions and the test's settings travel with
+  it, and `require()` raises `CapabilityError` when a display needs something the profile lacks. Frames whose
+  intervals or funnel limits contradict their flags trigger a warning that names the providers.
 
 ## 0.5.0 (2026-09-29)
 

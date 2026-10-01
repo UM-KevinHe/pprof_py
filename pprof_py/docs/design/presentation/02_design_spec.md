@@ -251,10 +251,14 @@ It also carries `provenance` (dict built from `attrs`, model class, package vers
 | not applicable | e.g. no test for the family | "—" |
 | *attribute:* zero events / no finite estimate | degeneracy status (§7) | □ outline on ratio scale; ◀/▶ off-scale on effect scale; "NE" in effect columns |
 
+*Implemented in R4 (D29):* the primary statuses are above, below, not different, not tested and suppressed (the last only under `with_min_volume`); "no interval" (`has_interval`), zero events, all events and no finite estimate are attributes, so no flag is ever hidden; excluded providers are the profile's `excluded` record, counted by `status_counts()`. `ProfileCollection` waits for Phase 4 (D28).
+
 ### 6.2 Adapters
 - `ProviderProfile.from_model(model, *, test_method=None, reference=None, null_model=None, level=None, alternative=None, limits=False, data=None)` calls `test()` once, adds denominators from `calculate_standardized_measures()`, and calls `funnel_limits()` when `limits=True`. CoxPH needs `data`, because its `test()` takes the data again.
 - `ProviderProfile.from_test(result, *, model=None, denominators=None)` consumes a `test()` frame and copies `attrs` into provenance.
 - `ProviderProfile.from_frame(df, *, roles)` is the escape hatch. It validates and warns on S3/S4 violations, one-sided alternatives, or missing intervals.
+
+*Implemented in R4 (D27):* denominators and counts come from the funnel limits of the same test, the CoxPH test's own columns, or the model's own data (`degenerate_providers`, `provider_sizes_`), not from `calculate_standardized_measures()`, whose expected counts use their own reference. `from_model` passes its arguments to `test()` or `funnel_limits()` unchanged (CoxPH data included).
 
 The per-family field vocabulary (interval option names and columns, `summary()` columns, `sigma_` vs `random_effect_sd_`, CoxPH attrs) is the mapping table in audit §5; adapters own it, and renderers never see family differences.
 

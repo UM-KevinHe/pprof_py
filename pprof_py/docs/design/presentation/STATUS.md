@@ -3,16 +3,22 @@
 **Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
-3 (MVP) in progress under decisions D9–D26. Rounds apply in strict order; each is one self-contained diff.
+3 (MVP) in progress under decisions D9–D29. Rounds apply in strict order; each is one self-contained diff.
 
 | Round | Content | State |
 |---|---|---|
 | R1 | Test workflow (3.10/3.14), Python ≥ 3.10, numba ≥ 0.57, docs workflow on 3.10 + Node 24 actions, changelog, design docs | delivered |
-| R1b (optional) | One-line pandas-1.5 fix in `test_sigma_sensitivity` | delivered; needs approval (test change); later rounds do not depend on it |
+| R1b (optional) | One-line pandas-1.5 fix in `test_sigma_sensitivity` | delivered; applied by the maintainer |
 | R2 | `pprof_py.presentation`: `Theme`, `formatting`, accessibility metrics; layering tests; lazy pyplot imports in `plotting/` | delivered |
 | R3 | `pprof_py.inference.funnel_limits` and model methods; `degenerate_providers`; `at_bound` guard; excluded-provider records; CoxPH metadata; reference page *Funnel limits* | delivered |
-| R4 | Presentation data: `ProviderProfile`, adapters, validation, capability gating, provenance, statuses | next |
-| R5–R8 | Funnel; interval plot; tables (+ `excel` extra); delegates, deprecations, acceptance | pending |
+| R4 | Presentation data: `ProviderProfile` (adapters `from_model`, `from_test`, `from_frame`), statuses, provenance, capabilities and `CapabilityError`, S3/S4 checks on user frames, minimum-volume rule | delivered |
+| R5 | Funnel renderer and `FigureResult` (Figure API, theme `rc_context`, deterministic export, alt text, layout rules) | next |
+| R6–R8 | Interval plot; tables (+ `excel` extra); delegates, deprecations, acceptance | pending |
+
+## R4 evidence
+- Profiles equal their sources: every `test()` column, every funnel column (`FunnelLimits.providers`, curves), and the counts and denominators (`degenerate_providers`, `provider_sizes_`, CoxPH `observed`/`expected`/`person_time`). 18 of 18 profiles built from `test()` across families and methods (empirical nulls, one-sided, `critical`, both CoxPH tests) show no interval/flag disagreement, direction included.
+- 20 new tests pass on Python 3.12 (pandas 3.0.6) and on the 3.10 floor stack (pandas 1.5.0); with R2's, 60 presentation tests on the floor stack. Mutations: estimates rounded to 6 decimals fail the equality contract; swapped above/below fail 4 tests.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 797 passed / 1 skipped. Docs: 4 warnings (intersphinx, as the baseline). Importing `pprof_py.presentation` loads no Matplotlib (tested).
 
 ## R3 evidence
 - Validated outputs bit-identical to `v0.5.0`: 24 of 24 hashes (`test()` for logistic FE and RE, three-stage, linear FE and RE and CoxPH across methods, empirical nulls, subsets, one-sided tests, `critical`, seeded Monte Carlo; standardized measures; `DataPrep` with and without screening; `glmm_data_prep`). Only `attrs` change: CoxPH `measure` and `reference` (D13).
@@ -36,4 +42,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-R4: presentation data. `ProviderProfile` and `ProfileCollection`; adapters `from_model` (one `test()` call, or `funnel_limits` when limits are wanted, using `FunnelLimits.test`), `from_test` and `from_frame`; validation (duplicate ids; S3 and S4 checks on user frames); capability gating with `CapabilityError`; provenance from `attrs`; the S6 statuses, with zero-event status from `degenerate_providers` and exclusions from `excluded_providers_`.
+R5: the funnel renderer and `FigureResult`. Matplotlib `Figure` objects built directly inside the theme's `rc_context` (no pyplot); per-provider limit marks for exact count tests and exact curves otherwise, labelled with test, level and null model; reference levels as labelled curves; zero-event providers at O/E = 0 with an outline marker (ADR-005); dense mode above 2,000 providers with flagged providers on top; provenance footnote and generated alt text; deterministic SVG/PDF/PNG; `CapabilityError` for profiles without funnel limits; render, determinism and accessibility tests.
