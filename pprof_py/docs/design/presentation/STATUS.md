@@ -13,7 +13,8 @@
 | P4-4 | Observed versus expected (`observed_expected`) | delivered |
 | P4-5 | Reliability display and table (`reliability`, `reliability_table`) | delivered |
 | P4-6 | Between-provider variation (`provider_variation`, `provider_variation_table`); export determinism fix (D55) | delivered |
-| P4-7 | Shrinkage | next |
+| P4-7 | Shrinkage display and table (`shrinkage`, `shrinkage_table`) | delivered |
+| P4-8 | Flag stability | next |
 
 Phase 3 rounds:
 
@@ -28,6 +29,12 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## P4-7 evidence
+- Pairs equal each test's estimate minus its null value (fixed effects with `reference="mean"`; BLUPs against 0); volumes equal the records per provider (checked against the data); drawn points, edge markers, diagonal and equal limits equal the pairs; the table's change equals random minus fixed, with NE where the fixed effect is not finite; mismatched or swapped families raise.
+- Visual QA [viewed]: logistic (70 providers, one zero-event provider at the edge) and linear pairs; labels placed in the regions shrinkage leaves empty.
+- 3 new tests pass on Python 3.12 and on the 3.10 floor stack. Mutation: fixed effects not centred on their reference fail 1 test.
+- Full suite: 1 failed (`test_setup_logger`, environmental) / 905 passed / 1 skipped. Docs: 4 warnings (intersphinx); the Presentation page's examples print their stored outputs on both stacks.
 
 ## P4-6 evidence
 - Variation: the SD, interval and BLUPs equal `sigma_`/`profile_sigma()` (logistic) and `random_effect_sd_` (linear, not the residual `sigma_`); the histogram equals the BLUPs binned over the drawn edges; fitted and bound densities equal n * width * N(0, s) exactly; the range equals -/+ z sigma and its odds ratios exp of it. Visual QA [viewed]: logistic RE (sigma 0.53, profile interval 0.40-0.71) and linear RE (no interval). Mutation: reading the linear residual SD fails 2 tests.

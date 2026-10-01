@@ -88,6 +88,10 @@ feature attributions as a best reconstruction. There is no released
   reference. One table specification renders to self-contained HTML, Markdown, LaTeX (booktabs; `longtable` above 40
   rows), plain text, a tidy DataFrame and Excel; every output is deterministic.
 - New optional extra `excel` (`XlsxWriter>=3.0.1`) for `TableResult.to_excel()`.
+- `pprof_py.presentation.shrinkage(fixed, random)` and `shrinkage_table(fixed, random)`: each provider's fixed-effect
+  (unshrunken) estimate against its random-effect BLUP, both relative to their own test's reference (the fixed-effect
+  test with `reference="mean"` by default), sized by volume, with the lines of no shrinkage and complete pooling;
+  the table lists both estimates and the change in source order.
 - `pprof_py.presentation.provider_variation(model)` and `provider_variation_table(model)`: for logistic and linear
   random-effect models, the BLUPs against the fitted between-provider distribution, the random-effect SD (with its
   profile-likelihood interval for logistic models) and the range of true effects it implies under normality.

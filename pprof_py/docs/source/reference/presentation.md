@@ -215,6 +215,48 @@ Source: LogisticRandomEffectModel; profile likelihood interval for σ.
 
 ```
 
+## Shrinkage
+
+The shrinkage display pairs a fixed-effect and a random-effect fit of the same family: each provider's unshrunken
+estimate against its BLUP, both relative to their test's reference, with point area proportional to volume. Small
+providers move most; how far depends on the assumed random-effect distribution.
+
+```python
+from pprof_py.presentation import shrinkage, shrinkage_table
+
+print(shrinkage(model, re_model).alt_text)
+print(shrinkage_table(model, re_model).to_text())
+```
+```text
+Shrinkage of 16 providers: fixed-effect estimates from −0.94 to 0.91, random-effect estimates from −0.68 to 0.76 (log-odds).
+Shrinkage: 16 providers
+=========================================================
+Provider  Records  Fixed effectᵃ  Random effectᵇ  Changeᶜ
+--------  -------  -------------  --------------  -------
+U00           143           0.64            0.54    −0.10
+U01           105          −0.94           −0.67     0.26
+U02           112           0.91            0.76    −0.15
+U03           137          −0.12           −0.11     0.01
+U04            99           0.59            0.47    −0.12
+U05           123          −0.29           −0.24     0.04
+U06           130           0.19            0.14    −0.04
+U07            57           0.71            0.52    −0.20
+U08            36           0.09            0.05    −0.04
+U09            66          −0.16           −0.12     0.04
+U10            64          −0.64           −0.42     0.22
+U11           134          −0.19           −0.17     0.02
+U12           139          −0.86           −0.68     0.18
+U13            30          −0.08           −0.05     0.03
+U14            89          −0.27           −0.21     0.06
+U15           128           0.41            0.34    −0.07
+=========================================================
+ᵃ Unshrunken, LogisticFixedEffectModel, relative to the size-weighted mean of the fixed effects.
+ᵇ Shrunken BLUP, LogisticRandomEffectModel, relative to the model's intercept; it depends on the assumed normal random-effect distribution and is not the true effect.
+ᶜ Random minus fixed, computed for display; NE: no finite fixed-effect estimate.
+Source: LogisticFixedEffectModel and LogisticRandomEffectModel.
+
+```
+
 ## Null calibration
 
 The calibration diagnostic shows the raw z-statistics of each null group against the theoretical N(0, 1) and the
