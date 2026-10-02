@@ -56,6 +56,12 @@ def _gid(fig, gid):
     return [a for a in fig.findobj() if getattr(a, "get_gid", lambda: None)() == gid]
 
 
+def _bounds(coll):
+    """The interval bounds a collection draws: bars keep them in ``pprof_bounds`` (their round ends are trimmed onto
+    them after layout); classic lines draw them as segments."""
+    return np.asarray(coll.pprof_bounds if hasattr(coll, "pprof_bounds") else coll.get_segments())
+
+
 def _rows(prof):
     """Row of each provider: estimate order, ties in source order (what the plot promises)."""
     f = prof.data
@@ -66,9 +72,10 @@ def _rows(prof):
 
 
 # ------------------------------------------------------------------------------ drawn data equal the profile
-def test_points_and_intervals_are_the_profile_in_estimate_order(fe):
+@pytest.mark.parametrize("theme", ["publication", "classic"])
+def test_points_and_intervals_are_the_profile_in_estimate_order(fe, theme):
     prof = ProviderProfile.from_model(fe)
-    r = caterpillar(prof)
+    r = caterpillar(prof, theme=theme)
     f, row = _rows(prof)
     status = f["status"].astype(str).to_numpy()
     finite = f["finite_estimate"].astype(bool).to_numpy()
@@ -83,7 +90,9 @@ def test_points_and_intervals_are_the_profile_in_estimate_order(fe):
         (pts,) = _gid(r.figure, f"status-{key}")
         np.testing.assert_array_equal(np.asarray(pts.get_offsets()), np.c_[f["estimate"].to_numpy()[sel], row[sel]])
         seg = (status == key) & drawn_interval
-        segs = np.asarray(_gid(r.figure, f"interval-{key}")[0].get_segments())
+        coll = _gid(r.figure, f"interval-{key}")[0]
+        # bars keep their bounds in pprof_bounds (the drawn round ends are trimmed onto them: test_caterpillar_identity)
+        segs = np.asarray(coll.pprof_bounds if hasattr(coll, "pprof_bounds") else coll.get_segments())
         np.testing.assert_array_equal(segs[:, 0, 0], np.clip(np.nan_to_num(lo_all[seg], neginf=xlo), xlo, xhi))
         np.testing.assert_array_equal(segs[:, 1, 0], np.clip(np.nan_to_num(hi_all[seg], posinf=xhi), xlo, xhi))
         np.testing.assert_array_equal(segs[:, 0, 1], row[seg])
@@ -117,7 +126,9 @@ def test_rows_are_labelled_up_to_60_providers(fe):
     f, row = _rows(prof)
     labels = r.axes.get_yticklabels()
     assert [t.get_text() for t in labels] == [str(i) for i in f.index[np.argsort(row)]]
-    assert [t.get_fontweight() for t in labels if t.get_text() == "P10"] == ["bold"]
+    assert [t.get_fontweight() for t in labels if t.get_text() == "P10"] == ["semibold"]     # SemiBold file (D80)
+    c = caterpillar(prof, highlight=["P10"], theme="classic")
+    assert [t.get_fontweight() for t in c.axes.get_yticklabels() if t.get_text() == "P10"] == ["bold"]
     big = caterpillar(_synthetic(150, seed=2), highlight=["H00007"])
     assert not [t for t in big.axes.get_yticklabels() if t.get_text()]
     assert [t for t in big.figure.findobj(Text) if t.get_text() == "H00007"]
@@ -151,12 +162,12 @@ def test_no_finite_estimate_is_marked_at_the_edge_with_its_one_sided_interval():
     assert xlo > -29.0                                           # the clamp never enters the axis range
     (marks,) = _gid(r.figure, "no-finite-estimate-lower")
     assert np.all(np.asarray(marks.get_offsets())[:, 0] == xlo) and len(marks.get_offsets()) == 2
-    segs = np.concatenate([np.asarray(c.get_segments()) for k in ("above", "below", "not_different", "not_tested")
+    segs = np.concatenate([_bounds(c) for k in ("above", "below", "not_different", "not_tested")
                            for c in _gid(r.figure, f"interval-{k}")])
     edge = segs[np.isclose(segs[:, 1, 0], -0.5)]
     assert len(edge) == 2 and np.all(edge[:, 0, 0] == xlo)        # edge to the finite bound
     wald = caterpillar(_synthetic(30, seed=3, n_nofinite=2, wald_like=True))
-    segs = np.concatenate([np.asarray(c.get_segments()) for k in ("above", "below", "not_different")
+    segs = np.concatenate([_bounds(c) for k in ("above", "below", "not_different")
                            for c in _gid(wald.figure, f"interval-{k}")])
     assert len(segs) == 28                                       # no segment when neither bound is finite on the axis
     assert "without a finite estimate, marked at the axis edge" in wald.long_description

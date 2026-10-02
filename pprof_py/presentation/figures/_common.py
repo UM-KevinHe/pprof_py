@@ -139,6 +139,10 @@ def freeze_layout(fig: Any, theme: Any = None) -> None:
     for ax in fig.findobj(Axes):
         x0, y0, w, h = ax.get_position().bounds
         ax.set_position([round(x0, 10) + 0.0, round(y0, 10) + 0.0, round(w, 10) + 0.0, round(h, 10) + 0.0])
+    # work that needs the final geometry (for example rounded interval ends trimmed to their bounds) runs last, on
+    # the frozen positions, so every later save draws the same thing
+    for hook in getattr(fig, "_pprof_post_layout", ()):
+        hook()
 
 
 def log_ticks(axis: Any) -> None:

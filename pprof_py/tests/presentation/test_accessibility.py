@@ -50,6 +50,15 @@ def test_status_marks_keep_contrast_on_the_corridor(theme):
         assert min(r["corridor_contrast"].values()) >= 3.0
 
 
+@pytest.mark.parametrize("theme", PRESETS, ids=lambda t: t.name)
+def test_marks_on_interval_bars_keep_contrast(theme):
+    r = theme.accessibility_report()
+    if theme.bar_marks is None:
+        assert r["bar_mark_contrast"] == {}
+    else:
+        assert min(r["bar_mark_contrast"].values()) >= 3.0
+
+
 def test_the_mockup_grey_fails_on_the_corridor():
     # negative control: the design mockups' not-different grey (#87919D) reaches only 2.78:1 on the corridor
     t = Theme().derive(status={"not_different": {"color": "#87919D"}})

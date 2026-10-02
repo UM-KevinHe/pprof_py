@@ -81,7 +81,9 @@ def test_caterpillar_draws_the_frame(frames):
     t = df.assign(ci_lower=df["estimate"] - half, ci_upper=df["estimate"] + half)
     r, w = _quiet(plot_caterpillar, t, flag_col="flag", refline_value=1.0)
     assert isinstance(r, FigureResult) and not w
-    segs = np.concatenate([np.asarray(a.get_segments()) for a in _gid(r.figure, "interval-")])
+    # bars keep their bounds in pprof_bounds; their round ends are drawn onto them (D79)
+    segs = np.concatenate([np.asarray(a.pprof_bounds if hasattr(a, "pprof_bounds") else a.get_segments())
+                           for a in _gid(r.figure, "interval-")])
     np.testing.assert_allclose(np.sort(segs[:, 0, 0]), np.sort(t["ci_lower"].to_numpy()))
     np.testing.assert_allclose(np.sort(segs[:, 1, 0]), np.sort(t["ci_upper"].to_numpy()))
     (ref,) = _gid(r.figure, "reference")

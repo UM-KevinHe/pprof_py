@@ -98,6 +98,7 @@ def accessibility_report(theme: Any) -> Dict[str, Any]:
         "status_contrast": {k: contrast_ratio(s.color, bg) for k, s in st.items()},
         "corridor_contrast": ({k: contrast_ratio(st[k].color, corridor) for k in ("above", "below", "not_different")}
                               if corridor else {}),
+        "bar_mark_contrast": {k: contrast_ratio(c, bg) for k, c in (getattr(theme, "bar_marks", None) or {}).items()},
         "line_contrast": {k: contrast_ratio(getattr(theme, k), bg) for k in ("reference", "limit", "volume", "muted")},
         "text_contrast": contrast_ratio(theme.ink, bg),
         "delta_e": pairs,

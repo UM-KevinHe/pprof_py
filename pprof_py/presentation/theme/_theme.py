@@ -83,6 +83,8 @@ class Lines:
     reference: float = 0.9
     limit: float = 0.8
     grid: float = 0.5
+    interval_bar: float = 2.3
+    interval_bar_dense: float = 0.55
 
 
 # Status hues: "identity" is the package's look (copper / petrol, a cool grey that keeps 3:1 on the corridor);
@@ -163,6 +165,16 @@ class Theme:
     highlight_ring : str or None
         Colour of the ring around ``highlight=`` providers, whose labels are then set in the title weight;
         ``None`` labels them without a ring.
+    interval_bars : bool
+        Draw intervals as bars (``Lines.interval_bar`` wide) whose rounded ends land exactly on the bounds, with each
+        estimate's mark on top in ``bar_marks``; ``False`` draws thin lines with square ends.
+    bar_marks : mapping or None
+        Mark colour per status where marks sit on interval bars (a shade darker than the bar, so the mark stays
+        visible); ``None`` uses the status colours.
+    volume_half : tuple of float
+        Half-height of the volume bars, in rows, with and without row labels.
+    highlight_wash : str or None
+        Band behind a highlighted provider's row; ``None`` draws none.
     """
 
     name: str = "publication"
@@ -192,6 +204,12 @@ class Theme:
     key_position: str = "top"
     footnote: str = "short"
     highlight_ring: Optional[str] = "#1E2B38"
+    interval_bars: bool = True
+    bar_marks: Optional[Mapping[str, str]] = field(
+        default_factory=lambda: {"above": "#8A3D0E", "below": "#062F3D", "not_different": "#3E4A57",
+                                 "not_tested": "#556372"})
+    volume_half: Tuple[float, float] = (0.09, 0.22)
+    highlight_wash: Optional[str] = "#EAF0F5"
 
     def __post_init__(self) -> None:
         if self.key_position not in ("top", "bottom"):
@@ -201,10 +219,13 @@ class Theme:
         object.__setattr__(self, "spines", tuple(self.spines))
         if not set(self.spines) <= {"left", "bottom"}:
             raise ValueError(f"spines must name only 'left' and 'bottom', got {self.spines}")
-        for name in ("status", "level_dashes", "widths_mm"):
+        for name in ("status", "level_dashes", "widths_mm") + (("bar_marks",) if self.bar_marks is not None else ()):
             value = getattr(self, name)
             if not isinstance(value, MappingProxyType):
                 object.__setattr__(self, name, MappingProxyType(dict(value)))
+        object.__setattr__(self, "volume_half", tuple(float(v) for v in self.volume_half))
+        if self.bar_marks is not None and not set(self.bar_marks) <= set(STATUS_KEYS):
+            raise ValueError(f"bar_marks keys must be statuses {STATUS_KEYS}, got {sorted(self.bar_marks)}")
         missing = [k for k in STATUS_KEYS if k not in self.status]
         extra = [k for k in self.status if k not in STATUS_KEYS]
         if missing or extra:
@@ -231,7 +252,7 @@ class Theme:
                    typography=Typography(title=12.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
                                          annotation=10.0, footnote=9.5),
                    lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
-                               grid=0.6),
+                               grid=0.6, interval_bar=3.0, interval_bar_dense=0.7),
                    status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 200.0}, dpi=150, halo=0.8,
                    footnote="full")
 
@@ -242,7 +263,7 @@ class Theme:
                    typography=Typography(title=13.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
                                          annotation=10.0, footnote=10.0),
                    lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
-                               grid=0.6),
+                               grid=0.6, interval_bar=3.0, interval_bar_dense=0.7),
                    status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 180.0}, dpi=200, halo=0.8,
                    footnote="full")
 
@@ -260,7 +281,7 @@ class Theme:
             background="#FFFFFF", grid=False, grid_color="#D9D9D9",
             level_dashes={0.95: (0, (4.0, 2.0)), 0.998: (0, (1.0, 1.5))}, corridor=None, halo=0.0,
             spines=("left", "bottom"), tick_length=3.0, tick_label_color=None, key_position="bottom", footnote="full",
-            highlight_ring=None)
+            highlight_ring=None, interval_bars=False, bar_marks=None, volume_half=(0.35, 0.5), highlight_wash=None)
         face = dict(family="DejaVu Sans", title_weight="normal", label_weight="normal")
         if variant == "publication":
             return cls(name="classic", typography=Typography(**face),
@@ -302,8 +323,8 @@ class Theme:
                         raise KeyError(f"unknown status {status!r}; expected one of {STATUS_KEYS}")
                     merged[status] = dataclasses.replace(merged[status], **style) if isinstance(style, Mapping) else style
                 updates[key] = merged
-            elif key in ("level_dashes", "widths_mm") and isinstance(value, Mapping):
-                updates[key] = {**current, **value}
+            elif key in ("level_dashes", "widths_mm", "bar_marks") and isinstance(value, Mapping):
+                updates[key] = {**(current or {}), **value}
             else:
                 updates[key] = value
         return dataclasses.replace(self, **updates)

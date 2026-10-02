@@ -22,6 +22,10 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   (with a "Not flagged at 95%" key entry); filled markers have a white halo; the key sits above the plot, under a
   title row when there is a title; `highlight=` providers get a ring and a semibold label; the publication preset
   shows a one-line footnote and keeps the full text in `FigureResult.caption`. `theme="classic"` is unchanged.
+- `caterpillar()` in the new look: intervals are bars whose rounded ends sit exactly on their bounds, with each
+  estimate's mark on top in a darker shade and a white halo; the volume panel uses thin bars; the key sits above the
+  plot, under a title row; highlighted providers get a band across both panels and a semibold label (a ring when
+  rows are unlabelled); the publication preset shows a one-line footnote. `theme="classic"` is unchanged.
 
 ### Added
 - IBM Plex Sans ships as package data (four unmodified styles, SIL Open Font License 1.1, licence and copyright
@@ -32,6 +36,9 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   `label_weight`.
 - `FigureResult.caption`: the figure's footnote text, for outlets that set captions outside the figure.
 - Theme tokens `key_position`, `footnote` and `highlight_ring`.
+- `caterpillar(..., group_by="status")`: rows grouped by the test's result under headers with counts, for analyst
+  reports. Theme tokens `interval_bars`, `bar_marks`, `volume_half`, `highlight_wash`, `Lines.interval_bar` and
+  `Lines.interval_bar_dense`; `accessibility_report()["bar_mark_contrast"]` (3:1 required).
 - `Theme.accessibility_report()["corridor_contrast"]`: status marks against the corridor fill (3:1 required).
 
 ## 0.6.0 (2026-10-01)

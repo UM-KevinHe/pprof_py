@@ -18,6 +18,12 @@
 | Static or interactive | Static. |
 | From 10 to 50,000 providers | Rows are labelled up to 60 providers; above that they are unlabelled and `highlight=` providers are annotated. Above 2,000 providers the interval layer is rasterized. Legend and alt text always report the full count. |
 
+In the package's look each interval is a bar whose rounded ends sit exactly on its bounds, with the estimate's
+mark on top in a darker shade, and the volume panel uses thin bars. `group_by="status"` groups the rows by the
+test's result (above, not different, below, not tested, from the top), each under a header with its count, for
+analyst reports; rows stay ordered by estimate within each group, and the grouping follows the flags, not a ranking.
+Highlighted providers get a band across both panels and an emphasized label.
+
 ## How to read it
 
 Each row is a provider: the segment is its interval, the marker its estimate and status, and the bar beside it its volume. Rows whose interval crosses the reference line are not different from it at the test's level.
