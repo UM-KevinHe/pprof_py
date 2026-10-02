@@ -89,10 +89,10 @@ def reliability(iur: Any, *, theme: Union[str, Theme, None] = "publication", siz
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.6,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = (f"Reliability by provider size for {fmt_count(n)} providers: from {fmt_number(rel.min(), 2)} at size "
            f"{fmt_number(sizes[order][0], 0)} to {fmt_number(rel.max(), 2)} at size {fmt_number(sizes[order][-1], 0)}; "
            f"overall IUR {fmt_number(overall, 2)} at the effective size {fmt_number(n_prime, 0)}.")
     prov = {"source": type(iur).__name__, "n_boot": boot, "iur": overall, "n_prime": n_prime}
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts={"providers": n}, kind="reliability")

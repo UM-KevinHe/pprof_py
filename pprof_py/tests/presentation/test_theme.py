@@ -9,6 +9,8 @@ from pprof_py.presentation import STATUS_KEYS, Theme, get_theme
 def test_presets_and_resolution():
     assert get_theme() == Theme.publication() == Theme()
     assert get_theme("notebook").name == "notebook" and get_theme("report").name == "report"
+    assert get_theme("classic") == Theme.classic() and Theme.classic().name == "classic"
+    assert Theme.classic("report").name == "classic-report" and Theme.classic("notebook").name == "classic-notebook"
     t = Theme.notebook()
     assert get_theme(t) is t
     with pytest.raises(ValueError):
@@ -20,6 +22,7 @@ def test_presets_and_resolution():
 def test_publication_text_is_at_least_7pt():
     assert Theme.publication().typography.minimum >= 7.0
     assert Theme.notebook().typography.minimum >= 9.0 and Theme.report().typography.minimum >= 9.0
+    assert Theme.classic().typography.minimum >= 7.0
 
 
 def test_themes_are_immutable_and_hashable():
@@ -38,7 +41,7 @@ def test_derive_returns_a_new_theme():
     d = t.derive(typography={"tick": 7.5}, status={"above": {"color": "#8C510A"}}, widths_mm={"single": 89.0},
                  dpi=600)
     assert (d.typography.tick, d.status["above"].color, d.widths_mm["single"], d.dpi) == (7.5, "#8C510A", 89.0, 600)
-    assert (t.typography.tick, t.status["above"].color, t.widths_mm["single"], t.dpi) == (7.0, "#B35806", 85.0, 300)
+    assert (t.typography.tick, t.status["above"].color, t.widths_mm["single"], t.dpi) == (7.0, "#C25E1F", 85.0, 300)
     assert d.status["below"] == t.status["below"] and d.widths_mm["double"] == 175.0
     with pytest.raises(TypeError):
         t.derive(colour="#000000")
@@ -57,11 +60,14 @@ def test_status_keys_and_direction_neutral_labels():
 
 def test_rc_settings_are_valid_and_apply():
     import matplotlib
-    for theme in (Theme.publication(), Theme.notebook(), Theme.report()):
+    for theme in (Theme.publication(), Theme.notebook(), Theme.report(), Theme.classic()):
         assert set(theme.rc()) <= set(matplotlib.rcParams)
         with theme.rc_context():
             assert matplotlib.rcParams["svg.hashsalt"] == "pprof_py"
             assert matplotlib.rcParams["axes.spines.top"] is False
+            # the bundled face is applied per text element, so rcParams only ever name a font Matplotlib ships
+            assert matplotlib.rcParams["font.sans-serif"][-1] == "DejaVu Sans"
+            assert "IBM Plex Sans" not in matplotlib.rcParams["font.sans-serif"]
 
 
 def test_figure_sizes():
@@ -72,9 +78,13 @@ def test_figure_sizes():
         Theme().figsize("triple")
 
 
-def test_default_font_ships_with_matplotlib():
+def test_default_face_is_bundled_and_classic_font_ships_with_matplotlib():
     import matplotlib
     from matplotlib import font_manager
-    path = font_manager.findfont(font_manager.FontProperties(family=Theme().typography.family),
+
+    from pprof_py.presentation.theme import _fonts
+    assert Theme().typography.family == _fonts.BUNDLED_FAMILY
+    assert _fonts.font_file().startswith(str(_fonts.FONT_DIR))
+    path = font_manager.findfont(font_manager.FontProperties(family=Theme.classic().typography.family),
                                  fallback_to_default=False)
     assert path.startswith(matplotlib.get_data_path()) and path.endswith("DejaVuSans.ttf")

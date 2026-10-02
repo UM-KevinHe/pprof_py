@@ -141,10 +141,10 @@ def caterpillar(source: Any, *args: Any, volume: Union[str, bool] = "auto", high
             key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left",
                        bbox_to_anchor=(inset, 1.0), ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0,
                        handletextpad=0.4, columnspacing=1.2, handlelength=1.4, fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     counts = prof.status_counts()
     alt = _alt_text(n, counts, ratio, level, denom[drawn], kind, volume)
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts=counts, kind="caterpillar")
 
 

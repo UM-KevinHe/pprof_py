@@ -145,9 +145,9 @@ def multi_measure(source: Any, *, order: str = "first", highlight: Optional[Iter
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = f"Small multiples of {k} measures for {fmt_count(n)} providers: " + "; ".join(alt_parts) + "."
-    return FigureResult(fig, axes[0], theme=th, alt_text=alt, long_description=alt + " " + note,
+    return FigureResult(fig, axes[0], theme=th, alt_text=alt, long_description=alt + " " + note, caption=note,
                         provenance={"measures": labels}, counts={"providers": n, "measures": k},
                         kind="multi_measure")
 
@@ -238,10 +238,10 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = (f"Agreement of {x} and {y} for {fmt_count(int(ok.sum()))} providers: {fmt_count(counts['same'])} flagged on both "
            f"in the same direction, {fmt_count(counts['opposite'])} in opposite directions, {fmt_count(counts['one'])} "
            f"on one measure only, {fmt_count(counts['neither'])} on neither.")
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note,
                         provenance={"x": x, "y": y}, counts={**counts, "not_placed": not_placed},
                         kind="measure_agreement")

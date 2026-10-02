@@ -317,6 +317,11 @@ The documentation includes:
 
 MIT © 2025 Kevin He. See [LICENSE.md](LICENSE.md).
 
+Figures use IBM Plex Sans, © 2017 IBM Corp. with Reserved Font Name "Plex", bundled unmodified under the SIL Open
+Font License 1.1; the licence and its notice are in
+[`pprof_py/presentation/theme/fonts/OFL.txt`](pprof_py/presentation/theme/fonts/OFL.txt). The font licence covers the
+font files only.
+
 ## Contact
 
 If you encounter any problems or bugs, please contact:

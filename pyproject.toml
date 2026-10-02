@@ -56,3 +56,7 @@ legacy = ["rpy2", "pymer4"]
 [tool.setuptools.packages.find]
 include = ["pprof_py*"]
 exclude = ["pprof_py.tests*", "pprof_py.r_reference*", "pprof_py.docs*"]
+
+[tool.setuptools.package-data]
+# IBM Plex Sans (SIL Open Font License 1.1): the font files travel with their licence and provenance note
+"pprof_py.presentation.theme" = ["fonts/*.ttf", "fonts/OFL.txt", "fonts/README.txt"]

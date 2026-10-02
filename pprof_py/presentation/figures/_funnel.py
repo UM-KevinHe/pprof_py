@@ -136,9 +136,9 @@ def funnel(source: Any, *args: Any, levels: Iterable[float] = (0.95, 0.998), hig
             key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left",
                        bbox_to_anchor=(inset, 1.0), ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0,
                        handletextpad=0.4, columnspacing=1.2, handlelength=1.0, fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = _alt_text(len(f), counts, ratio, test_level, fa)
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts=counts, kind="funnel")
 
 

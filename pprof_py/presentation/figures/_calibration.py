@@ -129,14 +129,14 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol_legend, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4,
                    handlelength=1.6, fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = _alt_text(summary, theoretical is not None and fitted_differs, len(f), fitted_differs)
     counts_out = {"groups": g, "flagged_fitted": int(summary["above_fitted"].sum() + summary["below_fitted"].sum())}
     if theoretical is not None:
         counts_out.update({"flagged_theoretical": int(summary["above_theoretical"].sum()
                                                       + summary["below_theoretical"].sum()),
                            "changed": int(summary["changed"].sum())})
-    return FigureResult(fig, axes[0], theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, axes[0], theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts=counts_out, kind="null_calibration")
 
 

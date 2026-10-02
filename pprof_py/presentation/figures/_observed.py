@@ -166,13 +166,13 @@ def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     c = prof.status_counts()
     excess = obs[shown] - exp_[shown]
     alt = (f"Observed against expected events for {fmt_count(int(shown.sum()))} providers: {fmt_count(c['above'])} above "
            f"and {fmt_count(c['below'])} below the reference at the {pct(level)} level; observed minus expected ranges "
            f"from {fmt_number(excess.min(), 1)} to {fmt_number(excess.max(), 1)} events.")
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov, counts=c,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov, counts=c,
                         kind="observed_expected")
 
 

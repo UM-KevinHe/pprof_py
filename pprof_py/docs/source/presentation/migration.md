@@ -36,6 +36,12 @@ calls whose options or meaning have no test-consistent replacement keep their ea
 - Every figure carries a footnote with its level, test, null model, reference and estimator.
 - Exports are byte-identical for the same input and environment.
 
+## The 0.6.0 look
+
+From 0.7.0 the presets carry the package's visual identity (IBM Plex Sans, a copper and petrol status pair, a grid
+instead of a frame). `theme="classic"` reproduces 0.6.0 figures byte for byte in the same environment;
+`Theme.classic("notebook")` and `Theme.classic("report")` do the same for the other two presets.
+
 ## Styling keywords and themes
 
 Styling keywords (`font_size`, `point_size`, `flag_colors`, `figure_size`, ...) are ignored with a warning. Derive a

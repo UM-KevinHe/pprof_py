@@ -11,11 +11,13 @@ PT_MM = 25.4 / 72.0
 
 
 def text_width_mm(text: str, font_pt: float, family: str) -> float:
-    """Rendered width of one line of text, measured with the font's own metrics."""
-    from matplotlib.font_manager import FontProperties
+    """Rendered width of one line of text, measured with the face the text will be drawn in (the bundled face, or
+    DejaVu Sans where that face lacks a glyph or its files are missing)."""
     from matplotlib.textpath import TextToPath
 
-    width, _, _ = TextToPath().get_text_width_height_descent(text, FontProperties(family=family, size=font_pt),
+    from ..theme._fonts import font_properties
+
+    width, _, _ = TextToPath().get_text_width_height_descent(text, font_properties(family, font_pt, text=text),
                                                               ismath=False)
     return float(width) * PT_MM
 
@@ -88,16 +90,26 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     return fig, ax, key, ncol, inset
 
 
-def freeze_layout(fig: Any) -> None:
+def freeze_layout(fig: Any, theme: Any = None) -> None:
     """Run constrained layout once, then switch it off, so every later save draws the same positions.
 
     Constrained layout restarts from the current positions on each draw and is not idempotent: without this, two
     saves of one figure differ in the last decimals of their coordinates.
+
+    With a theme whose family is the bundled face, the first draw creates every text element (tick labels
+    included), the face is applied to each of them (``theme._fonts.apply``), and a second draw lays the figure out
+    with the face it shows. Other families keep the single draw, unchanged.
     """
     from matplotlib.backends.backend_agg import FigureCanvasAgg
 
+    from ..theme import _fonts
+
     FigureCanvasAgg(fig)
     fig.canvas.draw()
+    family = getattr(getattr(theme, "typography", None), "family", None)
+    if family is not None and _fonts.is_bundled(family) and _fonts.available():
+        _fonts.apply(fig, family, theme.typography.title_weight, theme.typography.label_weight)
+        fig.canvas.draw()
     if hasattr(fig, "set_layout_engine"):           # Matplotlib >= 3.6
         fig.set_layout_engine("none")
     else:                                           # Matplotlib 3.5

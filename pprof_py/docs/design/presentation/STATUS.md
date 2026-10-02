@@ -1,8 +1,10 @@
 # STATUS — pprof_py presentation layer
 
-**Updated:** 2026-10-01 · **Branch:** `test/plotting` (base `d3d92a1` = `v0.5.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
+**Updated:** 2026-10-02 · **Branch:** `main` (base `3e10d81`, whose tree equals `test/plotting` at `5c17633` = `v0.6.0`) · **Home:** `pprof_py/docs/design/presentation/` (unpublished, not packaged)
 
 ## Phase
+0.6.0 is merged into `main` (`3e10d81`); the identity redesign follows below.
+
 6 (quality review) complete under decisions D9–D68. All phases delivered; release 0.6.0 prepared for the merge into `main`. Phase 3 (MVP, rounds R1–R8) was approved by the maintainer. Phase 4 rounds follow D49, one self-contained diff each, with a check-in after each round.
 
 | Round | Content | State |
@@ -39,6 +41,27 @@ Phase 3 rounds:
 | R6 | Interval plot (`caterpillar`) with volume panel: segments from `ci_lower` to `ci_upper`, legibility ordering, off-scale markers, labelled rows up to 60, dense mode; theme text without hinting | delivered |
 | R7 | `test_standardized()` metadata (D38); tables: `TableSpec`, HTML/Markdown/LaTeX/text/Excel renderers, `provider_table`, `excel` extra | delivered |
 | R8 | Model plot methods as delegates (deprecations for 0.7.0), `plot_caterpillar` defaults, `excel` in CI, docs page *Presentation layer (preview)* with migration table, acceptance (Chapter 10, logistic tutorial), demo and samples | delivered |
+
+## Identity redesign (0.7.0)
+Direction B (Modern Scientific) is the approved visual identity, with Direction A's journal conventions for the publication preset and Direction C's status grouping as an option for analyst reports (D69). It ships in six rounds on `main` (D75).
+
+| Round | Content | State |
+|---|---|---|
+| I1 | Tokens, presets and fonts: IBM Plex Sans bundled and applied per text element, with DejaVu Sans fallback (D70, D71); identity palette, line weights, grid instead of frame, halo and corridor tokens (D73); `Theme.classic` (D72); `FigureResult.caption` (D74) | delivered |
+| I2 | Funnel: shaded 95% corridor where the curve reproduces the flags, haloed markers, key above, direct labels; a one-line publication footnote with the full text in `caption` | next |
+| I3 | Interval plot with volume: interval bars trimmed to their bounds, thin volume panel, title block, `group_by="status"` | planned |
+| I4 | Tables: identity HTML styling, optional inline interval column, status grouping | planned |
+| I5 | Report and the eight Tier 2 displays on the identity tokens | planned |
+| I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | planned |
+
+## I1 evidence
+- `classic` restates 0.6.0: all 24 gallery files (12 figures, SVG and PNG) are byte-identical to the 0.6.0 tree's output in one environment; the new default differs in all 24 (negative control).
+- Tests, Python 3.12 (numpy 2.5.3, pandas 3.0.6, Matplotlib 3.11.2): 967 passed, 1 skipped, 1 failed. The failure is `test_setup_logger` (no `tzdata` in the sandbox), which fails identically on the untouched tree.
+- Tests, Python 3.10 floor (numpy 1.23.5, pandas 1.5.3, scipy 1.9.3, Matplotlib 3.5.3, numba 0.57.1): 966 passed, 1 skipped, 2 failed: the same logger test, and `test_funnel_delegates[fe-score]`, whose no-deprecation check sees Matplotlib 3.5.3's `setParseAction` warnings from a current pyparsing. It fails identically on the untouched tree; pinning `pyparsing<3.1` in the floor environment would clear it.
+- No global state: rcParams and Matplotlib's font list are identical before and after rendering and exporting SVG, PDF and PNG, and no `findfont` messages are logged. Tests cover missing and unreadable font files and a text with a glyph the face lacks.
+- Packaging: the wheel and sdist carry the four fonts, `OFL.txt` and `README.txt`, byte-identical to the tree. A fresh environment installed from the wheel renders with the fonts from `site-packages` and no fallback warning.
+- Accessibility: every preset passes the package's thresholds, and status marks keep at least 3.17:1 on the corridor. The design mockups' grey `#87919D` fails that test at 2.78:1 (negative control, D73).
+- Docs build: exit 0 with 4 warnings, the same 4 intersphinx inventories as the untouched tree; the gallery renders in the new look.
 
 ## Release 0.6.0 evidence
 - Version 0.6.0 in `pyproject.toml`, `pprof_py.__version__` and the docs (`release`, `version`); changelog section `0.6.0 (2026-10-01)` with a summary and "Migrating from 0.5.0"; docs home note updated. The provider-table goldens pin a synthetic `package_version` and are unchanged; the one version-bearing docs output (Presentation reference page) changed only in its four version strings and prints its stored output on both stacks.
@@ -191,4 +214,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-None planned: all phases are delivered. The maintainer's review of `04_final_report.md` and the sample report decides what follows.
+I2: the funnel in the identity (the table above).

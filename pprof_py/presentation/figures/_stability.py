@@ -120,12 +120,12 @@ def flag_stability(model: Any, *args: Any, scenarios: Optional[Mapping[str, Mapp
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     stable_flagged = int(m - change.sum())
     alt = (f"Flag stability across {k} scenarios for {fmt_count(n)} providers: {fmt_count(m)} flagged in at least one "
            f"scenario, {fmt_count(stable_flagged)} of them identically in every scenario; {fmt_count(c_all)} providers "
            "change status.")
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note,
                         provenance={"model": sc.model, "scenarios": dict(sc.descriptions)},
                         counts={"providers": n, "flagged_any": m, "changing": c_all, "scenarios": k},
                         kind="flag_stability")

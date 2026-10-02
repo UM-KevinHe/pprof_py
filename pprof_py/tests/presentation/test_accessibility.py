@@ -1,7 +1,8 @@
 """Accessibility requirements as automated tests (brief §7.4, ADR-008).
 
-Thresholds are CIE76 Delta E in CIELAB under the Machado (2009) simulations; the shipped palette's worst cases are
-59.1 (above/below, tritan) and 33.7 (below/not different, tritan), and a red/green pair falls to 7.3 (deutan).
+Thresholds are CIE76 Delta E in CIELAB under the Machado (2009) simulations. The identity palette's worst cases are
+65.2 (above/below) and 26.3 (status/not different), the classic palette's 59.1 and 33.7, and a red/green pair falls
+to 7.3 (deutan). Status marks also keep 3:1 against the corridor fill, where most not-different providers sit (D73).
 """
 import numpy as np
 import pytest
@@ -9,7 +10,8 @@ import pytest
 from pprof_py.presentation import Theme
 from pprof_py.presentation.theme import _accessibility as acc
 
-PRESETS = [Theme.publication(), Theme.notebook(), Theme.report()]
+PRESETS = [Theme.publication(), Theme.notebook(), Theme.report(), Theme.classic(), Theme.classic("notebook"),
+           Theme.classic("report")]
 
 
 def test_simulation_matrices_keep_white_white():
@@ -37,6 +39,21 @@ def test_colour_vision_and_grayscale(theme):
     assert min(min(r["delta_e"][p].values()) for p in ("above/not_different", "below/not_different")) >= 25
     assert r["lightness_gap_above_below"] >= 15
     assert r["unique_encodings"]
+
+
+@pytest.mark.parametrize("theme", PRESETS, ids=lambda t: t.name)
+def test_status_marks_keep_contrast_on_the_corridor(theme):
+    r = theme.accessibility_report()
+    if theme.corridor is None:
+        assert r["corridor_contrast"] == {}
+    else:
+        assert min(r["corridor_contrast"].values()) >= 3.0
+
+
+def test_the_mockup_grey_fails_on_the_corridor():
+    # negative control: the design mockups' not-different grey (#87919D) reaches only 2.78:1 on the corridor
+    t = Theme().derive(status={"not_different": {"color": "#87919D"}})
+    assert min(t.accessibility_report()["corridor_contrast"].values()) < 3.0
 
 
 def test_red_green_pair_fails_the_colour_vision_check():

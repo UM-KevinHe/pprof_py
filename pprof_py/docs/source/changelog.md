@@ -9,6 +9,26 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased
+
+The presentation layer takes its visual identity (design approved 2026-10-02). Statistical results are unchanged.
+
+### Changed
+- The `publication`, `notebook` and `report` themes set text in IBM Plex Sans, mark status with a copper and petrol
+  pair (`#C25E1F`, `#0F4C63`; not different `#7D8793`), draw a light grid with muted tick labels instead of a frame,
+  set axis labels in medium and titles in semibold weight, and draw the 95% limits solid and the 99.8% limits dotted.
+  Every figure looks different; every value, flag and limit is the same.
+
+### Added
+- IBM Plex Sans ships as package data (four unmodified styles, SIL Open Font License 1.1, licence and copyright
+  notice in `presentation/theme/fonts/OFL.txt`). Fonts load per text element, without changing Matplotlib's font
+  manager or rcParams, and fall back to DejaVu Sans when the files are unavailable or a glyph is missing.
+- `Theme.classic(variant)` and `theme="classic"`: the 0.6.0 presets, byte-identical in the same environment.
+- Theme tokens `corridor`, `halo`, `spines`, `tick_length`, `tick_label_color`, and `Typography.title_weight` and
+  `label_weight`.
+- `FigureResult.caption`: the figure's footnote text, for outlets that set captions outside the figure.
+- `Theme.accessibility_report()["corridor_contrast"]`: status marks against the corridor fill (3:1 required).
+
 ## 0.6.0 (2026-10-01)
 
 The presentation layer: figures, tables and reports that show validated results without recomputing them, with

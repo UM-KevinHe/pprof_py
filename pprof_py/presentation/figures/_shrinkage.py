@@ -131,11 +131,11 @@ def shrinkage(fixed: Any, random: Any, *, fe_reference: Any = "mean", highlight:
             key.legend([h for h, _ in keys], [lab for _, lab in keys], loc="upper left", bbox_to_anchor=(inset, 1.0),
                        ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
                        fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = (f"Shrinkage of {fmt_count(n)} providers: fixed-effect estimates from {fmt_number(x[fin].min(), 2)} to "
            f"{fmt_number(x[fin].max(), 2)}, random-effect estimates from {fmt_number(np.nanmin(y), 2)} to "
            f"{fmt_number(np.nanmax(y), 2)} ({scale})" + (f"; {fmt_count(k_off)} without a finite fixed-effect estimate"
                                                        if k_off else "") + ".")
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=dict(prov),
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=dict(prov),
                         counts={"providers": n, "no_finite_fixed": k_off, "only_fixed": pairs.only_fixed,
                                 "only_random": pairs.only_random}, kind="shrinkage")

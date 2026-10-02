@@ -2,8 +2,10 @@
 
 A :class:`Theme` holds every visual decision: typography, line widths, status encodings, sizes and export settings.
 Renderers read tokens from a theme; users customise by deriving a new theme (:meth:`Theme.derive`), not through
-per-call styling arguments. The defaults follow the package's house style: restrained, publication-quality and
-accessible, with uncertainty and provider volume always in view.
+per-call styling arguments. The presets carry the package's visual identity: IBM Plex Sans (bundled, applied per
+text element), a direction-neutral copper and petrol status pair, a light grid instead of a frame, and a shaded
+corridor for the test's acceptance region, with uncertainty and provider volume always in view. :meth:`Theme.classic`
+keeps the 0.6.0 look.
 """
 from __future__ import annotations
 
@@ -46,9 +48,14 @@ class StatusStyle:
 
 @dataclass(frozen=True)
 class Typography:
-    """Font family and sizes in points, by role."""
+    """Font family, sizes in points by role, and the weights of titles and axis labels.
 
-    family: str = "DejaVu Sans"
+    The family ``"IBM Plex Sans"`` is the bundled face: it is applied to each text element from the package's own
+    font files and falls back to DejaVu Sans without them (``theme._fonts``). Any other family is looked up by
+    Matplotlib as usual.
+    """
+
+    family: str = "IBM Plex Sans"
     title: float = 8.5
     subtitle: float = 7.5
     label: float = 7.5
@@ -56,6 +63,8 @@ class Typography:
     legend: float = 7.0
     annotation: float = 7.0
     footnote: float = 7.0
+    title_weight: str = "semibold"
+    label_weight: str = "medium"
 
     @property
     def minimum(self) -> float:
@@ -71,18 +80,30 @@ class Lines:
     data: float = 0.8
     interval: float = 0.8
     interval_dense: float = 0.35
-    reference: float = 0.8
-    limit: float = 0.7
-    grid: float = 0.4
+    reference: float = 0.9
+    limit: float = 0.8
+    grid: float = 0.5
 
 
-def _status_styles(scale: float = 1.0) -> Dict[str, StatusStyle]:
+# Status hues: "identity" is the package's look (copper / petrol, a cool grey that keeps 3:1 on the corridor);
+# "classic" is the 0.6.0 dark PuOr pair. Both pass the accessibility tests (ADR-008, D73).
+_PALETTES = {
+    "identity": {"above": "#C25E1F", "below": "#0F4C63", "not_different": "#7D8793", "not_tested": "#556372",
+                 "no_finite_estimate": "#1E2B38"},
+    "classic": {"above": "#B35806", "below": "#542788", "not_different": "#8C8C8C", "not_tested": "#4D4D4D",
+                "no_finite_estimate": "#000000"},
+}
+
+
+def _status_styles(scale: float = 1.0, palette: str = "identity") -> Dict[str, StatusStyle]:
+    c = _PALETTES[palette]
     return {
-        "above": StatusStyle("#B35806", "^", 18.0 * scale, True, "Above reference", "\u25b2"),
-        "below": StatusStyle("#542788", "v", 18.0 * scale, True, "Below reference", "\u25bc"),
-        "not_different": StatusStyle("#8C8C8C", "o", 7.0 * scale, True, "Not different", "\u25cf"),
-        "not_tested": StatusStyle("#4D4D4D", "o", 10.0 * scale, False, "Not tested", "NT"),
-        "no_finite_estimate": StatusStyle("#000000", "s", 22.0 * scale, False, "No finite estimate", "NE"),
+        "above": StatusStyle(c["above"], "^", 18.0 * scale, True, "Above reference", "\u25b2"),
+        "below": StatusStyle(c["below"], "v", 18.0 * scale, True, "Below reference", "\u25bc"),
+        "not_different": StatusStyle(c["not_different"], "o", 7.0 * scale, True, "Not different", "\u25cf"),
+        "not_tested": StatusStyle(c["not_tested"], "o", 10.0 * scale, False, "Not tested", "NT"),
+        "no_finite_estimate": StatusStyle(c["no_finite_estimate"], "s", 22.0 * scale, False, "No finite estimate",
+                                          "NE"),
     }
 
 
@@ -96,8 +117,8 @@ def _hashable(value: Any) -> Any:
 class Theme:
     """Design tokens for figures, tables and reports.
 
-    Use a preset (:meth:`publication`, the default, :meth:`notebook`, :meth:`report`) and derive variants with
-    :meth:`derive`. Themes are immutable and hashable.
+    Use a preset (:meth:`publication`, the default, :meth:`notebook`, :meth:`report`, or :meth:`classic` for the
+    0.6.0 look) and derive variants with :meth:`derive`. Themes are immutable and hashable.
 
     Attributes
     ----------
@@ -123,29 +144,47 @@ class Theme:
         Fixed salt so SVG element ids are reproducible.
     svg_text_as_paths : bool
         Draw SVG text as paths (identical rendering everywhere) instead of editable text.
+    corridor : str or None
+        Fill for the region between the test's own limits (where a provider is not flagged); ``None`` draws none.
+    halo : float
+        Width in points of the background-coloured edge that separates markers from lines beneath them.
+    spines : tuple of str
+        Axis lines drawn (``"left"``, ``"bottom"``); empty draws none and lets the grid carry the scale.
+    tick_length : float
+        Major tick length in points (minor ticks are 0.6 of it).
+    tick_label_color : str or None
+        Tick label colour; ``None`` uses ``ink``.
     """
 
     name: str = "publication"
     typography: Typography = field(default_factory=Typography)
     lines: Lines = field(default_factory=Lines)
     status: Mapping[str, StatusStyle] = field(default_factory=_status_styles)
-    ink: str = "#1A1A1A"
-    muted: str = "#4D4D4D"
-    reference: str = "#000000"
-    limit: str = "#4D4D4D"
-    volume: str = "#8C8C8C"
+    ink: str = "#1E2B38"
+    muted: str = "#556372"
+    reference: str = "#1E2B38"
+    limit: str = "#6B7684"
+    volume: str = "#87919D"
     background: str = "#FFFFFF"
-    grid: bool = False
-    grid_color: str = "#D9D9D9"
+    grid: bool = True
+    grid_color: str = "#E2E7ED"
     level_dashes: Mapping[float, Any] = field(
-        default_factory=lambda: {0.95: (0, (4.0, 2.0)), 0.998: (0, (1.0, 1.5))})
+        default_factory=lambda: {0.95: "solid", 0.998: (0, (0.8, 1.6))})
     offscale_markers: Tuple[str, str] = ("<", ">")
     widths_mm: Mapping[str, float] = field(default_factory=lambda: {"single": 85.0, "double": 175.0})
     dpi: int = 300
     svg_hashsalt: str = "pprof_py"
     svg_text_as_paths: bool = True
+    corridor: Optional[str] = "#EAF0F5"
+    halo: float = 0.6
+    spines: Tuple[str, ...] = ()
+    tick_length: float = 0.0
+    tick_label_color: Optional[str] = "#556372"
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "spines", tuple(self.spines))
+        if not set(self.spines) <= {"left", "bottom"}:
+            raise ValueError(f"spines must name only 'left' and 'bottom', got {self.spines}")
         for name in ("status", "level_dashes", "widths_mm"):
             value = getattr(self, name)
             if not isinstance(value, MappingProxyType):
@@ -166,7 +205,7 @@ class Theme:
     # presets -----------------------------------------------------------------------------------------------
     @classmethod
     def publication(cls) -> "Theme":
-        """Print-ready defaults: 85/175 mm widths, text at least 7 pt at final size, 300 dpi."""
+        """Print-ready defaults: IBM Plex Sans, 85/175 mm widths, text at least 7 pt at final size, 300 dpi."""
         return cls()
 
     @classmethod
@@ -175,9 +214,9 @@ class Theme:
         return cls(name="notebook",
                    typography=Typography(title=12.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
                                          annotation=10.0, footnote=9.5),
-                   lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.0, limit=0.9,
-                               grid=0.5),
-                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 200.0}, dpi=150)
+                   lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
+                               grid=0.6),
+                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 200.0}, dpi=150, halo=0.8)
 
     @classmethod
     def report(cls) -> "Theme":
@@ -185,9 +224,42 @@ class Theme:
         return cls(name="report",
                    typography=Typography(title=13.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
                                          annotation=10.0, footnote=10.0),
-                   lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.0, limit=0.9,
-                               grid=0.5),
-                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 180.0}, dpi=200)
+                   lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
+                               grid=0.6),
+                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 180.0}, dpi=200, halo=0.8)
+
+    @classmethod
+    def classic(cls, variant: str = "publication") -> "Theme":
+        """The 0.6.0 presets, unchanged: DejaVu Sans, the dark PuOr status pair, an open frame and no grid.
+
+        ``variant`` is ``"publication"`` (the default), ``"notebook"`` or ``"report"``. Within one environment the
+        figures are byte-identical to 0.6.0 output with that preset.
+        """
+        if variant not in ("publication", "notebook", "report"):
+            raise ValueError(f"variant must be 'publication', 'notebook' or 'report', got {variant!r}")
+        common: Dict[str, Any] = dict(
+            ink="#1A1A1A", muted="#4D4D4D", reference="#000000", limit="#4D4D4D", volume="#8C8C8C",
+            background="#FFFFFF", grid=False, grid_color="#D9D9D9",
+            level_dashes={0.95: (0, (4.0, 2.0)), 0.998: (0, (1.0, 1.5))}, corridor=None, halo=0.0,
+            spines=("left", "bottom"), tick_length=3.0, tick_label_color=None)
+        face = dict(family="DejaVu Sans", title_weight="normal", label_weight="normal")
+        if variant == "publication":
+            return cls(name="classic", typography=Typography(**face),
+                       lines=Lines(axis=0.6, data=0.8, interval=0.8, interval_dense=0.35, reference=0.8, limit=0.7,
+                                   grid=0.4),
+                       status=_status_styles(1.0, "classic"), **common)
+        wide = Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.0, limit=0.9, grid=0.5)
+        if variant == "notebook":
+            return cls(name="classic-notebook",
+                       typography=Typography(title=12.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
+                                             annotation=10.0, footnote=9.5, **face),
+                       lines=wide, status=_status_styles(2.0, "classic"),
+                       widths_mm={"single": 120.0, "double": 200.0}, dpi=150, **common)
+        return cls(name="classic-report",
+                   typography=Typography(title=13.0, subtitle=11.0, label=11.0, tick=10.0, legend=10.0,
+                                         annotation=10.0, footnote=10.0, **face),
+                   lines=wide, status=_status_styles(2.0, "classic"), widths_mm={"single": 120.0, "double": 180.0},
+                   dpi=200, **common)
 
     # derivation and use ------------------------------------------------------------------------------------
     def derive(self, **changes: Any) -> "Theme":
@@ -219,15 +291,27 @@ class Theme:
 
     def rc(self) -> Dict[str, Any]:
         """Matplotlib rcParams for this theme (renderers apply them while building and while saving)."""
+        from ._fonts import FALLBACK_FAMILY, is_bundled
+
         t, ln = self.typography, self.lines
+        bundled = is_bundled(t.family)
+        faces = [FALLBACK_FAMILY] if bundled else [t.family, FALLBACK_FAMILY]
+        # the bundled face takes its title and label weights per element (_fonts.apply); rcParams stay at normal so
+        # Matplotlib never searches DejaVu Sans for a weight it does not have
+        title_w, label_w = ("normal", "normal") if bundled else (t.title_weight, t.label_weight)
+        minor = 0.6 * self.tick_length
         return {
-            "font.family": "sans-serif", "font.sans-serif": [t.family, "DejaVu Sans"], "font.size": t.tick,
+            "font.family": "sans-serif", "font.sans-serif": faces, "font.size": t.tick,
             "axes.titlesize": t.title, "axes.labelsize": t.label, "figure.titlesize": t.title,
             "xtick.labelsize": t.tick, "ytick.labelsize": t.tick, "legend.fontsize": t.legend,
             "axes.linewidth": ln.axis, "xtick.major.width": ln.axis, "ytick.major.width": ln.axis,
             "xtick.minor.width": 0.75 * ln.axis, "ytick.minor.width": 0.75 * ln.axis,
-            "xtick.major.size": 3.0, "ytick.major.size": 3.0, "xtick.minor.size": 1.8, "ytick.minor.size": 1.8,
-            "axes.spines.top": False, "axes.spines.right": False,
+            "xtick.major.size": self.tick_length, "ytick.major.size": self.tick_length, "xtick.minor.size": minor,
+            "ytick.minor.size": minor,
+            "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": "left" in self.spines,
+            "axes.spines.bottom": "bottom" in self.spines, "axes.axisbelow": True if self.grid else "line",
+            "xtick.labelcolor": self.tick_label_color or self.ink, "ytick.labelcolor": self.tick_label_color or self.ink,
+            "axes.titleweight": title_w, "figure.titleweight": title_w, "axes.labelweight": label_w,
             "axes.edgecolor": self.ink, "axes.labelcolor": self.ink, "text.color": self.ink,
             "xtick.color": self.ink, "ytick.color": self.ink,
             "axes.facecolor": self.background, "figure.facecolor": self.background,
@@ -261,7 +345,8 @@ class Theme:
         return accessibility_report(self)
 
 
-_PRESETS = {"publication": Theme.publication, "notebook": Theme.notebook, "report": Theme.report}
+_PRESETS = {"publication": Theme.publication, "notebook": Theme.notebook, "report": Theme.report,
+            "classic": Theme.classic}
 
 
 def get_theme(theme: Union[str, Theme, None] = None) -> Theme:

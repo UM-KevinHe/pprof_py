@@ -65,10 +65,10 @@ def data_quality(source: Any, *args: Any, theme: Union[str, Theme, None] = "publ
                          kind, prov.get("min_volume"))
         if title:
             acc.set_title(title, loc="left", fontsize=th.typography.title)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     counts = {key: count for _, count, key in rows}
     alt = _alt_text(prof, rows, f["denominator"].to_numpy(dtype=float) if has_volume else None, kind)
-    return FigureResult(fig, acc, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, acc, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts=counts, kind="data_quality")
 
 

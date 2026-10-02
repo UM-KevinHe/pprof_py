@@ -35,19 +35,24 @@ class FigureResult:
         Providers per status and attribute, as shown.
     kind : str
         The display, for example ``"funnel"``.
+    caption : str
+        The figure's footnote text (provenance and how to read it), for outlets that set captions outside the
+        figure, such as journals.
 
     Notes
     -----
     ``fig, ax = result`` unpacks to ``(figure, axes)``, as the earlier funnel functions returned.
     """
 
-    __slots__ = ("_figure", "_axes", "_theme", "_alt", "_long", "_provenance", "_counts", "_kind")
+    __slots__ = ("_figure", "_axes", "_theme", "_alt", "_long", "_provenance", "_counts", "_kind", "_caption")
 
     def __init__(self, figure: Any, axes: Any, *, theme: Any, alt_text: str, long_description: str,
-                 provenance: Mapping[str, Any], counts: Mapping[str, Any], kind: str) -> None:
+                 provenance: Mapping[str, Any], counts: Mapping[str, Any], kind: str,
+                 caption: Optional[str] = None) -> None:
         for name, value in (("_figure", figure), ("_axes", axes), ("_theme", theme), ("_alt", alt_text),
                             ("_long", long_description), ("_provenance", MappingProxyType(dict(provenance))),
-                            ("_counts", MappingProxyType(dict(counts))), ("_kind", kind)):
+                            ("_counts", MappingProxyType(dict(counts))), ("_kind", kind),
+                            ("_caption", "" if caption is None else str(caption))):
             object.__setattr__(self, name, value)
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -61,6 +66,7 @@ class FigureResult:
     provenance = property(lambda self: self._provenance)
     counts = property(lambda self: self._counts)
     kind = property(lambda self: self._kind)
+    caption = property(lambda self: self._caption)
 
     def __iter__(self) -> Iterator[Any]:
         return iter((self._figure, self._axes))

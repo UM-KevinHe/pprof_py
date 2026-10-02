@@ -130,11 +130,11 @@ def provider_variation(model: Any, *, level: float = 0.95, theme: Union[str, The
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.6,
                    fontsize=th.typography.legend)
-        freeze_layout(fig)
+        freeze_layout(fig, th)
     alt = (f"Between-provider variation in {fmt_count(n)} providers: random-effect SD {_sigma_text(v)[4:]}; "
            f"{pct(level)} of true provider effects would lie within {_range_text(v)} under a normal random-effect "
            f"distribution; the BLUPs range from {fmt_number(b.min(), 2)} to {fmt_number(b.max(), 2)}.")
     prov = {"model": v.model, "provider_var": v.provider_var, "scale": v.scale, "sigma": v.sigma, "lower": v.lower,
             "upper": v.upper, "level": v.level, "interval_method": v.interval_method}
-    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, provenance=prov,
+    return FigureResult(fig, ax, theme=th, alt_text=alt, long_description=alt + " " + note, caption=note, provenance=prov,
                         counts={"providers": n}, kind="provider_variation")
