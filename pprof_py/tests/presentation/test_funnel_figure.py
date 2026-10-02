@@ -210,7 +210,10 @@ def test_result_object(profiles, tmp_path):
     r = funnel(profiles["score"], size="double", title="Readmissions")
     assert isinstance(r, FigureResult) and r.kind == "funnel"
     fig, ax = r
-    assert fig is r.figure and ax is r.axes and ax.get_title(loc="left") == "Readmissions"
+    # the identity draws the title in a row above the key (D77); classic keeps it on the axes, as in 0.6.0
+    titles = [sf._suptitle.get_text() for sf in fig.subfigs if getattr(sf, "_suptitle", None) is not None]
+    assert fig is r.figure and ax is r.axes and titles == ["Readmissions"] and not ax.get_title(loc="left")
+    assert funnel(profiles["score"], theme="classic", title="Readmissions").axes.get_title(loc="left") == "Readmissions"
     assert fig.get_figwidth() == pytest.approx(175.0 / 25.4)
     with pytest.raises(AttributeError):
         r.kind = "other"

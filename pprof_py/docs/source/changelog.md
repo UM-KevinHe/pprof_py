@@ -18,6 +18,10 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   pair (`#C25E1F`, `#0F4C63`; not different `#7D8793`), draw a light grid with muted tick labels instead of a frame,
   set axis labels in medium and titles in semibold weight, and draw the 95% limits solid and the 99.8% limits dotted.
   Every figure looks different; every value, flag and limit is the same.
+- `funnel()` in the new look: where the test's curve reproduces the flags, the region between its limits is shaded
+  (with a "Not flagged at 95%" key entry); filled markers have a white halo; the key sits above the plot, under a
+  title row when there is a title; `highlight=` providers get a ring and a semibold label; the publication preset
+  shows a one-line footnote and keeps the full text in `FigureResult.caption`. `theme="classic"` is unchanged.
 
 ### Added
 - IBM Plex Sans ships as package data (four unmodified styles, SIL Open Font License 1.1, licence and copyright
@@ -27,6 +31,7 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
 - Theme tokens `corridor`, `halo`, `spines`, `tick_length`, `tick_label_color`, and `Typography.title_weight` and
   `label_weight`.
 - `FigureResult.caption`: the figure's footnote text, for outlets that set captions outside the figure.
+- Theme tokens `key_position`, `footnote` and `highlight_ring`.
 - `Theme.accessibility_report()["corridor_contrast"]`: status marks against the corridor fill (3:1 required).
 
 ## 0.6.0 (2026-10-01)

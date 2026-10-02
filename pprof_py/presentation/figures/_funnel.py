@@ -95,14 +95,23 @@ def funnel(source: Any, *args: Any, levels: Iterable[float] = (0.95, 0.998), hig
     counts = prof.status_counts()
 
     exact_marks = "count boundaries" in (fa.get("limit_rule") or "")
+    corridor = _corridor_curve(th, curves, exact_curves, test_level)
     entries = _legend_entries(th, status, shown, zero, nofinite, exact_curves, exact_marks, test_level)
+    if corridor is not None:
+        from matplotlib.patches import Patch
+        entries.append((Patch(facecolor=th.corridor, edgecolor=th.limit, linewidth=0.5),
+                        f"Not flagged at {pct(test_level)}"))
     note = _footnote(prof, prov, ratio, fa, exact_curves, exact_marks, curve_kind, shown_levels, test_level, n_unplaced)
+    shown_note = (_short_footnote(prof, prov, ratio, exact_curves, exact_marks, shown_levels, test_level, n_unplaced)
+                  if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     if isinstance(size, str):
         main_mm = _MAIN_MM.get(size, 62.0)              # unknown names are rejected by theme.figsize
     else:
         main_mm = 0.7 * float(size)
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, main_mm, [label for _, label in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, main_mm, [label for _, label in entries], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         ax.set_xscale("log")
         xs = x[shown]
         x0, x1 = float(xs.min()), float(xs.max())
@@ -115,6 +124,9 @@ def funnel(source: Any, *args: Any, levels: Iterable[float] = (0.95, 0.998), hig
         ax.set_ylim(ylo, yhi)
         discrete = "count boundaries" in (fa.get("limit_rule") or "")
         labels = _draw_limits(ax, th, curves, exact_curves, discrete, x, lo, hi, shown, dense, test_level)
+        if corridor is not None:                        # where a provider of that precision is not flagged
+            ax.fill_between(corridor[0], corridor[1], corridor[2], facecolor=th.corridor, edgecolor="none",
+                            linewidth=0.0, zorder=0.6, gid="corridor")
         if ref is not None and np.isfinite(ref):            # ends with the data: the label strip stays clear
             ax.plot([left, x1 * 10 ** (0.015 * span)], [ref, ref], color=th.reference, lw=th.lines.reference,
                     zorder=1.2, solid_capstyle="butt", gid="reference")
@@ -130,7 +142,7 @@ def funnel(source: Any, *args: Any, levels: Iterable[float] = (0.95, 0.998), hig
         log_ticks(ax.xaxis)
         ax.set_xlabel(_X_LABELS.get(fa.get("precision_kind"), "Precision") + " (log scale)")
         ax.set_ylabel("Observed / expected (O/E)" if ratio else _EFFECT_LABELS.get(prov.get("scale"), "Estimate"))
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         if entries:
             key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left",
@@ -158,8 +170,10 @@ def _marker(th: Theme, key: str, size: Optional[float] = None) -> Any:
     from matplotlib.lines import Line2D
 
     st = th.status[key]
+    halo = st.filled and th.halo > 0
     return Line2D([], [], linestyle="none", marker=st.marker, markersize=math.sqrt(size or st.size),
-                  markerfacecolor=st.color if st.filled else "none", markeredgecolor=st.color, markeredgewidth=0.6)
+                  markerfacecolor=st.color if st.filled else "none",
+                  markeredgecolor=th.background if halo else st.color, markeredgewidth=th.halo if halo else 0.6)
 
 
 def _legend_entries(th: Theme, status: np.ndarray, shown: np.ndarray, zero: np.ndarray, nofinite: np.ndarray,
@@ -198,6 +212,39 @@ def _footnote(prof: Any, prov: Any, ratio: bool, fa: dict, exact_curves: bool, e
             limits += f"; the curves are Poisson references at {', '.join(pct(v) for v in levels)}"
     text = (f"{counts_text(prof)}. Limits: {limits}. Test: {test_text(prov)}; {null_text(prov.get('null_model'))}; "
             f"reference: {reference_text(prov, ratio)}. Estimates: {prov.get('estimator') or 'estimator not stated'}.")
+    if n_unplaced:
+        text += f" {fmt_count(n_unplaced)} provider(s) without a finite precision or estimate are not drawn."
+    return text
+
+
+def _corridor_curve(th: Theme, curves: Optional[pd.DataFrame], exact_curves: bool,
+                    test_level: float) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Precision, lower and upper limit of the test-level curve, when a corridor may be shaded: the theme has one,
+    the curves reproduce the flags (``exact_curves``) and there is a single null group. Per-provider limit marks
+    (exact count tests) and per-group curves (a grouped empirical null) are never shaded, because one region would
+    misplace providers."""
+    if not th.corridor or not exact_curves or curves is None or not len(curves):
+        return None
+    c = curves[np.isclose(curves["level"].to_numpy(dtype=float), test_level)]
+    if not len(c) or c["null_group"].nunique(dropna=False) > 1:
+        return None
+    c = c.sort_values("precision", kind="mergesort")
+    return (c["precision"].to_numpy(dtype=float), c["lower"].to_numpy(dtype=float),
+            c["upper"].to_numpy(dtype=float))
+
+
+def _short_footnote(prof: Any, prov: Any, ratio: bool, exact_curves: bool, exact_marks: bool,
+                    levels: Tuple[float, ...], test_level: float, n_unplaced: int) -> str:
+    """One provenance line for publication figures; the full text is the figure's caption."""
+    others = [pct(v) for v in levels if v != test_level]
+    text = f"{counts_text(prof)}. Test: {test_text(prov)}; reference: {reference_text(prov, ratio)}."
+    nm = prov.get("null_model")
+    if isinstance(nm, dict) and nm.get("kind") not in (None, "theoretical"):
+        text = text[:-1] + f"; {null_text(nm)}."
+    if not exact_curves:
+        text += f" Marks: each provider's {'exact ' if exact_marks else ''}{pct(test_level)} limits."
+    elif others:
+        text += f" The {', '.join(others)} curves are for reference only."
     if n_unplaced:
         text += f" {fmt_count(n_unplaced)} provider(s) without a finite precision or estimate are not drawn."
     return text
@@ -256,8 +303,10 @@ def _draw_points(ax: Any, th: Theme, x: np.ndarray, y: np.ndarray, status: np.nd
         if not m.any():
             continue
         st = th.status[key]
+        halo = st.filled and th.halo > 0                 # a background-coloured edge separates marks from lines
         ax.scatter(x[m], y[m], marker=st.marker, s=st.size * (0.6 if dense and key == "not_different" else 1.0),
-                   facecolors=st.color if st.filled else "none", edgecolors=st.color, linewidths=0.6,
+                   facecolors=st.color if st.filled else "none", edgecolors=th.background if halo else st.color,
+                   linewidths=th.halo if halo else 0.6,
                    zorder=_ZORDER[key], rasterized=dense and key == "not_different", gid=f"status-{key}")
     ne = th.status["no_finite_estimate"]
     if (zero & shown).any():
@@ -297,10 +346,17 @@ def _provider_labels(ax: Any, th: Theme, ids: pd.Index, x: np.ndarray, y: np.nda
     idx = np.flatnonzero(want)
     if idx.size == 0:
         return
+    chosen = (np.asarray(ids.isin(list(highlight)), dtype=bool) & shown) if highlight is not None else np.zeros(len(ids), bool)
+    ring = chosen & bool(th.highlight_ring)
+    if ring.any():                                       # the selected providers: a ring and an emphasized label
+        size = max(s.size for s in th.status.values())
+        ax.scatter(x[ring], y[ring], marker="o", s=size * 3.2, facecolors="none", edgecolors=th.highlight_ring,
+                   linewidths=0.8, zorder=5.5, gid="highlight-ring")
     pos = spread(y[idx].tolist(), _gap(th, ylo, yhi, main_mm), ylo, yhi)
     for i, yv in zip(idx, pos):
         ax.annotate(str(ids[i]), (x[i], y[i]), xytext=(x[i] * 1.12, yv), textcoords="data", ha="left", va="center",
                     fontsize=th.typography.annotation, color=th.ink, zorder=6.0,
+                    gid="emphasis" if ring[i] else None,
                     arrowprops=None if abs(yv - y[i]) < 1e-12 else dict(arrowstyle="-", color=th.muted, lw=0.4))
 
 

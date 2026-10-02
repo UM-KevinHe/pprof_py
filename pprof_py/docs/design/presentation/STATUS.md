@@ -48,11 +48,19 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | Round | Content | State |
 |---|---|---|
 | I1 | Tokens, presets and fonts: IBM Plex Sans bundled and applied per text element, with DejaVu Sans fallback (D70, D71); identity palette, line weights, grid instead of frame, halo and corridor tokens (D73); `Theme.classic` (D72); `FigureResult.caption` (D74) | delivered |
-| I2 | Funnel: shaded 95% corridor where the curve reproduces the flags, haloed markers, key above, direct labels; a one-line publication footnote with the full text in `caption` | next |
-| I3 | Interval plot with volume: interval bars trimmed to their bounds, thin volume panel, title block, `group_by="status"` | planned |
+| I2 | Funnel: shaded corridor where the test's curve reproduces the flags (D76), haloed markers, key above under a title row (D77), highlight ring, one-line publication footnote with the full text in `caption` (D78) | delivered |
+| I3 | Interval plot with volume: interval bars trimmed to their bounds, thin volume panel, title block, `group_by="status"` | next |
 | I4 | Tables: identity HTML styling, optional inline interval column, status grouping | planned |
 | I5 | Report and the eight Tier 2 displays on the identity tokens | planned |
 | I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | planned |
+
+## I2 evidence
+- Classic unchanged: all 24 gallery files byte-identical to 0.6.0. The other eleven displays in the identity (22 files) are byte-identical to I1; only the funnel changed.
+- Tests, Python 3.12: presentation suite 226 passed (28 files). `test_infrastructure.py`, `survival/test_r_comparison.py` and `test_api_consistency.py`, the other tests that draw: 37 passed, 1 failed (`test_setup_logger`, no `tzdata`, as on the untouched tree). The statistical suites import no presentation code (`test_layering`) and stand from I1.
+- Tests, Python 3.10 floor: presentation suite 225 passed, 1 failed (`test_funnel_delegates[fe-score]`, Matplotlib 3.5.3's pyparsing deprecation warnings, as on the untouched tree); the three other files as on 3.12.
+- New: `test_funnel_identity.py` (6 tests, each with its classic counterpart): the shaded region equals the test-level curve; none for exact marks, a grouped null or classic; halos on filled markers only; the key above the data under a SemiBold title row; the short publication footnote with the full caption; the highlight ring and SemiBold label. `test_result_object` checks the title row (classic keeps the axes title).
+- Visual review: score test in the publication and report presets, exact Poisson-binomial marks, the linear Wald funnel, a grouped empirical null, classic.
+- Docs build: exit 0 with the same 4 intersphinx warnings as the untouched tree; the gallery funnel carries the corridor.
 
 ## I1 evidence
 - `classic` restates 0.6.0: all 24 gallery files (12 figures, SVG and PNG) are byte-identical to the 0.6.0 tree's output in one environment; the new default differs in all 24 (negative control).
@@ -214,4 +222,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-I2: the funnel in the identity (the table above).
+I3: the interval plot with volume panel in the identity (the table above).

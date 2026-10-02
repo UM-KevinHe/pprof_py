@@ -56,8 +56,12 @@ def note_rows(text: str, width_mm: float, font_pt: float, family: str) -> Tuple[
 
 def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note: str, *,
              width_ratios: Optional[Sequence[float]] = None, sharey: bool = True,
-             grid: Optional[Tuple[int, int]] = None):
+             grid: Optional[Tuple[int, int]] = None, key_top: bool = False, title: Optional[str] = None):
     """Figure with three stacked sub-figures: data, legend and footnote, each sized from its content.
+
+    With ``key_top`` the legend row sits above the data, under a title row when ``title`` is given (the title is
+    then drawn here, as that row's sub-figure title, and the renderer draws none). Without it the order and output
+    are those of 0.6.0.
 
     With ``width_ratios`` the data row holds that many axes side by side, sharing the y axis; otherwise one axes.
 
@@ -75,8 +79,16 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     # measured text heights carry font-cache state in their last bits (a save leaves FreeType state behind); round
     # them so the layout cannot depend on what was drawn before
     key_mm, note_mm, main_mm = round(key_mm, 6), round(note_mm, 6), round(main_mm, 6)
-    fig = Figure(figsize=(width_in, (main_mm + key_mm + note_mm) / 25.4), layout="constrained")
-    top, key, foot = fig.subfigures(3, 1, height_ratios=[main_mm, max(key_mm, 0.01), note_mm])
+    title_mm = round(theme.typography.title * PT_MM * 1.55 + 1.6, 6) if (key_top and title) else 0.0
+    fig = Figure(figsize=(width_in, (main_mm + key_mm + note_mm + title_mm) / 25.4), layout="constrained")
+    inset = 1.5 / width_mm
+    if not key_top:
+        top, key, foot = fig.subfigures(3, 1, height_ratios=[main_mm, max(key_mm, 0.01), note_mm])
+    elif title_mm:
+        head, key, top, foot = fig.subfigures(4, 1, height_ratios=[title_mm, max(key_mm, 0.01), main_mm, note_mm])
+        head.suptitle(title, x=inset, y=1.0, ha="left", va="top", fontsize=theme.typography.title)
+    else:
+        key, top, foot = fig.subfigures(3, 1, height_ratios=[max(key_mm, 0.01), main_mm, note_mm])
     if grid is not None:                            # panels in rows and columns, sharing the x axis
         ax = tuple(top.subplots(grid[0], grid[1], squeeze=False, sharex=True).ravel())
     elif width_ratios is None:
@@ -84,7 +96,6 @@ def scaffold(theme: Any, size: Any, main_mm: float, labels: Sequence[str], note:
     else:
         ax = tuple(top.subplots(1, len(width_ratios), sharey=sharey,
                                 gridspec_kw={"width_ratios": list(width_ratios), "wspace": 0.02}))
-    inset = 1.5 / width_mm
     foot.text(inset, 1.0, wrapped, ha="left", va="top", fontsize=theme.typography.footnote, color=theme.muted,
               linespacing=1.25)
     return fig, ax, key, ncol, inset

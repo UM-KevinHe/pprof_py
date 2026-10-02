@@ -154,6 +154,15 @@ class Theme:
         Major tick length in points (minor ticks are 0.6 of it).
     tick_label_color : str or None
         Tick label colour; ``None`` uses ``ink``.
+    key_position : {"top", "bottom"}
+        Where displays that support it put the key: above the data, under a title row when there is a title, or
+        below the data.
+    footnote : {"short", "full"}
+        In-figure footnote of the displays that support it: one provenance line, or the full text. The full text is
+        always available as ``FigureResult.caption``.
+    highlight_ring : str or None
+        Colour of the ring around ``highlight=`` providers, whose labels are then set in the title weight;
+        ``None`` labels them without a ring.
     """
 
     name: str = "publication"
@@ -180,8 +189,15 @@ class Theme:
     spines: Tuple[str, ...] = ()
     tick_length: float = 0.0
     tick_label_color: Optional[str] = "#556372"
+    key_position: str = "top"
+    footnote: str = "short"
+    highlight_ring: Optional[str] = "#1E2B38"
 
     def __post_init__(self) -> None:
+        if self.key_position not in ("top", "bottom"):
+            raise ValueError(f"key_position must be 'top' or 'bottom', got {self.key_position!r}")
+        if self.footnote not in ("short", "full"):
+            raise ValueError(f"footnote must be 'short' or 'full', got {self.footnote!r}")
         object.__setattr__(self, "spines", tuple(self.spines))
         if not set(self.spines) <= {"left", "bottom"}:
             raise ValueError(f"spines must name only 'left' and 'bottom', got {self.spines}")
@@ -216,7 +232,8 @@ class Theme:
                                          annotation=10.0, footnote=9.5),
                    lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
                                grid=0.6),
-                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 200.0}, dpi=150, halo=0.8)
+                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 200.0}, dpi=150, halo=0.8,
+                   footnote="full")
 
     @classmethod
     def report(cls) -> "Theme":
@@ -226,7 +243,8 @@ class Theme:
                                          annotation=10.0, footnote=10.0),
                    lines=Lines(axis=0.8, data=1.0, interval=1.0, interval_dense=0.45, reference=1.1, limit=1.0,
                                grid=0.6),
-                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 180.0}, dpi=200, halo=0.8)
+                   status=_status_styles(2.0), widths_mm={"single": 120.0, "double": 180.0}, dpi=200, halo=0.8,
+                   footnote="full")
 
     @classmethod
     def classic(cls, variant: str = "publication") -> "Theme":
@@ -241,7 +259,8 @@ class Theme:
             ink="#1A1A1A", muted="#4D4D4D", reference="#000000", limit="#4D4D4D", volume="#8C8C8C",
             background="#FFFFFF", grid=False, grid_color="#D9D9D9",
             level_dashes={0.95: (0, (4.0, 2.0)), 0.998: (0, (1.0, 1.5))}, corridor=None, halo=0.0,
-            spines=("left", "bottom"), tick_length=3.0, tick_label_color=None)
+            spines=("left", "bottom"), tick_length=3.0, tick_label_color=None, key_position="bottom", footnote="full",
+            highlight_ring=None)
         face = dict(family="DejaVu Sans", title_weight="normal", label_weight="normal")
         if variant == "publication":
             return cls(name="classic", typography=Typography(**face),

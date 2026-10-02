@@ -122,8 +122,9 @@ def font_properties(family: str, size: float, weight: Any = "normal", style: Any
 def apply(fig: Any, family: str, title_weight: Any = "normal", label_weight: Any = "normal") -> None:
     """Give every text element of ``fig`` the face for ``family``, keeping its size and style.
 
-    Axis labels take ``label_weight`` and titles ``title_weight`` (the themes keep rcParams at normal weight for the
-    bundled face, so Matplotlib never looks for a medium or semibold DejaVu Sans); other text keeps its own weight.
+    Axis labels take ``label_weight``, and titles and text tagged ``gid="emphasis"`` (a highlighted provider's
+    label, for example) take ``title_weight``; the themes keep rcParams and renderers keep text at normal weight for
+    the bundled face, so Matplotlib never looks for a medium or semibold DejaVu Sans. Other text keeps its weight.
     Called once the figure has been drawn (so tick labels exist) and before the layout is frozen, so the frozen
     layout is measured with the face it shows. Does nothing unless ``family`` is the bundled face and its files load;
     if anything fails, the figure keeps DejaVu Sans throughout (never a mixture).
@@ -145,6 +146,9 @@ def apply(fig: Any, family: str, title_weight: Any = "normal", label_weight: Any
             if getattr(f, "_suptitle", None) is not None:
                 role[id(f._suptitle)] = title_weight
         texts = [t for t in fig.findobj(Text)]
+        for t in texts:
+            if t.get_gid() == "emphasis":
+                role[id(t)] = title_weight
         props = []
         for t in texts:
             fp = t.get_fontproperties()
