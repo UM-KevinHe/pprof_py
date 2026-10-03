@@ -75,7 +75,7 @@ def test_funnel_warnings_and_legacy_paths(frames):
     plt.close(fig)
 
 
-def test_caterpillar_draws_the_frame(frames):
+def test_caterpillar_draws_the_frame(frames, tmp_path):
     df, _ = frames
     half = norm.ppf(0.975) / np.sqrt(df["precision"])          # intervals consistent with the flags (S3)
     t = df.assign(ci_lower=df["estimate"] - half, ci_upper=df["estimate"] + half)
@@ -92,8 +92,12 @@ def test_caterpillar_draws_the_frame(frames):
     r2, w = _quiet(plot_caterpillar, old, flag_col="flag", refline_value=1.0)
     assert isinstance(r2, FigureResult) and any("ci_lower_col='lower'" in str(x.message) for x in w)
     for kwargs in ({"sort_by_estimate": False}, {"orientation": "horizontal"}, {"refline_value": None}):
-        out, w = _quiet(plot_caterpillar, t, flag_col="flag", save_path="/dev/null", **{"refline_value": 1.0, **kwargs})
+        # a temporary file, not /dev/null: Matplotlib appends ".png" to a path without an extension, and /dev is not
+        # writable for the unprivileged users that run CI
+        out, w = _quiet(plot_caterpillar, t, flag_col="flag", save_path=str(tmp_path / "earlier"),
+                        **{"refline_value": 1.0, **kwargs})
         assert out is None and any("keeps the earlier drawing" in str(x.message) for x in w)
+    assert (tmp_path / "earlier.png").stat().st_size > 0          # the earlier drawing saves, with the default extension
 
 
 def test_model_mixins_keep_the_legacy_functions():
