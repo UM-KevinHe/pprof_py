@@ -26,6 +26,10 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   estimate's mark on top in a darker shade and a white halo; the volume panel uses thin bars; the key sits above the
   plot, under a title row; highlighted providers get a band across both panels and a semibold label (a ring when
   rows are unlabelled); the publication preset shows a one-line footnote. `theme="classic"` is unchanged.
+- HTML tables take their style from the theme's tokens: IBM Plex Sans named first in the font stack (never embedded),
+  hairline rows, muted headers, and each status as a coloured glyph followed by its word. `theme="classic"` gives the
+  0.6.0 HTML; Markdown, LaTeX, text and Excel output is unchanged. Reports keep the 0.6.0 table style until their
+  own redesign.
 
 ### Added
 - IBM Plex Sans ships as package data (four unmodified styles, SIL Open Font License 1.1, licence and copyright
@@ -36,6 +40,9 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   `label_weight`.
 - `FigureResult.caption`: the figure's footnote text, for outlets that set captions outside the figure.
 - Theme tokens `key_position`, `footnote` and `highlight_ring`.
+- `provider_table(..., theme=, intervals=, group_by=)`: the HTML style, an inline interval column in HTML, and rows
+  grouped by the test's result under header rows with counts in every format. `TableResult.theme`, the theme token
+  `table_style`, `tables.table_css(theme)`, and `TableSpec.groups`.
 - `caterpillar(..., group_by="status")`: rows grouped by the test's result under headers with counts, for analyst
   reports. Theme tokens `interval_bars`, `bar_marks`, `volume_half`, `highlight_wash`, `Lines.interval_bar` and
   `Lines.interval_bar_dense`; `accessibility_report()["bar_mark_contrast"]` (3:1 required).

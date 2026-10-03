@@ -56,6 +56,12 @@ def test_golden_outputs(table, fmt):
     assert not any(line != line.rstrip() for line in text.splitlines())   # no trailing whitespace anywhere
 
 
+def test_classic_html_is_the_0_6_0_golden():
+    # the 0.6.0 HTML, byte for byte (D82); the identity HTML is the provider_table.html golden
+    t = provider_table(_profile(), p_values=True, min_volume=10, theme="classic")
+    assert t.to_html() == (GOLDEN / "provider_table_classic.html").read_text(encoding="utf-8")
+
+
 def test_cells_follow_the_rules(table):
     cells = table.spec.cells
     assert cells.loc["C|D", "estimate_ci"] == "1.0049 (1.0001\u20131.0120)"     # extra digits: 1.00 would touch 1.00

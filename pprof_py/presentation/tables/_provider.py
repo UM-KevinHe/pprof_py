@@ -33,19 +33,25 @@ class TableResult:
     same numbers, symbols and footnotes. Outputs are deterministic.
     """
 
-    __slots__ = ("_spec",)
+    __slots__ = ("_spec", "_theme", "_intervals")
 
-    def __init__(self, spec: TableSpec) -> None:
+    def __init__(self, spec: TableSpec, *, theme: Any = None, intervals: Optional[pd.DataFrame] = None) -> None:
+        from ..theme import get_theme
         object.__setattr__(self, "_spec", spec)
+        object.__setattr__(self, "_theme", get_theme(theme))
+        object.__setattr__(self, "_intervals", intervals)
 
     def __setattr__(self, name: str, value: Any) -> None:
         raise AttributeError("TableResult is immutable")
 
     spec = property(lambda self: self._spec)
+    theme = property(lambda self: self._theme, doc="The theme that styles the HTML output.")
     provenance = property(lambda self: self._spec.provenance)
 
     def to_html(self, *, standalone: bool = True) -> str:
-        return render_html(self._spec, standalone=standalone)
+        """HTML styled by the table's theme (fonts are named, never embedded), with the inline interval column when
+        the table was made with ``intervals=True``; a classic theme gives the 0.6.0 HTML."""
+        return render_html(self._spec, standalone=standalone, theme=self._theme, intervals=self._intervals)
 
     def to_markdown(self) -> str:
         return render_markdown(self._spec)
@@ -95,6 +101,11 @@ class TableResult:
         return self.to_text()
 
 
+_GROUP_ORDER = ("above", "not_different", "below", "not_tested", "suppressed")
+_GROUP_LABELS = {"above": "Above reference", "not_different": "Not different", "below": "Below reference",
+                 "not_tested": "Not tested", "suppressed": "Suppressed"}
+
+
 def _estimate_label(prov: Any) -> str:
     if prov.get("estimator") == "observed/expected ratio":
         return "O/E ratio"
@@ -107,6 +118,7 @@ def _strings(values: Any) -> np.ndarray:
 
 def provider_table(source: Any, *args: Any, columns: Optional[Iterable[str]] = None, digits: int = 2,
                    p_values: bool = False, min_volume: Optional[float] = None, caption: Optional[str] = None,
+                   group_by: Optional[str] = None, intervals: bool = False, theme: Any = "publication",
                    **test_kwargs: Any) -> TableResult:
     """Provider results with denominators, intervals and flags, and footnotes generated from the test's settings.
 
@@ -130,6 +142,15 @@ def provider_table(source: Any, *args: Any, columns: Optional[Iterable[str]] = N
         :meth:`TableResult.to_frame` and Excel output).
     caption : str, optional
         Table caption (default: generated from the measure).
+    group_by : {None, "status"}
+        ``"status"`` groups the rows by the test's result (above, not different, below, not tested, suppressed),
+        each group under a header row with its count; rows keep the provider order within a group. Every format
+        shows the groups; Excel and :meth:`TableResult.to_frame` keep tidy rows, in the grouped order.
+    intervals : bool, default False
+        Add an inline interval column to the HTML output: each provider's interval on one shared scale, with the
+        reference and the estimate's mark. Other formats are unchanged.
+    theme : str or Theme
+        Styles the HTML output (``"classic"`` gives the 0.6.0 HTML); the other formats do not depend on it.
 
     Returns
     -------
@@ -140,6 +161,8 @@ def provider_table(source: Any, *args: Any, columns: Optional[Iterable[str]] = N
     CapabilityError
         When a requested column needs a quantity the source does not provide.
     """
+    if group_by not in (None, "status"):
+        raise ValueError(f"group_by must be None or 'status', got {group_by!r}")
     prof = resolve_profile(source, args, test_kwargs, display="provider_table", limits=False)
     if min_volume is not None:
         prof = prof.with_min_volume(min_volume)
@@ -192,6 +215,18 @@ def provider_table(source: Any, *args: Any, columns: Optional[Iterable[str]] = N
     notes = _notes(prov, wanted, table, nofinite & ~suppressed, suppressed, row_digits > digits, unresolved, level,
                    ratio, kind, min_volume)
     values = _values(f, suppressed, kind)
+    iv = (pd.DataFrame({"estimate": est, "ci_lower": lo, "ci_upper": hi, "null_value": nv, "status": status},
+                       index=f.index) if intervals else None)
+    groups: Tuple[Tuple[str, int], ...] = ()
+    if group_by == "status":                     # by the test's result; provider order within a group (D40)
+        rank = {k: i for i, k in enumerate(_GROUP_ORDER)}
+        order = np.argsort(np.array([rank.get(v, len(rank)) for v in status]), kind="stable")
+        table, values = table.iloc[order], values.iloc[order]
+        iv = iv.iloc[order] if iv is not None else None
+        present = [k for k in _GROUP_ORDER if (status == k).any()] + sorted(set(status) - set(_GROUP_ORDER))
+        groups = tuple((f"{_GROUP_LABELS.get(k, k)} ({fmt_count(int((status == k).sum()))})", int((status == k).sum()))
+                       for k in present)
+        notes.append(("", "Rows are grouped by the test's result, in provider order within each group."))
     formats = {"denominator" if kind is None else kind: "0.0" if kind == "expected" else "#,##0", "observed": "#,##0",
                "expected": "0.0", "estimate": "0." + "0" * digits, "ci_lower": "0." + "0" * digits,
                "ci_upper": "0." + "0" * digits, "p_value": "0.000", "flag": "0"}
@@ -199,8 +234,9 @@ def provider_table(source: Any, *args: Any, columns: Optional[Iterable[str]] = N
                    + f". {counts_text(prof)}.")
     spec = TableSpec(columns=cols, cells=table, values=values,
                      caption=caption or f"Provider results: {label}, {fmt_count(len(prof))} providers",
-                     notes=tuple(notes), source_note=source_note, number_formats=formats, provenance=dict(prov))
-    return TableResult(spec)
+                     notes=tuple(notes), source_note=source_note, number_formats=formats, provenance=dict(prov),
+                     groups=groups)
+    return TableResult(spec, theme=theme, intervals=iv)
 
 
 def _notes(prov: Any, wanted: List[str], table: pd.DataFrame, ne: np.ndarray, suppressed: np.ndarray,

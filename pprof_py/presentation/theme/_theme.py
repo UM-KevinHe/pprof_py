@@ -175,6 +175,8 @@ class Theme:
         Half-height of the volume bars, in rows, with and without row labels.
     highlight_wash : str or None
         Band behind a highlighted provider's row; ``None`` draws none.
+    table_style : {"identity", "classic"}
+        HTML tables: styled from this theme's tokens, with status glyphs coloured and named, or the 0.6.0 style.
     """
 
     name: str = "publication"
@@ -210,10 +212,13 @@ class Theme:
                                  "not_tested": "#556372"})
     volume_half: Tuple[float, float] = (0.09, 0.22)
     highlight_wash: Optional[str] = "#EAF0F5"
+    table_style: str = "identity"
 
     def __post_init__(self) -> None:
         if self.key_position not in ("top", "bottom"):
             raise ValueError(f"key_position must be 'top' or 'bottom', got {self.key_position!r}")
+        if self.table_style not in ("identity", "classic"):
+            raise ValueError(f"table_style must be 'identity' or 'classic', got {self.table_style!r}")
         if self.footnote not in ("short", "full"):
             raise ValueError(f"footnote must be 'short' or 'full', got {self.footnote!r}")
         object.__setattr__(self, "spines", tuple(self.spines))
@@ -281,7 +286,8 @@ class Theme:
             background="#FFFFFF", grid=False, grid_color="#D9D9D9",
             level_dashes={0.95: (0, (4.0, 2.0)), 0.998: (0, (1.0, 1.5))}, corridor=None, halo=0.0,
             spines=("left", "bottom"), tick_length=3.0, tick_label_color=None, key_position="bottom", footnote="full",
-            highlight_ring=None, interval_bars=False, bar_marks=None, volume_half=(0.35, 0.5), highlight_wash=None)
+            highlight_ring=None, interval_bars=False, bar_marks=None, volume_half=(0.35, 0.5), highlight_wash=None,
+            table_style="classic")
         face = dict(family="DejaVu Sans", title_weight="normal", label_weight="normal")
         if variant == "publication":
             return cls(name="classic", typography=Typography(**face),

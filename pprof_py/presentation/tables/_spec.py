@@ -66,6 +66,9 @@ class TableSpec:
     caption : str
     notes : tuple of (marker, text)
         Footnotes; a marker links a note to headers carrying it.
+    groups : tuple of (label, rows)
+        Consecutive row groups, each under a header row with its label (empty: no groups); the rows add up to the
+        table's.
     source_note : str
     provenance : mapping
     """
@@ -78,8 +81,11 @@ class TableSpec:
     source_note: str = ""
     number_formats: Mapping[str, str] = field(default_factory=dict)
     provenance: Mapping[str, Any] = field(default_factory=dict)
+    groups: Tuple[Tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
+        if self.groups and sum(int(k) for _, k in self.groups) != len(self.cells):
+            raise ValueError("the group sizes must add up to the number of rows")
         missing = [c.key for c in self.columns if c.key not in self.cells.columns]
         if missing:
             raise ValueError(f"cells lack the columns {missing}")
@@ -90,6 +96,17 @@ class TableSpec:
 
     def rows(self) -> List[List[str]]:
         return self.cells[[c.key for c in self.columns]].astype(str).to_numpy().tolist()
+
+    def grouped_rows(self) -> List[Tuple[Optional[str], List[List[str]]]]:
+        """Rows as (group label, rows) pairs; one unlabelled group when the table has none."""
+        rows = self.rows()
+        if not self.groups:
+            return [(None, rows)]
+        out, start = [], 0
+        for label, k in self.groups:
+            out.append((label, rows[start:start + int(k)]))
+            start += int(k)
+        return out
 
 
 def _spanners(spec: TableSpec) -> List[Tuple[Optional[str], int]]:
@@ -118,42 +135,182 @@ color:#1a1a1a}
 
 
 TABLE_CSS = _CSS
+_FLAG_WORDS = {"\u25b2": ("above", "Above"), "\u25bc": ("below", "Below"), "\u25cf": ("not_different", "Not different")}
 
 
-def render_html(spec: TableSpec, *, standalone: bool = True) -> str:
-    """Self-contained HTML: ``<caption>``, ``<th scope>``, footnotes in ``<tfoot>``; no scripts, fonts or links."""
+def _identity(theme: Any) -> bool:
+    return theme is not None and getattr(theme, "table_style", "classic") == "identity"
+
+
+def table_css(theme: Any = None) -> str:
+    """CSS for :func:`table_markup`: built from ``theme``'s tokens in the identity style, else the 0.6.0 style."""
+    if not _identity(theme):
+        return _CSS
+    t, st = theme, theme.status
+    face = f'"{t.typography.family}",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'
+    band = t.corridor or t.grid_color
+    return (f".pprof-table{{border-collapse:collapse;font-family:{face};font-size:13.5px;line-height:1.35;"
+            f"font-variant-numeric:tabular-nums;color:{t.ink};border-top:1.5px solid {t.ink};"
+            f"border-bottom:1.5px solid {t.ink}}}\n"
+            ".pprof-table caption{caption-side:top;text-align:left;font-weight:600;font-size:15px;padding:0 0 8px 0}\n"
+            ".pprof-table th,.pprof-table td{padding:4px 10px;vertical-align:baseline}\n"
+            f".pprof-table thead th{{font-weight:500;font-size:12.5px;color:{t.muted};border-bottom:1px solid {t.ink}}}\n"
+            f".pprof-table thead tr.spanners th{{border-bottom:1px solid {t.muted};color:{t.ink}}}\n"
+            f".pprof-table tbody td,.pprof-table tbody th{{border-bottom:1px solid {t.grid_color}}}\n"
+            ".pprof-table tbody th{font-weight:400;text-align:left}\n"
+            f".pprof-table tbody tr.pp-group th{{background:{band};font-weight:600;color:{t.ink};padding-top:6px}}\n"
+            ".pprof-table .left{text-align:left}.pprof-table .right{text-align:right}"
+            ".pprof-table .center{text-align:center}\n"
+            ".pprof-table .pp-glyph{display:inline-block;min-width:1em;margin-right:0.3em;text-align:center}\n"
+            f".pprof-table .pp-above{{color:{st['above'].color}}}.pprof-table .pp-below{{color:{st['below'].color}}}"
+            f".pprof-table .pp-not_different{{color:{st['not_different'].color}}}\n"
+            ".pprof-table td.pp-interval,.pprof-table th.pp-interval{padding-top:2px;padding-bottom:2px}\n"
+            f".pprof-table tfoot td{{font-size:12px;color:{t.muted};border-top:1px solid {t.ink};padding-top:6px}}\n"
+            ".pprof-table tfoot p{margin:2px 0}\n"
+            "@media print{.pprof-table{font-size:9pt}.pprof-table thead{display:table-header-group}}")
+
+
+def render_html(spec: TableSpec, *, standalone: bool = True, theme: Any = None, intervals: Any = None) -> str:
+    """Self-contained HTML: ``<caption>``, ``<th scope>``, footnotes in ``<tfoot>``; no scripts, fonts or links.
+
+    ``theme`` styles the table (its fonts are named, never embedded); without one the output is the 0.6.0 HTML.
+    ``intervals`` (from :class:`TableResult`) adds the inline interval column."""
     e = html.escape
-    table = table_markup(spec)
+    css = table_css(theme)
+    table = table_markup(spec, theme=theme, intervals=intervals)
     if not standalone:
-        return f"<style>{_CSS}</style>\n{table}\n"
+        return f"<style>{css}</style>\n{table}\n"
     return ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-            f"<title>{e(spec.caption)}</title>\n<style>{_CSS}</style>\n</head>\n<body>\n{table}\n</body>\n</html>\n")
+            f"<title>{e(spec.caption)}</title>\n<style>{css}</style>\n</head>\n<body>\n{table}\n</body>\n</html>\n")
 
 
-def table_markup(spec: TableSpec, *, caption_prefix: str = "") -> str:
-    """The ``<table>`` element alone (style it with :data:`TABLE_CSS`); ``caption_prefix`` precedes the caption."""
+def _nice_ticks(a: float, b: float) -> List[float]:
+    import math
+    span = b - a
+    if not (span > 0 and math.isfinite(span)):
+        return [a]
+    raw = span / 3.0
+    mag = 10 ** math.floor(math.log10(raw))
+    step = min((m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw), default=10 * mag)
+    first = math.ceil(a / step) * step
+    return [round(first + i * step, 10) for i in range(int((b - first) / step) + 1)]
+
+
+def _interval_cells(theme: Any, iv: Any, w: int = 140, h: int = 14, lw: float = 3.0, pad: float = 4.0) -> Tuple[str, List[str]]:
+    """The interval column: an axis for the header and one SVG per row on a shared scale. Each bar's rounded ends
+    sit exactly on its bounds (the cap radius is taken off each end that is not clipped), the reference is a
+    vertical line and the estimate's mark sits on the bar in its on-bar colour with a halo."""
+    import math
+    import numpy as np
+    lo, hi = iv["ci_lower"].to_numpy(dtype=float), iv["ci_upper"].to_numpy(dtype=float)
+    est, nv = iv["estimate"].to_numpy(dtype=float), iv["null_value"].to_numpy(dtype=float)
+    vals = np.r_[lo, hi, nv]
+    vals = vals[np.isfinite(vals)]
+    a, b = (float(vals.min()), float(vals.max())) if vals.size else (0.0, 1.0)
+    span = (b - a) or 1.0
+    a, b = a - 0.04 * span, b + 0.04 * span
+    sx = lambda v: pad + (w - 2 * pad) * (v - a) / (b - a)          # noqa: E731
+    marks = getattr(theme, "bar_marks", None) or {}
+    st = theme.status
+    rows = []
+    for i, key in enumerate(iv["status"].astype(str).tolist()):
+        if key == "suppressed" or not (math.isfinite(lo[i]) and math.isfinite(hi[i])):
+            rows.append("")
+            continue
+        x0, x1 = sx(max(lo[i], a)), sx(min(hi[i], b))
+        r = lw / 2.0
+        x0d, x1d = (x0 + r if lo[i] > a else x0), (x1 - r if hi[i] < b else x1)
+        if x1d < x0d:
+            x0d = x1d = 0.5 * (x0 + x1)
+        bar = st[key].color if key in ("above", "below") else theme.volume
+        mark = marks.get(key, st[key].color if key in st else theme.ink)
+        parts = []
+        if math.isfinite(nv[i]):
+            parts.append(f'<line x1="{sx(nv[i]):.2f}" y1="0" x2="{sx(nv[i]):.2f}" y2="{h}" stroke="{theme.reference}" '
+                         'stroke-width="1"></line>')
+        parts.append(f'<line x1="{x0d:.2f}" y1="{h / 2}" x2="{x1d:.2f}" y2="{h / 2}" stroke="{bar}" stroke-width="{lw}" '
+                     'stroke-linecap="round"></line>')
+        if math.isfinite(est[i]):
+            ex, y = sx(est[i]), h / 2
+            halo = f'stroke="{theme.background}" stroke-width="0.8"'
+            if key == "above":
+                parts.append(f'<polygon points="{ex:.2f},{y - 3.6:.2f} {ex + 3.4:.2f},{y + 2.6:.2f} {ex - 3.4:.2f},'
+                             f'{y + 2.6:.2f}" fill="{mark}" {halo}></polygon>')
+            elif key == "below":
+                parts.append(f'<polygon points="{ex - 3.4:.2f},{y - 2.6:.2f} {ex + 3.4:.2f},{y - 2.6:.2f} {ex:.2f},'
+                             f'{y + 3.6:.2f}" fill="{mark}" {halo}></polygon>')
+            else:
+                fill = mark if key == "not_different" else "none"
+                parts.append(f'<circle cx="{ex:.2f}" cy="{y}" r="2.2" fill="{fill}" stroke="{mark if fill == "none" else theme.background}" '
+                             f'stroke-width="0.8"></circle>')
+        rows.append(f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}" aria-hidden="true" style="display:block">'
+                    + "".join(parts) + "</svg>")
+    ticks = "".join(f'<text x="{sx(v):.2f}" y="11" text-anchor="middle" font-size="11" fill="{theme.muted}">'
+                    f'{html.escape(_fmt_tick(v))}</text>' for v in _nice_ticks(a, b))
+    head = f'<svg width="{w}" height="14" viewBox="0 0 {w} 14" aria-hidden="true" style="display:block">{ticks}</svg>'
+    return head, rows
+
+
+def _fmt_tick(v: float) -> str:
+    s = f"{v:g}"
+    return s.replace("-", "\u2212")
+
+
+def _flag_cell(value: str) -> str:
     e = html.escape
+    if value in _FLAG_WORDS:
+        key, word = _FLAG_WORDS[value]
+        return f'<span class="pp-glyph pp-{key}" aria-hidden="true">{e(value)}</span>{e(word)}'
+    return e(value)
+
+
+def table_markup(spec: TableSpec, *, caption_prefix: str = "", theme: Any = None, intervals: Any = None) -> str:
+    """The ``<table>`` element alone (style it with :func:`table_css`, or :data:`TABLE_CSS` for the 0.6.0 style);
+    ``caption_prefix`` precedes the caption. Without a theme, or with a classic one, the markup is that of 0.6.0
+    (row groups, when the table has them, get header rows in either style)."""
+    e = html.escape
+    ident = _identity(theme)
+    iv_head, iv_rows = _interval_cells(theme, intervals) if (intervals is not None and theme is not None) else (None, None)
+    iv_after = next((j for j, c in enumerate(spec.columns) if c.role == "interval"), len(spec.columns) - 1)
+    ncols = len(spec.columns) + (1 if iv_rows is not None else 0)
     out = ['<table class="pprof-table">', f"<caption>{e(caption_prefix)}{e(spec.caption)}</caption>", "<thead>"]
     groups = _spanners(spec)
     if any(name for name, _ in groups):
         cells = "".join(f'<th scope="colgroup" colspan="{n}" class="center">{e(name)}</th>' if name
                         else (f'<td colspan="{n}"></td>' if n > 1 else "<td></td>") for name, n in groups)
+        if iv_rows is not None:
+            cells += "<td></td>"
         out.append(f'<tr class="spanners">{cells}</tr>')
-    head = "".join(f'<th scope="col" class="{c.align}">{e(c.header)}'
-                   f'{f"<sup>{e(c.marker)}</sup>" if c.marker else ""}</th>' for c in spec.columns)
-    out += [f"<tr>{head}</tr>", "</thead>", "<tbody>"]
-    for row in spec.rows():
-        tds = []
-        for c, value in zip(spec.columns, row):
-            tag = 'th scope="row"' if c.role == "id" else "td"
-            tds.append(f'<{tag} class="{c.align}">{e(value)}</{tag.split()[0]}>')
-        out.append(f"<tr>{''.join(tds)}</tr>")
-    out.append("</tbody>")
+    heads = [f'<th scope="col" class="{"left" if ident and c.role == "flag" else c.align}">{e(c.header)}'
+             f'{f"<sup>{e(c.marker)}</sup>" if c.marker else ""}</th>' for c in spec.columns]
+    if iv_rows is not None:
+        heads.insert(iv_after + 1, f'<th scope="col" class="left pp-interval">{iv_head}</th>')
+    out += [f"<tr>{''.join(heads)}</tr>", "</thead>"]
+    k = 0
+    for label, rows in spec.grouped_rows():
+        out.append("<tbody>")
+        if label is not None:
+            style = "" if ident else ' style="font-weight:600"'
+            out.append(f'<tr class="pp-group"><th scope="rowgroup" colspan="{ncols}" class="left"{style}>'
+                       f"{e(label)}</th></tr>")
+        for row in rows:
+            tds = []
+            for c, value in zip(spec.columns, row):
+                tag = 'th scope="row"' if c.role == "id" else "td"
+                if ident and c.role == "flag":
+                    tds.append(f'<td class="left">{_flag_cell(value)}</td>')
+                else:
+                    tds.append(f'<{tag} class="{c.align}">{e(value)}</{tag.split()[0]}>')
+            if iv_rows is not None:
+                tds.insert(iv_after + 1, f'<td class="pp-interval">{iv_rows[k]}</td>')
+            out.append(f"<tr>{''.join(tds)}</tr>")
+            k += 1
+        out.append("</tbody>")
     notes = [f"<p>{f'<sup>{e(m)}</sup> ' if m else ''}{e(t)}</p>" for m, t in spec.notes]
     if spec.source_note:
         notes.append(f"<p>{e(spec.source_note)}</p>")
     if notes:
-        out.append(f'<tfoot><tr><td colspan="{len(spec.columns)}">{"".join(notes)}</td></tr></tfoot>')
+        out.append(f'<tfoot><tr><td colspan="{ncols}">{"".join(notes)}</td></tr></tfoot>')
     out.append("</table>")
     return "\n".join(out)
 
@@ -176,7 +333,10 @@ def render_markdown(spec: TableSpec) -> str:
     lines = [f"**{cell(spec.caption)}**", ""]
     lines.append("| " + " | ".join(cell(_flat_header(c)) for c in spec.columns) + " |")
     lines.append("|" + "|".join(align[c.align] for c in spec.columns) + "|")
-    lines += ["| " + " | ".join(cell(v) for v in row) + " |" for row in spec.rows()]
+    for label, rows in spec.grouped_rows():
+        if label is not None:
+            lines.append("| " + " | ".join([f"**{cell(label)}**"] + [""] * (len(spec.columns) - 1)) + " |")
+        lines += ["| " + " | ".join(cell(v) for v in row) + " |" for row in rows]
     for m, t in spec.notes:                         # one paragraph per note: no trailing-space line breaks
         lines += ["", f"{_sup(m)} {t}".strip()]
     if spec.source_note:
@@ -212,7 +372,13 @@ def render_latex(spec: TableSpec) -> str:
         head += [" & ".join(cells) + r" \\", " ".join(rules)]
     head.append(" & ".join(_tex(c.header) + (rf"\textsuperscript{{{_tex(c.marker)}}}" if c.marker else "")
                            for c in spec.columns) + r" \\")
-    body = [" & ".join(_tex(v) for v in row) + r" \\" for row in spec.rows()]
+    body = []
+    for g, (label, rows) in enumerate(spec.grouped_rows()):
+        if label is not None:
+            if g:
+                body.append(r"\addlinespace")
+            body.append(rf"\multicolumn{{{len(spec.columns)}}}{{l}}{{\textit{{{_tex(label)}}}}} \\")
+        body += [" & ".join(_tex(v) for v in row) + r" \\" for row in rows]
     notes = [(rf"\textsuperscript{{{_tex(m)}}}~" if m else "") + _tex(t) for m, t in spec.notes]
     if spec.source_note:
         notes.append(_tex(spec.source_note))
@@ -248,7 +414,12 @@ def render_text(spec: TableSpec) -> str:
             parts.append(v.ljust(w) if c.align == "left" else (v.center(w) if c.align == "center" else v.rjust(w)))
         return "  ".join(parts).rstrip()
     rule = "  ".join("-" * w for w in widths)
-    out = [spec.caption, "=" * len(rule), line(headers), rule, *[line(r) for r in rows], "=" * len(rule)]
+    body = []
+    for label, grp in spec.grouped_rows():
+        if label is not None:
+            body.append(label)
+        body += [line(r) for r in grp]
+    out = [spec.caption, "=" * len(rule), line(headers), rule, *body, "=" * len(rule)]
     out += [f"{_sup(m)} {t}".strip() for m, t in spec.notes]
     if spec.source_note:
         out.append(spec.source_note)

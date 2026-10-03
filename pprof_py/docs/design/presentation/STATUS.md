@@ -50,9 +50,17 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | I1 | Tokens, presets and fonts: IBM Plex Sans bundled and applied per text element, with DejaVu Sans fallback (D70, D71); identity palette, line weights, grid instead of frame, halo and corridor tokens (D73); `Theme.classic` (D72); `FigureResult.caption` (D74) | delivered |
 | I2 | Funnel: shaded corridor where the test's curve reproduces the flags (D76), haloed markers, key above under a title row (D77), highlight ring, one-line publication footnote with the full text in `caption` (D78) | delivered |
 | I3 | Interval plot with volume: round-ended bars trimmed onto their bounds (D79), darker haloed marks, thin volume bars, highlight band (D80), title row and key above, short publication footnote, `group_by="status"` (D81) | delivered |
-| I4 | Tables: identity HTML styling, optional inline interval column, status grouping | next |
-| I5 | Report and the eight Tier 2 displays on the identity tokens | planned |
+| I4 | Tables: HTML styled from the theme's tokens with named status glyphs (D82), inline interval column (D83), `group_by="status"` in every format (D84) | delivered |
+| I5 | Report and the eight Tier 2 displays on the identity tokens | next |
 | I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | planned |
+
+## I4 evidence
+- Classic unchanged: `theme="classic"` reproduces the 0.6.0 HTML golden byte for byte, and only the HTML golden changed (Markdown, LaTeX and text regenerate byte-identical). A report with classic figures is byte-identical to the 0.6.0 report, and a default report to I3's. Markdown, LaTeX, text and Excel output of an ungrouped table is identical to I3 and 0.6.0. All 24 gallery files: classic equals 0.6.0, and the identity equals I3.
+- Tests, Python 3.12: presentation suite 247 passed (30 files); the three other tests that draw: 37 passed, 1 failed (`test_setup_logger`, no `tzdata`, as on the untouched tree).
+- Tests, Python 3.10 floor: presentation suite 246 passed, 1 failed (`test_funnel_delegates[fe-score]`, Matplotlib 3.5.3's pyparsing deprecation warnings, as on the untouched tree); the three other files as on 3.12.
+- New: `test_tables_identity.py` (5 tests, each with its classic counterpart): the CSS comes from the theme's tokens (a derived colour reaches it); report markup is unchanged without a theme; status cells are glyphs with their word; inline interval ends plus the cap radius equal the bounds within the 0.01-px formatting, the reference sits at 1.00, and the option leaves the other formats unchanged; groups appear in HTML, Markdown, LaTeX and text, in provider order within each group, with `to_frame()` in the grouped order. `test_tables.py` adds the classic golden.
+- Visual review: the identity table, the grouped table with the interval column, the classic table.
+- Docs build: exit 0 with the same 4 intersphinx warnings as the untouched tree.
 
 ## I3 evidence
 - Classic unchanged: all 24 gallery files byte-identical to 0.6.0, and 8 more classic cases (labelled interval plots with and without a highlight, a ratio-scale report with a title, a highlighted funnel) byte-identical to 0.6.0. In the identity, every gallery file but the interval plot's (22 files) is byte-identical to I2.
@@ -231,4 +239,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-I4: the provider tables in the identity (the table above).
+I5: the report and the eight Tier 2 displays on the identity tokens (the table above).

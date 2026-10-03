@@ -6,6 +6,14 @@ with number formats; the optional `excel` extra) or a DataFrame (`to_frame()`, w
 generated from the source's settings. Markdown and text, which cannot span columns, write a grouped header as a prefix
 (`Readmission: Estimate (CI)`).
 
+HTML takes its style from the table's theme: in the package's look the fonts are named (IBM Plex Sans first, never
+embedded), rows are separated by hairlines and each status is a coloured glyph followed by its word, so the colour
+is never the only cue; `theme="classic"` gives the 0.6.0 HTML. `provider_table(..., intervals=True)` adds an HTML
+column drawing each provider's interval on one shared scale, with the reference and the estimate's mark; the other
+formats are unchanged. `provider_table(..., group_by="status")` groups the rows by the test's result under header
+rows with counts, in provider order within each group, in every format; Excel and `to_frame()` keep tidy rows in
+the grouped order.
+
 | Function | Lists |
 |:--|:--|
 | `provider_table(source)` | Each provider's volume, observed and expected events, estimate with interval, flag and p-value, in source order |
