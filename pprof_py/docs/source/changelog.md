@@ -67,6 +67,9 @@ from the package version they record. Upgrading is covered in {doc}`presentation
 ### Fixed
 - In print, a report figure taller than the page is scaled to fit, so a section heading is no longer left alone at
   the foot of a page.
+- The earlier plotting functions (coefficient forests and the earlier interval plot) passed error bars as lists of
+  arrays; with NumPy 2.2 and pandas 2.3, Matplotlib converted single-element arrays to scalars, which NumPy deprecates
+  and will turn into an error. They now pass one 2 x n array, and their drawings are byte-identical.
 - A test of the standalone `plot_caterpillar` saved to `/dev/null`, which Matplotlib turns into `/dev/null.png`; it
   failed where `/dev` is not writable (unprivileged CI runners). It now saves to a temporary directory.
 

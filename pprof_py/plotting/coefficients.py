@@ -180,7 +180,7 @@ def _legacy_plot_caterpillar(
     if plot_ci:
         lows  = vals - plot_df[ci_lower_col].values
         highs = plot_df[ci_upper_col].values - vals
-        errs  = (lows, highs)
+        errs  = np.vstack([lows, highs])   # one 2 x n float array: no list-of-arrays upcast
     else:
         errs = None
 
@@ -227,10 +227,10 @@ def _legacy_plot_caterpillar(
             pos  = positions[mask]
             if orientation == "vertical":
                 x_arr, y_arr = subset[estimate_col].values, pos
-                err_arr = ([errs[0][mask], errs[1][mask]] if errs is not None else None)
+                err_arr = (np.vstack([errs[0][mask], errs[1][mask]]) if errs is not None else None)
             else:
                 x_arr, y_arr = pos, subset[estimate_col].values
-                err_arr = ([errs[0][mask], errs[1][mask]] if errs is not None else None)
+                err_arr = (np.vstack([errs[0][mask], errs[1][mask]]) if errs is not None else None)
 
             color_point = _style.COLOR_UNTESTED if untested else flag_colors.get(key, point_color_default)
             color_err   = _style.COLOR_UNTESTED if untested else flag_colors.get(key, errorbar_color_default)

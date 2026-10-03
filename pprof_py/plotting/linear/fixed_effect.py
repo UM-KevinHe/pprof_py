@@ -584,16 +584,16 @@ class LinearFixedEffectPlottingMixin:
         # Prepare coordinates and errors
         if orientation == "vertical":
             x_vals, y_vals = coef_df["estimate"], positions
-            xerr = [
+            xerr = np.vstack([
                 coef_df["estimate"] - coef_df["ci_lower"],
                 coef_df["ci_upper"] - coef_df["estimate"]
-            ]
+            ])
         else:
             x_vals, y_vals = positions, coef_df["estimate"]
-            yerr = [
+            yerr = np.vstack([
                 coef_df["estimate"] - coef_df["ci_lower"],
                 coef_df["ci_upper"] - coef_df["estimate"]
-            ]
+            ])
 
         # Plot setup
         fig, ax = plt.subplots(figsize=figure_size)
