@@ -79,8 +79,10 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
         note += (f" {fmt_count(beyond)} provider{'s' if beyond != 1 else ''} with a raw z beyond the axis "
                  f"(\u00b1{fmt_number(hi, 0)}) {'are' if beyond != 1 else 'is'} counted at its edge.")
     with th.rc_context():
+        key_top = th.key_position == "top"           # the footnote defines the nulls: full in every preset
         fig, axes, key, ncol_legend, inset = scaffold(th, size, nrow * 42.0 + 10.0, [lab for _, lab in entries], note,
-                                                      grid=(nrow, ncol))
+                                                      grid=(nrow, ncol), key_top=key_top,
+                                                      title=title if key_top else None)
         for i, ax in enumerate(axes):
             if i >= g:
                 ax.axis("off")
@@ -124,7 +126,7 @@ def null_calibration(source: Any, *args: Any, theme: Union[str, Theme, None] = "
                 ax.set_xlabel("Raw z-statistic")
             if i % ncol == 0:
                 ax.set_ylabel("Providers")
-        if title:
+        if title and not key_top:
             fig.suptitle(title, x=inset, ha="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol_legend, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4,

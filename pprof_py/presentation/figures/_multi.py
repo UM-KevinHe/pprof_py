@@ -11,7 +11,7 @@ from .._provenance import null_text, test_text
 from ..data._collection import ProfileCollection
 from ..formatting import fmt_count
 from ..theme import Theme, get_theme
-from ._common import freeze_layout, scaffold
+from ._common import freeze_layout, halo_edges, interval_bars, ring, scaffold
 from ._result import FigureResult
 
 __all__ = ["measure_agreement", "multi_measure"]
@@ -91,9 +91,16 @@ def multi_measure(source: Any, *, order: str = "first", highlight: Optional[Iter
                else "ordered by provider id") + ". " + "; ".join(parts) + ". Each panel has its own scale and "
             "reference; panels are not a composite, and non-overlapping intervals are not a test of a difference "
             "between providers.")
+    shown_note = (f"{fmt_count(n)} providers, rows "
+                  + ("ordered by the first measure's estimate, not a ranking" if order == "first"
+                     else "ordered by provider id") + ". Each panel has its own scale and reference; panels are not a "
+                  "composite, and non-overlapping intervals are not a test of a difference between providers."
+                  if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, axes, key, ncol, inset = scaffold(th, size, n * row_mm + 12.0, [lab for _, lab in entries], note,
-                                               width_ratios=[1.0] * k)
+        fig, axes, key, ncol, inset = scaffold(th, size, n * row_mm + 12.0, [lab for _, lab in entries], shown_note,
+                                               width_ratios=[1.0] * k, key_top=key_top,
+                                               title=title if key_top else None)
         for j, (ax, label) in enumerate(zip(axes, labels)):
             f = col[label].data.reindex(ids)
             est, lo, hi = (f[c].to_numpy(dtype=float) for c in ("estimate", "ci_lower", "ci_upper"))
@@ -106,15 +113,24 @@ def multi_measure(source: Any, *, order: str = "first", highlight: Optional[Iter
 
             segs = np.stack([np.c_[np.clip(np.nan_to_num(lo[seg], nan=a, neginf=a), a, b), y[seg]],
                              np.c_[np.clip(np.nan_to_num(hi[seg], nan=b, posinf=b), a, b), y[seg]]], axis=1)
-            ax.add_collection(LineCollection(segs, colors=th.limit, linewidths=th.lines.interval * (0.5 if dense else 1.0),
-                                             zorder=2.0, rasterized=dense, gid=f"multi-intervals-{j}"))
+            if th.interval_bars:                         # status-coloured bars trimmed onto the bounds (D79)
+                seg_status = f["status"].astype(object).to_numpy()[seg]
+                colors = [th.status[s].color if s in ("above", "below") else th.volume for s in seg_status]
+                interval_bars(fig, ax, th, segs, colors, th.lines.interval_bar_dense if dense else th.lines.interval_bar,
+                              zorder=2.0, gid=f"multi-intervals-{j}", rasterized=dense)
+            else:
+                ax.add_collection(LineCollection(segs, colors=th.limit,
+                                                 linewidths=th.lines.interval * (0.5 if dense else 1.0),
+                                                 zorder=2.0, rasterized=dense, gid=f"multi-intervals-{j}"))
             status = f["status"].astype(object).to_numpy()
             for key_ in _KEYS:
                 m = finite & (status == key_)
                 if m.any():
                     st = th.status[key_]
+                    mark = (th.bar_marks or {}).get(key_, st.color) if th.interval_bars else st.color
+                    ec, ew = halo_edges(th, mark, st.filled, 0.6)
                     ax.scatter(est[m], y[m], marker=st.marker, s=st.size * (0.5 if dense else 1.0),
-                               facecolors=st.color if st.filled else "none", edgecolors=st.color, linewidths=0.6,
+                               facecolors=mark if st.filled else "none", edgecolors=ec, linewidths=ew,
                                zorder=3.0, rasterized=dense, gid=f"multi-{key_}-{j}")
             ax.axvline(null, color=th.reference, lw=th.lines.reference, zorder=1.5, gid=f"multi-reference-{j}")
             if not dense:
@@ -139,8 +155,17 @@ def multi_measure(source: Any, *, order: str = "first", highlight: Optional[Iter
             want = set(highlight)
             for t in axes[0].get_yticklabels():
                 if t.get_text() in {str(w) for w in want}:
-                    t.set_fontweight("bold")
-        if title:
+                    if th.highlight_ring:
+                        t.set_gid("emphasis")              # the title weight with the bundled face (D80)
+                    else:
+                        t.set_fontweight("bold")
+            if th.highlight_wash:
+                chosen = [yy for yy, i in zip(y, ids) if str(i) in {str(w) for w in want}]
+                for pnl in axes:
+                    for r in chosen:
+                        pnl.axhspan(r - 0.5, r + 0.5, facecolor=th.highlight_wash, edgecolor="none", zorder=0.3,
+                                    gid="highlight-band")
+        if title and not key_top:
             fig.suptitle(title, x=inset, ha="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
@@ -204,8 +229,13 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
                "least one measure are not placed" if not_placed else "") + ". Agreement between estimates "
             "is attenuated by estimation noise, so the cloud understates how closely true provider effects agree; a "
             "flag on one measure says nothing by itself about the other.")
+    shown_note = (f"{fmt_count(len(ids))} providers in both measures. Crosses: each measure's interval; lines: each "
+                  "measure's reference. A flag on one measure says nothing by itself about the other."
+                  if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, 70.0, [lab for _, lab in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, 70.0, [lab for _, lab in entries], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         lox, hix = fx["ci_lower"].to_numpy(dtype=float), fx["ci_upper"].to_numpy(dtype=float)
         loy, hiy = fy["ci_lower"].to_numpy(dtype=float), fy["ci_upper"].to_numpy(dtype=float)
         ax_x = _limits(lox[ok], hix[ok], ex[ok], nx)
@@ -222,18 +252,22 @@ def measure_agreement(source: Any, x: Optional[str] = None, y: Optional[str] = N
             m = ok & (joint == key_).to_numpy()
             if m.any():
                 color = th.ink if key_ != "neither" else th.muted
+                ec, ew = halo_edges(th, color, filled, 0.6)
                 ax.scatter(ex[m], ey[m], marker=mk, s=14.0 if key_ != "neither" else 7.0,
-                           facecolors=color if filled else "none", edgecolors=color, linewidths=0.6, zorder=3.0,
+                           facecolors=color if filled else "none", edgecolors=ec, linewidths=ew, zorder=3.0,
                            rasterized=len(ids) > 2000, gid=f"agreement-{key_}")
         if highlight is not None:
-            for i in np.flatnonzero(np.asarray(ids.isin(list(highlight))) & ok):
+            chosen = np.flatnonzero(np.asarray(ids.isin(list(highlight))) & ok)
+            ring(ax, th, ex[chosen], ey[chosen])
+            for i in chosen:
                 ax.annotate(str(ids[i]), (ex[i], ey[i]), xytext=(3, 3), textcoords="offset points",
-                            fontsize=th.typography.annotation, color=th.ink)
+                            fontsize=th.typography.annotation, color=th.ink,
+                            gid="emphasis" if th.highlight_ring else None)
         ax.set_xlim(*ax_x)
         ax.set_ylim(*ax_y)
         ax.set_xlabel(f"{x} (estimate)")
         ax.set_ylabel(f"{y} (estimate)")
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,

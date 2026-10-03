@@ -26,6 +26,13 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   estimate's mark on top in a darker shade and a white halo; the volume panel uses thin bars; the key sits above the
   plot, under a title row; highlighted providers get a band across both panels and a semibold label (a ring when
   rows are unlabelled); the publication preset shows a one-line footnote. `theme="classic"` is unchanged.
+- The other ten displays (observed against expected, forest, data quality, null calibration, reliability, provider
+  variation, shrinkage, flag stability, several measures, measure agreement) take the same look: the key above the
+  plot under a title row, white halos on filled marks, a ring and a semibold label for `highlight=` providers (a band
+  in several measures), and a one-line publication footnote with the full text in `FigureResult.caption` (data
+  quality and null calibration keep their full footnote, which defines what they draw). The forest and
+  several-measures plots draw intervals as bars whose rounded ends sit exactly on their bounds. `theme="classic"` is
+  unchanged.
 - HTML tables take their style from the theme's tokens: IBM Plex Sans named first in the font stack (never embedded),
   hairline rows, muted headers, and each status as a coloured glyph followed by its word. `theme="classic"` gives the
   0.6.0 HTML; Markdown, LaTeX, text and Excel output is unchanged. Reports keep the 0.6.0 table style until their

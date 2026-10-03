@@ -56,14 +56,16 @@ def data_quality(source: Any, *args: Any, theme: Union[str, Theme, None] = "publ
     note = _footnote(prof, rows, kind, has_volume, excluded is not None and len(excluded) > 0 and not plot_excluded)
     main_mm = max(len(rows) * 4.4, 5 * 7.0) + 16.0
     with th.rc_context():
+        key_top = th.key_position == "top"           # the footnote defines the categories: full in every preset
         fig, axes, key, ncol, inset = scaffold(th, size, main_mm, [], note, sharey=False,
-                                               width_ratios=None if not has_volume else (1.0, 1.15))
+                                               width_ratios=None if not has_volume else (1.0, 1.15),
+                                               key_top=key_top, title=title if key_top else None)
         acc = axes if not has_volume else axes[0]
         _draw_accounting(acc, th, rows)
         if has_volume:
             _draw_volume(axes[1], th, f["denominator"].to_numpy(dtype=float), groups, excluded if plot_excluded else None,
                          kind, prov.get("min_volume"))
-        if title:
+        if title and not key_top:
             acc.set_title(title, loc="left", fontsize=th.typography.title)
         freeze_layout(fig, th)
     counts = {key: count for _, count, key in rows}
@@ -114,8 +116,14 @@ def _draw_volume(ax: Any, th: Theme, volume: np.ndarray, groups: pd.Series, excl
         v = data[g]
         v = v[np.isfinite(v) & (v > 0)]
         jitter = rng.uniform(-0.28, 0.28, v.size)
-        ax.scatter(v, np.full(v.size, float(i)) + jitter, s=5.0 if dense else 9.0, color=th.ink if g == "Analysed" else th.muted,
-                   linewidths=0, zorder=2.0, rasterized=dense, gid=f"volume-{g.lower().replace(' ', '_')}")
+        dot = th.ink if g == "Analysed" else th.muted
+        if th.halo > 0:
+            ax.scatter(v, np.full(v.size, float(i)) + jitter, s=5.0 if dense else 9.0, facecolors=dot,
+                       edgecolors=th.background, linewidths=th.halo * 0.6, zorder=2.0, rasterized=dense,
+                       gid=f"volume-{g.lower().replace(' ', '_')}")
+        else:
+            ax.scatter(v, np.full(v.size, float(i)) + jitter, s=5.0 if dense else 9.0, color=dot,
+                       linewidths=0, zorder=2.0, rasterized=dense, gid=f"volume-{g.lower().replace(' ', '_')}")
     vals = np.concatenate([d[np.isfinite(d) & (d > 0)] for d in data.values()]) if data else np.array([1.0])
     a, b = float(vals.min()), float(vals.max())
     span = np.log10(b / a) if b > a else 1.0

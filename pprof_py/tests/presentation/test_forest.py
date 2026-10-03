@@ -90,7 +90,8 @@ def test_forest_draws_the_profile(models, key, exp):
     prof = CoefficientProfile.from_model(m)
     f = (prof.exponentiate() if exp else prof).data
     k = len(f)
-    segs = np.asarray(_gid(r.figure, "coefficient-intervals")[0].get_segments())
+    coll = _gid(r.figure, "coefficient-intervals")[0]
+    segs = np.asarray(coll.pprof_bounds if hasattr(coll, "pprof_bounds") else coll.get_segments())   # bars: D79
     np.testing.assert_array_equal(segs[:, 0, 0], f["ci_lower"].to_numpy())
     np.testing.assert_array_equal(segs[:, 1, 0], f["ci_upper"].to_numpy())
     np.testing.assert_array_equal(segs[:, 0, 1], np.arange(k - 1, -1, -1))           # first term at the top

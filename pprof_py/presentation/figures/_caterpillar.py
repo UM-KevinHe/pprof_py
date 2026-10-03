@@ -10,7 +10,7 @@ from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
 from .._provenance import counts_text, interval_method, null_text, pct, reference_text, test_text
 from ..data._resolve import resolve_profile
-from ._common import freeze_layout, scaffold, spread
+from ._common import freeze_layout, scaffold, spread, trim_round_ends as _trim_round_ends
 from ._result import FigureResult
 
 __all__ = ["caterpillar"]
@@ -303,28 +303,6 @@ def _draw_intervals(ax: Any, th: Theme, row: np.ndarray, lo: np.ndarray, hi: np.
             coll.pprof_bounds = segs.copy()              # the bounds the drawn ends must meet (tests read them)
             out.append(coll)
     return out
-
-
-def _trim_round_ends(ax: Any, collections: List[Any], width_pt: float) -> None:
-    """Pull each end of a round-ended bar that lies inside the axis in by the cap's radius, so the bar's drawn end
-    sits exactly on its bound (a round cap reaches half the line width past its endpoint). Ends at the axis edge
-    (clipped or one-sided intervals) stay. A bar shorter than its own width is drawn as a dot at its centre."""
-    one = ax.figure.dpi_scale_trans.transform([(0.0, 0.0), (width_pt / 72.0 / 2.0, 0.0)])
-    radius = float(one[1, 0] - one[0, 0])               # display pixels
-    to_disp, to_data = ax.transData, ax.transData.inverted()
-    edge_lo, edge_hi = sorted(to_disp.transform([(v, 0.0) for v in ax.get_xlim()])[:, 0])
-    for coll in collections:
-        new = []
-        for (a, y), (b, _) in coll.pprof_bounds:
-            (ad, yd), (bd, _) = to_disp.transform([(a, y), (b, y)])
-            lo_d, hi_d = min(ad, bd), max(ad, bd)
-            lo_n = lo_d + radius if lo_d > edge_lo + 1e-6 else lo_d
-            hi_n = hi_d - radius if hi_d < edge_hi - 1e-6 else hi_d
-            if hi_n < lo_n:
-                lo_n = hi_n = 0.5 * (lo_d + hi_d)
-            (x0, _), (x1, _) = to_data.transform([(lo_n, yd), (hi_n, yd)])
-            new.append([(float(x0), float(y)), (float(x1), float(y))])
-        coll.set_segments(new)
 
 
 def _draw_points(ax: Any, th: Theme, row: np.ndarray, est: np.ndarray, status: np.ndarray, drawn: np.ndarray,

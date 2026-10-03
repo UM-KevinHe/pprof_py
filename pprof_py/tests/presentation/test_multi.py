@@ -57,7 +57,7 @@ def test_small_multiples_draw_each_measure(col):
                 (pts,) = _gid(r.figure, f"multi-{key}-{j}")
                 np.testing.assert_array_equal(np.asarray(pts.get_offsets()), np.c_[f["estimate"].to_numpy()[m], y[m]])
         (segs,) = _gid(r.figure, f"multi-intervals-{j}")
-        s = np.asarray(segs.get_segments())
+        s = np.asarray(segs.pprof_bounds if hasattr(segs, "pprof_bounds") else segs.get_segments())   # bars: D79
         np.testing.assert_array_equal(s[:, 0, 0], f["ci_lower"].to_numpy()[present])
         np.testing.assert_array_equal(s[:, 1, 0], f["ci_upper"].to_numpy()[present])
         assert len(_gid(r.figure, f"multi-missing-{j}")) == int((~present).sum())

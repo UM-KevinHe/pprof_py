@@ -175,3 +175,60 @@ def spread(values: Sequence[float], gap: float, lower: float, upper: float) -> L
     out = np.empty_like(pos)
     out[order] = pos
     return out.tolist()
+
+
+def halo_edges(theme: Any, color: Any, filled: bool = True, width: float = 0.6) -> Tuple[Any, float]:
+    """Edge colour and width of a mark: filled marks get the background colour at the theme's halo width, so they
+    separate from lines and from each other; hollow marks, and themes without a halo, keep ``color`` at ``width``."""
+    if filled and getattr(theme, "halo", 0.0) > 0:
+        return theme.background, theme.halo
+    return color, width
+
+
+def post_layout(fig: Any, hook: Any) -> None:
+    """Run ``hook`` once ``freeze_layout`` has frozen the layout, after any hooks registered before it."""
+    fig._pprof_post_layout = list(getattr(fig, "_pprof_post_layout", ())) + [hook]
+
+
+def trim_round_ends(ax: Any, collections: List[Any], width_pt: float) -> None:
+    """Pull each end of a round-ended bar that lies inside the axis in by the cap's radius, so the bar's drawn end
+    sits exactly on its bound (a round cap reaches half the line width past its endpoint). Ends at the axis edge
+    (clipped or one-sided intervals) stay. A bar shorter than its own width is drawn as a dot at its centre."""
+    one = ax.figure.dpi_scale_trans.transform([(0.0, 0.0), (width_pt / 72.0 / 2.0, 0.0)])
+    radius = float(one[1, 0] - one[0, 0])               # display pixels
+    to_disp, to_data = ax.transData, ax.transData.inverted()
+    edge_lo, edge_hi = sorted(to_disp.transform([(v, 0.0) for v in ax.get_xlim()])[:, 0])
+    for coll in collections:
+        new = []
+        for (a, y), (b, _) in coll.pprof_bounds:
+            (ad, yd), (bd, _) = to_disp.transform([(a, y), (b, y)])
+            lo_d, hi_d = min(ad, bd), max(ad, bd)
+            lo_n = lo_d + radius if lo_d > edge_lo + 1e-6 else lo_d
+            hi_n = hi_d - radius if hi_d < edge_hi - 1e-6 else hi_d
+            if hi_n < lo_n:
+                lo_n = hi_n = 0.5 * (lo_d + hi_d)
+            (x0, _), (x1, _) = to_data.transform([(lo_n, yd), (hi_n, yd)])
+            new.append([(float(x0), float(y)), (float(x1), float(y))])
+        coll.set_segments(new)
+
+
+def interval_bars(fig: Any, ax: Any, theme: Any, segs: Any, colors: Any, width: float, *, zorder: float, gid: str,
+                  rasterized: bool = False) -> Any:
+    """Round-ended interval bars whose drawn ends are trimmed onto their bounds once the layout is final (D79); the
+    bounds stay on the collection as ``pprof_bounds``."""
+    from matplotlib.collections import LineCollection
+
+    coll = LineCollection(segs, colors=colors, linewidths=width, zorder=zorder, rasterized=rasterized, gid=gid,
+                          capstyle="round")
+    ax.add_collection(coll)
+    coll.pprof_bounds = np.asarray(segs, dtype=float).copy()
+    post_layout(fig, lambda: trim_round_ends(ax, [coll], width))
+    return coll
+
+
+def ring(ax: Any, theme: Any, x: Any, y: Any) -> None:
+    """A ring around highlighted marks in the theme's ``highlight_ring`` colour; nothing without one."""
+    if theme.highlight_ring and np.size(x):
+        size = max(s.size for s in theme.status.values())
+        ax.scatter(x, y, marker="o", s=size * 3.2, facecolors="none", edgecolors=theme.highlight_ring, linewidths=0.8,
+                   zorder=5.5, gid="highlight-ring")

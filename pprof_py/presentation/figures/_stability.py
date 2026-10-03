@@ -10,7 +10,7 @@ import numpy as np
 from ..data._stability import changing, flag_scenarios, stability_summary
 from ..formatting import FLAG_SYMBOLS, fmt_count
 from ..theme import Theme, get_theme
-from ._common import freeze_layout, scaffold
+from ._common import freeze_layout, halo_edges, scaffold
 from ._result import FigureResult
 
 __all__ = ["flag_stability"]
@@ -81,16 +81,22 @@ def flag_stability(model: Any, *args: Any, scenarios: Optional[Mapping[str, Mapp
             f"status between scenarios. Scenarios, each a separate test of {sc.model}: {descs}. Agreement across these "
             f"{k} scenarios does not make a flag robust: risk adjustment, data preparation and the model itself are "
             "not varied." + "".join(" " + n for n in sc.notes))
+    shown_note = (f"{fmt_count(m)} of {fmt_count(n)} providers flagged in at least one scenario; {fmt_count(c_all)} "
+                  "change status between scenarios. Rows are ordered by the base estimate, not a ranking. Agreement "
+                  "across scenarios does not make a flag robust." if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, max(m, 1) * row_mm + 16.0, [lab for _, lab in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, max(m, 1) * row_mm + 16.0, [lab for _, lab in entries],
+                                             shown_note, key_top=key_top, title=title if key_top else None)
         y = np.arange(m - 1, -1, -1, dtype=float)
         vals = f.loc[rows].to_numpy(dtype=float, na_value=np.nan)
         for value, key_ in _STATUS:
             st = th.status[key_]
             ii, jj = np.nonzero(vals == value)
             if ii.size:
+                ec, ew = halo_edges(th, st.color, st.filled, 0.6)
                 ax.scatter(jj.astype(float), y[ii], marker=st.marker, s=st.size * (0.5 if dense else 1.0),
-                           facecolors=st.color if st.filled else "none", edgecolors=st.color, linewidths=0.6,
+                           facecolors=st.color if st.filled else "none", edgecolors=ec, linewidths=ew,
                            zorder=3.0, rasterized=dense, gid=f"stability-{key_}")
         ii, jj = np.nonzero(np.isnan(vals))
         if ii.size:
@@ -98,8 +104,13 @@ def flag_stability(model: Any, *args: Any, scenarios: Optional[Mapping[str, Mapp
             ax.scatter(jj.astype(float), y[ii], marker=st.marker, s=st.size, facecolors="none", edgecolors=st.color,
                        linewidths=0.6, zorder=3.0, rasterized=dense, gid="stability-not_tested")
         if change.any():
-            ax.scatter(np.full(int(change.sum()), k - 0.25), y[change], marker="D", s=6.0 if dense else 9.0,
-                       color=th.ink, linewidths=0, zorder=3.0, rasterized=dense, gid="stability-changes")
+            if th.halo > 0:
+                ax.scatter(np.full(int(change.sum()), k - 0.25), y[change], marker="D", s=6.0 if dense else 9.0,
+                           facecolors=th.ink, edgecolors=th.background, linewidths=th.halo, zorder=3.0,
+                           rasterized=dense, gid="stability-changes")
+            else:
+                ax.scatter(np.full(int(change.sum()), k - 0.25), y[change], marker="D", s=6.0 if dense else 9.0,
+                           color=th.ink, linewidths=0, zorder=3.0, rasterized=dense, gid="stability-changes")
         ax.set_xlim(-0.6, k + 0.1)
         ax.set_ylim(-0.6, max(m, 1) - 0.4)
         ax.xaxis.tick_top()
@@ -115,7 +126,7 @@ def flag_stability(model: Any, *args: Any, scenarios: Optional[Mapping[str, Mapp
             ax.tick_params(axis="y", length=0)
         for side in ("top", "right", "bottom", "left"):
             ax.spines[side].set_visible(False)
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title, pad=24.0)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,

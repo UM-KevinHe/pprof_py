@@ -12,7 +12,7 @@ from ..data._coefficients import COEFFICIENT_SHORT as _SHORT
 from ..data._coefficients import coefficient_profile
 from ..formatting import fmt_count, fmt_interval, fmt_number
 from ..theme import Theme, get_theme
-from ._common import freeze_layout, log_ticks, scaffold
+from ._common import freeze_layout, halo_edges, interval_bars, log_ticks, scaffold
 from ._result import FigureResult
 
 __all__ = ["forest"]
@@ -69,19 +69,31 @@ def forest(source: Any, *, exponentiate: Union[str, bool] = "auto", level: float
             "their sizes are not directly comparable.")
     if exp_axis:
         note += f" {label}s are the exponentiated coefficients and bounds, computed for display."
+    shown_note = (f"{fmt_count(k)} term{'s' if k != 1 else ''}; {pct(lev)} intervals. Associations are not causal, "
+                  "and covariates have their own units, so their sizes are not directly comparable."
+                  if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     row_mm = max(3.6, th.typography.tick * 25.4 / 72.0 * 1.6)
     from matplotlib.lines import Line2D
 
     entries = [(Line2D([], [], color=th.ink, lw=th.lines.interval, marker="o", markersize=3.5), f"{pct(lev)} interval")]
     with th.rc_context():
-        fig, (ax, tx), key, ncol, inset = scaffold(th, size, k * row_mm + 18.0, [lab for _, lab in entries], note,
-                                                   width_ratios=(3.0, 1.45))
+        fig, (ax, tx), key, ncol, inset = scaffold(th, size, k * row_mm + 18.0, [lab for _, lab in entries], shown_note,
+                                                   width_ratios=(3.0, 1.45), key_top=key_top,
+                                                   title=title if key_top else None)
         from matplotlib.collections import LineCollection
 
         segs = np.stack([np.c_[lo, rows], np.c_[hi, rows]], axis=1)
-        ax.add_collection(LineCollection(segs, colors=th.ink, linewidths=th.lines.interval, zorder=2.0,
-                                         gid="coefficient-intervals"))
-        ax.scatter(est, rows, marker="o", s=14.0, color=th.ink, zorder=3.0, gid="coefficient-estimates")
+        if th.interval_bars:                             # bars trimmed onto the bounds, dark haloed marks (D79, D80)
+            interval_bars(fig, ax, th, segs, th.volume, th.lines.interval_bar, zorder=2.0, gid="coefficient-intervals")
+            mark = (th.bar_marks or {}).get("not_different", th.ink)
+            ec, ew = halo_edges(th, mark, True, 0.0)
+            ax.scatter(est, rows, marker="o", s=14.0, facecolors=mark, edgecolors=ec, linewidths=ew, zorder=3.0,
+                       gid="coefficient-estimates")
+        else:
+            ax.add_collection(LineCollection(segs, colors=th.ink, linewidths=th.lines.interval, zorder=2.0,
+                                             gid="coefficient-intervals"))
+            ax.scatter(est, rows, marker="o", s=14.0, color=th.ink, zorder=3.0, gid="coefficient-estimates")
         ax.axvline(null, color=th.reference, lw=th.lines.reference, zorder=1.0, gid="reference")
         vals = np.r_[lo[np.isfinite(lo)], hi[np.isfinite(hi)], est, null]
         a, b = float(vals.min()), float(vals.max())
@@ -113,7 +125,7 @@ def forest(source: Any, *, exponentiate: Union[str, bool] = "auto", level: float
                     gid="coefficient-text")
         tx.text(1.0, k - 0.3, f"{_SHORT.get(scale, 'Estimate')} ({pct(lev)} CI)", ha="right", va="bottom",
                 fontsize=th.typography.tick, color=th.muted)
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.4,

@@ -9,7 +9,7 @@ import numpy as np
 from ..data._shrinkage import reference_text, shrinkage_pairs
 from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
-from ._common import freeze_layout, scaffold
+from ._common import freeze_layout, ring, scaffold
 from ._result import FigureResult
 
 __all__ = ["shrinkage"]
@@ -90,8 +90,13 @@ def shrinkage(fixed: Any, random: Any, *, fe_reference: Any = "mean", highlight:
     if k_off:
         note += (f" {fmt_count(k_off)} provider{'s' if k_off != 1 else ''} without a finite fixed-effect estimate (no "
                  f"events or only events) {'are' if k_off != 1 else 'is'} drawn at the edge.")
+    shown_note = (f"{fmt_count(n)} providers in both fits. Fixed effects (unshrunken) against BLUPs (shrunken)"
+                  + (f", \u03c3 = {fmt_number(sigma, 2)}" if sigma is not None else "") + "; BLUPs are not the true "
+                  "effects." if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, 70.0, [lab for _, lab in keys], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, 70.0, [lab for _, lab in keys], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         ax.plot([lo, hi], [lo, hi], color=th.reference, lw=th.lines.reference, zorder=1.0, gid="no-shrinkage")
         ax.axhline(0.0, color=th.volume, lw=th.lines.grid, linestyle=(0, (4.0, 2.0)), zorder=0.9, gid="complete-pooling")
         ax.scatter(x[fin], y[fin], s=sizes[fin], facecolors="none", edgecolors=th.ink, linewidths=0.5, zorder=3.0,
@@ -101,8 +106,13 @@ def shrinkage(fixed: Any, random: Any, *, fe_reference: Any = "mean", highlight:
             marker_left = edge == lo
             for side, m in (("<", marker_left), (">", ~marker_left)):
                 if m.any():
-                    ax.scatter(edge[m], y[~fin][m], marker=side, s=22.0, color=th.muted, linewidths=0, zorder=3.5,
-                               clip_on=False, gid=f"shrinkage-offscale-{'left' if side == '<' else 'right'}")
+                    gid_ = f"shrinkage-offscale-{'left' if side == '<' else 'right'}"
+                    if th.halo > 0:
+                        ax.scatter(edge[m], y[~fin][m], marker=side, s=22.0, facecolors=th.muted,
+                                   edgecolors=th.background, linewidths=th.halo, zorder=3.5, clip_on=False, gid=gid_)
+                    else:
+                        ax.scatter(edge[m], y[~fin][m], marker=side, s=22.0, color=th.muted, linewidths=0, zorder=3.5,
+                                   clip_on=False, gid=gid_)
         span = hi - lo
         px, py = x[fin], y[fin]
 
@@ -118,14 +128,17 @@ def shrinkage(fixed: Any, random: Any, *, fe_reference: Any = "mean", highlight:
         ax.text(cx, cy, "complete pooling", ha=ha, va=va, fontsize=th.typography.annotation, color=th.muted)
         if highlight is not None:
             ids = f.index
-            for i in np.flatnonzero(np.asarray(ids.isin(list(highlight))) & fin):
+            chosen = np.flatnonzero(np.asarray(ids.isin(list(highlight))) & fin)
+            ring(ax, th, x[chosen], y[chosen])
+            for i in chosen:
                 ax.annotate(str(ids[i]), (x[i], y[i]), xytext=(3, 3), textcoords="offset points",
-                            fontsize=th.typography.annotation, color=th.ink)
+                            fontsize=th.typography.annotation, color=th.ink,
+                            gid="emphasis" if th.highlight_ring else None)
         ax.set_xlim(lo, hi)
         ax.set_ylim(lo, hi)
         ax.set_xlabel(f"Fixed effect, unshrunken ({scale})")
         ax.set_ylabel(f"Random effect, shrunken ({scale})")
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         if keys:
             key.legend([h for h, _ in keys], [lab for _, lab in keys], loc="upper left", bbox_to_anchor=(inset, 1.0),

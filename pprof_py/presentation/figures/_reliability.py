@@ -65,11 +65,20 @@ def reliability(iur: Any, *, theme: Union[str, Theme, None] = "publication", siz
             f"reliability at the effective size n\u2032 = {fmt_number(n_prime, 0)}. Reliability is a property of the "
             "measure at a given volume (the share of the spread between providers of that size that is signal), not a "
             "score for any provider.")
+    shown_note = (f"{fmt_count(n)} providers. The overall IUR, {fmt_number(overall, 2)}, is the reliability at the "
+                  f"effective size n\u2032 = {fmt_number(n_prime, 0)}. Reliability is a property of the measure at a "
+                  "given volume, not a score for any provider." if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, 62.0, [lab for _, lab in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, 62.0, [lab for _, lab in entries], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         ax.plot(sizes[order], rel[order], color=th.limit, lw=th.lines.data, zorder=2.0, gid="reliability-curve")
-        ax.scatter(sizes, rel, s=9.0, color=th.ink, linewidths=0, zorder=3.0, rasterized=n > 2000,
-                   gid="reliability-providers")
+        if th.halo > 0:
+            ax.scatter(sizes, rel, s=9.0, facecolors=th.ink, edgecolors=th.background, linewidths=th.halo, zorder=3.0,
+                       rasterized=n > 2000, gid="reliability-providers")
+        else:
+            ax.scatter(sizes, rel, s=9.0, color=th.ink, linewidths=0, zorder=3.0, rasterized=n > 2000,
+                       gid="reliability-providers")
         ax.axhline(overall, color=th.reference, lw=th.lines.reference, linestyle=(0, (4.0, 2.0)), zorder=1.5,
                    gid="overall-iur")
         ax.axvline(n_prime, color=th.volume, lw=th.lines.grid, linestyle=(0, (1.0, 1.5)), zorder=1.0, gid="n-prime")
@@ -84,7 +93,7 @@ def reliability(iur: Any, *, theme: Union[str, Theme, None] = "publication", siz
                 fontsize=th.typography.annotation, color=th.muted)
         ax.set_xlabel("Provider size (log scale)")
         ax.set_ylabel("Reliability")
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.6,

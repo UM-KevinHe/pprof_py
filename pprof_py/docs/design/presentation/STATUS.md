@@ -51,8 +51,17 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | I2 | Funnel: shaded corridor where the test's curve reproduces the flags (D76), haloed markers, key above under a title row (D77), highlight ring, one-line publication footnote with the full text in `caption` (D78) | delivered |
 | I3 | Interval plot with volume: round-ended bars trimmed onto their bounds (D79), darker haloed marks, thin volume bars, highlight band (D80), title row and key above, short publication footnote, `group_by="status"` (D81) | delivered |
 | I4 | Tables: HTML styled from the theme's tokens with named status glyphs (D82), inline interval column (D83), `group_by="status"` in every format (D84) | delivered |
-| I5 | Report and the eight Tier 2 displays on the identity tokens | next |
+| I5a | The ten remaining displays on the identity's mechanisms: key on top under a title row, halos, highlight rings and bands, short publication footnotes (D85); interval bars in the forest and several-measures plots (D86) | delivered |
+| I5b | The report: page and embedded tables in the identity | next |
 | I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | planned |
+
+## I5a evidence
+- Classic unchanged: all 24 gallery files and the 8 extra cases (labelled and highlighted interval plots, a ratio-scale report with a title, a highlighted funnel) byte-identical to 0.6.0. In the identity, the funnel and interval plot are byte-identical to I4 (the bar helpers moved to `_common` unchanged); the ten redesigned displays changed.
+- Tests, Python 3.12: presentation suite 276 passed (31 files); the three other tests that draw: 37 passed, 1 failed (`test_setup_logger`, no `tzdata`, as on the untouched tree).
+- Tests, Python 3.10 floor: presentation suite 275 passed, 1 failed (`test_funnel_delegates[fe-score]`, Matplotlib 3.5.3's pyparsing deprecation warnings, as on the untouched tree); the three other files as on 3.12.
+- New: `test_tier2_identity.py` (29 tests across the ten displays, each with its classic counterpart): the SemiBold title row above the key on top; the short publication footnote against the full caption, with data quality and null calibration full in every preset; halos on filled marks; forest and several-measures bar ends plus the cap radius equal to the bounds within 1e-6 px, on linear and log axes; highlight rings, bands and SemiBold labels. Updated, by design: the forest and several-measures tests read the bounds from `pprof_bounds` (their drawn ends are trimmed onto them; on the forest's log axis the drawn ends differ from the bounds by 0.84% relative).
+- Visual review: all ten displays in the identity.
+- Docs build: exit 0 with the same 4 intersphinx warnings as the untouched tree; the gallery renders all 12 displays.
 
 ## I4 evidence
 - Classic unchanged: `theme="classic"` reproduces the 0.6.0 HTML golden byte for byte, and only the HTML golden changed (Markdown, LaTeX and text regenerate byte-identical). A report with classic figures is byte-identical to the 0.6.0 report, and a default report to I3's. Markdown, LaTeX, text and Excel output of an ungrouped table is identical to I3 and 0.6.0. All 24 gallery files: classic equals 0.6.0, and the identity equals I3.
@@ -239,4 +248,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-I5: the report and the eight Tier 2 displays on the identity tokens (the table above).
+I5b: the report page and its embedded tables in the identity (the table above).

@@ -92,8 +92,14 @@ def provider_variation(model: Any, *, level: float = 0.95, theme: Union[str, The
         note = (f"{fmt_count(n)} providers, {v.model}. Bars: the BLUPs. \u03c3 is estimated at 0, so the model detects "
                 "no between-provider variation and no fitted distribution or range is drawn"
                 + (f"; {_sigma_text(v)}" if v.lower is not None else "") + ".")
+    degenerate = not np.isfinite(v.sigma) or v.sigma < 1e-6
+    shown_note = (note if degenerate else f"{fmt_count(n)} providers, {v.model}. Bars: the BLUPs (shrunken); curve: the "
+                  f"fitted N(0, \u03c3\u00b2), {_sigma_text(v)}; bracket: {pct(level)} of true provider effects, "
+                  f"{_range_text(v)}.") if th.footnote == "short" else note
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, 60.0, [lab for _, lab in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, 60.0, [lab for _, lab in entries], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         ax.stairs(counts, edges, fill=True, color=th.volume, linewidth=0, zorder=1.0, gid="variation-histogram")
         if not degenerate:
             ax.plot(grid, scale * norm.pdf(grid, 0.0, v.sigma), color=th.limit, lw=th.lines.data, zorder=3.0,
@@ -125,7 +131,7 @@ def provider_variation(model: Any, *, level: float = 0.95, theme: Union[str, The
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))     # provider counts
         ax.set_xlabel(_AXIS[v.scale])
         ax.set_ylabel("Providers")
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.6,

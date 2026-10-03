@@ -11,7 +11,7 @@ from .._provenance import counts_text, null_text, pct, test_text
 from ..data._resolve import resolve_profile
 from ..formatting import fmt_count, fmt_number
 from ..theme import Theme, get_theme
-from ._common import freeze_layout, scaffold, spread
+from ._common import freeze_layout, halo_edges, ring, scaffold, spread
 from ._result import FigureResult
 
 __all__ = ["observed_expected"]
@@ -120,8 +120,13 @@ def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]
                     else "."))
     else:
         note += " The source has no funnel limits, so none are drawn."
+    shown_note = (f"{counts_text(prof)}. Observed and expected events on square-root axes; the line is O = E. Test: "
+                  f"{test_text(prov)}." + (" Marks: each provider's limits, in events." if has_limits else "")
+                  if th.footnote == "short" else note)
+    key_top = th.key_position == "top"
     with th.rc_context():
-        fig, ax, key, ncol, inset = scaffold(th, size, 68.0, [lab for _, lab in entries], note)
+        fig, ax, key, ncol, inset = scaffold(th, size, 68.0, [lab for _, lab in entries], shown_note,
+                                             key_top=key_top, title=title if key_top else None)
         _sqrt_axis(ax.set_xscale)
         _sqrt_axis(ax.set_yscale)
         ax.set_xlim(0.0, top)
@@ -152,8 +157,9 @@ def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]
             if not m.any():
                 continue
             st = th.status[key_]
+            ec, ew = halo_edges(th, st.color, st.filled, 0.6)
             ax.scatter(exp_[m], obs[m], marker=st.marker, s=st.size * (0.6 if dense and key_ == "not_different" else 1.0),
-                       facecolors=st.color if st.filled else "none", edgecolors=st.color, linewidths=0.6,
+                       facecolors=st.color if st.filled else "none", edgecolors=ec, linewidths=ew,
                        zorder=_ZORDER[key_], rasterized=dense and key_ == "not_different", gid=f"status-{key_}")
         for yv, text, color in labels:
             ax.text(top * 0.985, yv, text, ha="right", va="bottom",
@@ -161,7 +167,7 @@ def observed_expected(source: Any, *args: Any, highlight: Optional[Iterable[Any]
         _label(ax, th, f.index, exp_, obs, status, shown, highlight, dense, top)
         ax.set_xlabel("Expected events, E (square-root scale)")
         ax.set_ylabel("Observed events, O (square-root scale)")
-        if title:
+        if title and not key_top:
             ax.set_title(title, loc="left", fontsize=th.typography.title)
         key.legend([h for h, _ in entries], [lab for _, lab in entries], loc="upper left", bbox_to_anchor=(inset, 1.0),
                    ncol=ncol, frameon=False, borderaxespad=0.0, borderpad=0.0, handletextpad=0.4, handlelength=1.0,
@@ -187,8 +193,12 @@ def _label(ax: Any, th: Theme, ids: pd.Index, x: np.ndarray, y: np.ndarray, stat
     idx = np.flatnonzero(want)
     if idx.size == 0:
         return
+    chosen = (np.asarray(ids.isin(list(highlight)), dtype=bool) & shown) if highlight is not None else np.zeros(len(ids), bool)
+    if th.highlight_ring and chosen.any():
+        ring(ax, th, x[chosen], y[chosen])
     roots = np.sqrt(np.maximum(y[idx], 0.0))
     pos = spread(roots.tolist(), 0.035 * math.sqrt(top), 0.0, math.sqrt(top))
     for i, r in zip(idx, pos):
         ax.annotate(str(ids[i]), (x[i], y[i]), xytext=(x[i] * 1.04 + 0.01 * top, r ** 2), textcoords="data",
-                    ha="left", va="center", fontsize=th.typography.annotation, color=th.ink, zorder=6.0)
+                    ha="left", va="center", fontsize=th.typography.annotation, color=th.ink, zorder=6.0,
+                    gid="emphasis" if (th.highlight_ring and chosen[i]) else None)
