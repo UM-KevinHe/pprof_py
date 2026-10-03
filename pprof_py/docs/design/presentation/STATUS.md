@@ -52,8 +52,16 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | I3 | Interval plot with volume: round-ended bars trimmed onto their bounds (D79), darker haloed marks, thin volume bars, highlight band (D80), title row and key above, short publication footnote, `group_by="status"` (D81) | delivered |
 | I4 | Tables: HTML styled from the theme's tokens with named status glyphs (D82), inline interval column (D83), `group_by="status"` in every format (D84) | delivered |
 | I5a | The ten remaining displays on the identity's mechanisms: key on top under a title row, halos, highlight rings and bands, short publication footnotes (D85); interval bars in the forest and several-measures plots (D86) | delivered |
-| I5b | The report: page and embedded tables in the identity | next |
-| I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | planned |
+| I5b | The report: page styled from the tokens, identity tables with their intervals, optional embedded IBM Plex Sans (D87) | delivered |
+| I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | next |
+
+## I5b evidence
+- Classic unchanged: `Report(theme="classic")` is byte-identical to the 0.6.0 report built from the same figure and table; Markdown, LaTeX, text and Excel table output identical to 0.6.0. All 24 gallery files: classic equals 0.6.0 and the identity equals I5a (the round touches no figure).
+- Tests, Python 3.12: presentation suite 280 passed (32 files); the three other tests that draw: 37 passed, 1 failed (`test_setup_logger`, no `tzdata`, as on the untouched tree).
+- Tests, Python 3.10 floor: presentation suite 279 passed, 1 failed (`test_funnel_delegates[fe-score]`, Matplotlib 3.5.3's pyparsing deprecation warnings, as on the untouched tree); the three other files as on 3.12.
+- New: `test_report_identity.py` (4 tests): the identity page and tables from the tokens, with no scripts, network references or embedded fonts by default, and deterministic output; the classic stylesheet and markup; embedded fonts decoding to the bundled Regular and SemiBold byte for byte, with the licence comment; the fallback to named fonts, with one warning, when the files are missing. Updated, by design: the report-embedding test expects the table markup in the report's theme; the identity HTML golden changed only in its status cells and one CSS rule (status words no longer wrap).
+- Visual review: a full identity report with embedded fonts (960 KB), two report-preset figures and a grouped table with the interval column, rendered to PDF.
+- Docs build: exit 0 with the same 4 intersphinx warnings as the untouched tree; the theme guide and the API reference describe `theme` and `embed_fonts`.
 
 ## I5a evidence
 - Classic unchanged: all 24 gallery files and the 8 extra cases (labelled and highlighted interval plots, a ratio-scale report with a title, a highlighted funnel) byte-identical to 0.6.0. In the identity, the funnel and interval plot are byte-identical to I4 (the bar helpers moved to `_common` unchanged); the ten redesigned displays changed.
@@ -248,4 +256,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-I5b: the report page and its embedded tables in the identity (the table above).
+I6: docs, gallery, migration guide and changelog for release 0.7.0 (the table above).

@@ -337,7 +337,9 @@ Source: LogisticFixedEffectModel; pprof_py 0.6.0.
 A `Report` composes figures and tables into one self-contained HTML file with a print stylesheet: sections, text,
 numbered figures (SVG with their alt text and description) and tables, and an appendix listing the model, test, null
 model, reference and level recorded with each. It loads nothing from the network, adds no timestamp unless given a
-`date`, and notes that its tables carry provider-level values.
+`date`, and notes that its tables carry provider-level values. The page and its tables take their style from `theme`
+(default `"report"`; `"classic"` gives the 0.6.0 report), and `embed_fonts=True` embeds the bundled IBM Plex Sans so
+the page text shows in it everywhere.
 
 ```python
 from pprof_py.presentation import Report

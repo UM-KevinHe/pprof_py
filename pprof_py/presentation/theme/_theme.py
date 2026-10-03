@@ -176,7 +176,8 @@ class Theme:
     highlight_wash : str or None
         Band behind a highlighted provider's row; ``None`` draws none.
     table_style : {"identity", "classic"}
-        HTML tables: styled from this theme's tokens, with status glyphs coloured and named, or the 0.6.0 style.
+        HTML tables and reports: styled from this theme's tokens, with status glyphs coloured and named, or the 0.6.0
+        style.
     """
 
     name: str = "publication"

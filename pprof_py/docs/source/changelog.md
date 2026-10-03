@@ -33,6 +33,9 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   quality and null calibration keep their full footnote, which defines what they draw). The forest and
   several-measures plots draw intervals as bars whose rounded ends sit exactly on their bounds. `theme="classic"` is
   unchanged.
+- `Report` takes the same look: the page styled from the theme's tokens, its tables in the new HTML style (with an
+  inline interval column when the table has one), and the provider-level-values note as a tinted box.
+  `Report(..., theme="classic")` gives the 0.6.0 report; status words in HTML tables no longer wrap.
 - HTML tables take their style from the theme's tokens: IBM Plex Sans named first in the font stack (never embedded),
   hairline rows, muted headers, and each status as a coloured glyph followed by its word. `theme="classic"` gives the
   0.6.0 HTML; Markdown, LaTeX, text and Excel output is unchanged. Reports keep the 0.6.0 table style until their
@@ -47,6 +50,8 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   `label_weight`.
 - `FigureResult.caption`: the figure's footnote text, for outlets that set captions outside the figure.
 - Theme tokens `key_position`, `footnote` and `highlight_ring`.
+- `Report(..., theme=, embed_fonts=)`: the page style, and an option to embed the bundled IBM Plex Sans (Regular and
+  SemiBold) so the page text shows in it everywhere.
 - `provider_table(..., theme=, intervals=, group_by=)`: the HTML style, an inline interval column in HTML, and rows
   grouped by the test's result under header rows with counts in every format. `TableResult.theme`, the theme token
   `table_style`, `tables.table_css(theme)`, and `TableSpec.groups`.

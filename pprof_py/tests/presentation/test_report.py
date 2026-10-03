@@ -41,7 +41,10 @@ def test_report_embeds_figures_and_tables_unchanged(parts):
 
     for f in figs:
         assert f'alt="{_html.escape(f.alt_text)}"' in h and _html.escape(f.long_description) in h
-    assert table_markup(table.spec, caption_prefix="Table 1. ") in h
+    # the report embeds the table's markup in the report's theme (identity by default, D87; classic: the 0.6.0 markup)
+    from pprof_py.presentation import Theme
+    assert table_markup(table.spec, caption_prefix="Table 1. ", theme=Theme.report(),
+                        intervals=getattr(table, "_intervals", None)) in h
     assert "<figcaption><span class=\"label\">Figure 1.</span> Funnel</figcaption>" in h
     assert f"<span class=\"label\">Figure 2.</span> {_html.escape(figs[1].alt_text)}</figcaption>" in h
 

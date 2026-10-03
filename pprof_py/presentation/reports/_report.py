@@ -9,7 +9,8 @@ from typing import Any, List, Mapping, Optional, Tuple, Union
 from .._provenance import null_text, pct, reference_text, test_text
 from ..figures._result import FigureResult
 from ..tables._provider import TableResult
-from ..tables._spec import TABLE_CSS, table_markup
+from ..tables._spec import TABLE_CSS, table_css, table_markup
+from ..theme import get_theme
 
 __all__ = ["Report"]
 
@@ -27,6 +28,45 @@ summary:focus-visible{outline:2px solid #1a1a1a;outline-offset:2px}
 footer{color:#4d4d4d;font-size:13px;border-top:1px solid #d9d9d9;margin-top:40px;padding-top:8px}
 @media print{main{max-width:none;padding:0}figure,.table-wrap{break-inside:avoid}details{display:none}
 h2{break-after:avoid}}"""
+
+
+def _page_css(t: Any) -> str:
+    """The page style built from the theme's tokens (the identity); the classic style is ``_CSS``."""
+    face = f'"{t.typography.family}",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif'
+    band = t.corridor or t.grid_color
+    return (f"body{{margin:0;background:{t.background};color:{t.ink};font-family:{face};font-size:15px;line-height:1.55}}\n"
+            "main{max-width:980px;margin:0 auto;padding:32px 24px 56px}\n"
+            "h1{font-size:28px;font-weight:600;line-height:1.15;margin:0 0 6px;letter-spacing:-0.2px}\n"
+            f"h2{{font-size:18px;font-weight:600;margin:36px 0 10px;padding-top:14px;border-top:1px solid {t.grid_color}}}\n"
+            f".subtitle{{color:{t.muted};font-size:16px;margin:0 0 20px;max-width:70ch}}\n"
+            "p{max-width:75ch}\n"
+            f".note{{background:{band};padding:8px 12px;color:{t.ink};font-size:14px}}\n"
+            "figure{margin:22px 0}figure img{max-width:100%;height:auto;display:block}\n"
+            f"figcaption{{font-size:14px;color:{t.muted};margin-top:8px;max-width:80ch}}"
+            f"figcaption .label{{font-weight:600;color:{t.ink}}}\n"
+            f"details{{font-size:14px;color:{t.muted};margin-top:4px}}summary{{cursor:pointer}}\n"
+            f"summary:focus-visible{{outline:2px solid {t.ink};outline-offset:2px}}\n"
+            ".table-wrap{overflow-x:auto;margin:22px 0}\n"
+            f"footer{{color:{t.muted};font-size:13px;border-top:1px solid {t.grid_color};margin-top:44px;padding-top:10px}}\n"
+            "@media print{main{max-width:none;padding:0}figure,.table-wrap{break-inside:avoid}details{display:none}\n"
+            "h2{break-after:avoid}}")
+
+
+def _font_faces(family: str) -> str:
+    """``@font-face`` rules embedding the bundled face's Regular and SemiBold files (``embed_fonts=True``); empty,
+    with the fonts module's one warning, when the files are unavailable, so the page falls back to named fonts."""
+    from ..theme import _fonts
+
+    rules = []
+    for weight, key in ((400, "normal"), (600, "semibold")):
+        path = _fonts.font_file(key, "normal") if _fonts.is_bundled(family) else None
+        if path is None:
+            return ""
+        data = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+        rules.append(f'@font-face{{font-family:"{family}";src:url(data:font/ttf;base64,{data}) format("truetype");'
+                     f"font-weight:{weight};font-style:normal}}")
+    return ('/* IBM Plex Sans: Copyright 2017 IBM Corp. with Reserved Font Name "Plex"; SIL Open Font License 1.1 */\n'
+            + "\n".join(rules) + "\n")
 
 
 def _row(kind: str, number: int, label: str, prov: Mapping[str, Any]) -> List[str]:
@@ -47,6 +87,12 @@ class Report:
     subtitle : str, optional
     date : str, optional
         Printed in the header when given; no timestamp is added otherwise, so the same report gives the same bytes.
+    theme : str or Theme, default "report"
+        Styles the page and its tables (figures keep the theme they were drawn with); ``"classic"`` gives the 0.6.0
+        report.
+    embed_fonts : bool, default False
+        Embed the bundled IBM Plex Sans (Regular and SemiBold, about 0.5 MB) so the page text shows in it everywhere;
+        by default the font is named first and the reader's system font is used where it is not installed.
 
     Notes
     -----
@@ -61,8 +107,10 @@ class Report:
     >>> report.save("profile.html")                                           # doctest: +SKIP
     """
 
-    def __init__(self, title: str, *, subtitle: Optional[str] = None, date: Optional[str] = None) -> None:
+    def __init__(self, title: str, *, subtitle: Optional[str] = None, date: Optional[str] = None,
+                 theme: Any = "report", embed_fonts: bool = False) -> None:
         self._title, self._subtitle, self._date = str(title), subtitle, date
+        self._theme, self._embed = get_theme(theme), bool(embed_fonts)
         self._blocks: List[Tuple[str, Any, Optional[str]]] = []
 
     def section(self, heading: str) -> "Report":
@@ -108,6 +156,7 @@ class Report:
         from ... import __version__
 
         e = html.escape
+        ident = self._theme.table_style == "identity"
         body, rows = [], []
         nf = nt = ns = 0
         open_section = False
@@ -131,8 +180,10 @@ class Report:
                 rows.append(_row("Figure", nf, item.kind, item.provenance))
             else:
                 nt += 1
-                body.append(f'<div class="table-wrap" id="tab-{nt}">'
-                            f"{table_markup(item.spec, caption_prefix=f'Table {nt}. ')}</div>")
+                markup = (table_markup(item.spec, caption_prefix=f"Table {nt}. ", theme=self._theme,
+                                       intervals=getattr(item, "_intervals", None)) if ident
+                          else table_markup(item.spec, caption_prefix=f"Table {nt}. "))
+                body.append(f'<div class="table-wrap" id="tab-{nt}">{markup}</div>')
                 rows.append(_row("Table", nt, item.spec.caption, item.spec.provenance))
         if open_section:
             body.append("</section>")
@@ -156,9 +207,15 @@ class Report:
         footer = f"Generated with pprof_py {e(__version__)}" + (f" on {e(self._date)}" if self._date else "") + "."
         return ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
                 '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-                f"<title>{e(self._title)}</title>\n<style>{_CSS}\n{TABLE_CSS}</style>\n</head>\n<body>\n<main>\n"
+                f"<title>{e(self._title)}</title>\n<style>{self._css()}</style>\n</head>\n<body>\n<main>\n"
                 + "\n".join(header + notes + body + appendix)
                 + f"\n<footer>{footer}</footer>\n</main>\n</body>\n</html>\n")
+
+    def _css(self) -> str:
+        if self._theme.table_style != "identity":
+            return f"{_CSS}\n{TABLE_CSS}"
+        faces = _font_faces(self._theme.typography.family) if self._embed else ""
+        return f"{faces}{_page_css(self._theme)}\n{table_css(self._theme)}"
 
     def save(self, path: Union[str, Path]) -> Path:
         """Write the report; returns the path."""

@@ -38,7 +38,8 @@ def test_reports_keep_the_0_6_0_markup_until_they_are_restyled(ratio):
 
 def test_status_cells_are_coloured_glyphs_with_their_word(ratio):
     html = provider_table(ratio).to_html()
-    assert '<td class="left"><span class="pp-glyph pp-above" aria-hidden="true">\u25b2</span>Above</td>' in html
+    assert ('<td class="left pp-flag"><span class="pp-glyph pp-above" aria-hidden="true">\u25b2</span>Above</td>'
+            in html) and "td.pp-flag{white-space:nowrap}" in html              # the word never wraps (D87)
     assert '<span class="pp-glyph pp-not_different" aria-hidden="true">\u25cf</span>Not different' in html
     classic = provider_table(ratio, theme="classic").to_html()
     assert "pp-glyph" not in classic and '<td class="center">\u25b2</td>' in classic

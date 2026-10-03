@@ -161,7 +161,8 @@ def table_css(theme: Any = None) -> str:
             f".pprof-table tbody tr.pp-group th{{background:{band};font-weight:600;color:{t.ink};padding-top:6px}}\n"
             ".pprof-table .left{text-align:left}.pprof-table .right{text-align:right}"
             ".pprof-table .center{text-align:center}\n"
-            ".pprof-table .pp-glyph{display:inline-block;min-width:1em;margin-right:0.3em;text-align:center}\n"
+            ".pprof-table .pp-glyph{display:inline-block;min-width:1em;margin-right:0.3em;text-align:center}"
+            ".pprof-table td.pp-flag{white-space:nowrap}\n"
             f".pprof-table .pp-above{{color:{st['above'].color}}}.pprof-table .pp-below{{color:{st['below'].color}}}"
             f".pprof-table .pp-not_different{{color:{st['not_different'].color}}}\n"
             ".pprof-table td.pp-interval,.pprof-table th.pp-interval{padding-top:2px;padding-bottom:2px}\n"
@@ -298,7 +299,7 @@ def table_markup(spec: TableSpec, *, caption_prefix: str = "", theme: Any = None
             for c, value in zip(spec.columns, row):
                 tag = 'th scope="row"' if c.role == "id" else "td"
                 if ident and c.role == "flag":
-                    tds.append(f'<td class="left">{_flag_cell(value)}</td>')
+                    tds.append(f'<td class="left pp-flag">{_flag_cell(value)}</td>')
                 else:
                     tds.append(f'<{tag} class="{c.align}">{e(value)}</{tag.split()[0]}>')
             if iv_rows is not None:

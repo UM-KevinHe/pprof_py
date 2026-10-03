@@ -57,6 +57,9 @@ in the same session are unaffected and no system font is needed. If the font fil
 falls back to DejaVu Sans, which ships with Matplotlib, with one warning; a label containing a character the face
 lacks (the table symbols ▲ ▼ ●) is set in DejaVu Sans as a whole. `FigureResult.caption` returns a figure's footnote
 text for journals that set captions outside the figure. The `classic` preset uses DejaVu Sans throughout.
+Reports and HTML tables name the face first and embed no font, so a reader without it sees their system font;
+`Report(..., embed_fonts=True)` embeds the bundled Regular and SemiBold (about 0.5 MB, which the font licence allows
+in documents) so the page text shows in IBM Plex Sans everywhere, still without loading anything from the network.
 
 Tables export with `to_html()`, `to_markdown()`, `to_latex()`, `to_text()`, `to_excel()` (the optional `excel` extra)
 and `to_frame()`. A `Report` writes figures and tables into one self-contained HTML file.
