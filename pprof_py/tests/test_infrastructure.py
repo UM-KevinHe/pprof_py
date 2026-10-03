@@ -132,9 +132,16 @@ class TestUtils:
         proc_freq(df, ["cat"])
 
     def test_setup_logger(self):
+        import inspect
+        from zoneinfo import ZoneInfo
         from pprof_py.utils import setup_logger
         logger = setup_logger("test_infra")
         assert logger.name == "test_infra"
+        # the default is the canonical IANA name: links such as "US/Eastern" are missing from recent system databases
+        # (Ubuntu 24.04 moved them to tzdata-legacy), which failed this test on Python 3.14 CI (pandas 3 installs tzdata
+        # only on Windows)
+        default = inspect.signature(setup_logger).parameters["time_zone"].default
+        assert default == "America/New_York" and ZoneInfo(default).key == default
 
     def test_safe_exp(self):
         from pprof_py.utils.numerical import safe_exp

@@ -277,9 +277,8 @@ with its non-significant test result ($T = -0.04$, $p = 0.96$).
 ```python
 model.plot_funnel(
     reference='median',
-    target=0.0,
     alpha=[0.05, 0.01],
-    plot_title="Funnel Plot: Indirect Standardized Difference (LOS)",
+    title="Funnel Plot: Indirect Standardized Difference (LOS)",
 )
 ```
 
@@ -294,21 +293,15 @@ model.plot_provider_effects(
     reference='median',
     level=0.95,
     use_flags=True,
-    plot_title="Provider Effects (γ̂ᵢ) with 95% CIs",
+    title="Provider Effects (γ̂ᵢ) with 95% CIs",
 )
 ```
 
-### Caterpillar plot — standardized differences
+### Standardized differences
 
-```python
-model.plot_standardized_measures(
-    stdz='indirect',
-    reference='median',
-    level=0.95,
-    use_flags=True,
-    plot_title="Indirect Standardized Difference (LOS days)",
-)
-```
+`plot_standardized_measures()` was removed for linear models in 0.7.0: no standardized-measure test exists for
+them, so its intervals could disagree with the flags. The provider effects of `test()` make the same comparison with
+their own test, in the caterpillar plot above.
 
 ### Forest plot — fixed effects
 

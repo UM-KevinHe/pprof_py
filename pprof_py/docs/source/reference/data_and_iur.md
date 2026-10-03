@@ -135,7 +135,7 @@ sigmoid(np.array([-2.0, 0.0, 2.0]))
 ```
 
 ```text
-setup_logger(name: str, level=20, log_to_file: bool = False, log_dir: str = None, time_zone: str = 'US/Eastern') -> logging.Logger
+setup_logger(name: str, level=20, log_to_file: bool = False, log_dir: str = None, time_zone: str = 'America/New_York') -> logging.Logger
 proc_freq(df: pandas.DataFrame, columns: list)
 sigmoid(x: 'np.ndarray') -> 'np.ndarray'
 ```

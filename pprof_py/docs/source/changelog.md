@@ -64,7 +64,26 @@ from the package version they record. Upgrading is covered in {doc}`presentation
   `Lines.interval_bar_dense`; `accessibility_report()["bar_mark_contrast"]` (3:1 required).
 - `Theme.accessibility_report()["corridor_contrast"]`: status marks against the corridor fill (3:1 required).
 
+### Removed
+Everything deprecated in 0.6.0, as announced:
+- `plot_standardized_measures()` on logistic random-effect and linear models, and `plot_funnel()` on linear
+  random-effect models: their intervals could not agree with the test that flags the providers. Use
+  `pprof_py.presentation.caterpillar(model)`. (`LogisticFixedEffectModel.plot_standardized_measures()` stays: it draws
+  the intervals of `test_standardized()`.)
+- The styling keywords of the model plot methods and the standalone `plot_funnel`/`plot_caterpillar` (`point_colors`,
+  `figsize`, `plot_title`, ...), `target=`, `use_flags=False`, and the linear funnel's `stdz=`: they raise a
+  `TypeError`. Use `theme=`; `title=` sets the title.
+- The random-effect funnel's `test_method="wald"`, which had been replaced by the exact count test: it raises a
+  `ValueError`, and `"poibin_exact"` is the default.
+- The earlier drawing behind `plot_funnel(ax=...)` and behind `plot_caterpillar` without intervals or a reference line,
+  with `sort_by_estimate=False` or `orientation="horizontal"`; and the `lower`/`upper` column fallback of
+  `plot_caterpillar` (pass `ci_lower_col='lower', ci_upper_col='upper'`).
+
 ### Fixed
+- `setup_logger()` defaulted to the time zone `"US/Eastern"`, a legacy name missing from recent system time-zone
+  databases (Ubuntu 24.04 moved it to `tzdata-legacy`); with pandas 3, which installs `tzdata` only on Windows, it raised
+  `ZoneInfoNotFoundError` (the Python 3.14 CI job). The default is now `"America/New_York"`, the same rules under the
+  canonical name, which every IANA time-zone database has.
 - In print, a report figure taller than the page is scaled to fit, so a section heading is no longer left alone at
   the foot of a page.
 - The earlier plotting functions (coefficient forests and the earlier interval plot) passed error bars as lists of

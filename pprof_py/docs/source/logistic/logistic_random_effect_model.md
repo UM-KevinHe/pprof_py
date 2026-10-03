@@ -172,9 +172,9 @@ $$
 
 The `LogisticRandomEffectModel` class provides several plotting methods via the `LogisticRandomEffectPlottingMixin`:
 
-- **Funnel Plot** (`plot_funnel`): Plots the indirect standardized ratio (O/E) against expected count (precision). Control limits use the Poisson approximation $\text{target} \pm z_{1-\alpha/2} / \sqrt{E_i}$, with `target=1.0` for ratios. Providers are flagged using the `test()` method.
+- **Funnel Plot** (`plot_funnel`): Plots the indirect standardized ratio (O/E) against the expected count, with the limits of the exact count test (`test_method="poibin_exact"`, the default), so the providers outside the limits are the flagged ones.
 - **Caterpillar Plot for Provider Effects** (`plot_provider_effects`): Displays BLUPs $\hat{u}_i$ on the log-odds scale with confidence intervals from the posterior standard errors. Optionally colour-codes providers using significance flags.
-- **Caterpillar Plot for Standardized Measures** (`plot_standardized_measures`): Displays indirect or direct standardized ratios or rates with CIs from `calculate_confidence_intervals(option='SM')`.
+- `plot_standardized_measures` was removed for this model in 0.7.0: its measure-scale intervals did not come from the test that flags the providers; `pprof_py.presentation.caterpillar(model)` draws the provider effects with their own test.
 - **Coefficient Forest Plot** (`plot_coefficient_forest`): Displays fixed-effect estimates $\hat{\boldsymbol{\beta}}$ and z-based Wald confidence intervals.
 
 ## 3. Implementation and Usage
@@ -312,7 +312,8 @@ Use plotting methods from the `LogisticRandomEffectModel` instance.
 ```python
 # Funnel plot: indirect standardized ratio (O/E) vs expected count
 logit_re_model.plot_funnel(
-    test_method='wald', reference='median', target=1.0, alpha=[0.05, 0.01]
+    reference='median',
+    alpha=[0.05, 0.01],
 )
 
 # Provider effects caterpillar (BLUPs on log-odds scale)
@@ -321,9 +322,8 @@ logit_re_model.plot_provider_effects(
 )
 
 # Standardized measures caterpillar (indirect ratio with CIs)
-logit_re_model.plot_standardized_measures(
-    stdz='indirect', measure='ratio', level=0.95, use_flags=True
-)
+# logit_re_model.plot_standardized_measures() was removed in 0.7.0 for this model: its measure-scale intervals do not come from the test that flags the providers.
+# pprof_py.presentation.caterpillar(logit_re_model) draws the provider effects with their own test.
 
 # Forest plot of fixed-effect coefficients (z-based Wald CIs)
 logit_re_model.plot_coefficient_forest()

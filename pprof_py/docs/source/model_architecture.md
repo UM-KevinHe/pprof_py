@@ -260,6 +260,7 @@ model.test(test_method='wald')   # reference 0 by default; reference='median' al
 model.calculate_standardized_measures(stdz='indirect')
 model.plot_funnel()
 model.plot_provider_effects()
-model.plot_standardized_measures(stdz='indirect', measure='ratio')
+# model.plot_standardized_measures() was removed in 0.7.0 for this model: its measure-scale intervals do not come from the test that flags the providers.
+# pprof_py.presentation.caterpillar(model) draws the provider effects with their own test.
 model.plot_coefficient_forest()
 ```

@@ -14,7 +14,7 @@ def setup_logger(
     level=logging.INFO,
     log_to_file: bool = False,
     log_dir: str = None,
-    time_zone: str = "US/Eastern"
+    time_zone: str = "America/New_York"
 ) -> logging.Logger:
     """Setup a logger with the given name and level.
 
@@ -23,7 +23,8 @@ def setup_logger(
     - level (int): The logging level. Default is logging.INFO.
     - log_to_file (bool): If True, logs will also be written to a file. Default is False.
     - log_dir (str): Directory where the log file will be saved. Default is None (current working directory).
-    - time_zone (str): The time zone for the timestamps. Default is "US/Eastern".
+    - time_zone (str): The IANA time zone for the timestamps. Default is "America/New_York" (US Eastern time; the
+      canonical name, since links such as "US/Eastern" are missing from recent system time-zone databases).
 
     Returns:
     - logging.Logger: Configured logger.

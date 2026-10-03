@@ -54,6 +54,13 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | I5a | The ten remaining displays on the identity's mechanisms: key on top under a title row, halos, highlight rings and bands, short publication footnotes (D85); interval bars in the forest and several-measures plots (D86) | delivered |
 | I5b | The report: page styled from the tokens, identity tables with their intervals, optional embedded IBM Plex Sans (D87) | delivered |
 | I6 | Release 0.7.0: version, changelog, migration guide with the token for every visible change (D88); report print pagination and the CI test fix (D89) | delivered |
+| R1 | Removal of the 0.6.0 deprecations (D91); time-zone default for Python 3.14 CI (D92) | delivered |
+
+## R1 evidence
+- Python 3.14 CI failure: `setup_logger()`'s default `"US/Eastern"` is missing from Ubuntu 24.04's tzdata (2026a; the link moved to `tzdata-legacy`), and pandas 3 no longer installs the `tzdata` package. With CI's resolved 3.14 stack on that database, the original default raises `ZoneInfoNotFoundError` (negative control) and `"America/New_York"` passes; `test_infrastructure.py` passes on all four stacks, including those without the `tzdata` package.
+- Full suites, one pytest process each, as CI runs them: CI-equivalent Python 3.14.4 (numpy 2.5.3, pandas 3.0.6, Matplotlib 3.11.2) 1028 passed, 1 skipped (`lifelines`); CI-equivalent 3.10 (numpy 2.2.6, pandas 2.3.3, Matplotlib 3.10.9) 1028 passed, 1 skipped; floor 3.10 (numpy 1.23.5, pandas 1.5.3, Matplotlib 3.5.3) 1028 passed, 1 skipped.
+- Removal: about 2,300 lines of legacy drawing code; no `_legacy_*` name remains; pyflakes clean on every changed file. The deprecation tests are rewritten as removal tests with the same intent (`TypeError` for removed keywords, `ValueError` for `test_method="wald"` and frames without intervals, the methods absent where removed).
+- Docs: 21 call sites on 9 pages used removed features; the 11 calls that remain valid were rewritten and each executed against a fitted model without an error or deprecation warning; the others became notes naming the reason and `caterpillar(model)`. The API reference's `setup_logger` signature matches `inspect.signature`. Docs build from the rehearsed tree: exit 0 with the same 4 intersphinx warnings as the untouched tree.
 
 ## I6 evidence
 - Classic after the version bump: all 24 gallery figures byte-identical to 0.6.0 (no figure draws the version); the classic report and the HTML, Markdown, LaTeX and text tables identical to 0.6.0's once the package version they record (source line, footer) is normalised. The migration guide and changelog say exactly this.

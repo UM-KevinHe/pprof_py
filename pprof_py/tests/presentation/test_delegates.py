@@ -59,19 +59,23 @@ def test_funnel_delegates(models, key, test_method, tmp_path):
     assert fig is r.figure and (tmp_path / "f.svg").read_bytes() == r.to_bytes("svg")
 
 
-def test_styling_keywords_warn(models):
+def test_removed_keywords_raise(models):
+    # styling keywords, target=, use_flags=False and stdz= were deprecated in 0.6.0 and removed in 0.7.0 (D91)
     fe = models["fe"]
-    _, dep = _call(lambda: fe.plot_funnel(point_colors=["r", "g", "b"], target=1.0))
-    assert len(dep) == 2 and "point_colors" in dep[0] and "target=" in dep[1] and "0.7.0" in dep[0]
-    _, dep = _call(lambda: fe.plot_provider_effects(use_flags=False, figsize=(4, 4)))
-    assert any("figsize" in d for d in dep) and any("use_flags=False" in d for d in dep)
+    for call, word in ((lambda: fe.plot_funnel(point_colors=["r", "g", "b"]), "point_colors"),
+                       (lambda: fe.plot_funnel(target=1.0), "target"),
+                       (lambda: fe.plot_provider_effects(figsize=(4, 4)), "figsize"),
+                       (lambda: fe.plot_provider_effects(use_flags=False), "use_flags=False"),
+                       (lambda: models["lfe"].plot_funnel(stdz="direct"), "stdz")):
+        with pytest.raises(TypeError, match=word):
+            call()
 
 
-def test_random_effect_funnel_is_rerouted_to_the_count_test(models):
+def test_random_effect_funnel_is_the_count_test(models):
     r, dep = _call(lambda: models["re"].plot_funnel())
-    assert r.provenance["test_method"] == "poibin_exact" and len(dep) == 1 and "'wald' will raise" in dep[0]
-    r, dep = _call(lambda: models["re"].plot_funnel(test_method="poibin_exact"))
-    assert not dep and r.kind == "funnel"
+    assert r.provenance["test_method"] == "poibin_exact" and not dep and r.kind == "funnel"
+    with pytest.raises(ValueError, match="test_method='wald' was removed in 0.7.0"):
+        models["re"].plot_funnel(test_method="wald")
 
 
 @pytest.mark.parametrize("key", ["fe", "re", "lfe", "lre"])
@@ -87,14 +91,12 @@ def test_standardized_measures(models):
     r, dep = _call(lambda: models["fe"].plot_standardized_measures())
     assert isinstance(r, FigureResult) and not dep
     assert r.provenance["measure"] == "indirect_ratio" and r.provenance["test_method"] == "score"
-    for key in ("re", "lfe", "lre"):
-        out, dep = _call(lambda key=key: models[key].plot_standardized_measures())
-        assert out is None and len(dep) == 1 and "removed in 0.7.0" in dep[0]
+    for key in ("re", "lfe", "lre"):                    # removed in 0.7.0 (D44, D91): no test-consistent display
+        assert not hasattr(models[key], "plot_standardized_measures")
 
 
-def test_linear_random_effect_funnel_keeps_its_old_drawing_with_a_warning(models):
-    out, dep = _call(lambda: models["lre"].plot_funnel())
-    assert isinstance(out, tuple) and len(dep) == 1 and "cannot agree" in dep[0]
+def test_linear_random_effect_has_no_funnel(models):
+    assert not hasattr(models["lre"], "plot_funnel")    # removed in 0.7.0: no funnel agrees with its test (ADR-004)
 
 
 def test_plot_caterpillar_reads_test_columns(models, tmp_path):
@@ -102,8 +104,11 @@ def test_plot_caterpillar_reads_test_columns(models, tmp_path):
     _, dep = _call(lambda: plot_caterpillar(t, group_col="provider_id", flag_col="flag", save_path=str(tmp_path / "a.png")))
     assert not dep
     old = t.rename(columns={"ci_lower": "lower", "ci_upper": "upper"})
-    _, dep = _call(lambda: plot_caterpillar(old, group_col="provider_id", save_path=str(tmp_path / "b.png")))
-    assert len(dep) == 1 and "ci_lower_col='lower'" in dep[0]
+    with pytest.raises(ValueError, match="ci_lower_col='lower'"):                      # the fallback was removed
+        plot_caterpillar(old, group_col="provider_id")
+    _, dep = _call(lambda: plot_caterpillar(old, ci_lower_col="lower", ci_upper_col="upper", group_col="provider_id",
+                                            save_path=str(tmp_path / "b.png")))
+    assert not dep
 
 
 def test_delegated_methods_import_no_pyplot():

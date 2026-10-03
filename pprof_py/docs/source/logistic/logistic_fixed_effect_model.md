@@ -405,7 +405,7 @@ Use the plotting methods to visualize results.
 # The exact methods use the fast_poibin package, which is installed with pprof_py
 
 # Funnel plot using score test limits
-# model.plot_funnel(test_method='score', alpha=0.05, target=1.0)
+# model.plot_funnel(test_method='score', alpha=0.05)
 
 # Caterpillar plot for provider effects (gamma) using Wald CIs
 # model.plot_provider_effects(level=0.95, test_method='wald', use_flags=True)

@@ -1,38 +1,10 @@
-"""The standalone plotting functions as delegates to the presentation layer (single rendering path; D45, D60)."""
+"""The standalone plotting functions as delegates to the presentation layer (single rendering path; D45, D60, D91)."""
 from __future__ import annotations
 
-import inspect
-import warnings
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 import pandas as pd
-
-_REMOVAL = "will be removed in 0.7.0"
-
-
-def _changed_style(legacy: Callable, name: str, given: Dict[str, Any]) -> List[str]:
-    """Styling keywords given with a value other than the earlier default; unknown keywords raise as before."""
-    params = inspect.signature(legacy).parameters
-    unknown = [k for k in given if k not in params]
-    if unknown:
-        raise TypeError(f"{name}() got unexpected keyword arguments {unknown}")
-    out = []
-    for key, value in given.items():
-        try:
-            same = bool(value == params[key].default)
-        except (TypeError, ValueError):
-            same = False
-        if not same:
-            out.append(key)
-    return out
-
-
-def _warn_style(name: str, changed: List[str]) -> None:
-    if changed:
-        warnings.warn(f"{name}(): the styling keywords {changed} are deprecated and ignored; the presentation theme "
-                      f"sets the style (derive a Theme instead). They {_REMOVAL}.", DeprecationWarning, stacklevel=4)
-
 
 def _finish(result: Any, save_path: Optional[str], dpi: int) -> Any:
     if save_path:
@@ -42,15 +14,7 @@ def _finish(result: Any, save_path: Optional[str], dpi: int) -> Any:
 
 def funnel_from_frame(df: pd.DataFrame, limits_df: pd.DataFrame, *, estimate_col: str, precision_col: str,
                       flag_col: Optional[str], target: float, alpha_levels: Optional[List[float]], plot_title: str,
-                      save_path: Optional[str], dpi: int, ax: Any, style: Dict[str, Any], legacy: Callable) -> Any:
-    if ax is not None:
-        warnings.warn("plot_funnel(ax=...) keeps the earlier drawing, which is deprecated and " + _REMOVAL + "; use "
-                      "pprof_py.presentation.funnel() and its FigureResult.figure to compose figures.",
-                      DeprecationWarning, stacklevel=3)
-        return legacy(df, limits_df, estimate_col=estimate_col, precision_col=precision_col, flag_col=flag_col,
-                      target=target, alpha_levels=alpha_levels, plot_title=plot_title, save_path=save_path, dpi=dpi,
-                      ax=ax, **style)
-    _warn_style("plot_funnel", _changed_style(legacy, "plot_funnel", style))
+                      save_path: Optional[str], dpi: int) -> Any:
     from ..presentation import ProviderProfile, funnel
 
     alphas = sorted(set(alpha_levels) if alpha_levels is not None else set(limits_df["alpha"].unique()))
@@ -83,32 +47,16 @@ def funnel_from_frame(df: pd.DataFrame, limits_df: pd.DataFrame, *, estimate_col
 
 def caterpillar_from_frame(df: pd.DataFrame, estimate_col: str, ci_lower_col: Optional[str],
                            ci_upper_col: Optional[str], group_col: Optional[str], flag_col: Optional[str], *,
-                           refline_value: Optional[float], sort_by_estimate: bool, orientation: str, plot_title: str,
-                           save_path: Optional[str], dpi: int, style: Dict[str, Any], legacy: Callable) -> Any:
+                           refline_value: Optional[float], plot_title: str, save_path: Optional[str], dpi: int) -> Any:
     lo_col, hi_col = ci_lower_col, ci_upper_col
-    if (lo_col, hi_col) == ("ci_lower", "ci_upper") and not {"ci_lower", "ci_upper"} <= set(df.columns) \
-            and {"lower", "upper"} <= set(df.columns):
-        warnings.warn("plot_caterpillar() now reads intervals from 'ci_lower' and 'ci_upper' by default (the columns of "
-                      "test()); this frame has 'lower' and 'upper', which are used for now. Pass ci_lower_col='lower', "
-                      "ci_upper_col='upper' explicitly; this fallback will be removed in 0.7.0.", DeprecationWarning,
-                      stacklevel=3)                              # R8's wording, unchanged
-        lo_col, hi_col = "lower", "upper"
-    reason = None
     if lo_col is None or hi_col is None or lo_col not in df.columns or hi_col not in df.columns:
-        reason = "without interval columns"
-    elif refline_value is None:
-        reason = "without a reference line"
-    elif not sort_by_estimate:
-        reason = "with sort_by_estimate=False"
-    elif orientation != "vertical":
-        reason = f"with orientation={orientation!r}"
-    if reason:
-        warnings.warn(f"plot_caterpillar() {reason} keeps the earlier drawing, which is deprecated and {_REMOVAL}; "
-                      "use pprof_py.presentation.caterpillar().", DeprecationWarning, stacklevel=3)
-        return legacy(df, estimate_col, lo_col, hi_col, group_col, flag_col, refline_value=refline_value,
-                      sort_by_estimate=sort_by_estimate, orientation=orientation, plot_title=plot_title,
-                      save_path=save_path, dpi=dpi, **style)
-    _warn_style("plot_caterpillar", _changed_style(legacy, "plot_caterpillar", style))
+        hint = (" This frame has 'lower' and 'upper': pass ci_lower_col='lower', ci_upper_col='upper'."
+                if {"lower", "upper"} <= set(df.columns) else "")
+        raise ValueError(f"plot_caterpillar() needs the interval columns {lo_col!r} and {hi_col!r}; drawing without "
+                         f"intervals was removed in 0.7.0.{hint}")
+    if refline_value is None:
+        raise ValueError("plot_caterpillar() needs refline_value, the reference line; drawing without one was removed "
+                         "in 0.7.0.")
     from ..presentation import ProviderProfile, caterpillar
 
     index = pd.Index(df[group_col]) if group_col else df.index

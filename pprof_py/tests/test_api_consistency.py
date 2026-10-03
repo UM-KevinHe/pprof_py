@@ -78,20 +78,17 @@ def _legend_texts(ax):
 
 
 def test_untested_providers_are_drawn_as_their_own_category(crossed):
-    import inspect
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.legend import Legend
     from pprof_py.plotting.coefficients import plot_caterpillar
 
     df = pd.DataFrame({"estimate": [0.1, -0.2, 0.3, 0.0], "flag": [1.0, -1.0, np.nan, 0.0]}, index=list("abcd"))
-    params = inspect.signature(plot_caterpillar).parameters
-    kwargs = {k: v for k, v in dict(estimate_col="estimate", flag_col="flag").items() if k in params}
-    plt.close("all")
-    plot_caterpillar(df, **kwargs)
-    texts = _legend_texts(plt.gca())
+    df = df.assign(ci_lower=df["estimate"] - 0.05, ci_upper=df["estimate"] + 0.05)   # intervals that agree with the flags
+    r = plot_caterpillar(df, estimate_col="estimate", flag_col="flag")
+    texts = [t.get_text() for leg in r.figure.findobj(Legend) for t in leg.get_texts()]
     assert "Not tested (1)" in texts and not any(t.startswith("Expected (2)") for t in texts)
-    plt.close("all")
 
     fe = _quiet(LogisticFixedEffectModel(use_dataprep=False, screen_providers=False).fit, crossed, y_var="y",
                 x_vars=["x"], provider_var="provider")

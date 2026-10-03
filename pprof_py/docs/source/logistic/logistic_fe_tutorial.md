@@ -473,7 +473,6 @@ model.plot_provider_effects(
     use_flags=True,
     reference='median',
     title="Provider Effects: Adjusted Log-Odds (Gamma)",
-    figure_size=(10, 6),
 )
 ```
 
@@ -495,7 +494,6 @@ model.plot_standardized_measures(
     use_flags=True,
     reference='median',
     title="Provider Standardized Ratios (Indirect O/E)",
-    figure_size=(10, 6),
 )
 ```
 
@@ -511,10 +509,8 @@ Providers outside the funnel are the ones whose ISR is too far from
 model.plot_funnel(
     test_method='poibin_exact',
     reference='median',
-    target=1.0,
     alpha=[0.05, 0.01],
-    plot_title="Funnel Plot: Indirect Standardized Ratios (O/E)",
-    ylab="Indirect Standardized Ratio (O/E)",
+    title="Funnel Plot: Indirect Standardized Ratios (O/E)",
 )
 ```
 

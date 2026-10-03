@@ -58,24 +58,18 @@ def test_funnel_draws_the_supplied_limits(frames, tmp_path):
     assert "as supplied" in r.long_description
 
 
-def test_funnel_warnings_and_legacy_paths(frames):
+def test_funnel_warnings_and_removed_options(frames):
     df, lim = frames
     bad = df.copy()
     bad.iloc[0, bad.columns.get_loc("flag")] = 1 - abs(int(bad["flag"].iloc[0]))
-    _, w = _quiet(plot_funnel, bad, lim, point_size=99)
-    kinds = {x.category for x in w}
-    assert DeprecationWarning in kinds and UserWarning in kinds                    # styling keyword; S4 contradiction
-    with pytest.raises(TypeError, match="unexpected keyword"):
-        plot_funnel(df, lim, no_such_option=1)
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots()
-    out, w = _quiet(plot_funnel, df, lim, ax=ax)
-    assert out == (fig, ax) and any(issubclass(x.category, DeprecationWarning) for x in w)
-    plt.close(fig)
+    _, w = _quiet(plot_funnel, bad, lim)
+    assert UserWarning in {x.category for x in w}                                 # S4: flags contradict the limits
+    for removed in ({"point_size": 99}, {"ax": object()}, {"no_such_option": 1}):  # styling keywords and ax= (0.7.0)
+        with pytest.raises(TypeError, match="unexpected keyword"):
+            plot_funnel(df, lim, **removed)
 
 
-def test_caterpillar_draws_the_frame(frames, tmp_path):
+def test_caterpillar_draws_the_frame(frames):
     df, _ = frames
     half = norm.ppf(0.975) / np.sqrt(df["precision"])          # intervals consistent with the flags (S3)
     t = df.assign(ci_lower=df["estimate"] - half, ci_upper=df["estimate"] + half)
@@ -89,21 +83,24 @@ def test_caterpillar_draws_the_frame(frames, tmp_path):
     (ref,) = _gid(r.figure, "reference")
     assert np.all(np.asarray(ref.get_xdata()) == 1.0)
     old = df.assign(lower=df["estimate"] - half, upper=df["estimate"] + half)
-    r2, w = _quiet(plot_caterpillar, old, flag_col="flag", refline_value=1.0)
-    assert isinstance(r2, FigureResult) and any("ci_lower_col='lower'" in str(x.message) for x in w)
-    for kwargs in ({"sort_by_estimate": False}, {"orientation": "horizontal"}, {"refline_value": None}):
-        # a temporary file, not /dev/null: Matplotlib appends ".png" to a path without an extension, and /dev is not
-        # writable for the unprivileged users that run CI
-        out, w = _quiet(plot_caterpillar, t, flag_col="flag", save_path=str(tmp_path / "earlier"),
-                        **{"refline_value": 1.0, **kwargs})
-        assert out is None and any("keeps the earlier drawing" in str(x.message) for x in w)
-    assert (tmp_path / "earlier.png").stat().st_size > 0          # the earlier drawing saves, with the default extension
+    with pytest.raises(ValueError, match="ci_lower_col='lower'"):           # the lower/upper fallback (0.7.0)
+        plot_caterpillar(old, flag_col="flag", refline_value=1.0)
+    r2, w = _quiet(plot_caterpillar, old, ci_lower_col="lower", ci_upper_col="upper", flag_col="flag", refline_value=1.0)
+    assert isinstance(r2, FigureResult) and not w
+    for removed in ({"sort_by_estimate": False}, {"orientation": "horizontal"}, {"point_color": "red"}):
+        with pytest.raises(TypeError, match="unexpected keyword"):         # options removed in 0.7.0 (D91)
+            plot_caterpillar(t, flag_col="flag", refline_value=1.0, **removed)
+    with pytest.raises(ValueError, match="refline_value"):
+        plot_caterpillar(t, flag_col="flag", refline_value=None)
+    with pytest.raises(ValueError, match="interval columns"):
+        plot_caterpillar(df, flag_col="flag", refline_value=1.0)
 
 
-def test_model_mixins_keep_the_legacy_functions():
+def test_the_earlier_renderers_are_removed():
+    from pprof_py import LinearFixedEffectModel, LinearRandomEffectModel, LogisticFixedEffectModel, \
+        LogisticRandomEffectModel
     from pprof_py.plotting import coefficients, funnel
-    from pprof_py.plotting.linear import random_effect as lre
-    from pprof_py.plotting.logistic import fixed_effect as lfe
 
-    assert lfe.plot_caterpillar is coefficients._legacy_plot_caterpillar and lfe._render_funnel is funnel._legacy_plot_funnel
-    assert lre.plot_caterpillar is coefficients._legacy_plot_caterpillar
+    assert not hasattr(coefficients, "_legacy_plot_caterpillar") and not hasattr(funnel, "_legacy_plot_funnel")
+    for cls in (LogisticFixedEffectModel, LogisticRandomEffectModel, LinearFixedEffectModel, LinearRandomEffectModel):
+        assert not [n for n in dir(cls) if n.startswith("_legacy")]

@@ -309,16 +309,11 @@ print(sm_ci['indirect_ci'].head(10).to_string())
 
 ## 9. Visualizing the results
 
-### Funnel plot
+### Why there is no funnel plot
 
-```python
-model.plot_funnel(
-    reference=median_blup,
-    target=0.0,
-    alpha=[0.05, 0.01],
-    plot_title="Funnel Plot: Indirect Standardized Difference (LOS)",
-)
-```
+`plot_funnel()` was removed for linear random-effect models in 0.7.0: no funnel can agree with the Wald test of
+shrunken estimates that flags the providers (ADR-004). The caterpillar plot below shows the same providers with the
+intervals of that test.
 
 ### Caterpillar plot — BLUPs
 
@@ -327,21 +322,14 @@ model.plot_provider_effects(
     reference=median_blup,
     level=0.95,
     use_flags=True,
-    plot_title="Provider Random Effects (BLUPs, LOS days)",
+    title="Provider Random Effects (BLUPs, LOS days)",
 )
 ```
 
-### Caterpillar plot — standardized differences
+### Standardized differences
 
-```python
-model.plot_standardized_measures(
-    stdz='indirect',
-    reference=median_blup,
-    level=0.95,
-    use_flags=True,
-    plot_title="Indirect Standardized Difference (LOS days)",
-)
-```
+`plot_standardized_measures()` was removed for this model in 0.7.0: its measure-scale intervals did not come from
+the test that flags the providers. The caterpillar plot of the BLUPs above uses that test.
 
 ### Forest plot — fixed effects
 

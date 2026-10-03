@@ -194,8 +194,7 @@ The implementation handles one-sided and two-sided alternatives.
 The `LinearRandomEffectModel` class provides several plotting methods:
 
 - **Caterpillar Plot for Provider Effects** (`plot_provider_effects`): Displays BLUPs $\hat{u}_i$ with their confidence intervals.
-- **Caterpillar Plot for Standardized Measures** (`plot_standardized_measures`): Displays standardized differences $\hat{u}_i - u_0$ with confidence intervals.
-- **Funnel Plot** (`plot_funnel`): Plots standardized differences $\hat{u}_i - u_0$ against group size $n_i$. Control limits are typically based on the overall residual standard deviation $\hat{\sigma}_e$, e.g., $target \pm z_{1-\alpha/2} \times \frac{\hat{\sigma}_e}{\sqrt{n_i}}$.
+- `plot_standardized_measures` and `plot_funnel` were removed for this model in 0.7.0: their measure-scale intervals did not come from the test that flags the providers, and no funnel can agree with the Wald test of shrunken estimates (ADR-004). `pprof_py.presentation.caterpillar(model)` draws the provider effects with their own test.
 - **Coefficient Forest Plot** (`plot_coefficient_forest`):\*\* Displays estimates and confidence intervals for fixed effect coefficients $\hat{\boldsymbol{\beta}}$.
 - **Residual Plots** (`plot_residuals`): Standard residuals vs. fitted values plot.
 - **Q-Q Plot** (`plot_qq`):\*\* Q-Q plot of residuals against a normal distribution to check normality assumption.
@@ -389,10 +388,12 @@ Use plotting methods from the `LinearRandomEffectModel` instance. (Examples assu
 lre_model.plot_provider_effects(reference='median', level=0.95, use_flags=True)
 
 # Standardized differences caterpillar
-lre_model.plot_standardized_measures(stdz='indirect', reference='median', level=0.95)
+# lre_model.plot_standardized_measures() was removed in 0.7.0 for this model: its measure-scale intervals do not come from the test that flags the providers.
+# pprof_py.presentation.caterpillar(lre_model) draws the provider effects with their own test.
 
 # Funnel plot (differences vs provider size)
-lre_model.plot_funnel(stdz='indirect', reference='median', target=0.0, alpha=[0.05, 0.01])
+# lre_model.plot_funnel() was removed in 0.7.0 for this model: no funnel agrees with the Wald test of shrunken estimates (ADR-004).
+# pprof_py.presentation.caterpillar(lre_model) draws the provider effects with their own test.
 
 # Forest plot of fixed-effect coefficients
 lre_model.plot_coefficient_forest()

@@ -334,11 +334,9 @@ grows — small hospitals need an extreme ISR to be flagged.
 
 ```python
 model.plot_funnel(
-    test_method='wald',
     reference='median',
-    target=1.0,
     alpha=[0.05, 0.01],
-    plot_title="Funnel Plot: Indirect Standardized Ratio (O/E)",
+    title="Funnel Plot: Indirect Standardized Ratio (O/E)",
 )
 ```
 
@@ -349,7 +347,7 @@ model.plot_provider_effects(
     level=0.95,
     use_flags=True,
     reference='median',
-    plot_title="Provider Random Effects (BLUPs, Log-Odds Scale)",
+    title="Provider Random Effects (BLUPs, Log-Odds Scale)",
 )
 ```
 
@@ -357,18 +355,12 @@ The shrinkage is visible here: the BLUPs are clustered near zero, with
 CIs much wider for small hospitals. Hospital 16 is the only provider
 whose CI clearly separates from the rest on the high side.
 
-### Caterpillar plot — ISR
+### Standardized ratios
 
-```python
-model.plot_standardized_measures(
-    stdz='indirect',
-    measure='ratio',
-    level=0.95,
-    use_flags=True,
-    reference='median',
-    plot_title="Indirect Standardized Ratio (O/E) with CIs",
-)
-```
+`plot_standardized_measures()` was removed for random-effect models in 0.7.0: its intervals on the ratio scale did
+not come from the test that flags the providers, so a provider could look flagged in one figure and not in the
+other. The caterpillar plot of the BLUPs above uses that test; the ratios themselves are in
+`model.calculate_standardized_measures(stdz='indirect')`.
 
 ### Forest plot — fixed effects
 

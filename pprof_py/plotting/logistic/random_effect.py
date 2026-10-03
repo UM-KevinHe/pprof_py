@@ -6,17 +6,13 @@ fitting, and prediction.
 """
 from __future__ import annotations
 
-import warnings
 from typing import Any, Dict, List, Literal, Optional, Protocol, Tuple, Union
 
-from .._delegates import UNSET
 
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from ...plotting.coefficients import _legacy_plot_caterpillar as plot_caterpillar
-from ...plotting.funnel import _legacy_plot_funnel as _render_funnel
 from ...plotting import style as _style
 
 
@@ -93,28 +89,26 @@ class LogisticRandomEffectPlottingMixin:
     # 1. Funnel plot  (indirect standardized ratio O/E)
     # ==================================================================
 
-    def plot_funnel(self, test_method: str = "wald", reference: Union[str, float] = "median", target: Any = UNSET,
+    def plot_funnel(self, test_method: str = "poibin_exact", reference: Union[str, float] = "median",
                     alpha: Union[float, List[float]] = 0.05, **kwargs: Any):
         """Funnel plot whose control limits come from the same test as the flags.
 
         Delegates to :func:`pprof_py.presentation.funnel` and returns its
         :class:`~pprof_py.presentation.FigureResult` (``fig, ax = model.plot_funnel()`` still works). ``alpha`` sets
         the levels of the limit curves; ``save_path``, ``theme``, ``size``, ``title`` and ``highlight`` are passed on.
-        Styling keywords and ``target`` no longer have an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        Styling keywords and ``target=`` were removed in 0.7.0 and raise a ``TypeError``.
 
-        Random-effect funnels show count tests only (ADR-004): the default ``"wald"`` is replaced by
-        ``"poibin_exact"`` with a ``DeprecationWarning``, and will raise in 0.7.0.
+        Random-effect funnels show count tests only (ADR-004): the default is the exact count test,
+        ``"poibin_exact"``; ``"wald"``, whose shrunken estimates have no funnel that agrees with its flags, raises a
+        ``ValueError`` (removed in 0.7.0).
         """
-        import warnings
-        from .._delegates import REMOVAL, funnel_delegate
+        from .._delegates import funnel_delegate
         if test_method == "wald":
-            warnings.warn("plot_funnel() now draws the funnel of the exact count test (test_method='poibin_exact'): a "
-                          "Wald test of shrunken estimates has no funnel that agrees with its flags (ADR-004). Pass "
-                          "test_method='poibin_exact' or 'exact' to silence this warning; 'wald' will raise in "
-                          f"{REMOVAL}.", DeprecationWarning, stacklevel=2)
-            test_method = "poibin_exact"
+            raise ValueError("plot_funnel(): a Wald test of shrunken estimates has no funnel that agrees with its flags "
+                             "(ADR-004); use the default test_method='poibin_exact' or 'exact'. test_method='wald' was "
+                             "removed in 0.7.0.")
         return funnel_delegate(self, "plot_funnel", test_kwargs={"test_method": test_method, "reference": reference},
-                               alpha=alpha, target=target, kwargs=kwargs)
+                               alpha=alpha, kwargs=kwargs)
 
     def plot_provider_effects(self, group_ids=None, level: float = 0.95, use_flags: bool = True,
                               reference: Union[str, float] = 0, test_method: str = "wald", **plot_kwargs: Any):
@@ -122,393 +116,21 @@ class LogisticRandomEffectPlottingMixin:
 
         Delegates to :func:`pprof_py.presentation.caterpillar` and returns its
         :class:`~pprof_py.presentation.FigureResult`. ``group_ids`` selects providers; ``save_path``, ``theme``,
-        ``size``, ``title`` and ``highlight`` are passed on. Styling keywords and ``use_flags=False`` no longer have
-        an effect (``DeprecationWarning``; ``TypeError`` from 0.7.0).
+        ``size``, ``title`` and ``highlight`` are passed on. Styling keywords and ``use_flags=False`` were removed in
+        0.7.0 and raise a ``TypeError``.
         """
         from .._delegates import caterpillar_delegate
         return caterpillar_delegate(self, "plot_provider_effects", use_flags=use_flags, kwargs=plot_kwargs,
                                     test_kwargs={"providers": group_ids, "level": level, "test_method": test_method,
                                                  "reference": reference})
 
-    def plot_standardized_measures(self, *args: Any, **kwargs: Any):
-        """Deprecated for this model; removed in 0.7.0 (its measure-scale intervals do not come from the test that flags the providers).
-
-        Keeps the earlier drawing, with a ``DeprecationWarning``; see :mod:`pprof_py.presentation` for the displays
-        that agree with this model's flags.
-        """
-        from .._delegates import legacy
-        legacy("plot_standardized_measures", "its measure-scale intervals do not come from the test that flags the providers; use pprof_py.presentation.caterpillar(model) for the provider effects with their own test")
-        return self._legacy_plot_standardized_measures(*args, **kwargs)
-
-    def _legacy_plot_funnel(
-        self,
-        test_method: str = "wald",
-        reference: Union[str, float] = "median",
-        target: float = 1.0,
-        alpha: Union[float, List[float]] = 0.05,
-        labels: List[str] = _style.FLAG_LABELS,
-        point_colors: List[str] = [
-            _style.COLOR_WARNING,
-            _style.COLOR_PRIMARY,
-            _style.COLOR_SECONDARY,
-        ],
-        point_shapes: List[str] = ["v", "o", "^"],
-        point_size: float = _style.POINT_SIZE,
-        point_alpha: float = _style.POINT_ALPHA,
-        line_size: float = _style.LINE_WIDTH,
-        target_linestyle: str = _style.REFLINE_LINESTYLE,
-        font_size: float = _style.FONT_SIZE,
-        tick_label_size: float = _style.TICK_LABEL_SIZE,
-        cl_line_colors: Optional[Union[str, List[str]]] = _style.COLOR_NEUTRAL_GREY,
-        cl_line_styles: Optional[Union[str, List[str]]] = None,
-        fill_color: str = _style.CI_FILL_COLOR,
-        fill_alpha: float = _style.CI_FILL_ALPHA,
-        edge_color: Optional[str] = None,
-        edge_linewidth: float = 0,
-        add_grid: bool = True,
-        grid_style: str = _style.GRID_STYLE,
-        grid_alpha: float = _style.GRID_ALPHA,
-        remove_top_right_spines: bool = True,
-        figure_size: Tuple[float, float] = _style.FIGURE_SIZE,
-        plot_title: str = "Funnel Plot (Indirect Standardized Ratio)",
-        xlab: str = "Expected Count (Precision)",
-        ylab: str = "Indirectly Standardized Ratio (O/E)",
-        legend_location: str = "best",
-    ) -> None:
-        """Funnel plot of the indirect standardized ratio (O/E) vs expected
-        count.  Control limits use the Poisson approximation
-        ``target +/- z / sqrt(E)``.
-
-        Parameters
-        ----------
-        test_method : str, default 'wald'
-            Test method passed to ``self.test()`` for flagging.
-        reference : str or float, default 'median'
-            Baseline BLUP value for expected counts and flagging.
-        target : float, default 1.0
-            Reference value for the ratio (centre of the funnel).
-        alpha : float or list of float, default 0.05
-            Significance level(s) for control-limit bands.
-        """
-        group_var = self._provider_var
-        self._check_is_fitted()
-        group_var = self._resolve_group_var(group_var)
-        gamma_null = self._resolve_reference(reference, group_var)
-
-        a_list = sorted(
-            [alpha] if isinstance(alpha, (float, int)) else alpha
-        )
-        alpha_test = min(a_list)
-
-        # Standardized measures
-        sm = self.calculate_standardized_measures(
-            stdz="indirect", reference=gamma_null,
-        )
-        if "indirect" not in sm or sm["indirect"].empty:
-            warnings.warn("No indirect SM data. Cannot plot.")
-            return
-        df = sm["indirect"].copy()
-        if "provider_id" in df.columns:
-            df.set_index("provider_id", inplace=True)
-
-        # Precision = expected count
-        df["precision"] = df["expected"]
-        df.dropna(subset=["precision"], inplace=True)
-
-        # Flags from test()
-        test_df = self.test(
-            test_method=test_method,
-            reference=gamma_null,
-            level=1.0 - alpha_test,
-            alternative="two_sided",
-        )
-        df = df.merge(
-            test_df[["flag"]], left_index=True, right_index=True, how="left",
-        )
-        df["flag"] = df["flag"].astype(float)
-
-        # Poisson-approximation control limits: target +/- z / sqrt(E)
-        limits_list = []
-        for a_val in a_list:
-            z_val = norm.ppf(1.0 - a_val / 2.0)
-            se_curve = np.where(
-                df["precision"] > 0,
-                1.0 / np.sqrt(df["precision"]),
-                0.0,
-            )
-            control_lower = target - z_val * se_curve
-            control_upper = target + z_val * se_curve
-            limits_df_a = pd.DataFrame(
-                {
-                    "precision": df["precision"],
-                    "control_lower": control_lower,
-                    "control_upper": control_upper,
-                    "alpha": a_val,
-                },
-                index=df.index,
-            )
-            limits_list.append(limits_df_a)
-        limits_all = pd.concat(limits_list)
-
-        return _render_funnel(
-            df=df,
-            limits_df=limits_all,
-            estimate_col="indirect_ratio",
-            precision_col="precision",
-            flag_col="flag",
-            target=target,
-            alpha_levels=a_list,
-            labels=labels,
-            flag_colors=dict(zip([-1, 0, 1], point_colors[:3])),
-            point_shapes=point_shapes,
-            point_size=point_size,
-            point_alpha=point_alpha,
-            edge_color=edge_color,
-            edge_linewidth=edge_linewidth,
-            cl_line_colors=cl_line_colors,
-            cl_line_styles=cl_line_styles,
-            fill_color=fill_color,
-            fill_alpha=fill_alpha,
-            target_linestyle=target_linestyle,
-            line_size=line_size,
-            font_size=font_size,
-            tick_label_size=tick_label_size,
-            add_grid=add_grid,
-            grid_style=grid_style,
-            grid_alpha=grid_alpha,
-            remove_top_right_spines=remove_top_right_spines,
-            figure_size=figure_size,
-            plot_title=plot_title,
-            xlab=xlab,
-            ylab=ylab,
-            legend_location=legend_location,
-        )
-
     # ==================================================================
     # 2. Provider effects caterpillar  (BLUPs on log-odds scale)
     # ==================================================================
 
-    def _legacy_plot_provider_effects(
-        self,
-        group_ids=None,
-        level: float = 0.95,
-        use_flags: bool = True,
-        reference: Union[str, float] = 0,
-        test_method: str = "wald",
-        **plot_kwargs,
-    ) -> None:
-        """Caterpillar plot of provider random effects (BLUPs) with CIs.
-
-        Parameters
-        ----------
-        group_ids : list or np.ndarray, optional
-            Subset of provider IDs to plot.
-        level : float, default 0.95
-            Confidence level for intervals.
-        use_flags : bool, default True
-            Colour-code providers using ``self.test()`` flags.
-        reference : str or float, default 0
-            Null hypothesis for flagging (log-odds scale).
-        test_method : str, default 'wald'
-            Test method for flagging.
-        **plot_kwargs
-            Forwarded to ``plot_caterpillar``.
-        """
-        group_var = self._provider_var
-        self._check_is_fitted()
-        group_var = self._resolve_group_var(group_var)
-        null_val = self._resolve_reference(reference, group_var) if isinstance(reference, str) else float(reference)
-
-        ci = self.calculate_confidence_intervals(
-            providers=group_ids,
-            level=level,
-            option="alpha",
-            alternative="two_sided",
-        )
-        if "alpha_ci" not in ci or ci["alpha_ci"].empty:
-            warnings.warn("No alpha CI data. Cannot plot.")
-            return
-        df_plot = ci["alpha_ci"].copy()
-
-        # Flags
-        flag_col_name = None
-        if use_flags:
-            flag_col_name = "flag"
-            try:
-                test_df = self.test(
-                    providers=(
-                        df_plot["provider_id"].unique().tolist()
-                        if "provider_id" in df_plot.columns
-                        else None
-                    ),
-                    level=level,
-                    test_method=test_method,
-                    reference=null_val,
-                    alternative="two_sided",
-                )
-                df_plot = df_plot.merge(
-                    test_df[["flag"]],
-                    left_on="provider_id",
-                    right_index=True,
-                    how="left",
-                )
-                df_plot[flag_col_name] = (
-                    df_plot[flag_col_name].astype(float)
-                )
-            except Exception as exc:
-                warnings.warn(
-                    f"Could not generate flags: {exc}. "
-                    "Plotting without flags."
-                )
-                flag_col_name = None
-
-        orientation = plot_kwargs.pop("orientation", "vertical")
-        if orientation == "vertical":
-            plot_kwargs.setdefault("xlab", "BLUP (log-odds scale)")
-            plot_kwargs.setdefault("ylab", "Provider")
-        else:
-            plot_kwargs.setdefault("xlab", "Provider")
-            plot_kwargs.setdefault("ylab", "BLUP (log-odds scale)")
-
-        plot_kwargs.setdefault("plot_title", "Provider Effects (BLUPs)")
-        plot_kwargs.setdefault("refline_value", null_val)
-        plot_kwargs.setdefault("orientation", orientation)
-
-        plot_caterpillar(
-            df=df_plot,
-            estimate_col="alpha",
-            ci_lower_col="alpha_lower",
-            ci_upper_col="alpha_upper",
-            group_col="provider_id",
-            flag_col=flag_col_name,
-            **plot_kwargs,
-        )
-
     # ==================================================================
     # 3. Standardized-measure caterpillar  (ratio or rate with CIs)
     # ==================================================================
-
-    def _legacy_plot_standardized_measures(
-        self,
-        group_ids=None,
-        level: float = 0.95,
-        stdz: str = "indirect",
-        measure: str = "ratio",
-        use_flags: bool = True,
-        reference: Union[str, float] = "median",
-        test_method: str = "wald",
-        **plot_kwargs,
-    ) -> None:
-        """Caterpillar plot of standardized measures (ratio or rate) with CIs.
-
-        Parameters
-        ----------
-        group_ids : list or np.ndarray, optional
-            Subset of provider IDs.
-        level : float, default 0.95
-            Confidence level.
-        stdz : {'indirect', 'direct'}, default 'indirect'
-            Standardization method.
-        measure : {'ratio', 'rate'}, default 'ratio'
-            Which measure to plot.
-        use_flags : bool, default True
-            Colour-code using flags.
-        reference : str or float, default 'median'
-            Null BLUP for flagging.
-        test_method : str, default 'wald'
-            Test method for flagging.
-        **plot_kwargs
-            Forwarded to ``plot_caterpillar``.
-        """
-        group_var = self._provider_var
-        self._check_is_fitted()
-        group_var = self._resolve_group_var(group_var)
-        null_val = self._resolve_reference(reference, group_var)
-
-        ci_key = f"{stdz}_{measure}"
-        ci = self.calculate_confidence_intervals(
-            providers=group_ids,
-            level=level,
-            option="SM",
-            stdz=stdz,
-            reference=null_val,
-            measure=measure,
-            alternative="two_sided",
-        )
-        if ci_key not in ci or ci[ci_key].empty:
-            warnings.warn(
-                f"No SM CI data for '{ci_key}'. Cannot plot."
-            )
-            return
-        df_plot = ci[ci_key].copy()
-        estimate_col = ci_key  # e.g. 'indirect_ratio'
-
-        if (
-            estimate_col not in df_plot.columns
-            or "lower" not in df_plot.columns
-            or "upper" not in df_plot.columns
-        ):
-            raise ValueError(
-                f"Required columns ('{estimate_col}', 'lower', 'upper') "
-                f"not in CI results. Got: {list(df_plot.columns)}"
-            )
-
-        # Flags
-        flag_col_name = None
-        if use_flags:
-            flag_col_name = "flag"
-            try:
-                test_df = self.test(
-                    providers=(
-                        df_plot["provider_id"].unique().tolist()
-                        if "provider_id" in df_plot.columns
-                        else None
-                    ),
-                    level=level,
-                    test_method=test_method,
-                    reference=null_val,
-                    alternative="two_sided",
-                )
-                df_plot = df_plot.merge(
-                    test_df[["flag"]],
-                    left_on="provider_id",
-                    right_index=True,
-                    how="left",
-                )
-                df_plot[flag_col_name] = (
-                    df_plot[flag_col_name].astype(float)
-                )
-            except Exception as exc:
-                warnings.warn(
-                    f"Could not generate flags: {exc}. "
-                    "Plotting without flags."
-                )
-                flag_col_name = None
-
-        # Defaults
-        refline = 1.0 if measure == "ratio" else None
-        orientation = plot_kwargs.pop("orientation", "vertical")
-        nice = f"{stdz.capitalize()} {measure.capitalize()}"
-        if orientation == "vertical":
-            plot_kwargs.setdefault("xlab", nice)
-            plot_kwargs.setdefault("ylab", "Provider")
-        else:
-            plot_kwargs.setdefault("xlab", "Provider")
-            plot_kwargs.setdefault("ylab", nice)
-
-        plot_kwargs.setdefault("plot_title", nice)
-        plot_kwargs.setdefault("refline_value", refline)
-        plot_kwargs.setdefault("orientation", orientation)
-
-        plot_caterpillar(
-            df=df_plot,
-            estimate_col=estimate_col,
-            ci_lower_col="lower",
-            ci_upper_col="upper",
-            group_col="provider_id",
-            flag_col=flag_col_name,
-            **plot_kwargs,
-        )
 
     # ==================================================================
     # 4. Coefficient forest plot  (fixed effects, z-based CIs)
