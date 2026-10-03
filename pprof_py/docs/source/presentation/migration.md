@@ -38,9 +38,26 @@ calls whose options or meaning have no test-consistent replacement keep their ea
 
 ## The 0.6.0 look
 
-From 0.7.0 the presets carry the package's visual identity (IBM Plex Sans, a copper and petrol status pair, a grid
-instead of a frame). `theme="classic"` reproduces 0.6.0 figures byte for byte in the same environment;
+From 0.7.0 the presets carry the package's visual identity. Every value, flag, limit and interval is unchanged; only
+the drawing is. `theme="classic"` reproduces 0.6.0 figures byte for byte in the same environment, and 0.6.0 HTML
+tables and reports apart from the package version they record in their source line and footer;
 `Theme.classic("notebook")` and `Theme.classic("report")` do the same for the other two presets.
+
+To keep one 0.6.0 behaviour and take the rest, derive a theme and set its token, for example
+`Theme().derive(footnote="full", key_position="bottom")`:
+
+| What changed in 0.7.0 | Token | 0.6.0 value |
+|:--|:--|:--|
+| Text in IBM Plex Sans (bundled), titles semibold, axis labels medium | `typography={"family": ..., "title_weight": ..., "label_weight": ...}` | `"DejaVu Sans"`, `"normal"`, `"normal"` |
+| Copper and petrol status pair, a cool grey for not different | `status={...}` | `#B35806`, `#542788`, `#8C8C8C` |
+| A light grid and muted tick labels instead of an open frame | `grid`, `spines`, `tick_length`, `tick_label_color` | `False`, `("left", "bottom")`, `3.0`, `None` |
+| The 95% acceptance region shaded in funnels | `corridor` | `None` |
+| White halos on filled marks | `halo` | `0.0` |
+| The key above the plot, under a title row | `key_position` | `"bottom"` |
+| A one-line footnote in publication figures (the full text is `FigureResult.caption`) | `footnote` | `"full"` |
+| Intervals as bars ending exactly on their bounds, marks on the bars a shade darker, thin volume bars | `interval_bars`, `bar_marks`, `volume_half` | `False`, `None`, `(0.35, 0.5)` |
+| A ring, band and semibold label for `highlight=` providers | `highlight_ring`, `highlight_wash` | `None`, `None` |
+| HTML tables and reports styled from the theme, status glyphs named | `table_style` | `"classic"` |
 
 ## Styling keywords and themes
 

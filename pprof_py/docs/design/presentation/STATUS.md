@@ -53,7 +53,15 @@ Direction B (Modern Scientific) is the approved visual identity, with Direction 
 | I4 | Tables: HTML styled from the theme's tokens with named status glyphs (D82), inline interval column (D83), `group_by="status"` in every format (D84) | delivered |
 | I5a | The ten remaining displays on the identity's mechanisms: key on top under a title row, halos, highlight rings and bands, short publication footnotes (D85); interval bars in the forest and several-measures plots (D86) | delivered |
 | I5b | The report: page styled from the tokens, identity tables with their intervals, optional embedded IBM Plex Sans (D87) | delivered |
-| I6 | Docs, gallery, migration guide, changelog; release 0.7.0 | next |
+| I6 | Release 0.7.0: version, changelog, migration guide with the token for every visible change (D88); report print pagination and the CI test fix (D89) | delivered |
+
+## I6 evidence
+- Classic after the version bump: all 24 gallery figures byte-identical to 0.6.0 (no figure draws the version); the classic report and the HTML, Markdown, LaTeX and text tables identical to 0.6.0's once the package version they record (source line, footer) is normalised. The migration guide and changelog say exactly this.
+- Tests, Python 3.12: presentation suite 280 passed (32 files); the three other tests that draw: 37 passed, 1 failed (`test_setup_logger`, no `tzdata`, as on the untouched tree).
+- Tests, Python 3.10 floor: presentation suite 279 passed, 1 failed (`test_funnel_delegates[fe-score]`, Matplotlib 3.5.3's pyparsing deprecation warnings, as on the untouched tree); the three other files as on 3.12.
+- CI fix (a separate diff, applied before this round): the standalone `plot_caterpillar` test failed with `PermissionError: '/dev/null.png'` when run as an unprivileged user (reproduced as `nobody`), and passes after it saves to `tmp_path`, as `nobody` and as root on both stacks. No other test writes to a system path.
+- Report print: on the rendered PDF of a 40-provider report, the section heading and its tall interval plot now share a page (before: the heading alone at the foot of page 2), and the report shortens from 7 to 6 pages; the classic print style is unchanged. `test_report_identity.py` pins the rule.
+- Docs build: exit 0 with the same 4 intersphinx warnings as the untouched tree; the changelog shows 0.7.0 and the migration guide its token table.
 
 ## I5b evidence
 - Classic unchanged: `Report(theme="classic")` is byte-identical to the 0.6.0 report built from the same figure and table; Markdown, LaTeX, text and Excel table output identical to 0.6.0. All 24 gallery files: classic equals 0.6.0 and the identity equals I5a (the round touches no figure).
@@ -256,4 +264,4 @@ On the Python 3.10 floor stack (numpy 1.23.0, pandas 1.5.0, scipy 1.9.0, statsmo
 - Statistical-layer observations from audit §9 remain: zero-event providers keep their flags (by design, D4); the score test sets z = 0 when the null variance is below 1e-14 (their funnel limits are infinite); the three-stage `LinAlgError` and `sigma_sensitivity` `ZeroDivisionError` on the audit's harness data were not investigated.
 
 ## Next step
-I6: docs, gallery, migration guide and changelog for release 0.7.0 (the table above).
+The identity redesign is complete. The maintainer tags 0.7.0 and publishes it.

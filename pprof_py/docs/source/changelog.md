@@ -9,9 +9,13 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
-## Unreleased
+## 0.7.0 (2026-10-02)
 
-The presentation layer takes its visual identity (design approved 2026-10-02). Statistical results are unchanged.
+The presentation layer takes its visual identity (design approved 2026-10-02): IBM Plex Sans, a copper and petrol
+status pair, a grid instead of a frame, the 95% acceptance region shaded in funnels, interval bars whose rounded ends
+sit exactly on their bounds, and tables and reports in the same style. Every value, flag, limit and interval is the
+same as in 0.6.0. `theme="classic"` reproduces 0.6.0 figures byte for byte, and 0.6.0 tables and reports apart
+from the package version they record. Upgrading is covered in {doc}`presentation/migration`.
 
 ### Changed
 - The `publication`, `notebook` and `report` themes set text in IBM Plex Sans, mark status with a copper and petrol
@@ -59,6 +63,12 @@ The presentation layer takes its visual identity (design approved 2026-10-02). S
   reports. Theme tokens `interval_bars`, `bar_marks`, `volume_half`, `highlight_wash`, `Lines.interval_bar` and
   `Lines.interval_bar_dense`; `accessibility_report()["bar_mark_contrast"]` (3:1 required).
 - `Theme.accessibility_report()["corridor_contrast"]`: status marks against the corridor fill (3:1 required).
+
+### Fixed
+- In print, a report figure taller than the page is scaled to fit, so a section heading is no longer left alone at
+  the foot of a page.
+- A test of the standalone `plot_caterpillar` saved to `/dev/null`, which Matplotlib turns into `/dev/null.png`; it
+  failed where `/dev` is not writable (unprivileged CI runners). It now saves to a temporary directory.
 
 ## 0.6.0 (2026-10-01)
 

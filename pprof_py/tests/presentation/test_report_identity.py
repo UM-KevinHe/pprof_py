@@ -38,6 +38,7 @@ def test_identity_page_and_tables_take_the_theme_tokens(parts):
     assert f".note{{background:{th.corridor}" in css and "border-left" not in css     # a tinted box, not a left rule
     assert 'class="pp-glyph pp-above"' in html and 'class="pp-interval"' in html      # identity markup, intervals kept
     assert "<script" not in html and '="http' not in html and "@font-face" not in html
+    assert "figure img{max-height:7.5in;width:auto;max-width:100%}" in css            # print: headings keep their figure
     assert html == _report(parts).to_html()                                            # deterministic
 
 

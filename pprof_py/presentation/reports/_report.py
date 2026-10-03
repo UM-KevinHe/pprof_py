@@ -49,7 +49,7 @@ def _page_css(t: Any) -> str:
             ".table-wrap{overflow-x:auto;margin:22px 0}\n"
             f"footer{{color:{t.muted};font-size:13px;border-top:1px solid {t.grid_color};margin-top:44px;padding-top:10px}}\n"
             "@media print{main{max-width:none;padding:0}figure,.table-wrap{break-inside:avoid}details{display:none}\n"
-            "h2{break-after:avoid}}")
+            "h2{break-after:avoid}figure img{max-height:7.5in;width:auto;max-width:100%}}")
 
 
 def _font_faces(family: str) -> str:

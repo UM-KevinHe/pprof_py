@@ -15,8 +15,8 @@ project = 'pprof_py'
 copyright = '2025, Kevin He'
 author = 'Kevin He'
 
-release = '0.6.0'
-version = '0.6'
+release = '0.7.0'
+version = '0.7'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
