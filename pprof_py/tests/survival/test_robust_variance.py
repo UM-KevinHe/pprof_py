@@ -140,7 +140,7 @@ def test_no_robust_no_cluster_leaves_covariance_naive():
     X, start, stop, event, _ = _synthetic(n=100, p=2)
     m = CoxPH().fit(X, duration=stop, event=event)
     np.testing.assert_array_equal(m.covariance_, m.naive_covariance_)
-    assert m.n_clusters_ == m.n_obs_
+    assert m.n_clusters_ == 0          # documented: 0 when not robust (reference/coxph.md)
 
 
 def test_coef_unaffected_by_robust_or_cluster_choice():
