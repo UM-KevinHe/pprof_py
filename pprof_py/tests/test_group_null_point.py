@@ -56,7 +56,7 @@ def test_penalty_factor_is_inert_under_the_pure_group_lasso(name):
     a, b = fits
     assert a.lambda_max_ == b.lambda_max_
     assert np.array_equal(a.coef_path_, b.coef_path_)
-    assert b.coef_path_[0][1] == 0.0                      # the pf = 0 column is not fitted at the null point
+    assert abs(b.coef_path_[0][1]) < 1e-12               # the pf = 0 column is not fitted at the null point (exact 0.0 is BLAS-dependent)
 
 
 def test_lambda_max_with_a_zero_multiplier_group():
