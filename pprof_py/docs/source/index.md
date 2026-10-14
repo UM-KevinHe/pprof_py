@@ -108,6 +108,8 @@ presentation/index
 :maxdepth: 2
 :caption: Validation and R Compatibility
 
+validation/index
+validation/logistic_fixed_effect
 survival/R_COMPATIBILITY
 survival/VALIDATION_REPORT
 survival/ARCHITECTURE
