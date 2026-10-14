@@ -44,6 +44,8 @@ def ladder():
     for s in rep["summary"]:
         if s["value"] and s["tolerance"] not in (None, "=1") and "degenerate" not in s["quantity"]:
             lab = s["quantity"].split(" (")[0].replace("test ", "").replace(": p-value max|diff|", " p")
+            lab = {"beta": "β", "gamma": "γ", "indirect ratio": "ind. ratio", "indirect rate": "ind. rate", "direct ratio": "dir. ratio",
+                   "direct rate": "dir. rate", "wald p": "Wald p", "score p": "score p", "poibin_exact p": "exact p"}.get(lab, lab)
             rows.append(("Live report", lab, s["value"]))
     groups = list(dict.fromkeys(r[0] for r in rows))
     fig, ax = plt.subplots(figsize=(8.2, 0.42 * len(groups) + 1.3))
@@ -59,12 +61,11 @@ def ladder():
         for _, lab, v in items:
             x = np.log10(v)
             ax.scatter([x], [y], s=34, color=fam[g], edgecolor="white", lw=1.2, zorder=3)
-            if x - last > .55:
+            if x - last > .95:          # room for a label on the same side as the previous one
                 flip = False
-            elif x - last > .25:
+            elif x - last > .45:        # close: alternate above / below
                 flip = not flip
-            else:
-                last = x
+            else:                       # too close: dot only (the interactive version has the tooltip)
                 continue
             ax.text(x, y + (-.42 if flip else .22), lab, ha="center", va="center", fontsize=7.5, color=MUTED, zorder=4)
             last = x
