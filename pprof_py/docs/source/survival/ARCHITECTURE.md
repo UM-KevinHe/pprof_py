@@ -8,6 +8,8 @@
 
 ```
 CoxPH (models/survival/coxph.py)                              <- user-facing, ProviderModel conventions, pandas in/out
+    (mixes in measures/survival/coxph.py and inference/survival/provider_tests.py -- see
+     "Standardized measures, provider tests, frailty and time-varying coefficients" below)
     |
 validate_fit_inputs (data/survival_validation.py)             <- pandas/mixed input -> plain numpy, with clear errors
     |
@@ -189,7 +191,7 @@ penalty math (algorithms/survival/penalty.py)
     |── rescale_penalty_factors (sum to p, matching glmnet)
     |── soft_threshold, elastic_net_penalty_value
     |
-deviance (statistics/deviance.py)
+deviance (utils/deviance.py)
     |── saturated_log_likelihood (glmnet's coxnet.deviance formula)
     |── cox_deviance, deviance_ratio (for dev.ratio path reporting)
     |── cross-validation grouped deviance (Verweij & Van Houwelingen 1993)
@@ -281,6 +283,30 @@ empirical-null layer (`pprof_py.inference.empirical_null`: one
 settings of their R counterparts. This sits entirely downstream of
 fitted model outputs — it never touches the likelihood engine.
 
+## Standardized measures, provider tests, frailty and time-varying coefficients
+
+`CoxPH` is assembled from two mixins on top of `ProviderModel`
+(`class CoxPH(CoxPHMeasuresMixin, CoxPHInferenceMixin, ProviderModel)`), so
+its provider-profiling methods live outside `models/survival/coxph.py`. Two
+further estimators reuse the engine for a shared frailty and for
+time-varying coefficients:
+
+```
+CoxPH (models/survival/coxph.py)
+    |── calculate_standardized_measures (measures/survival/coxph.py::CoxPHMeasuresMixin)
+    |     indirect and direct SMR/SHR per provider from the fitted eta and Breslow baselines
+    |── test, funnel_limits (inference/survival/provider_tests.py::CoxPHInferenceMixin)
+    |     each provider's indirect ratio against 1; null model and decision rule from inference/decision.py
+
+FrailtyCoxPH (models/survival/frailty_coxph.py)
+    |── shared Gamma frailty by EM: each M-step is an ordinary weighted CoxPH fit;
+    |     posterior frailty moments and the theta update in algorithms/survival/frailty.py
+
+TimeVaryingCoxPH (models/survival/time_varying_coxph.py)
+    |── beta_j * x_j * g_j(t), with g_j evaluated at the event time
+    |     (algorithms/survival/time_varying.py::time_varying_cox_partial_likelihood), driven by newton_raphson
+```
+
 ## Group lasso, provider-penalized and discrete-time estimators
 
 Added after Phase 4; each is a thin layer over an existing engine.
@@ -322,8 +348,6 @@ against `GroupLassoCoxPH` with the provider dummies as unpenalized columns; the 
 
 ## Module notes for maintainers
 
-- `algorithms/survival/cox_likelihood.py` and `algorithms/survival/partial_likelihood.py` are byte-identical. `CoxPH` and
-  `algorithms/survival/__init__.py` import `cox_likelihood`; treat it as canonical and `partial_likelihood` as a redundant copy.
 - The elastic-net Cox solver lives in `algorithms/survival/coordinate_descent.py` (with `algorithms/survival/penalty.py`); the
   group-lasso solver is one copy for every family, in `algorithms/coordinate_descent.py`, as are the within-group
   orthogonalization helpers in `algorithms/penalty.py`.

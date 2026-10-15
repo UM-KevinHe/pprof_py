@@ -565,7 +565,7 @@ fresh, larger synthetic data (400 subjects) row-for-row against R's
 actual `finegray()` output, plus the fitted Fine-Gray coefficients and
 SEs.
 
-**Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. The committed Phase-4 comparison tests also compare this package's default Breslow ties with R's default Efron, and `FineGrayPH`'s robust SE with R's model-based `se(coef)` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
+**Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. `test_phase4_r_comparison.py` fits with `ties="efron"` on both sides and compares `FineGrayPH`'s standard errors with R's `robust se` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
 
 ## 22. Robust/sandwich (cluster-robust) variance
 
@@ -635,5 +635,5 @@ plus fitted coefficients and SEs on the merged dataset).
 - **Fine–Gray with left truncation** does not reproduce R's IPCW weights (Section 21, status note).
 - **`fit_intercept=True`** fits, but every `predict_*` method then raises `ValueError`.
 - **No convergence warning:** check `converged_` (Sections 10–13).
-- **Group lasso, provider-penalized and discrete-time estimators** have no R reference implementation in the test suite; they are covered by internal tests only.
+- **Provider-penalized Cox and the discrete-time estimators** have no R reference implementation in the test suite: `ProviderPenalizedCoxPH` is checked against `GroupLassoCoxPH` with the provider dummies as unpenalized columns, and the discrete-time estimators by internal tests only. `GroupLassoCoxPH` itself is checked against `grplasso::Strat.cox` (`pprof_py/tests/survival/test_cox_group_paths.py`, reference data in `pprof_py/tests/data/cox_group_lasso/`).
 - **Default ties differ from R** for every estimator (Breslow here, Efron in R); set them explicitly when comparing.

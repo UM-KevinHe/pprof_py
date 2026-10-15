@@ -4,14 +4,18 @@
 ```{note}
 This report is a snapshot of the run described below (2026-09-20, commit `4e98f58`). The failures it records have since been
 addressed: the full test suite at the current branch head has a single failure, `test_setup_logger`, which is environmental
-(a container without `tzdata`).
+(a container without `tzdata`). Since that run the stepwise-selection datasets have been committed (so the selector
+comparison runs on a fresh clone), `test_phase4_r_comparison.py` fits with `ties="efron"` on both sides and compares
+`FineGrayPH`'s standard errors with R's `robust se`, and R-reference tests for `GroupLassoCoxPH` and
+`CoxPH.calculate_standardized_measures` have been added; the tables below keep the numbers of that run, and the current
+state is recorded in the {ref}`validation overview <validation_overview>`.
 
 This report covers the survival family. The logistic fixed-effect family has its own
 {ref}`validation report <validation_logistic_fe>`, and the {ref}`validation overview <validation_overview>` places
 every family's evidence side by side.
 ```
 
-Regenerated on 2026-09-20 from a fresh clone (commit `4e98f58`, version 0.4.0) against real R output: R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8, on Python 3.12.3 with NumPy 1.26.4, pandas 3.0.6, scikit-learn 1.9.1, SciPy 1.17.1 and numba 0.59.1. The reference data and R results were produced by the scripts in `pprof_py/r_reference/`; run the three `generate_*.py` scripts, then the `run_*.R` scripts, from that directory (the committed `data/` and `results/` are their output).
+Regenerated on 2026-09-20 from a fresh clone (commit `4e98f58`, version 0.4.0) against real R output: R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8, on Python 3.12.3 with NumPy 1.26.4, pandas 3.0.6, scikit-learn 1.9.1, SciPy 1.17.1 and numba 0.59.1. The reference data and R results were produced by the scripts in `pprof_py/r_reference/`; run the three `generate_*.py` scripts, then the `run_*.R` scripts, from that directory (the committed `data/` and `results/` are their output, except `selector_test_data.csv` and `selector_strata_data.csv`, which are committed without a generator script).
 
 The numbers below come from that run. Last-digit differences from earlier reports are expected: they depend on the platform's BLAS and on R's build.
 
@@ -21,7 +25,7 @@ The numbers below come from that run. Last-digit differences from earlier report
 |---|---|
 | Phase 1–2 — `CoxPH` vs `coxph()` (`test_r_comparison.py`) | **55 of 55 checks pass** |
 | Phase 3 — penalized regression vs `glmnet` (`test_penalized_r_comparison.py`) | all tests pass |
-| Phase 3 — variable selection vs `step()` (`test_selector_r_comparison.py`) | **not reproducible** — the datasets it reads have no generator in the repository |
+| Phase 3 — variable selection vs `step()` (`test_selector_r_comparison.py`) | **not reproducible in this run** — the datasets it reads were not in the repository; they have since been committed (see below) |
 | Phase 4 — cause-specific hazards, robust variance, `tmerge` | pass when both sides use the same tie method |
 | Phase 4 — Fine–Gray | right-censored agrees with R; **left-truncated does not** |
 | Whole `pprof_py/tests/survival` directory | 227 tests: 200 passed, 26 failed, 1 skipped (at the time of this run) |
@@ -130,13 +134,13 @@ Tolerances: coefficient paths absolute 1e-4 (5e-4 for strata/truncation), λ rel
 
 `test_penalized_self_consistency.py` additionally verifies that the penalized path at λ → 0 converges to the unpenalized `CoxPH` solution for both Breslow and Efron ties — the only coverage for Efron-tie penalization, since glmnet implements Breslow only.
 
-## Phase 3: variable selection (`test_selector_r_comparison.py`) — not reproducible
+## Phase 3: variable selection (`test_selector_r_comparison.py`) — not reproducible in this run
 
-`CoxPHSelector` was reported to match R's `extractAIC()`-driven stepwise search step by step (forward, backward, both; AIC and BIC with `k = log(n_events)`; forced variables; strata + offset + weights). Those results cannot be regenerated from the repository: `run_selection.R` and the tests read `selector_test_data.csv` and `selector_strata_data.csv`, and no script in `pprof_py/r_reference/` writes them. On a fresh clone ten of the selector tests fail with `FileNotFoundError`. Until a generator is added, treat the selector's R agreement as reported, not reproduced.
+`CoxPHSelector` was reported to match R's `extractAIC()`-driven stepwise search step by step (forward, backward, both; AIC and BIC with `k = log(n_events)`; forced variables; strata + offset + weights). In this run those results could not be regenerated: `run_selection.R` and the tests read `selector_test_data.csv` and `selector_strata_data.csv`, which were not in the repository, and ten of the selector tests failed with `FileNotFoundError`. Both files have since been committed in `pprof_py/r_reference/data/` (and `run_selection.R`'s outputs in `results/`), so the module runs on a fresh clone and passes at the current branch head; they remain committed artefacts, since no `generate_*.py` script writes them.
 
 ## Phase 4: competing risks, robust variance, time-dependent covariates
 
-Fresh-run status with **the same tie method (Efron) on both sides**. The committed tests fit with this package's default (Breslow) while the R scripts use `coxph()`'s default (Efron); run as committed, the cause-specific and robust checks disagree with R by ~3e-3 for that reason alone.
+Fresh-run status with **the same tie method (Efron) on both sides**. `test_phase4_r_comparison.py` now constructs every estimator with `ties="efron"`, matching the R scripts (at the time of this run it used this package's default, Breslow, and the cause-specific and robust checks disagreed with R by ~3e-3 for that reason alone).
 
 | Check | Tolerance | Status |
 |---|---|---|
@@ -145,7 +149,7 @@ Fresh-run status with **the same tie method (Efron) on both sides**. The committ
 | Fine–Gray IPCW weights `fgwt` — `cr_simple` (checked outside the committed tests) | — | PASS (max difference 6.7e-16) |
 | Fine–Gray IPCW weights — `cr_truncated` (checked outside the committed tests) | — | **FAIL** — 842 of 3,469 rows differ, by up to 0.445 |
 | Fine–Gray fit coefficients — `cr_simple` | 1e-5 | PASS (0.63353294, −0.42879805, identical to R) |
-| Fine–Gray fit SE — `cr_simple` | 1e-3 | committed test **fails** because it compares the robust SE with R's model-based `se(coef)`; against R's `robust se` it agrees to 6 digits (0.083041, 0.088158) |
+| Fine–Gray fit SE — `cr_simple` | 1e-3 | PASS against R's `robust se`, to 6 digits (0.083041, 0.088158); the committed test now compares `FineGrayPH.standard_errors_` with `se_robust` (at the time of this run it compared with the model-based `se(coef)` and failed) |
 | Fine–Gray fit coefficients — `cr_truncated` | 1e-5 | **FAIL** — 0.37006611, −0.49444791 here vs 0.36671541, −0.49339411 in R |
 | Robust + strata + truncation: coefficients, robust SE, naive SE | 1e-5 / 1e-3 / 1e-5 | PASS |
 | `tmerge`: `tstart`, `tstop`, death indicator row-for-row; fitted coefficient and SE | 1e-6 / 1e-9 / 1e-5 | PASS |
@@ -158,4 +162,6 @@ Fresh-run status with **the same tie method (Efron) on both sides**. The committ
 
 Every check above compares this package's output with real R output on shared synthetic datasets built to contain the features that make these models hard to get exactly right: ties from coarse time granularity, staggered entry, unbalanced provider-sized strata, non-trivial weights, correlated predictors, competing events and clustered observations.
 
-It does **not** cover: exact ties (not implemented); real CMS claims data; group lasso, provider-penalized and discrete-time estimators (no R reference — internal tests only); the reported production-scale runs (not re-run); or `FineGrayPH` on left-truncated data (currently disagrees with R).
+It does **not** cover: exact ties (not implemented); real CMS claims data; provider-penalized Cox (checked against `GroupLassoCoxPH` with provider dummies, not against R) and the discrete-time estimators (internal tests only); the reported production-scale runs (not re-run); or `FineGrayPH` on left-truncated data (currently disagrees with R).
+
+Two R-reference tests added after this run are not in the tables above: `GroupLassoCoxPH` against `grplasso::Strat.cox` (`pprof_py/tests/survival/test_cox_group_paths.py`: the whole coefficient path, maximum absolute difference below 1e-8; reference data in `pprof_py/tests/data/cox_group_lasso/`), and `CoxPH.calculate_standardized_measures` against R's `basehaz()` of the stratified stage-1 and offset-only stage-2 fits (`pprof_py/tests/survival/test_cox_standardized_measures.py`: relative 1e-10; reference data in `pprof_py/tests/data/cox_smr/`).
