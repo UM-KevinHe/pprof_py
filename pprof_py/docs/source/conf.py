@@ -63,10 +63,18 @@ exclude_patterns = ['presentation/_gallery_items.md', 'presentation/_figures/*']
 
 html_theme = 'shibuya'
 html_static_path = ['_static']
+html_css_files = ['custom.css']  # reading-experience adjustments on top of the theme
 html_theme_options = {
     'globaltoc_expand_depth': 1,
     'toctree_titles_only': True,
+    'color_mode': 'auto',          # follow the system, with the light/dark toggle in the header
     'nav_links': [
+        {'title': 'Start here', 'children': [
+            {'title': 'Linear models', 'url': 'linear/00_start_here'},
+            {'title': 'Logistic models', 'url': 'logistic/00_start_here'},
+            {'title': 'Survival analysis', 'url': 'survival/00_start_here'},
+            {'title': 'Presentation', 'url': 'presentation/index'},
+        ]},
         {'title': 'GitHub', 'url': 'https://github.com/UM-KevinHe/pprof_py'},
     ],
 }

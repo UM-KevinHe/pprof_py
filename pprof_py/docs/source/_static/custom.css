@@ -1,4 +1,159 @@
-/* pprof_py custom Sphinx styles.
- * Add project-specific overrides here.
- * This file is loaded by conf.py via html_static_path.
+/* pprof_py documentation: reading-experience adjustments for the Shibuya theme.
+ *
+ * Colours and fonts come from the theme's own tokens (--sy-*, --yue-*), so the
+ * rules below follow the light/dark toggle. Loaded after shibuya.css via
+ * html_css_files in conf.py.
  */
+
+/* -- Measure and rhythm for long pages ------------------------------------ */
+
+.yue {
+  font-size: 1.0625rem;      /* 17px: a little larger than the theme default */
+  line-height: 1.75;
+}
+
+@media (min-width: 1280px) {
+  /* Cap the text column on wide screens; the theme otherwise lets it grow
+     to the container width, which gives lines of 100+ characters. */
+  .sy-main {
+    max-width: 50rem;
+  }
+}
+
+.yue h2 {
+  margin-top: 2.25em;
+}
+
+.yue h3 {
+  margin-top: 1.75em;
+}
+
+/* -- Code ------------------------------------------------------------------ */
+
+.yue .highlight > pre {
+  line-height: 1.6;
+  tab-size: 4;
+}
+
+.yue pre {
+  overscroll-behavior-x: contain;
+}
+
+/* -- Tables ---------------------------------------------------------------- */
+
+/* Wide tables scroll inside their box instead of overflowing the column;
+   long tables also scroll vertically, with the header row kept in view. */
+.yue .table-wrapper {
+  overflow: auto;
+  max-height: 80vh;
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.yue .table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* The theme's header colour is translucent; an opaque base keeps rows
+     from showing through while the header is pinned. */
+  background-color: var(--sy-c-background);
+  background-image: linear-gradient(var(--yue-c-th-background), var(--yue-c-th-background));
+  box-shadow: inset 0 -1px 0 var(--yue-c-th-border);
+}
+
+.yue table {
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.yue thead th,
+.yue tbody td {
+  padding: 0.55rem 0.7rem;
+  vertical-align: top;
+}
+
+.yue td code,
+.yue th code {
+  white-space: nowrap;
+}
+
+.yue table > caption {
+  caption-side: bottom;
+  text-align: left;
+  font-size: 0.875em;
+  color: var(--yue-c-caption);
+  padding-top: 0.5rem;
+}
+
+/* -- Admonitions and math -------------------------------------------------- */
+
+.yue .admonition {
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.yue .admonition ul,
+.yue .admonition ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+.yue .admonition li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.yue .math-wrapper {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.1rem 0;   /* room for tall fraction bars at the box edges */
+}
+
+/* -- Figures --------------------------------------------------------------- */
+
+/* The figures are SVGs drawn on a white background. Put each on a light card
+   with padding and a hairline border so that in dark mode it reads as a
+   framed figure rather than a bare white rectangle; the dark-mode filter dims
+   the whole card (image and padding alike) to reduce glare. */
+.yue p > img:only-child,
+.yue figure img {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 1.75rem auto;
+  padding: 0.75rem 1rem;
+  background-color: #fff;
+  border: 1px solid var(--sy-c-border);
+  border-radius: 8px;
+}
+
+html.dark .yue p > img:only-child,
+html.dark .yue figure img {
+  border-color: var(--gray-a7);
+  filter: brightness(0.9);
+}
+
+.yue figure {
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.yue figure img {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.yue figcaption,
+.yue figure .caption {
+  font-size: 0.875em;
+  line-height: 1.5;
+  color: var(--yue-c-caption);
+  text-align: center;
+}
+
+.yue figcaption .caption-number,
+.yue figure .caption-number {
+  font-weight: 600;
+  margin-right: 0.25em;
+}
