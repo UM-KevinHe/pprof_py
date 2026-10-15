@@ -32,6 +32,29 @@ pip install .
 Requires `numpy`, `pandas`, `scipy`, and `numba`
 (optional, for JIT-compiled survival kernels).
 
+## Where to start
+
+| I want to… | Go to |
+|---|---|
+| fit a model | [Model Architecture](model_architecture.md) for the three families and the shared `fit()` / `test()` conventions, then the start page of the family you need: [linear](linear/00_start_here.md), [logistic](logistic/00_start_here.md) or [survival](survival/00_start_here.md) |
+| test providers against a reference | [Inference for Provider Effects](inference_provider_effects_theory.md) for the tests, the method list in [Reference: measures, tests, intervals and plots](reference/measures_tests_plots.md), and [Empirical Null Calibration](empirical_null_theory.md) when many providers are tested at once |
+| produce standardized measures | [Direct vs Indirect Standardization](direct_vs_indirect_standardization.md), [Inference for Standardized Measures](inference_standardized_measures_theory.md), and the SMR/SHR chapter of the survival guide ([Chapter 4](survival/04_indirect_standardization_smr_shr.md)) |
+| make a funnel plot or a report | [Presentation](presentation/index.md): the gallery of displays, funnel limits, tables and HTML reports; the [plotting guide](reference/plotting_guide.md) for the model plotting methods |
+| check how the package was validated | [R compatibility notes](survival/R_COMPATIBILITY.md) and the [validation report](survival/VALIDATION_REPORT.md); each penalized chapter ends with its own comparison against R |
+| look up an API | [API Reference](api.md) for signatures and docstrings; the *Reference* section for argument and attribute lists by family |
+
+## How the documentation is organized
+
+- **Package Overview** — what provider profiling is, how the models are organized, and the changelog.
+- **Core Concepts** — the theory shared by every family: standardization, fixed versus random effects, empirical null calibration, reliability, and inference for covariates, provider effects and standardized measures.
+- **Statistical Models — Linear / Logistic** — one chapter per model class, each with the method, a running example and the R counterpart.
+- **Survival Analysis** — a chaptered guide from survival data to penalized and discrete-time Cox models.
+- **Presentation** — figures, tables and reports built from fitted results.
+- **Validation and R Compatibility** — what was checked against R, how, and what is known to differ.
+- **Reference** — argument and attribute lists, data preparation, diagnostics and the plotting guide.
+- **Tutorials** — end-to-end worked analyses for the linear and logistic profiling models.
+- **API Reference** — the docstrings of every public class and function.
+
 ```{toctree}
 :maxdepth: 2
 :caption: Package Overview
@@ -58,6 +81,7 @@ inference_standardized_measures_theory
 :maxdepth: 2
 :caption: Statistical Models — Linear
 
+linear/00_start_here
 linear/linear_fixed_effect_model
 linear/linear_random_effect_model
 linear/penalized_linear
@@ -68,6 +92,7 @@ linear/group_lasso_linear
 :maxdepth: 2
 :caption: Statistical Models — Logistic
 
+logistic/00_start_here
 logistic/logistic_fixed_effect_model
 logistic/logistic_random_effect_model
 logistic/penalized_logistic
