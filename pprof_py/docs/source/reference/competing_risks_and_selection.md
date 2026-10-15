@@ -101,4 +101,4 @@ Criteria, also importable as `pprof_py.selection.aic(model)` / `bic(model)`: `AI
 `BIC = -2·loglik + log(n_events)·p` — the penalty uses the number of **events**, as R's `step()` does through `nobs.coxph`.
 
 **Validation status.** The R comparison tests exist, but the datasets they read (`selector_test_data.csv`,
-`selector_strata_data.csv`) have no generator anywhere in the repository, so those tests cannot run on a fresh clone.
+`selector_strata_data.csv`) are committed under `r_reference/data/` (the R side is `r_reference/run_selection.R`), so those tests run on a fresh clone; there is no Python generator for them.

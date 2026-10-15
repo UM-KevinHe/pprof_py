@@ -21,4 +21,4 @@ theme_export_accessibility
 migration
 ```
 
-The worked examples and the migration table are on {doc}`../reference/presentation`.
+The worked examples are on {doc}`../reference/presentation`; the migration table is on {doc}`migration`.

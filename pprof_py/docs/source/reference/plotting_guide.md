@@ -2,9 +2,9 @@
 # Plotting: Caterpillar and Funnel Plots
 
 ```{note}
-The model plot methods now delegate to the presentation layer (the funnel and interval plots of
-`pprof_py.presentation`); some keywords described below no longer have an effect and warn until 0.7.0. See
-{ref}`presentation-guide` for the displays and the migration table.
+Both functions draw through the presentation layer (the funnel and interval plots of
+`pprof_py.presentation`) and return a `FigureResult`; their styling keywords were removed in 0.7.0. See
+{ref}`presentation-guide` for the displays and {doc}`../presentation/migration` for the migration table.
 ```
 
 Two chart types cover most provider-profiling visualization needs:
@@ -51,26 +51,24 @@ results = pd.DataFrame({
 plot_caterpillar(
     results, estimate_col="estimate", ci_lower_col="lower",
     ci_upper_col="upper", group_col="provider", flag_col="flag",
-    sort_by_estimate=True, refline_value=1.0,
+    refline_value=1.0,
 )
 ```
 
-Sorts providers by `estimate_col` (`sort_by_estimate=True`, the
-default) and draws each with its `ci_lower_col`/`ci_upper_col`
-interval; `flag_col`, if given, color-codes points by significance
+Sorts providers by `estimate_col` and draws each with its
+`ci_lower_col`/`ci_upper_col` interval (the defaults are `ci_lower` and
+`ci_upper`, the columns `test()` returns; both are required);
+`flag_col`, if given, color-codes points by significance
 (matching the `flag` convention every `.test()` method returns: `1`
 above the reference, `-1` below, `0` not significant, and `NA` for a
 provider the test could not evaluate).
 `refline_value` draws a reference line (default `0.0` — the
 right choice for a log-scale effect like `gamma_`; pass `1.0` instead
-for a ratio measure like an SRR/SMR). Dozens of further keyword
-arguments (`figure_size`, `point_color_default`, `orientation`,
-`errorbar_alpha`, and more) control styling without changing the
-plot's structure — the function signature groups them clearly by
-purpose (point styling, reference line, typography, grid); check it
-directly for the full list rather than this page enumerating every
-one. `save_path=` writes the figure to a file; the function returns
-`None`.
+for a ratio measure like an SRR/SMR). `plot_title=` sets the title;
+the styling keywords, `sort_by_estimate` and `orientation` were removed
+in 0.7.0 (see {doc}`../presentation/migration`). The function returns a
+`FigureResult`; `save_path=` or `result.save(path)` writes the figure to
+a file.
 
 ## `plot_funnel`: estimates against precision, with control limits
 
@@ -90,7 +88,8 @@ fig, ax = plot_funnel(results, limits_df, estimate_col="estimate",
 ```
 
 `plot_funnel` is not exported at the `pprof_py` package root; import it
-from `pprof_py.plotting`. It returns the figure and axes. `limits_df`
+from `pprof_py.plotting`. It returns a `FigureResult`, which still
+unpacks as `fig, ax`. `limits_df`
 needs the columns `precision`, `control_lower`, `control_upper` and
 `alpha`, one set of curves per `alpha`.
 

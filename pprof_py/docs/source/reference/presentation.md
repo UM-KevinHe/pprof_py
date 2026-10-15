@@ -1,10 +1,9 @@
 (presentation-guide)=
-# Presentation layer (preview)
+# Presentation layer
 
 `pprof_py.presentation` turns a provider test into figures and tables that cannot contradict it. A
 {class}`~pprof_py.presentation.ProviderProfile` holds one test's estimates, intervals, flags, denominators and
-settings; the funnel plot, the interval plot and the provider table read it and show its provenance. The namespace is
-provisional until the presentation layer is complete.
+settings; the funnel plot, the interval plot and the provider table read it and show its provenance.
 
 * Every estimate, interval, flag and control limit comes from the test itself (funnel limits from
   {func}`~pprof_py.inference.funnel_limits`), so a provider lies outside its limits, and its interval excludes the

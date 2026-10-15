@@ -217,7 +217,7 @@ modeling machinery differs:
   ($\text{Gamma}$, log-Normal, etc.), analogous to the linear/logistic
   RE model. This yields shrinkage estimates for facility effects —
   small facilities are pulled toward the population mean. `FrailtyCoxPH`
-  fits a shared Gamma frailty by EM (see the [API reference](api)); the
+  fits a shared Gamma frailty by EM (see the {doc}`API reference <api>`); the
   provider-penalized models (`ProviderPenalizedCoxPH`,
   `ProviderPenalizedDiscreteSurvival`) achieve a similar effect via
   penalization of provider intercepts.
