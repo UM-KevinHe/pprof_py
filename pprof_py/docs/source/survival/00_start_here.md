@@ -140,6 +140,10 @@ you never have to look far to find where a column came from.
 | 8 | Penalized Regression | Ridge, LASSO, and elastic net for Cox models: what regularization is for, and cross-validated tuning |
 | 9 | Variable Selection | Automated stepwise variable selection as an alternative (or complement) to penalization |
 | 10 | Complete Case Study | Putting it all together: a single, comprehensive worked analysis from raw data to a final facility profiling report |
+| 11 | Group Lasso for Cox Models | Penalizing groups of coefficients (dummy-coded categories, panels) together, with `GroupLassoCoxPH` and cross-validation |
+| 12 | Provider-Penalized Cox Models | The one-stage alternative to Chapter 4: provider effects and penalized covariates estimated jointly with `ProviderPenalizedCoxPH` |
+| 13 | Discrete-Time Survival Models | Survival in discrete periods as a sequence of binary outcomes, with `DiscreteSurvival` and cross-validation |
+| 14 | Provider-Penalized Discrete-Time Survival Models | Provider effects in the discrete-time model, with `ProviderPenalizedDiscreteSurvival` |
 
 If you only read one chapter beyond the basics, make it Chapter 4 — it
 is both the historical reason this package exists and the clearest
@@ -174,10 +178,10 @@ death = cohort["death"]
 patient_id = cohort["patient_id"]
 ```
 
-This tutorial teaches `CoxPH`, penalized Cox, competing risks and selection.
-The remaining estimators (group lasso, provider-penalized Cox, discrete-time
-survival), the full argument and attribute lists, the data-preparation helpers
-and the validation tools are covered in the **Survival Analysis — Reference**
-pages (start with `survival/reference/coxph`).
+This tutorial teaches `CoxPH`, penalized Cox, competing risks and selection
+(Chapters 1-10); Chapters 11-14 cover group lasso, provider-penalized Cox and
+discrete-time survival. The full argument and attribute lists, the
+data-preparation helpers and the validation tools are covered in the
+**Reference** pages (start with the [CoxPH reference](../reference/coxph)).
 
 Onward to Chapter 1.

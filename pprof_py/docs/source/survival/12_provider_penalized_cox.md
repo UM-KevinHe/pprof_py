@@ -31,7 +31,9 @@ use — and its $\beta$-update step calls `fit_single_lambda`/
 with KKT stationarity checking and step-halving that Chapter 1
 describes for the logistic and linear families, with $\gamma$ folded
 in as an **offset** rather than a special case the solver needs to
-know about:
+know about (`penalty_type='group_lasso'` with `groups=` as in Chapter
+11 takes the group route; the provider effects stay unpenalized either
+way):
 
 $$
 \eta_{ij} = \gamma_{k(ij)} + \mathbf{x}_{ij}^\top\beta, \qquad
@@ -55,8 +57,9 @@ Each lambda alternates, up to `provider_max_iter` times (default
 3. **Check joint convergence**: both the largest single-facility
    $\gamma$ change (against `provider_tol`, default `1e-6`) *and* the
    relative $\beta$ change (against `outer_tol`, default `1e-7`,
-   consistent with every other Cox penalized-path class in this
-   guide) must clear their thresholds. `converged_path_` is
+   looser than the `1e-9` of `PenalizedCoxPH` and `GroupLassoCoxPH`
+   because the $\beta$ solver is re-run inside the outer provider
+   loop) must clear their thresholds. `converged_path_` is
    explicitly the AND of both conditions, not just the $\beta$ solver's
    own flag.
 
