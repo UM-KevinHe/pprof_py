@@ -11,9 +11,8 @@ kinds of evidence, kept separate because they answer different questions.
 | **Real-data parity** inside the CMS data environment | Do the Python and R pipelines produce the same facility flags on production data under production settings? | summarised below and in {doc}`logistic_fixed_effect`; the survival family in {doc}`../survival/VALIDATION_REPORT` |
 
 A live comparison traces every number to a version, a commit, a data hash and a call; real-data parity covers the case
-mix, the extreme providers and the empirical-null grouping that synthetic data cannot. The PPPW case below shows why both
-are needed: the live comparison established that the fits were identical, which confined the real-data discrepancy to the
-variance definition used by the test.
+mix, the extreme providers and the empirical-null grouping that synthetic data cannot. Together they also localise any difference: when the fits agree live, a real-data
+difference can only come from a setting of the test, as the variance note below illustrates.
 
 ## Precision at a glance
 
@@ -52,13 +51,12 @@ differs between the two pipelines; the two SFR differences are borderline cases 
 ```
 
 ```{note}
-**A regression that was a definition, not a bug.** Re-running PPPW on 0.7.0 first gave 7,105 / 7,408 matching flags.
-Version 0.7.0 redefined `variance="robust"` in `test_standardized()` as the full sandwich of the joint (γ, β) fit at the
-average case mix and kept the earlier form, (1/I<sub>j</sub>)² × meat with β treated as known, as
-`variance="robust_fixed_beta"`. The production R code computes the earlier form, so a comparison must request
-`robust_fixed_beta` (together with `null_model=FixedNull(sd=1.81)`, `transform="logit"`, `critical=1.96`,
-`interval="scale_only"`). With that, PPPW and AOH return to 100% flag agreement. Which definition production should
-adopt is a statistical decision; see {ref}`the changelog <changelog>` (0.7.0) for the reasoning behind the new default.
+**Matching R's variance definition.** Two robust standard errors are available for the provider tests.
+`variance="robust"` (the default since 0.7.0) is the full sandwich of the joint (γ, β) fit at the average case mix;
+`variance="robust_fixed_beta"` treats β as known, which is the form computed by the production R code. A comparison
+with R output must therefore request `robust_fixed_beta` (for PPPW together with `null_model=FixedNull(sd=1.81)`,
+`transform="logit"`, `critical=1.96` and `interval="scale_only"`); the flag agreement above was obtained with those
+settings. The reasoning behind the new default is in {ref}`the changelog <changelog>` (0.7.0).
 ```
 
 ## Coverage

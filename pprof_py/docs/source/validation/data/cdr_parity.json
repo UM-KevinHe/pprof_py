@@ -28,7 +28,7 @@
    "flags_agree": 7408,
    "flags_total": 7408,
    "status": "pass",
-   "note": "Regression to 95.9% on v0.7.0 was caused by variance='robust' (full sandwich) instead of R's form variance='robust_fixed_beta'; resolved 2026-10-14."
+   "note": "Flags compared with variance='robust_fixed_beta' (the form computed by the production R code), FixedNull(sd=1.81), logit transform, critical 1.96."
   },
   {
    "measure": "SFR",
@@ -54,7 +54,7 @@
    "flags_agree": 7458,
    "flags_total": 7458,
    "status": "pass",
-   "note": "R output rounded to 3 decimals; z difference fell from 0.429 to 0.120 after switching to robust_fixed_beta."
+   "note": "R output rounded to 3 decimals; compared with variance='robust_fixed_beta'."
   },
   {
    "measure": "SRR",
@@ -131,7 +131,7 @@
    "runtime_s": 1150,
    "peak_rss_gb": 0.508,
    "status": "wip",
-   "note": "Flag comparison pending; gamma SE column must switch from robust_var_case_mix to robust_var_fixed_beta (same root cause as PPPW)."
+   "note": "Flag comparison pending; the gamma SE column must be the fixed-beta robust variance to match R."
   }
  ],
  "synthetic_tests": {

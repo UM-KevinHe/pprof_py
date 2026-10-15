@@ -106,8 +106,8 @@ component by component; the flags were compared last.
 
 The SFR empirical null cannot be requested through `test_standardized()` alone, because the R pipeline includes 331
 sub-cutoff facilities when it forms the size groups; the comparison uses `calculate_standardized_measures()` with the
-empirical null fitted on externally supplied group labels. The 0.7.0 robust-variance redefinition and the
-`robust_fixed_beta` option are described in {ref}`the overview <validation_overview>`.
+empirical null fitted on externally supplied group labels. The two robust-variance options and the settings
+that match R are described in {ref}`the overview <validation_overview>`.
 
 ## What is and isn't covered
 
