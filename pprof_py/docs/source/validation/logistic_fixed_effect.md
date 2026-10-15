@@ -8,7 +8,7 @@ with which tolerances, with which result, and what is not covered.
 ```{note}
 Snapshot of the runs listed below (2026-10-13 and 2026-10-14, `pprof_py` 0.7.0, commit `9320766`). Live comparisons
 use the CRAN release of `pprof` (1.0.3, identical to the main branch of `UM-KevinHe/pprof`), compiled from source on
-macOS 27.2 (Apple M1 Max) with R 4.5.0 and Python 3.13 / NumPy 2.2.6. Real-data parity was run inside the CMS data
+macOS (Apple Silicon, arm64) with R 4.5.0 and Python 3.13 / NumPy 2.2.6. Real-data parity was run inside the CMS data
 environment against the production R/C++ code; only aggregate numbers are reported.
 ```
 
@@ -68,7 +68,7 @@ widen. The score and exact tests do not depend on that standard error and agree 
 ## Scaling benchmark
 
 Four synthetic datasets (5 covariates, provider effects ~ N(−0.7, 0.6), about 35% events) from 20,000 rows / 200
-providers to 1,000,000 rows / 7,000 providers, the size of a CMS measure. Single machine (Apple M1 Max, 64 GB); R
+providers to 1,000,000 rows / 7,000 providers, the size of a CMS measure. Single machine (Apple Silicon, 64 GB RAM); R
 single-threaded.
 
 | Rows / providers | Fit R | Fit Python | Exact test R | Exact test Python | Wald + score |

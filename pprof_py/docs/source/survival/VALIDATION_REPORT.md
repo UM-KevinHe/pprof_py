@@ -5,6 +5,10 @@
 This report is a snapshot of the run described below (2026-09-20, commit `4e98f58`). The failures it records have since been
 addressed: the full test suite at the current branch head has a single failure, `test_setup_logger`, which is environmental
 (a container without `tzdata`).
+
+This report covers the survival family. The logistic fixed-effect family has its own
+{ref}`validation report <validation_logistic_fe>`, and the {ref}`validation overview <validation_overview>` places
+every family's evidence side by side.
 ```
 
 Regenerated on 2026-09-20 from a fresh clone (commit `4e98f58`, version 0.4.0) against real R output: R 4.3.3, `survival` 3.5.8, `glmnet` 4.1.8, on Python 3.12.3 with NumPy 1.26.4, pandas 3.0.6, scikit-learn 1.9.1, SciPy 1.17.1 and numba 0.59.1. The reference data and R results were produced by the scripts in `pprof_py/r_reference/`; run the three `generate_*.py` scripts, then the `run_*.R` scripts, from that directory (the committed `data/` and `results/` are their output).

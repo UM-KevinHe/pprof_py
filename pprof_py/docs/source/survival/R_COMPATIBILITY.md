@@ -8,6 +8,11 @@ against actual R output during development (`pprof_py/r_reference/run_all.R` +
 several of R's own docs are silent or misleading on exactly these points,
 which is precisely why they needed checking.
 
+```{note}
+These notes cover the survival family only. For how the whole package is validated against R, including the logistic
+fixed-effect family and the real-data runs, start from the {ref}`validation overview <validation_overview>`.
+```
+
 This file answers a fixed checklist of R-compatibility questions (the numbering follows that checklist, so a few numbers group several questions). Each entry states the convention, why it matters, and how
 it was verified.
 
