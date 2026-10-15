@@ -673,7 +673,7 @@ results and breaks the `test()` and `test_standardized()` APIs.
 
 - `test()` in every family takes `providers` first, then keyword-only
   `test_method` (where a family offers several), `reference` (was
-  `reference`), `null_model`, `alternative`, `level`, `critical`, `interval`,
+  `null`), `null_model`, `alternative`, `level`, `critical`, `interval`,
   `n_resample` and `seed`. In the logistic fixed-effect model
   `n_resample` and `seed` replace `n_bootstrap` and `random_state`; in
   the random- and mixed-effect models `seed` now defaults to `None`
