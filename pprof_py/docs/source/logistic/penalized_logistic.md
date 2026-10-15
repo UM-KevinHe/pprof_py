@@ -1,6 +1,15 @@
 (penalized_logistic)=
 # Penalized Logistic Regression: Elastic Net for Binary Outcomes
 
+```{admonition} On this page
+:class: note
+- Sections 1–2: why many risk adjusters and few events call for penalization, and the binomial deviance the penalty is added to.
+- Sections 3–5: the running 30-day mortality cohort, fitting the lambda path with `PenalizedLogistic`, and why each step takes several iterations.
+- Sections 6–7: standardization and the intercept, and choosing a lambda with `PenalizedLogisticCV` (`lambda_min_` versus `lambda_1se_`).
+- Sections 8–10: ridge, LASSO and elastic net on the same cohort, coefficients as odds ratios, and predictions for new patients.
+- Sections 11–12: agreement with R's `glmnet`, and where to go next.
+```
+
 In R, the model in this chapter is `glmnet(family="binomial")` for
 `PenalizedLogistic`, and `cv.glmnet(family="binomial")` for
 `PenalizedLogisticCV`. If you've used `glmnet` before, the lambda path,

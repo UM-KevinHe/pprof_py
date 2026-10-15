@@ -1,6 +1,15 @@
 (empirical_null_theory)=
 # Empirical Null Calibration of Provider Tests
 
+```{admonition} On this page
+:class: note
+- Sections 2–3: what a provider statistic is, what the theoretical N(0, 1) null assumes, and why those assumptions fail when many providers are profiled together.
+- Sections 4–6: the two-groups model behind the empirical null, how `pprof_py` estimates its centre and scale, and what to do with grouped nulls and small groups.
+- Section 7: how flags, p-values and confidence intervals change under the calibrated null.
+- Sections 8–10: related approaches, operating characteristics by simulation, and the limits of the method.
+- Section 11: where the estimation lives in the package; the [guide](empirical-null-guide) covers the API.
+```
+
 This page is the theoretical reference for calibrating provider tests with an empirical null: why the
 theoretical N(0, 1) null misstates the false-flag rate when providers are profiled together, what the
 empirical null estimates, how `pprof_py` estimates it, and what the resulting tests and intervals do and
