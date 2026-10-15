@@ -3,6 +3,9 @@
 ```{include} ../_figures/funnel.md
 ```
 
+```{include} ../_figures/funnel_interactive.md
+```
+
 **Answers:** Which providers depart from the reference by more than the test's sampling variation explains, and how does that depend on precision?
 
 ## Spec sheet

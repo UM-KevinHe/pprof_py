@@ -3,6 +3,9 @@
 ```{include} ../_figures/caterpillar.md
 ```
 
+```{include} ../_figures/caterpillar_interactive.md
+```
+
 **Answers:** How large and how uncertain are the provider estimates, relative to the reference?
 
 ## Spec sheet

@@ -3,6 +3,9 @@
 ```{include} ../_figures/observed_expected.md
 ```
 
+```{include} ../_figures/observed_expected_interactive.md
+```
+
 **Answers:** Where do observed counts depart from expected, and at what volume?
 
 ## Spec sheet
