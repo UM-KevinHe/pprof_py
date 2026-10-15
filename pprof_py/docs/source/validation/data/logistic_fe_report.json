@@ -1,7 +1,7 @@
 {
  "provenance": {
   "generated_at": "2026-10-13T17:11:33-04:00",
-  "machine": "macOS 27.2 (Golden Gate) \u00b7 MacBook Pro, Apple M1 Max, 10-core CPU / 32-core GPU, 64 GB RAM (arm64)",
+  "machine": "macOS 27.2 \u00b7 Apple Silicon (arm64), 64 GB RAM",
   "python": "3.13.9",
   "numpy": "2.2.6",
   "pandas": "2.3.3",
