@@ -291,7 +291,7 @@ its own Section 8: shrinkage is the mechanism, not a side effect, so
 `PenalizedLinear` reports no standard errors for its coefficients and
 none should be inferred from them.
 
-## 10. Comparison with R's `glmnet`
+## 9. Comparison with R's `glmnet`
 
 Everything Section 11 of the logistic chapter says about matching
 `glmnet` 4.1-8's conventions — the lambda sequence, standardization
@@ -304,7 +304,7 @@ numerically-verified comparison against live R output — no
 `R_COMPATIBILITY.md`-style validation report exists yet for either
 penalized GLM family.
 
-## 11. What's next
+## 10. What's next
 
 A group lasso chapter extends this chapter's element-wise penalty to
 handle groups of related covariates as a single structured unit — the

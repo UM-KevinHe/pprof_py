@@ -229,7 +229,7 @@ This is equivalent to shifting the confidence interval for $\hat{\gamma}_i$ by $
 The `LinearFixedEffectModel` class provides several plotting methods:
 
 - **Caterpillar Plot (`plot_provider_effects`):** Displays $\hat{\gamma}_i$ with the intervals of their own test. (`plot_standardized_measures` was removed in 0.7.0: no standardized-measure test exists for linear models.)
-- **Funnel Plot (`plot_funnel`):** Plots the standardized difference ($\hat{\gamma}_i - \gamma_0$) against group size $n_i$ (as a measure of precision). Control limits are drawn based on the overall model's residual standard deviation $\hat{\sigma}$, typically as $target \pm z_{1-\alpha/2} \times \frac{\hat{\sigma}}{\sqrt{n_i}}$, forming a funnel shape.
+- **Funnel Plot (`plot_funnel`):** Plots the standardized difference ($\hat{\gamma}_i - \gamma_0$) against group size $n_i$ (as a measure of precision). Control limits invert the same Student-t test as `test()`: $\gamma_0 \pm t_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\gamma}_i)$, drawn as smooth curves in the precision $1/\widehat{\text{se}}(\hat{\gamma}_i)^2$, forming a funnel shape.
 - **Coefficient Forest Plot (`plot_coefficient_forest`):** Displays estimates and confidence intervals for covariate coefficients $\hat{\boldsymbol{\beta}}$.
 - **Residual Plots (`plot_residuals`, `plot_qq`):** Standard diagnostic plots for model assessment, such as residuals vs. fitted values and Q-Q plot of residuals.
 
@@ -424,7 +424,7 @@ Standardized differences (both indirect and direct) simplify to $\hat{\gamma}_i 
 
 ## 5. Conclusion
 
-The linear fixed effects model, as implemented in the `LinearFixedEffectModel`` class, offers a valuable tool for provider profiling with quantitative outcomes. It provides robust risk adjustment through provider-specific intercepts and facilitates performance comparisons using standardized differences. The implementation includes efficient estimation, standard inference procedures based on t-tests, and methods for calculating confidence intervals. When combined with appropriate visualization tools, it enables researchers and analysts to effectively evaluate and compare provider performance while accounting for patient case mix.
+The linear fixed effects model, as implemented in the `LinearFixedEffectModel` class, offers a valuable tool for provider profiling with quantitative outcomes. It provides robust risk adjustment through provider-specific intercepts and facilitates performance comparisons using standardized differences. The implementation includes efficient estimation, standard inference procedures based on t-tests, and methods for calculating confidence intervals. When combined with appropriate visualization tools, it enables researchers and analysts to effectively evaluate and compare provider performance while accounting for patient case mix.
 
 ## References
 
