@@ -69,11 +69,22 @@ html_theme_options = {
     'toctree_titles_only': True,
     'color_mode': 'auto',          # follow the system, with the light/dark toggle in the header
     'nav_links': [
-        {'title': 'Start here', 'children': [
-            {'title': 'Linear models', 'url': 'linear/00_start_here'},
-            {'title': 'Logistic models', 'url': 'logistic/00_start_here'},
-            {'title': 'Survival analysis', 'url': 'survival/00_start_here'},
+        # One entry per documentation section, in the order of the sidebar.
+        {'title': 'Guides', 'children': [
+            {'title': 'Introduction', 'url': 'introduction'},
+            {'title': 'Model architecture', 'url': 'model_architecture'},
+            {'title': 'Core concepts', 'url': 'direct_vs_indirect_standardization'},
+            {'title': 'Linear: start here', 'url': 'linear/00_start_here'},
+            {'title': 'Logistic: start here', 'url': 'logistic/00_start_here'},
+            {'title': 'Survival: start here', 'url': 'survival/00_start_here'},
             {'title': 'Presentation', 'url': 'presentation/index'},
+            # TODO: switch to 'validation/index' once the validation branch is
+            # merged; the page does not exist here yet, and nav_links are not
+            # checked by the build, so a missing target gives a dead link
+            # rather than a warning.
+            {'title': 'Validation overview', 'url': 'survival/VALIDATION_REPORT'},
+            {'title': 'Reference', 'url': 'reference/linear_models'},
+            {'title': 'API reference', 'url': 'api'},
         ]},
         {'title': 'GitHub', 'url': 'https://github.com/UM-KevinHe/pprof_py'},
     ],
