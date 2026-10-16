@@ -55,7 +55,7 @@ bibtex_reference_style = 'author_year'
 
 autosummary_generate = False  # no page uses autosummary directives
 
-# templates_path = ['_templates']  # No custom templates yet
+templates_path = ['_templates']   # footer override: copyright line only
 exclude_patterns = ['presentation/_gallery_items.md', 'presentation/_figures/*']  # generated includes
 
 # -- Options for HTML output -------------------------------------------------
