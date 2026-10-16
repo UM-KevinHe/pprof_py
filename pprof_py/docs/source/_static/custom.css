@@ -86,14 +86,8 @@ html[data-font-size="large"] {
   overflow-wrap: break-word;
 }
 
-/* Prose keeps a comfortable measure (about 95 characters per line) whatever
-   the column width; tables, figures, code blocks and display math may use
-   the full column. Image paragraphs, and anything inside a figure or table,
-   are left alone so the figures keep their full width. Set in em so the
-   measure follows the A- / A+ text-size steps. */
-.yue :is(p, ul, ol, blockquote, .admonition):not(figure *, .figure *, table *, .table-wrapper *, p:has(> img, > a > img)) {
-  max-width: 44em;
-}
+/* Text, tables, figures and code all use the full width of the content column. */
+
 
 .yue h2 {
   margin-top: 2.25em;
