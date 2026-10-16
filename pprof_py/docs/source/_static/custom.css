@@ -116,27 +116,19 @@ html[data-font-size="large"] {
 
 /* -- Tables ---------------------------------------------------------------- */
 
-/* Wide tables scroll inside their box instead of overflowing the column;
-   long tables also scroll vertically, with the header row kept in view. */
+/* Tables use the whole column and wrap inside their cells instead of
+   scrolling: long identifiers in code break at any point, so a "Method"
+   column cannot squeeze the "Returns" column out of view. The theme's
+   horizontal scroll on .table-wrapper stays only as a last resort for a
+   table that cannot fit even after wrapping. */
 .yue .table-wrapper {
-  overflow: auto;
-  max-height: 80vh;
   margin-top: 1.75rem;
   margin-bottom: 1.75rem;
 }
 
-.yue .table-wrapper thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  /* The theme's header colour is translucent; an opaque base keeps rows
-     from showing through while the header is pinned. */
-  background-color: var(--sy-c-background);
-  background-image: linear-gradient(var(--yue-c-th-background), var(--yue-c-th-background));
-  box-shadow: inset 0 -1px 0 var(--yue-c-th-border);
-}
-
 .yue table {
+  width: 100%;
+  table-layout: auto;
   font-size: 0.9em;
   line-height: 1.6;
 }
@@ -145,11 +137,13 @@ html[data-font-size="large"] {
 .yue tbody td {
   padding: 0.55rem 0.7rem;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .yue td code,
 .yue th code {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .yue table > caption {
