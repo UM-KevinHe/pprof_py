@@ -17,9 +17,25 @@ difference can only come from a setting of the test, as the variance note below 
 ## Precision at a glance
 
 <div class="pprof-interactive">
-<iframe src="../_static/validation/ladder.html" title="Precision ladder, interactive" loading="lazy" width="100%" height="720" style="border:0"></iframe>
+<iframe src="../_static/validation/ladder.html" title="Precision ladder, interactive" loading="lazy" width="100%" height="720" style="display:block;width:100%;border:1px solid rgba(128,128,128,0.35);border-radius:4px;background:transparent"></iframe>
 <p class="pprof-interactive-links"><a href="../_static/validation/ladder.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a dot for its value and source; a table view lists every value.</p>
 </div>
+<script>
+(function () {
+  if (window.pprofInteractiveHeights) return;             /* one listener per page */
+  window.pprofInteractiveHeights = true;
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (e.origin !== window.location.origin || !d || d.pprof !== 'height') return;   /* same origin only */
+    var frames = document.querySelectorAll('.pprof-interactive iframe');
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow !== e.source) continue;                             /* only our own frame */
+      var px = Math.ceil(Number(d.height));
+      if (px >= 200 && px <= 20000) frames[i].style.height = px + 'px';
+    }
+  });
+})();
+</script>
 
 <details>
 <summary>Static figure (SVG, as used in print)</summary>

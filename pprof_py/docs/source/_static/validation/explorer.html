@@ -276,6 +276,23 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
   root.appendChild(h('h1', { text: D.title })); if (D.question) root.appendChild(h('p', { class: 'question', text: D.question }));
   if (D.kind === 'ladder') ladder(D.cdr, D.report); else if (D.kind === 'explorer') explorer(D.report);
   if (D.caption) root.appendChild(h('p', { class: 'caption', html: D.caption }));
+
+  /* ---------- height handshake: tell the embedding page (same origin) how tall this document is ---------- */
+  var heightPending = false;
+  function sendHeight() {
+    heightPending = false;
+    try {
+      if (!window.parent || window.parent === window) return;
+      var height = Math.ceil(document.body.getBoundingClientRect().height);   // the body, so the frame can shrink again
+      window.parent.postMessage({ pprof: 'height', display: D.kind, height: height }, '/');   // '/' = this origin only
+    } catch (e) { /* no parent or a cross-origin one: the frame keeps its fixed height */ }
+  }
+  function postHeight() { if (heightPending) return; heightPending = true; if (window.requestAnimationFrame) window.requestAnimationFrame(sendHeight); else setTimeout(sendHeight, 16); }
+  postHeight();
+  window.addEventListener('load', postHeight);
+  window.addEventListener('resize', postHeight);
+  if (window.ResizeObserver) new ResizeObserver(postHeight).observe(document.body);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(postHeight, function () {});
 })();
 
 </script>
