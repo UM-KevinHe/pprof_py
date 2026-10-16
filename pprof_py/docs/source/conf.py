@@ -83,7 +83,7 @@ html_theme_options = {
             {'title': 'Presentation', 'url': 'presentation/index'},
             # TODO: switch to 'validation/index' once the validation branch is
             # merged (nav_links are not checked by the build).
-            {'title': 'Validation', 'url': 'survival/VALIDATION_REPORT'},
+            {'title': 'Validation', 'url': 'validation/index'},
             {'title': 'Reference', 'url': 'reference/linear_models'},
             {'title': 'Tutorials', 'url': 'linear/linear_fe_tutorial'},
             {'title': 'API reference', 'url': 'api'},
