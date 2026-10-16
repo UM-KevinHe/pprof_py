@@ -1,5 +1,5 @@
 (logistic_start)=
-# Logistic Models in `pprof_py`: Start Here
+# Logistic models in `pprof_py`: start here
 
 *Binary and binomial outcomes, from fixed effects to the three-stage model*
 
@@ -59,22 +59,22 @@ All ten are importable from the package root.
 
 ## Recommended reading order
 
-1. [Logistic Fixed Effect Modeling](logistic_fixed_effect_model.md) —
+1. [Logistic fixed-effect modeling](logistic_fixed_effect_model.md) —
    the model, its estimation, the standardized measures, the four tests
    and their intervals. The methods reference for the family.
-2. [Tutorial: Provider Profiling with Logistic Fixed Effects](logistic_fe_tutorial.md)
+2. The [provider profiling with logistic fixed effects](logistic_fe_tutorial.md) tutorial
    — the same workflow run end to end on a synthetic cohort.
-3. [Logistic Random Effect Modeling](logistic_random_effect_model.md)
+3. [Logistic random-effect modeling](logistic_random_effect_model.md)
    and its [tutorial](logistic_re_tutorial.md) — the GLMM, BLUPs and
    shrinkage.
-4. [The Three-Stage Logistic Model](logistic_three_stage_model.md) —
+4. [The three-stage logistic model](logistic_three_stage_model.md) —
    facility effects adjusted for hospitals; also the chapter for
    `LogisticFERandomClusterModel`.
-5. [Penalized Logistic Regression](penalized_logistic.md) — the lambda
+5. [Penalized logistic regression](penalized_logistic.md) — the lambda
    path and cross-validation, which the next two chapters and the
    penalized linear chapter assume.
-6. [Group Lasso Logistic Regression](group_lasso_logistic.md).
-7. [Provider-Penalized Logistic Regression](provider_penalized_logistic.md).
+6. [Group lasso logistic regression](group_lasso_logistic.md).
+7. [Provider-penalized logistic regression](provider_penalized_logistic.md).
 
 The concepts shared with the other families are in
 [Direct vs Indirect Standardization](../direct_vs_indirect_standardization.md),

@@ -1,5 +1,5 @@
 (linear_start)=
-# Linear Models in `pprof_py`: Start Here
+# Linear models in `pprof_py`: start here
 
 *Continuous outcomes, from fixed effects to penalized regression*
 
@@ -59,17 +59,17 @@ All five are importable from the package root.
 
 ## Recommended reading order
 
-1. [Linear Fixed Effect Modeling](linear_fixed_effect_model.md) — the
+1. [Linear fixed-effect modeling](linear_fixed_effect_model.md) — the
    model, within-group OLS, standardized differences, t-tests and
    confidence intervals. The methods reference for the family.
-2. [Tutorial: Linear Fixed Effect Model](linear_fe_tutorial.md) — the
+2. The [linear fixed-effect model tutorial](linear_fe_tutorial.md) — the
    same workflow run end to end on a synthetic 30-hospital cohort.
-3. [Linear Random Effect Modeling](linear_random_effect_model.md) and
+3. [Linear random-effect modeling](linear_random_effect_model.md) and
    its [tutorial](linear_re_tutorial.md) — REML, BLUPs and shrinkage.
-4. [Penalized Linear Regression](penalized_linear.md) — assumes the
+4. [Penalized linear regression](penalized_linear.md) — assumes the
    [penalized logistic chapter](../logistic/penalized_logistic.md),
    which introduces the lambda path and cross-validation.
-5. [Group Lasso Linear Regression](group_lasso_linear.md) — assumes the
+5. [Group lasso linear regression](group_lasso_linear.md) — assumes the
    [group lasso logistic chapter](../logistic/group_lasso_logistic.md).
 
 The argument and attribute lists are in {ref}`ll_ref_linear` and

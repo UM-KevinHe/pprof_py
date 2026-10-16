@@ -1,5 +1,5 @@
 (penalized_logistic)=
-# Penalized Logistic Regression: Elastic Net for Binary Outcomes
+# Penalized logistic regression: elastic net for binary outcomes
 
 ```{admonition} On this page
 :class: note
@@ -615,7 +615,7 @@ not as independently re-verified here.
 
 ## 12. What's next
 
-The next chapter, [Penalized Linear Regression](../linear/penalized_linear),
+The next chapter, [Penalized linear regression](../linear/penalized_linear),
 covers the same elastic net machinery for continuous outcomes — cost,
 length of stay — where the Gaussian likelihood's constant curvature
 simplifies the outer loop, and where one of this chapter's helper

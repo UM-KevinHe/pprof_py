@@ -1,6 +1,6 @@
 (linear_fixed_effect_model_stats)=
 
-# Linear Fixed Effect Modeling
+# Linear fixed-effect modeling
 
 ## 1. Introduction
 

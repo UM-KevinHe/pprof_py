@@ -1,6 +1,6 @@
 (logistic_three_stage_model)=
 (logistic_mixed_effect_model)=
-# The Three-Stage Logistic Model: Facility Effects Adjusted for Hospitals
+# The three-stage logistic model: facility effects adjusted for hospitals
 
 A dialysis facility's readmission ratio should not blame the facility for the hospitals its patients
 are discharged from. He et al. (2013), *"Evaluating Hospital Readmission Rates in Dialysis Facilities;

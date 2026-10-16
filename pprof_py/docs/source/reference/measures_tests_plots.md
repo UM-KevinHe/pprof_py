@@ -1,5 +1,5 @@
 (ll_ref_measures)=
-# Reference: standardized measures, provider tests, confidence intervals and plots
+# Standardized measures, provider tests, confidence intervals and plots
 
 The fixed-effect, random-effect and mixed-effect classes share a provider-profiling workflow: estimate provider effects → standardize them →
 test them against a null → build intervals → plot. The theory (direct versus indirect standardization) is in

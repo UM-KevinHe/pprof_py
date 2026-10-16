@@ -1,5 +1,5 @@
 (survival_ref_inference)=
-# Reference: inference utilities for survival models
+# Inference utilities for survival models
 
 Functions used after (or beneath) a fit. They take plain NumPy arrays, so a fitted `CoxPH` need not be involved.
 The four inputs shared by most of them come from `validate_fit_inputs`:

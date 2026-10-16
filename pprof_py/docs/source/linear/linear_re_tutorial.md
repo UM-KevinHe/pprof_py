@@ -1,5 +1,5 @@
 (linear_random_effect_tutorial)=
-# Tutorial: Linear Random Effect Model
+# Linear random-effect model
 
 ```{contents}
 :local:

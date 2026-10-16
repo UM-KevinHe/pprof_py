@@ -1,5 +1,5 @@
 (ll_ref_linear)=
-# Reference: linear fixed-effect and random-effect models
+# Linear fixed-effect and random-effect models
 
 Both estimators fit `y = Xβ + provider effect + ε`. The fixed-effect model estimates one free intercept γ per provider by least
 squares; the random-effect model treats provider intercepts as random draws (lme4-style, REML by default).

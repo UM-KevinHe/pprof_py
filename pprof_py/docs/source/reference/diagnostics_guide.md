@@ -1,5 +1,5 @@
 (diagnostics-guide)=
-# Pre-Fit Diagnostics and R Validation
+# Pre-fit diagnostics and R validation
 
 Two tools for checking work before and after fitting: `preflight_report`
 inspects your data *before* you call `fit()`, and `validate_against_r`

@@ -1,5 +1,5 @@
 (survival_ref_coxph)=
-# Reference: `CoxPH`
+# `CoxPH`
 
 `CoxPH` is the core estimator of the survival module: Cox proportional-hazards
 regression fit by Newton–Raphson on the (Breslow or Efron) partial likelihood, designed to

@@ -1,5 +1,5 @@
 (logistic_fixed_effect_tutorial)=
-# Tutorial: Provider Profiling with Logistic Fixed Effects
+# Provider profiling with logistic fixed effects
 
 This tutorial walks through a complete provider profiling analysis
 using `LogisticFixedEffectModel` — from generating a synthetic cohort,
@@ -19,7 +19,7 @@ By the end you will know how to:
   at a glance.
 
 The model we are fitting is the one described in detail on the
-[Logistic Fixed Effect Modeling](logistic_fixed_effect_model.md) reference
+[Logistic fixed-effect modeling](logistic_fixed_effect_model.md) reference
 page. Here we focus on *using* it rather than deriving it.
 
 ---

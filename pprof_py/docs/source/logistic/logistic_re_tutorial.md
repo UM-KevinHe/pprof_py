@@ -1,5 +1,5 @@
 (logistic_random_effect_tutorial)=
-# Tutorial: Provider Profiling with Logistic Random Effects
+# Provider profiling with logistic random effects
 
 This tutorial walks through a complete provider profiling analysis
 using `LogisticRandomEffectModel` — a Generalized Linear Mixed Model
@@ -21,7 +21,7 @@ By the end you will know how to:
 - produce caterpillar, funnel, and forest plots.
 
 The statistical methodology is described in full on the
-[Logistic Random Effect Modeling](logistic_random_effect_model_stats)
+[Logistic random-effect modeling](logistic_random_effect_model_stats)
 reference page.
 
 ---

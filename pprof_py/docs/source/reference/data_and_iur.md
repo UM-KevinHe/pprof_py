@@ -1,5 +1,5 @@
 (ll_ref_data)=
-# Reference: input validation, `DataPrep`, inter-unit reliability and utilities
+# Input validation, `DataPrep`, inter-unit reliability and utilities
 
 ```python
 import numpy as np

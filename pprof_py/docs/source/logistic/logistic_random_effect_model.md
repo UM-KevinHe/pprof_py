@@ -1,5 +1,5 @@
 (logistic_random_effect_model_stats)=
-# Logistic Random Effect Modeling
+# Logistic random-effect modeling
 
 ```{contents}
 :local:

@@ -1,5 +1,5 @@
 (linear_fixed_effect_tutorial)=
-# Tutorial: Linear Fixed Effect Model
+# Linear fixed-effect model
 
 ```{contents}
 :local:
