@@ -83,7 +83,7 @@ html[data-font-size="large"] {
 
 /* Long entries wrap inside the narrower column rather than overflow it. */
 .sy-rside ul.this-page-menu a {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* Prose keeps a comfortable measure (about 95 characters per line) whatever
@@ -118,9 +118,12 @@ html[data-font-size="large"] {
 
 /* Tables use the whole column and wrap inside their cells instead of
    scrolling: long identifiers in code break at any point, so a "Method"
-   column cannot squeeze the "Returns" column out of view. The theme's
-   horizontal scroll on .table-wrapper stays only as a last resort for a
-   table that cannot fit even after wrapping. */
+   column cannot squeeze the "Returns" column out of view. break-word (not
+   anywhere) so a column is never narrower than its longest word: short
+   columns such as "Parameter" or "Default" keep their words whole, and only
+   a token wider than its cell is broken. The theme's horizontal scroll on
+   .table-wrapper stays only as a last resort for a table that cannot fit
+   even after wrapping. */
 .yue .table-wrapper {
   margin-top: 1.75rem;
   margin-bottom: 1.75rem;
@@ -137,13 +140,13 @@ html[data-font-size="large"] {
 .yue tbody td {
   padding: 0.55rem 0.7rem;
   vertical-align: top;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .yue td code,
 .yue th code {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .yue table > caption {
