@@ -397,9 +397,9 @@ every downstream sum.
 
 ---
 
-# Phase 3: Penalized regression and variable selection
+## Phase 3: Penalized regression and variable selection
 
-## 18. Penalized Cox regression vs. glmnet 4.1-8
+### 18. Penalized Cox regression vs. glmnet 4.1-8
 
 The `PenalizedCoxPH` / `PenalizedCoxPHCV` estimators target R's
 `glmnet(family="cox")` / `cv.glmnet(family="cox")` (glmnet 4.1-8) as the
@@ -407,14 +407,14 @@ source of truth. Every convention below was verified against glmnet's
 actual R source (not the paper or vignette alone), with file/line
 references where the answer was non-obvious.
 
-### 18a. Naming conventions
+#### 18a. Naming conventions
 
 `alpha` is glmnet's elastic-net mixing parameter (0 = ridge, 1 = LASSO),
 NOT scikit-learn's `ElasticNet.alpha` (overall regularization strength).
 This package validates against R's `survival`/`glmnet`, so its penalized-
 regression vocabulary follows glmnet, not sklearn.
 
-### 18b. Standardization convention
+#### 18b. Standardization convention
 
 glmnet's Cox family scales each column by its weighted population standard
 deviation (denominator = `sum(weight)`, not `sum(weight) - 1`) and does
@@ -423,7 +423,7 @@ Cox path unconditionally sets `xm <- rep(0.0, nvars)` in `coxpath.R`.
 This is specific to the Cox model's lack of an intercept. Matched in
 `algorithms/survival/penalty.py::weighted_column_scale`.
 
-### 18c. The `c` scaling factor
+#### 18c. The `c` scaling factor
 
 glmnet normalizes the smooth (log-likelihood) part of the objective by
 `c = 1/sum(weight)`. Getting this wrong by a factor of 2 (an earlier
@@ -434,14 +434,14 @@ sum to 1 via `w <- w/sum(w)`, which is the convention `coxnet.deviance`
 is calibrated against. Matched in
 `algorithms/survival/coordinate_descent.py`.
 
-### 18d. Penalty factor rescaling
+#### 18d. Penalty factor rescaling
 
 Penalty factors are internally rescaled to sum to `p` (the number of
 predictors), matching glmnet's documented convention. Source: glmnet
 documentation + empirical verification. Matched in
 `algorithms/survival/penalty.py::rescale_penalty_factors`.
 
-### 18e. Lambda sequence generation
+#### 18e. Lambda sequence generation
 
 `lambda_max` (the smallest lambda at which all penalized coefficients are
 exactly zero) is derived from the gradient of the unpenalized objective
@@ -456,7 +456,7 @@ default behavior.
 — the auto-generated grid's first N points match glmnet's own
 un-forced path to ~1e-6.
 
-### 18f. Ridge at extreme lambda
+#### 18f. Ridge at extreme lambda
 
 One documented, investigated exception: at `alpha = 0` (pure ridge),
 the single largest lambda in the path produces coefficients ~1e-3 in
@@ -466,7 +466,7 @@ glmnet's extreme-edge value appears to be the outlier, not this
 package's. Every other point on the same ridge path (99/100) matches to
 ~1e-7. This is documented, not silently tolerated.
 
-### 18g. Cross-validation deviance
+#### 18g. Cross-validation deviance
 
 `PenalizedCoxPHCV` computes the Verweij & Van Houwelingen (1993) grouped
 deviance residual per fold, matching `cv.glmnet(family="cox",
@@ -480,7 +480,7 @@ time weight sums) is copied from glmnet's own `coxnet.deviance2`/
 — `cvm`, `lambda.min`, `lambda.1se`, and coefficients at `lambda.min`
 all match cv.glmnet with explicit shared fold assignments.
 
-### 18h. Efron ties under penalization
+#### 18h. Efron ties under penalization
 
 glmnet's Cox family only implements Breslow ties (confirmed by reading
 `R/coxnet.deviance.R` directly). Efron-tie penalized fits in this
@@ -489,7 +489,7 @@ with `lambda → 0` must converge to this package's own (R-validated)
 `CoxPH(ties="efron")` solution. See
 `pprof_py/tests/survival/test_penalized_self_consistency.py`.
 
-### 18i. Capability preservation under penalization
+#### 18i. Capability preservation under penalization
 
 Every Phase 1-2 feature (strata, offset, weights, left truncation,
 heavy ties) is tested under penalization on the exact same datasets
@@ -501,7 +501,7 @@ not regress any existing capability:
 `test_combined_strata_offset_weights_left_truncation`,
 `test_basic_heavy_ties`.
 
-## 19. Variable selection vs. R's step()/extractAIC()
+### 19. Variable selection vs. R's step()/extractAIC()
 
 `CoxPHSelector` matches R's `step()` on a `coxph` object for AIC and
 BIC criteria. The specific R convention this required verifying:
@@ -524,9 +524,9 @@ fully R-validated `CoxPH.p_values_`.
 
 ---
 
-# Phase 4: Competing risks, robust variance, time-dependent covariates
+## Phase 4: Competing risks, robust variance, time-dependent covariates
 
-## 20. Cause-specific hazards
+### 20. Cause-specific hazards
 
 `CauseSpecificCoxPH` fits one ordinary `CoxPH` per cause, recoding every
 other cause's events as censoring. No new statistics — each per-cause
@@ -536,7 +536,7 @@ fit is a standard `CoxPH` already validated in Phases 1-2.
 coefficients and SEs for both causes, on simple and left-truncated
 competing-risks data, against R's `coxph(Surv(..., event == k) ~ ...)`. R's `coxph` defaults to Efron ties and this package to Breslow, so the comparison must set `ties` the same on both sides.
 
-## 21. Fine-Gray subdistribution hazard
+### 21. Fine-Gray subdistribution hazard
 
 The Fine-Gray data transformation (`finegray_transform` in
 `algorithms/survival/finegray.py`) follows R's `survival::finegray()`
@@ -567,7 +567,7 @@ SEs.
 
 **Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. `test_phase4_r_comparison.py` fits with `ties="efron"` on both sides and compares `FineGrayPH`'s standard errors with R's `robust se` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
 
-## 22. Robust/sandwich (cluster-robust) variance
+### 22. Robust/sandwich (cluster-robust) variance
 
 The sandwich estimator follows `survival::coxph`:
 
@@ -594,7 +594,7 @@ confirm during development — it returned NaN), against R's
 validate against statsmodels.PHReg and lifelines on simpler
 configurations.
 
-## 23. Time-dependent covariates: tmerge()
+### 23. Time-dependent covariates: tmerge()
 
 `data/timedep.py` provides `tmerge()` and `build_skeleton()` for
 building (start, stop] counting-process datasets from a follow-up
