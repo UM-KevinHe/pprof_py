@@ -46,6 +46,14 @@ percentages, so their tolerance is 1e−4; p-values 1e−3; flags must be identi
 | Score test: flags / p-values | 100 / 100 identical; 9.2e−7 | identical / 1e−3 | agree |
 | Exact (Poisson-binomial) test: flags / p-values | 100 / 100 identical; 9.1e−7 | identical / 1e−3 | agree |
 
+<div class="pprof-interactive">
+<iframe src="../_static/validation/explorer.html" title="Per-provider explorer, interactive" loading="lazy" width="100%" height="1500" style="border:0"></iframe>
+<p class="pprof-interactive-links"><a href="../_static/validation/explorer.html" target="_blank" rel="noopener">Open in a new tab</a> · choose a quantity, hover providers, sort the linked table; Figure 3 is a Bland–Altman view.</p>
+</div>
+
+<details>
+<summary>Static figure (SVG, as used in print)</summary>
+
 ```{figure} ../_static/validation/logistic_fe_live.svg
 :alt: Left, provider effects from R against Python with the identity line; right, per-provider differences on a log scale against the tolerance
 :width: 100%
@@ -54,10 +62,6 @@ Left: γ̂ from R against γ̂ from Python for all 100 providers; the three zero
 off the identity line. Right: per-provider |R − Py| for six quantities on a log scale, with the tolerance in orange.
 ```
 
-<details class="pprof-interactive">
-<summary>Interactive version: choose a quantity, hover providers, sort the linked table, Bland–Altman view</summary>
-<iframe src="../_static/validation/explorer.html" title="Per-provider explorer, interactive" loading="lazy" width="100%" height="1500" style="border:0"></iframe>
-<p><a href="../_static/validation/explorer.html" target="_blank" rel="noopener">Open in a new tab</a></p>
 </details>
 
 **Zero-event providers.** A provider with no events (or only events) has a maximum-likelihood effect of −∞ (or +∞).

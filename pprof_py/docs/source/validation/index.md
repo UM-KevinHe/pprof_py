@@ -16,6 +16,14 @@ difference can only come from a setting of the test, as the variance note below 
 
 ## Precision at a glance
 
+<div class="pprof-interactive">
+<iframe src="../_static/validation/ladder.html" title="Precision ladder, interactive" loading="lazy" width="100%" height="720" style="border:0"></iframe>
+<p class="pprof-interactive-links"><a href="../_static/validation/ladder.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a dot for its value and source; a table view lists every value.</p>
+</div>
+
+<details>
+<summary>Static figure (SVG, as used in print)</summary>
+
 ```{figure} ../_static/validation/precision_ladder.svg
 :alt: Largest absolute difference between R and Python per measure and component, on a log axis with precision bands
 :width: 100%
@@ -25,10 +33,6 @@ the floating-point limit; 1e−10 to 1e−5 reflects library or operation-order 
 tolerance or rounding of the R output; above 1e−2 would call for investigation. Nothing sits in the last band.
 ```
 
-<details class="pprof-interactive">
-<summary>Interactive version: hover any dot for its value and source; the table view lists every value</summary>
-<iframe src="../_static/validation/ladder.html" title="Precision ladder, interactive" loading="lazy" width="100%" height="720" style="border:0"></iframe>
-<p><a href="../_static/validation/ladder.html" target="_blank" rel="noopener">Open in a new tab</a></p>
 </details>
 
 ## Real-data parity by measure
