@@ -111,15 +111,26 @@
 
 /* -- Figures --------------------------------------------------------------- */
 
-/* The figures are SVGs drawn on a white background. Put each on a light card
-   with padding and a hairline border so that in dark mode it reads as a
-   framed figure rather than a bare white rectangle; the dark-mode filter dims
-   the whole card (image and padding alike) to reduce glare. */
+/* The figures are SVGs drawn on a white background at different intrinsic
+   sizes (the funnel plot is 240pt square, the interval plot 496 x 358pt), so
+   left to themselves they would render at very different scales and the text
+   inside the small ones would be hard to read. Every content image therefore
+   spans the full width of the text column, centred, with its aspect ratio
+   kept; max-width stops it overflowing at narrow widths.
+
+   Each image sits on a light card with padding and a hairline border so that
+   in dark mode it reads as a framed figure rather than a bare white
+   rectangle; the dark-mode filter dims the whole card (image and padding
+   alike) to reduce glare. */
 .yue p > img:only-child,
-.yue figure img {
+.yue p > a > img:only-child,
+.yue figure img,
+.yue .figure img {
   display: block;
   box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
+  height: auto;
   margin: 1.75rem auto;
   padding: 0.75rem 1rem;
   background-color: #fff;
@@ -128,24 +139,29 @@
 }
 
 html.dark .yue p > img:only-child,
-html.dark .yue figure img {
+html.dark .yue p > a > img:only-child,
+html.dark .yue figure img,
+html.dark .yue .figure img {
   border-color: var(--gray-a7);
   filter: brightness(0.9);
 }
 
-.yue figure {
+.yue figure,
+.yue .figure {
   margin-top: 1.75rem;
   margin-bottom: 1.75rem;
   text-align: center;
 }
 
-.yue figure img {
+.yue figure img,
+.yue .figure img {
   margin-top: 0;
   margin-bottom: 0.75rem;
 }
 
 .yue figcaption,
-.yue figure .caption {
+.yue figure .caption,
+.yue .figure .caption {
   font-size: 0.875em;
   line-height: 1.5;
   color: var(--yue-c-caption);
@@ -153,7 +169,8 @@ html.dark .yue figure img {
 }
 
 .yue figcaption .caption-number,
-.yue figure .caption-number {
+.yue figure .caption-number,
+.yue .figure .caption-number {
   font-weight: 600;
   margin-right: 0.25em;
 }
