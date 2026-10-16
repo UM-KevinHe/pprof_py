@@ -80,3 +80,10 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
 .more-btn { margin: .6rem 0 0; font: inherit; font-size: .84rem; font-weight: 600; color: var(--py); background: var(--surface); border: 1px solid var(--py); border-radius: 999px; padding: .3rem .9rem; cursor: pointer; }
 .more-btn:hover { background: var(--py); color: var(--surface); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.chart .ln { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; } .chart .ln.py { stroke: var(--py); } .chart .ln.r { stroke: var(--r); } .chart .ln.dash { stroke-dasharray: 5 4; }
+.chart .draw { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: draw 1.4s cubic-bezier(.2,.7,.2,1) forwards; } @keyframes draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .chart .draw { animation: none; stroke-dashoffset: 0; } }
+.chart rect.bar { fill: var(--py); opacity: .9; cursor: pointer; } .chart rect.bar.zero { fill: var(--ok); } .chart rect.bar.exact { fill: var(--r); }
+.chart .barlab { fill: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.legend span.sq::before { border-radius: 2px; }

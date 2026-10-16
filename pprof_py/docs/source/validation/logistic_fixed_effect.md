@@ -104,6 +104,14 @@ single-threaded.
 | 500,000 / 3,500 | 1.67 s | 0.55 s | 1.69 s | 7.4 s | ≤ 0.06 s |
 | 1,000,000 / 7,000 | 2.58 s | 1.11 s | 3.38 s | 14.7 s | ≤ 0.10 s |
 
+<div class="pprof-interactive">
+<iframe src="../_static/validation/benchmark.html" title="Scaling benchmark, interactive" loading="lazy" width="100%" height="1050" style="display:block;width:100%;border:1px solid rgba(128,128,128,0.35);border-radius:4px;background:transparent"></iframe>
+<p class="pprof-interactive-links"><a href="../_static/validation/benchmark.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a point or a bar for the exact timing; the table below lists every number.</p>
+</div>
+
+<details>
+<summary>Static figure (SVG, as used in print)</summary>
+
 ```{figure} ../_static/validation/benchmark.svg
 :alt: Runtime of fit and exact test for R and Python against data size, both axes logarithmic
 :width: 85%
@@ -111,6 +119,8 @@ single-threaded.
 Runtime against data size. The fit scales linearly on both sides with Python about twice as fast; the exact
 Poisson-binomial provider test is the one step where Python is slower, by a factor of 4–7.
 ```
+
+</details>
 
 **Side finding: R's default tolerance and small providers.** In the benchmark β agrees to 1e−7 at every size, but the
 largest γ difference grows with the number of providers (0.005 at 1,000; 0.114 at 7,000), entirely in providers with

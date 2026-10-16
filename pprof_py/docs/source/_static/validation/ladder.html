@@ -88,6 +88,13 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
 .more-btn:hover { background: var(--py); color: var(--surface); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
+.chart .ln { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; } .chart .ln.py { stroke: var(--py); } .chart .ln.r { stroke: var(--r); } .chart .ln.dash { stroke-dasharray: 5 4; }
+.chart .draw { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: draw 1.4s cubic-bezier(.2,.7,.2,1) forwards; } @keyframes draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .chart .draw { animation: none; stroke-dashoffset: 0; } }
+.chart rect.bar { fill: var(--py); opacity: .9; cursor: pointer; } .chart rect.bar.zero { fill: var(--ok); } .chart rect.bar.exact { fill: var(--r); }
+.chart .barlab { fill: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.legend span.sq::before { border-radius: 2px; }
+
 </style>
 </head>
 <body>
@@ -273,8 +280,91 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
     redraw();
   }
 
+
+  /* ---------- benchmark: runtime against size (log-log), speed-up bars, table ---------- */
+  function fmtInt(v) { return Math.round(v).toLocaleString('en-US'); }
+  function benchmark(B) {
+    var figT = h('figure', { class: 'fig' }), figS = h('figure', { class: 'fig' }), wrap = h('div', { class: 'fig-wrap' }, [figT, figS]); root.appendChild(wrap); var tip = tooltip(wrap);
+    // runtime chart
+    (function () {
+      var W = 760, H = 380, m = { t: 16, r: 18, b: 46, l: 60 };
+      var series = [{ side: 'r', cls: 'ln r', label: 'Fit · R (C++)', get: function (r) { return r.r.fit; } }, { side: 'py', cls: 'ln py', label: 'Fit · Python (NumPy)', get: function (r) { return r.py.fit; } }, { side: 'r', cls: 'ln r dash', label: 'Exact test · R', get: function (r) { return r.r['test_exact.poisbinom']; } }, { side: 'py', cls: 'ln py dash', label: 'Exact test · Python', get: function (r) { return r.py.test_poibin_exact; } }];
+      var xs = B.map(function (r) { return Math.log10(r.rows); }), ys = []; series.forEach(function (sr) { B.forEach(function (r) { ys.push(Math.log10(Math.max(sr.get(r), 1e-3))); }); });
+      var xlo = Math.floor(Math.min.apply(null, xs) - .2), xhi = Math.ceil(Math.max.apply(null, xs) + .2), ylo = Math.floor(Math.min.apply(null, ys)), yhi = Math.ceil(Math.max.apply(null, ys));
+      function sx(v) { return m.l + (v - xlo) / (xhi - xlo) * (W - m.l - m.r); } function sy(v) { return H - m.b - (v - ylo) / (yhi - ylo) * (H - m.t - m.b); }
+      var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Runtime against data size, R and Python, both axes logarithmic' });
+      var grid = h('svg:g', { class: 'grid' }), axis = h('svg:g', { class: 'axis' });
+      for (var t = xlo; t <= xhi; t++) { grid.appendChild(h('svg:line', { x1: sx(t), x2: sx(t), y1: m.t, y2: H - m.b })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 16, 'text-anchor': 'middle', text: t === 6 ? '1M' : t === 5 ? '100k' : t === 4 ? '10k' : '1e' + t })); }
+      for (var u = ylo; u <= yhi; u++) { grid.appendChild(h('svg:line', { x1: m.l, x2: W - m.r, y1: sy(u), y2: sy(u) })); axis.appendChild(h('svg:text', { x: m.l - 8, y: sy(u) + 4, 'text-anchor': 'end', text: u >= 0 ? Math.pow(10, u) + ' s' : (Math.pow(10, u) * 1000) + ' ms' })); }
+      svg.appendChild(grid); svg.appendChild(axis);
+      svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle', text: 'rows (log scale)' })); svg.appendChild(h('svg:text', { class: 'label', transform: 'translate(14 ' + (m.t + H - m.b) / 2 + ') rotate(-90)', 'text-anchor': 'middle', text: 'seconds (log scale)' }));
+      series.forEach(function (sr) {
+        var pts = B.map(function (r) { return [sx(Math.log10(r.rows)), sy(Math.log10(Math.max(sr.get(r), 1e-3)))]; });
+        svg.appendChild(h('svg:path', { class: sr.cls + (reduced ? '' : ' draw'), d: pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ') }));
+        pts.forEach(function (p, i) { var c = h('svg:circle', { class: 'pt ' + sr.side, cx: p[0], cy: p[1] }); var hit = h('svg:circle', { class: 'hit', cx: p[0], cy: p[1] }); hit.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + sr.label + '</b><div class="row"><span>rows / providers</span><span>' + fmtInt(B[i].rows) + ' / ' + fmtInt(B[i].providers) + '</span></div><div class="row"><span>time</span><span>' + fix(sr.get(B[i]), 2) + ' s</span></div>'); }); hit.addEventListener('mouseleave', tip.hide); svg.appendChild(c); svg.appendChild(hit); });
+      });
+      figT.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Runtime against data size (both axes logarithmic)' }), h('span', { class: 'legend' }, [h('span', { class: 'r', text: 'R (C++)' }), h('span', { text: 'Python (NumPy)' }), h('span', { class: 'line', text: 'solid = fit, dashed = exact test' })])]));
+      figT.appendChild(svg); figT.appendChild(h('p', { class: 'caption', text: 'Hover a point for the exact timing. The fit scales linearly on both sides with Python about twice as fast; the exact Poisson-binomial provider test is the one step where Python is slower, by a factor of 4–7.' }));
+    })();
+    // speed-up bars
+    (function () {
+      var steps = [{ key: 'fit', label: 'fit', r: function (x) { return x.r.fit; }, p: function (x) { return x.py.fit; } }, { key: 'exact', label: 'exact test', r: function (x) { return x.r['test_exact.poisbinom']; }, p: function (x) { return x.py.test_poibin_exact; } }];
+      var W = 760, H = 300, m = { t: 20, r: 24, b: 56, l: 60 }, ratios = []; steps.forEach(function (st) { B.forEach(function (x) { ratios.push(st.r(x) / st.p(x)); }); });
+      var lo = Math.floor(Math.log10(Math.min.apply(null, ratios)) * 2) / 2 - .2, hi = Math.ceil(Math.log10(Math.max.apply(null, ratios)) * 2) / 2 + .2, n = B.length, gw = (W - m.l - m.r) / n, bw = Math.min(42, gw / 3);
+      function sy(v) { return H - m.b - (Math.log10(v) - lo) / (hi - lo) * (H - m.t - m.b); }
+      var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Speed-up of Python over R by step and data size' });
+      var grid = h('svg:g', { class: 'grid' }), axis = h('svg:g', { class: 'axis' });
+      [0.1, 0.2, 0.5, 1, 2, 5, 10].forEach(function (v) { if (Math.log10(v) < lo || Math.log10(v) > hi) return; grid.appendChild(h('svg:line', { x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v) })); axis.appendChild(h('svg:text', { x: m.l - 8, y: sy(v) + 4, 'text-anchor': 'end', text: v + '×' })); });
+      svg.appendChild(grid); svg.appendChild(axis);
+      svg.appendChild(h('svg:line', { class: 'identity', x1: m.l, x2: W - m.r, y1: sy(1), y2: sy(1) })); svg.appendChild(h('svg:text', { class: 'label', x: W - m.r, y: sy(1) - 6, 'text-anchor': 'end', text: 'equal speed' }));
+      B.forEach(function (x, i) {
+        var cx = m.l + gw * i + gw / 2;
+        axis.appendChild(h('svg:text', { x: cx, y: H - m.b + 18, 'text-anchor': 'middle', text: fmtInt(x.rows) + ' rows' })); axis.appendChild(h('svg:text', { x: cx, y: H - m.b + 32, 'text-anchor': 'middle', text: fmtInt(x.providers) + ' providers' }));
+        steps.forEach(function (st, j) {
+          var ratio = st.r(x) / st.p(x), bx = cx + (j - .5) * (bw + 6) - bw / 2, y0 = sy(1), y1 = sy(ratio);
+          var rect = h('svg:rect', { class: 'bar ' + st.key, x: bx, y: Math.min(y0, y1), width: bw, height: Math.abs(y1 - y0), rx: 3 });
+          rect.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + st.label + ' · ' + fmtInt(x.rows) + ' rows</b><div class="row"><span>R</span><span>' + fix(st.r(x), 2) + ' s</span></div><div class="row"><span>Python</span><span>' + fix(st.p(x), 2) + ' s</span></div><div class="row"><span>R ÷ Python</span><span>' + ratio.toFixed(2) + '×</span></div>'); }); rect.addEventListener('mouseleave', tip.hide);
+          svg.appendChild(rect); svg.appendChild(h('svg:text', { class: 'barlab', x: bx + bw / 2, y: ratio >= 1 ? y1 - 5 : y1 + 13, 'text-anchor': 'middle', text: ratio.toFixed(1) + '×' }));
+        });
+      });
+      figS.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Speed-up of Python over R (R time ÷ Python time, log scale)' }), h('span', { class: 'legend' }, [h('span', { class: 'sq', text: 'fit' }), h('span', { class: 'sq r', text: 'exact test' })])]));
+      figS.appendChild(svg); figS.appendChild(h('p', { class: 'caption', text: 'Bars above the line mean Python is faster.' }));
+    })();
+    // table
+    var tbl = h('table', { class: 'data' }, [h('caption', { text: 'Timings per step and size, with the agreement of the estimates between R and Python.' })]);
+    tbl.appendChild(h('thead', {}, [h('tr', {}, ['Rows', 'Providers', 'Events', 'Fit R', 'Fit Python', 'Exact test R', 'Exact test Python', 'Wald + score (both)', 'β max diff', 'γ max diff'].map(function (t) { return h('th', { class: 'num', scope: 'col', text: t }); }))]));
+    var tb = h('tbody'); B.forEach(function (r) { tb.appendChild(h('tr', {}, [h('td', { class: 'num', text: fmtInt(r.rows) }), h('td', { class: 'num', text: fmtInt(r.providers) }), h('td', { class: 'num', text: fmtInt(r.events) }), h('td', { class: 'num mono', text: fix(r.r.fit, 2) + ' s' }), h('td', { class: 'num mono', text: fix(r.py.fit, 2) + ' s' }), h('td', { class: 'num mono', text: fix(r.r['test_exact.poisbinom'], 2) + ' s' }), h('td', { class: 'num mono', text: fix(r.py.test_poibin_exact, 2) + ' s' }), h('td', { class: 'num mono', text: '≤ ' + fix(Math.max(r.r.test_wald, r.r.test_score, r.py.test_wald, r.py.test_score), 2) + ' s' }), h('td', { class: 'num mono', text: sci(r.agreement.beta_maxdiff) }), h('td', { class: 'num mono', text: sci(r.agreement.gamma_maxdiff) })])); });
+    tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
+  }
+
+  /* ---------- flags: providers classified differently, per measure ---------- */
+  function flags(C) {
+    var ms = C.measures.filter(function (m) { return m.flags_total; });
+    var W = 760, rowH = 34, m = { t: 10, r: 170, b: 36, l: 110 }, H = m.t + ms.length * rowH + m.b;
+    var maxMis = Math.max(5, Math.max.apply(null, ms.map(function (x) { return x.flags_total - x.flags_agree; })));
+    function sx(v) { return m.l + v / maxMis * (W - m.l - m.r); }
+    var fig = h('figure', { class: 'fig' }), wrap = h('div', { class: 'fig-wrap' }), tip = tooltip(wrap);
+    var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Providers whose flag differs between R and Python, per measure' });
+    var grid = h('svg:g', { class: 'grid' }), axis = h('svg:g', { class: 'axis' });
+    niceTicks(0, maxMis, 5).forEach(function (t) { grid.appendChild(h('svg:line', { x1: sx(t), x2: sx(t), y1: m.t, y2: H - m.b })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 16, 'text-anchor': 'middle', text: t })); });
+    svg.appendChild(grid); svg.appendChild(axis);
+    svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle', text: 'providers with a different flag (FY2027 production data)' }));
+    ms.forEach(function (x, i) {
+      var y = m.t + i * rowH + 7, mis = x.flags_total - x.flags_agree, w = Math.max(0, sx(mis) - sx(0));
+      svg.appendChild(h('svg:text', { class: 'rowlab', x: m.l - 10, y: y + 15, 'text-anchor': 'end', text: x.measure }));
+      var bar = h('svg:rect', { class: 'bar ' + (mis === 0 ? 'zero' : ''), x: sx(0), y: y, width: w, height: 20, rx: 3 });
+      bar.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + x.measure + '</b><div class="row"><span>flags agree</span><span>' + fmtInt(x.flags_agree) + ' / ' + fmtInt(x.flags_total) + '</span></div><div class="row"><span>differ</span><span>' + mis + '</span></div>' + (x.note ? '<div class="row"><span>' + x.note + '</span></div>' : '')); }); bar.addEventListener('mouseleave', tip.hide);
+      svg.appendChild(bar); svg.appendChild(h('svg:text', { class: 'barlab', x: sx(mis) + 8, y: y + 15, text: mis + ' of ' + fmtInt(x.flags_total) + ' · ' + (100 * x.flags_agree / x.flags_total).toFixed(2).replace(/\.?0+$/, '') + '% agree' }));
+    });
+    fig.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Flag agreement · providers classified differently by R and Python' })])); wrap.appendChild(svg); fig.appendChild(wrap); root.appendChild(fig);
+    var tbl = h('table', { class: 'data' }, [h('caption', { text: 'Flag agreement per measure.' })]);
+    tbl.appendChild(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Measure' }), h('th', { scope: 'col', class: 'num', text: 'Flags agree' }), h('th', { scope: 'col', class: 'num', text: 'Differ' }), h('th', { scope: 'col', text: 'Note' })])]));
+    var tb = h('tbody'); ms.forEach(function (x) { tb.appendChild(h('tr', {}, [h('td', { text: x.measure }), h('td', { class: 'num', text: fmtInt(x.flags_agree) + ' / ' + fmtInt(x.flags_total) }), h('td', { class: 'num', text: x.flags_total - x.flags_agree }), h('td', { text: x.note || '' })])); });
+    tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
+  }
+
   root.appendChild(h('h1', { text: D.title })); if (D.question) root.appendChild(h('p', { class: 'question', text: D.question }));
-  if (D.kind === 'ladder') ladder(D.cdr, D.report); else if (D.kind === 'explorer') explorer(D.report);
+  if (D.kind === 'ladder') ladder(D.cdr, D.report); else if (D.kind === 'explorer') explorer(D.report); else if (D.kind === 'benchmark') benchmark(D.benchmark); else if (D.kind === 'flags') flags(D.cdr);
   if (D.caption) root.appendChild(h('p', { class: 'caption', html: D.caption }));
 
   /* ---------- height handshake: tell the embedding page (same origin) how tall this document is ---------- */

@@ -68,6 +68,14 @@ Python side ran `pprof_py` 0.7.0 single-node on a 128 GB driver. Only aggregate 
 | STrR · FYSMR · FYSWR | Cox variants | 240–380 K rows | β 3e−9 · 7e−8 · ratio 2e−11 | — | 12–37 s |
 | IUR | bootstrap, direct and split-half reliability | 5 measures | n′ exactly equal; IUR < 0.004 (different random streams) | — | — |
 
+<div class="pprof-interactive">
+<iframe src="../_static/validation/flags.html" title="Flag agreement, interactive" loading="lazy" width="100%" height="420" style="display:block;width:100%;border:1px solid rgba(128,128,128,0.35);border-radius:4px;background:transparent"></iframe>
+<p class="pprof-interactive-links"><a href="../_static/validation/flags.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a bar for the counts and the note recorded with the run.</p>
+</div>
+
+<details>
+<summary>Static figure (SVG, as used in print)</summary>
+
 ```{figure} ../_static/validation/flags.svg
 :alt: Providers whose flag differs between R and Python, per logistic measure
 :width: 80%
@@ -75,6 +83,8 @@ Python side ran `pprof_py` 0.7.0 single-node on a 128 GB driver. Only aggregate 
 The logistic measures publish a better / expected / worse flag per facility. Bars count the facilities whose flag
 differs between the two pipelines; the two SFR differences are borderline cases with p ≈ 0.05.
 ```
+
+</details>
 
 ```{note}
 **Matching R's variance definition.** Two robust standard errors are available for the provider tests.
