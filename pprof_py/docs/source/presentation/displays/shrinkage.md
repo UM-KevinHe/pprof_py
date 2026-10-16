@@ -1,6 +1,6 @@
 # Shrinkage
 
-```{include} ../_figures/shrinkage.md
+```{include} ../_figures/shrinkage_interactive.md
 ```
 
 **Answers:** How far does pooling move each provider?
