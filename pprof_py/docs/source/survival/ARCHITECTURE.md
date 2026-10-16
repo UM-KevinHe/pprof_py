@@ -1,4 +1,4 @@
-# Architecture
+# Architecture: survival family
 
 > This document covers the survival-model family architecture within
 > `pprof_py`. All module paths are relative to `pprof_py/` (e.g.

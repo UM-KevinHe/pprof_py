@@ -1,5 +1,5 @@
 (validation_logistic_fe)=
-# Logistic fixed-effect family: validation report
+# Validation report: logistic fixed-effect family
 
 This report covers `LogisticFixedEffectModel` and the measures built on it (PPPW, SFR, AOH). It complements the
 survival family's {doc}`../survival/VALIDATION_REPORT` and follows the same structure: what was compared against what,

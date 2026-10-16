@@ -1,5 +1,5 @@
 (survival_validation_report)=
-# Validation report
+# Validation report: survival family
 
 ```{note}
 This report is a snapshot of the run described below (2026-09-20, commit `4e98f58`). The failures it records have since been

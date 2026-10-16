@@ -110,8 +110,8 @@ presentation/index
 
 validation/index
 validation/logistic_fixed_effect
-survival/R_COMPATIBILITY
 survival/VALIDATION_REPORT
+survival/R_COMPATIBILITY
 survival/ARCHITECTURE
 ```
 

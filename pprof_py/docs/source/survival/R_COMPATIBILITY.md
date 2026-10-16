@@ -1,5 +1,5 @@
 (r_compatibility)=
-# R compatibility notes
+# R compatibility notes: survival family
 
 This package targets `survival::coxph()` (R's `survival` package, version
 3.5-8, R 4.3.3) as the source of truth. Every claim below was checked
