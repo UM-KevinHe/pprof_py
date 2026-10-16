@@ -16,10 +16,12 @@ fixed-effect family and the real-data runs, start from the {ref}`validation over
 This file answers a fixed checklist of R-compatibility questions (the numbering follows that checklist, so a few numbers group several questions). Each entry states the convention, why it matters, and how
 it was verified.
 
-## Phase 1–2: the Cox model core (items 1–17)
+## Phase 1: model definition and fitting conventions (items 1–8)
 
-Risk sets, ties, record ordering, weights, offsets, strata, baseline hazards, residuals, convergence and numerical
-precision: the conventions a `CoxPH` fit must share with `survival::coxph()` before anything is built on it.
+Risk sets, ties, record ordering, weights, offsets, strata and the baseline hazard: the conventions that define what
+a `CoxPH` fit is, which must match `survival::coxph()` before anything is built on it. Phases 1 and 2 are checked
+together by `tests/survival/test_r_comparison.py` (the {ref}`validation report <survival_validation_report>` reports
+them as "Phase 1–2").
 
 ### 1. Risk-set definition for `(start, stop]`
 
@@ -277,6 +279,11 @@ forward unchanged from the last actual event. This package's
 every Python-reported time and hazard value is present, verbatim, in
 R's larger table; R's table just also repeats the same value at
 additional non-jump timestamps). `predict_cumulative_hazard` / `predict_survival_function` return the step function **at the stratum's event times only** (they have no `times=` argument); to read it at other times, forward-fill the returned frame (recipe in the `CoxPH` reference page). Nothing is lost: the compact table and the step function carry the same information.
+
+## Phase 2: residuals, convergence and numerical behaviour (items 9–17)
+
+Martingale residuals, the stopping rules and step-halving of the Newton iteration, singular matrices, missing values,
+centering, zero-weight observations and floating-point precision: what a fitted model reports and how it gets there.
 
 ### 9. Martingale residuals under left truncation
 
