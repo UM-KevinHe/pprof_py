@@ -1,4 +1,4 @@
-/* pprof_py documentation: interactive figures. Inlined into _static/interactive/<name>.html by
+/* pprof_py documentation: interactive figures (every gallery display). Inlined into _static/interactive/<name>.html by
    _ext/pprof_interactive.py. Colour tokens are defined once per theme; light is the default, dark follows the
    OS setting unless the page is stamped data-theme="light", and data-theme="dark" wins either way. */
 :root {
@@ -65,6 +65,7 @@ a { color: var(--below); }
 .curve.own { stroke: var(--ink-2); }
 .curve.other { stroke: var(--muted); stroke-dasharray: 5 3; }
 .reference { stroke: var(--ink); stroke-width: 1; }
+.reference, .guide, .limit, .bracket, .interval { fill: none; }   /* polylines: no default fill */
 .guide { stroke: var(--axis); stroke-width: 1.2; }
 .limit { stroke: var(--ink-2); stroke-width: 1.2; }
 .chart .curve-label { font-size: 12px; fill: var(--ink-2); }
@@ -79,13 +80,37 @@ a { color: var(--below); }
 .st-not_different { --c: var(--nd); }
 .st-not_tested { --c: var(--nt); }
 .st-zero_events, .st-no_finite_estimate { --c: var(--nfe); }
+.st-excluded, .muted-dot { --c: var(--muted); }
+.dot, .sdot, .jt-same, .jt-opposite, .jt-one, .jt-untested { --c: var(--ink); }
+.jt-neither { --c: var(--nd); }
+.interval.ink { stroke: var(--ink); stroke-width: 1.6; }
+.curve.fitted { stroke: var(--ink-2); stroke-width: 1.4; }
+.curve.dashed { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.reference.dashed { stroke-dasharray: 5 3; }
+.guide.dashed { stroke: var(--bar); stroke-dasharray: 5 3; }
+.guide.dotted { stroke: var(--bar); stroke-dasharray: 1.5 2.5; }
+.limit.thin { stroke: var(--bar); stroke-width: 0.8; }
+.bracket { stroke: var(--ink); stroke-width: 1.4; }
+.bin { fill: var(--bar); }
+.abar { fill: var(--c, var(--bar)); }
+.abar.ink { --c: var(--ink); }
+.abar.excl { --c: var(--muted); }
+.abar.attr { --c: var(--bar); }
+.chart .separator { stroke: var(--bar); stroke-width: 1; }
+.chart .annot { font-size: 12px; fill: var(--ink); }
+.chart .annot.muted { fill: var(--muted); }
+.chart .panel-title, .chart .col-head { font-size: 12.5px; fill: var(--ink); font-weight: 600; }
+.chart .col-head { font-weight: 500; }
+.chart .row-label.big { font-size: 13px; fill: var(--ink); }
 .mark.filled { fill: var(--c); stroke: var(--surface); stroke-width: 1.5; }   /* halo: marks stay separate */
 .mark.open { fill: none; stroke: var(--c); stroke-width: 1.2; }
 .chart .mark { transition: opacity .15s ease; }
 .chart .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
 .chart .hit { fill: transparent; stroke: none; cursor: pointer; }
 .has-hl .chart .mark:not(.hl) { opacity: .3; }
-.has-hl .chart .interval:not(.hl), .has-hl .chart .volume:not(.hl) { opacity: .35; }
+.has-hl .chart .interval:not(.hl), .has-hl .chart .volume:not(.hl), .has-hl .chart .limit[data-id]:not(.hl) { opacity: .35; }
+.has-hl .chart .bin:not(.hl) { opacity: .45; }
+.chart .bin.hl { fill: var(--ink-2); }
 .chart .mark.hl { opacity: 1; }
 .table-only .fig, .table-only .legend { display: none; }
 
@@ -98,7 +123,7 @@ a { color: var(--below); }
 .tip .row { display: flex; justify-content: space-between; gap: 1rem; font-variant-numeric: tabular-nums; }
 
 /* the linked table */
-.table-scroll { max-height: 380px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.table-scroll { max-height: 380px; margin-bottom: .6rem; overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: .85rem; }
 caption { text-align: left; padding: .4rem .6rem; color: var(--ink-2); caption-side: top; }
 th, td { padding: .25rem .55rem; border-bottom: 1px solid var(--grid); white-space: nowrap; }
@@ -109,6 +134,8 @@ th[aria-sort="ascending"] button::after { content: " \2191"; color: var(--ink); 
 th[aria-sort="descending"] button::after { content: " \2193"; color: var(--ink); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.status { white-space: nowrap; }
+td.text.wrap { white-space: normal; min-width: 11rem; }
+.table-scroll.series { max-height: 300px; }
 td.status .sym { display: inline-block; width: 1.1em; }
 tbody tr { cursor: default; }
 tbody tr:hover, tbody tr.hl { background: var(--wash); }

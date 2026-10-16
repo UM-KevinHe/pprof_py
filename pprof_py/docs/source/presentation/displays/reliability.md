@@ -1,6 +1,6 @@
 # Reliability
 
-```{include} ../_figures/reliability.md
+```{include} ../_figures/reliability_interactive.md
 ```
 
 **Answers:** How reliably does the measure separate providers of each size?
