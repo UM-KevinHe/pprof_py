@@ -14,14 +14,14 @@ model families in `pprof_py`: linear, logistic, and survival.
 :depth: 2
 ```
 
-## Introduction
+## 1. Introduction
 
 Both fixed and random effects models aim to control for unobserved
 group-specific characteristics that might influence the outcome
 variable. However, they differ fundamentally in how they treat these
 group-specific effects and the assumptions they make.
 
-## Fixed Effects (FE) Models
+## 2. Fixed Effects (FE) Models
 
 In a fixed effects model, the group-specific effects are treated as
 fixed, unknown parameters to be estimated. Essentially, each group is
@@ -47,7 +47,7 @@ Where:
   group $k$.
 - $\epsilon_{ik}$ is the idiosyncratic error term.
 
-### Key Assumptions and Properties
+### 2.1. Key Assumptions and Properties
 
 1. **Correlation with Covariates**: The primary strength of FE models
    is that they allow the unobserved group-specific effects
@@ -79,7 +79,7 @@ Where:
    (e.g., hospital type, gender of an individual in a panel) because
    the within-group transformation removes them.
 
-### When to Use Fixed Effects
+### 2.2. When to Use Fixed Effects
 
 - **Primary Goal**: To control for unobserved heterogeneity that is
   potentially correlated with the predictors. This is the main reason
@@ -93,7 +93,7 @@ Where:
   characteristics are correlated with your $X$ variables, FE is
   generally preferred for estimating $\boldsymbol\beta$.
 
-## Random Effects (RE) Models
+## 3. Random Effects (RE) Models
 
 In a random effects model, the group-specific effects are treated as
 random variables drawn from a common distribution, typically assumed to
@@ -115,7 +115,7 @@ Where:
   random variable, typically $u_k \sim N(0, \sigma_u^2)$.
 - The composite error term is $v_{ik} = u_k + \epsilon_{ik}$.
 
-### Key Assumptions and Properties
+### 3.1. Key Assumptions and Properties
 
 1. **No Correlation with Covariates (Crucial Assumption)**: The random
    effects $u_k$ are assumed to be uncorrelated with the observed
@@ -140,7 +140,7 @@ Where:
    model fitting, often referred to as Best Linear Unbiased Predictors
    (BLUPs).
 
-### When to Use Random Effects
+### 3.2. When to Use Random Effects
 
 - **Primary Goal**: To account for within-group correlation and improve
   efficiency, *assuming* the unobserved group effects are uncorrelated
@@ -154,7 +154,7 @@ Where:
 - **Efficiency is Key**: If you are confident that
   $\text{Cov}(X_{ik}, u_k) = 0$, RE is more efficient.
 
-## Key Differences Summarized
+## 4. Key Differences Summarized
 
 | Feature | Fixed Effects (FE) | Random Effects (RE) |
 |---------|-------------------|---------------------|
@@ -166,7 +166,7 @@ Where:
 | **Consistency of $\boldsymbol\beta$** | Consistent even if $\text{Cov}(X_{ik}, \gamma_k) \neq 0$ | Consistent only if $\text{Cov}(X_{ik}, u_k) = 0$ |
 | **Inference Focus** | Conditional on groups in sample | Unconditional, generalizable to population of groups |
 
-## Choosing Between Fixed and Random Effects
+## 5. Choosing Between Fixed and Random Effects
 
 1. **Hausman Test**:
    - The Hausman test is commonly used to help decide between FE and
@@ -200,7 +200,7 @@ Where:
      you believe the orthogonality assumption holds, RE is more
      efficient.
 
-## The FE/RE Distinction in Survival Models
+## 6. The FE/RE Distinction in Survival Models
 
 The FE/RE trade-off arises in survival analysis as well, though the
 modeling machinery differs:
@@ -231,7 +231,7 @@ modeling machinery differs:
   [Chapter 4 — Indirect Standardization: The SMR](survival/04_indirect_standardization_smr_shr)
   for a worked example.
 
-## Relationship to Standardization
+## 7. Relationship to Standardization
 
 Both FE and RE models provide a basis for standardization:
 
@@ -252,7 +252,7 @@ in the sample, while RE-based standardization aims for broader
 population inferences. For a detailed treatment, see
 [Direct vs. Indirect Standardization](standardization_methods).
 
-## Conclusion
+## 8. Conclusion
 
 The choice between fixed and random effects models is a critical one in
 panel and clustered data analysis. It hinges on the assumptions one is
