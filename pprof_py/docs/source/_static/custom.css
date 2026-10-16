@@ -5,12 +5,64 @@
  * html_css_files in conf.py.
  */
 
-/* -- Measure and rhythm for long pages ------------------------------------ */
+/* -- Text size ------------------------------------------------------------- */
+
+/* The article text keeps the theme's default size (1rem) unless the reader
+   picks another step with the A- / A+ control in the header (fontsize.js),
+   which sets data-font-size on <html>. Without JavaScript the attribute is
+   never set and the default applies. */
+:root {
+  --pp-font-scale: 1;
+}
+
+html[data-font-size="small"] {
+  --pp-font-scale: 0.85;
+}
+
+html[data-font-size="large"] {
+  --pp-font-scale: 1.15;
+}
 
 .yue {
-  font-size: 1.0625rem;      /* 17px: a little larger than the theme default */
-  line-height: 1.75;
+  font-size: calc(1rem * var(--pp-font-scale));
 }
+
+.pp-fontsize {
+  display: flex;
+  align-items: center;
+}
+
+.sy-head-actions .pp-fontsize-btn {
+  padding: 0 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--sy-c-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.sy-head-actions .pp-fontsize-btn:hover {
+  color: var(--sy-c-link);
+}
+
+.sy-head-actions .pp-fontsize-btn[aria-disabled="true"] {
+  color: var(--sy-c-light);
+  cursor: default;
+}
+
+.pp-fontsize-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* -- Measure and rhythm for long pages ------------------------------------ */
 
 @media (min-width: 1280px) {
   /* Cap the text column on wide screens; the theme otherwise lets it grow

@@ -64,6 +64,7 @@ exclude_patterns = ['presentation/_gallery_items.md', 'presentation/_figures/*']
 html_theme = 'shibuya'
 html_static_path = ['_static']
 html_css_files = ['custom.css']  # reading-experience adjustments on top of the theme
+html_js_files = ['fontsize.js']  # A- / A+ text-size control next to the colour-mode toggle
 html_theme_options = {
     'globaltoc_expand_depth': 1,
     'toctree_titles_only': True,
