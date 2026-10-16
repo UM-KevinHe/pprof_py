@@ -348,4 +348,27 @@
   ({ funnel: funnel, caterpillar: caterpillar, observed_expected: observed })[D.display](container);
   table(container);
   if (reduced) root.classList.add('reduced-motion');
+
+  /* ---------- height: tell the embedding page how tall the document is, so its iframe can fit (same origin only) ---------- */
+  var heightPending = false;
+  function sendHeight() {
+    heightPending = false;
+    try {
+      if (!window.parent || window.parent === window) return;
+      /* the body's height, not documentElement.scrollHeight: that never falls below the frame's own viewport, so the
+         frame could grow but never shrink again (after "Table only" or a filter) */
+      var height = Math.ceil(document.body.getBoundingClientRect().height);
+      window.parent.postMessage({ pprof: 'height', display: D.display, height: height }, '/');   // '/' = this origin
+    } catch (e) { /* no parent, or a cross-origin one: the frame keeps its fixed height */ }
+  }
+  function postHeight() {
+    if (heightPending) return;
+    heightPending = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(sendHeight); else setTimeout(sendHeight, 16);
+  }
+  postHeight();
+  window.addEventListener('load', postHeight);
+  window.addEventListener('resize', postHeight);
+  if (window.ResizeObserver) new ResizeObserver(postHeight).observe(document.body);   // table only, find, sort
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(postHeight, function () {});
 })();

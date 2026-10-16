@@ -1,8 +1,5 @@
 # Interval plot with volume panel
 
-```{include} ../_figures/caterpillar.md
-```
-
 ```{include} ../_figures/caterpillar_interactive.md
 ```
 

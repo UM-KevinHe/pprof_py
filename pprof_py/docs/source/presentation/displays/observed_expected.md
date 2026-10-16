@@ -1,8 +1,5 @@
 # Observed versus expected
 
-```{include} ../_figures/observed_expected.md
-```
-
 ```{include} ../_figures/observed_expected_interactive.md
 ```
 

@@ -1,8 +1,5 @@
 # Funnel plot
 
-```{include} ../_figures/funnel.md
-```
-
 ```{include} ../_figures/funnel_interactive.md
 ```
 

@@ -7,10 +7,18 @@ display it extracts one JSON record: provider id, estimate, precision or interva
 limit curves at each level, the reference value, the axis labels and the legend. Each record is embedded in a
 self-contained HTML file, ``_static/interactive/<name>.html``, with the CSS and JavaScript from
 ``_ext/pprof_interactive_assets/`` inlined (plain JavaScript and inline SVG; no dependencies, nothing from the
-network). It also writes ``presentation/_figures/<name>_interactive.md``: a ``<details>`` disclosure with a lazily
-loaded ``<iframe>`` of that file and a link to open it in a new tab, which the display pages include under the static
-figure. The static SVG stays the default and the printed version, and the package's presentation layer is untouched
-(S13: its own outputs stay static and script-free).
+network). It also writes ``presentation/_figures/<name>_interactive.md``, the snippet the display pages include
+directly under their heading: the interactive view first, a lazily loaded ``<iframe>`` of that file with a link to
+open it in a new tab, then the gallery's static figure (its ``_figures/<name>.md`` snippet, read back and wrapped)
+in a collapsed ``<details>`` with the summary "Static figure (SVG, as used in print)". The interactive view is the
+primary one on the page; the static SVG stays available and remains the printed version, and the package's
+presentation layer is untouched (S13: its own outputs stay static and script-free).
+
+The iframe has a fixed height (``IFRAME_HEIGHT``) as the no-JavaScript fallback. With JavaScript, the interactive
+page posts its document height to the embedding page after rendering, on resize and whenever its body changes
+size (``postMessage`` to the same origin only), and the few lines of script in the snippet set the iframe's height
+from messages whose source is that iframe and whose origin is the page's own, so the frame neither leaves empty
+space nor scrolls inside.
 
 The interactive page detects its theme from ``?theme=dark|light`` in its URL, else from the embedding page
 (Shibuya's ``data-color-mode`` or a ``data-theme`` attribute, same origin only), else from ``prefers-color-scheme``.
@@ -76,12 +84,36 @@ shows the same data.</p></noscript>
 </html>
 """
 
-SNIPPET = """<details class="pprof-interactive-figure">
-<summary>Interactive version: hover for each provider's values, sort the table, or read it as a table (the static
-figure above is the printed version)</summary>
+# The snippet is MyST Markdown: the raw HTML blocks pass through, the Markdown image inside <details> is rendered by
+# Sphinx (so the SVG is copied with the page), and the inline <script> is passed through as an HTML block.
+# The script sets the iframe's height from the handshake described above; the height attribute is the fallback.
+SNIPPET = """<div class="pprof-interactive" style="width: 100%; margin: 0 0 1rem;">
 <iframe src="{src}" title="{title} (interactive)" loading="lazy" width="100%" height="{height}"
-style="border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 4px; background: transparent;"></iframe>
-<p><a href="{src}" target="_blank" rel="noopener">Open the interactive {lower} in a new tab</a></p>
+style="display: block; width: 100%; height: {height}px; border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 4px; background: transparent;"></iframe>
+<p class="pprof-interactive-note">Hover for each provider's values, sort the table, or read it as a table.
+<a href="{src}" target="_blank" rel="noopener">Open the interactive {lower} in a new tab</a>.</p>
+</div>
+<script>
+(function () {{
+  if (window.pprofInteractiveHeights) return;             /* one listener per page */
+  window.pprofInteractiveHeights = true;
+  window.addEventListener('message', function (e) {{
+    var d = e.data;
+    if (e.origin !== window.location.origin || !d || d.pprof !== 'height') return;   /* same origin only */
+    var frames = document.querySelectorAll('.pprof-interactive iframe');
+    for (var i = 0; i < frames.length; i++) {{
+      if (frames[i].contentWindow !== e.source) continue;                             /* only our own frame */
+      var px = Math.ceil(Number(d.height));
+      if (px >= 200 && px <= 20000) frames[i].style.height = px + 'px';
+    }}
+  }});
+}})();
+</script>
+
+<details class="pprof-static-figure">
+<summary>Static figure (SVG, as used in print)</summary>
+
+{static}
 </details>
 """
 
@@ -309,10 +341,19 @@ def _page(rec: Dict[str, Any], css: str, js: str) -> bytes:
                            data=data).encode("utf-8")
 
 
-def _snippet(name: str, rec: Dict[str, Any]) -> bytes:
+def _static_snippet(name: str, per_figure: Path) -> str:
+    """The gallery's ``_figures/<name>.md`` (the static image with its alt text), as written in this build."""
+    path = per_figure / f"{name}.md"
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
+    fig = pprof_gallery.RESULTS[name]                       # the gallery did not run first: the same line it writes
+    return f"![{pprof_gallery._alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
+
+
+def _snippet(name: str, rec: Dict[str, Any], per_figure: Path) -> bytes:
     src = f"{STATIC_PREFIX}_static/interactive/{name}.html"
     return SNIPPET.format(src=src, title=html.escape(rec["title"]), lower=html.escape(rec["title"].lower()),
-                          height=IFRAME_HEIGHT[name]).encode("utf-8")
+                          height=IFRAME_HEIGHT[name], static=_static_snippet(name, per_figure)).encode("utf-8")
 
 
 def build(app) -> None:
@@ -332,7 +373,7 @@ def build(app) -> None:
         logging.disable(logging.NOTSET)
     for name in DISPLAYS:
         pprof_gallery._write(out / f"{name}.html", _page(recs[name], css, js))
-        pprof_gallery._write(per_figure / f"{name}_interactive.md", _snippet(name, recs[name]))
+        pprof_gallery._write(per_figure / f"{name}_interactive.md", _snippet(name, recs[name], per_figure))
 
 
 def setup(app):
