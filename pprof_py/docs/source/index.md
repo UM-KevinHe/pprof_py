@@ -129,27 +129,21 @@ survival/14_provider_discrete_survival
 Overview <presentation/index>
 presentation/decision_guide
 presentation/gallery
+Reading the displays <presentation/displays/index>
+· Funnel plot <presentation/displays/funnel>
+· Interval plot with volume panel <presentation/displays/caterpillar>
+· Observed versus expected <presentation/displays/observed_expected>
+· Coefficient forest <presentation/displays/forest>
+· Data quality <presentation/displays/data_quality>
+· Null calibration <presentation/displays/null_calibration>
+· Reliability <presentation/displays/reliability>
+· Between-provider variation <presentation/displays/provider_variation>
+· Shrinkage <presentation/displays/shrinkage>
+· Flag stability <presentation/displays/flag_stability>
+· Several measures <presentation/displays/several_measures>
 presentation/tables
 presentation/theme_export_accessibility
 presentation/migration
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: Presentation — the displays
-
-Reading the displays <presentation/displays/index>
-presentation/displays/funnel
-presentation/displays/caterpillar
-presentation/displays/observed_expected
-presentation/displays/forest
-presentation/displays/data_quality
-presentation/displays/null_calibration
-presentation/displays/reliability
-presentation/displays/provider_variation
-presentation/displays/shrinkage
-presentation/displays/flag_stability
-presentation/displays/several_measures
 ```
 
 ```{toctree}
