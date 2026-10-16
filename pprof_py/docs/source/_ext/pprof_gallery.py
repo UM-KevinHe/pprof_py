@@ -3,7 +3,8 @@ script during the build, never saved by hand).
 
 On ``builder-inited`` it fits models to the package's synthetic data (``pprof_py.presentation._synthetic``), renders
 every figure type with the deterministic renderers into ``_static/gallery/``, and writes
-``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call) and one
+``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call, and a link to the display
+page's interactive block, the label ``interactive-<name>`` that ``pprof_interactive`` writes) and one
 ``presentation/_figures/<name>.md`` per figure (the image with its alt text, included by the display pages). Files are
 rewritten only when
 their bytes change, so repeated builds do not trigger rebuilds.
@@ -122,9 +123,10 @@ def build(app) -> None:
                 title, question, call = ITEMS[name]
                 image = f"![{_alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
                 _write(per_figure / f"{name}.md", (image + "\n").encode("utf-8"))
+                anchor = f"interactive-{name.replace('_', '-')}"           # the label pprof_interactive's snippet sets
                 lines += [f"(gallery-{name.replace('_', '-')})=", f"## {title}", "", f"*Answers:* {question} "
-                          f"{{doc}}`How to read it <displays/{PAGES[name]}>`", "", image, "", "```{code-block} python",
-                          call, "```", ""]
+                          f"{{doc}}`How to read it <displays/{PAGES[name]}>` \u00b7 {{ref}}`Interactive version <{anchor}>`",
+                          "", image, "", "```{code-block} python", call, "```", ""]
     finally:
         logging.disable(logging.NOTSET)
     _write(src / "presentation" / "_gallery_items.md", "\n".join(lines).encode("utf-8"))
