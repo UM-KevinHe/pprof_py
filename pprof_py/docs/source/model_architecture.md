@@ -8,10 +8,6 @@ package uses a combination of **a small common base class** and
 **structural-typing protocols** to provide a consistent API while
 respecting each model family's distinct statistical requirements.
 
-```{contents} Table of Contents
-:local:
-:depth: 2
-```
 
 ## Design Principles
 

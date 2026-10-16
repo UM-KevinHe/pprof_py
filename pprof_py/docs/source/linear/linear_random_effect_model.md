@@ -2,10 +2,6 @@
 
 # Linear random-effect modeling
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## 1. Introduction
 

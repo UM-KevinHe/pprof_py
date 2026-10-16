@@ -1,10 +1,6 @@
 (linear_random_effect_tutorial)=
 # Linear random-effect model
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## 1. What this tutorial covers
 

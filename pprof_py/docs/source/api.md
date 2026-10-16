@@ -4,10 +4,6 @@
 This section provides the API reference for the `pprof_py` package.
 All primary model classes are importable directly from `pprof_py`.
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## Survival Models
 

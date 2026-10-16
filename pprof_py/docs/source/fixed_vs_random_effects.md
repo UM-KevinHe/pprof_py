@@ -9,10 +9,6 @@ for group-level heterogeneity. Two common approaches are fixed effects
 differences, assumptions, and appropriate use cases across all three
 model families in `pprof_py`: linear, logistic, and survival.
 
-```{contents} Table of Contents
-:local:
-:depth: 2
-```
 
 ## 1. Introduction
 

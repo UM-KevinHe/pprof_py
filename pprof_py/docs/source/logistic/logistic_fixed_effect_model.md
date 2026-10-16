@@ -1,10 +1,6 @@
 (logistic_fixed_effect_model)=
 # Logistic fixed-effect modeling
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## 1. Introduction
 
