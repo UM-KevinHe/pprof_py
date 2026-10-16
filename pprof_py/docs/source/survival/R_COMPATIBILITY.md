@@ -1,15 +1,6 @@
 (r_compatibility)=
 # R compatibility notes
 
-```{admonition} On this page
-:class: note
-- Items 1–9: the conventions `CoxPH` shares with `survival::coxph()` — risk sets for `(start, stop]` data, Breslow and Efron ties, weights, offsets, stratified baselines and martingale residuals — and how each was verified.
-- Items 10–17: convergence, step-halving, singular matrices, missing values, centering, and the exact score and Hessian formulas.
-- Items 18–19: penalized Cox against `glmnet`, and stepwise selection against `step()`.
-- Items 20–23: competing risks, the Fine–Gray model, cluster-robust variance and `tmerge()`.
-- The closing section lists what was not investigated or is known to differ.
-```
-
 This package targets `survival::coxph()` (R's `survival` package, version
 3.5-8, R 4.3.3) as the source of truth. Every claim below was checked
 against actual R output during development (`pprof_py/r_reference/run_all.R` +

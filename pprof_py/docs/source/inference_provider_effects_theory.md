@@ -1,15 +1,6 @@
 (inference_gamma_theory)=
 # Inference for Provider Effects
 
-```{admonition} On this page
-:class: note
-- Section 2: what a provider test compares (the effect $\gamma_k$ against a reference) and the hypotheses it states.
-- Sections 3–4: the Wald test and the variance it uses, and the score and exact tests at the reference.
-- Section 5: confidence limits by inverting each test.
-- Sections 6–7: cluster-robust variances, and the random-effect and three-stage counterparts.
-- Sections 8–9: the approximations the implementation relies on, and where the code lives.
-```
-
 This page is Part II of the theory series on inference in `pprof_py`. It covers the provider effects $\gamma_k$:
 what a provider test compares, the Wald test and the variance it uses, the score and exact tests at the reference,
 confidence limits by inversion, the cluster-robust variances, and the random-effect and three-stage counterparts.

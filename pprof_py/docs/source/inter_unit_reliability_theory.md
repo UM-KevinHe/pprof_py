@@ -1,15 +1,6 @@
 (iur_theory)=
 # Inter-Unit Reliability: Theory
 
-```{admonition} On this page
-:class: note
-- Section 2: what reliability means for a provider measure, and what the inter-unit reliability (IUR) estimates.
-- Section 3: estimation by one-way analysis of variance, from patient-level data or from provider estimates and standard errors.
-- Sections 4–5: how reliability varies with provider size, and the sampling properties and inference for the estimate.
-- Section 6: the split-half variants and what they measure.
-- Sections 7–8: interpretation, limitations, and where the estimators live in the package; the [guide](inter-unit-reliability-guide) covers the API.
-```
-
 This page is the theoretical reference for the inter-unit reliability (IUR) of a provider-level measure:
 what reliability means for a provider measure, what the IUR estimates, how `pprof_py` estimates it from
 patient-level data or from provider estimates and standard errors, how precise those estimates are, and
