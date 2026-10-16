@@ -2,7 +2,9 @@
 
     python pprof_py/docs/source/validation/make_figures.py
 
-Writes SVG files into ``_static/validation/``. The JSON files are copies of the run records kept in the
+Writes SVG files into ``_static/validation/``, plus two self-contained interactive pages (``ladder.html``,
+``explorer.html``: inline CSS/JS from ``interactive_assets/``, the JSON embedded) that the validation pages embed in a
+collapsed ``<details>`` under the static figures. The JSON files are copies of the run records kept in the
 pprof-validation repository (https://github.com/kevintan701/pprof-validation); nothing here reads live data.
 """
 import json
@@ -158,6 +160,45 @@ def flags():
     plt.close(fig)
 
 
+def interactive():
+    """Self-contained interactive pages: the precision ladder and the per-provider explorer."""
+    assets = HERE / "interactive_assets"
+    css = (assets / "validation.css").read_text(encoding="utf-8")
+    js = (assets / "validation.js").read_text(encoding="utf-8")
+    cdr = json.loads((DATA / "cdr_parity.json").read_text())
+    rep = json.loads((DATA / "logistic_fe_report.json").read_text())
+    pages = {
+        "ladder": {"kind": "ladder", "title": "Precision ladder", "question": "How large is the largest R–Python difference for each measure and component?",
+                   "caption": "Hover a dot for its value and source. Shaded bands: below 1e−10 is the floating-point limit; 1e−10 to 1e−5 reflects library or operation-order effects; 1e−5 to 1e−3 reflects convergence tolerance or rounding of the R output; above 1e−2 would call for investigation.",
+                   "cdr": cdr, "report": {"summary": rep["summary"]}},
+        "explorer": {"kind": "explorer", "title": "Per-provider explorer · logistic fixed-effect live comparison", "question": "Choose a quantity: R against Python per provider, the size of each difference against the tolerance, and a Bland–Altman view; the table is linked to the charts.",
+                     "caption": f"pprof_py {rep['provenance']['pprof_py_version']} (commit {rep['provenance']['pprof_py_commit']}) against pprof {rep['provenance']['pprof_r_version']} on {rep['data']['rows']:,} rows and {rep['data']['providers']} providers; run of {rep['provenance']['generated_at'][:10]}.",
+                     "report": {"providers": rep["providers"], "provenance": rep["provenance"], "data": rep["data"]}},
+    }
+    for name, payload in pages.items():
+        data = json.dumps(payload, separators=(",", ":"), sort_keys=True).replace("</", "<\\/")
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{payload['title']} · pprof_py validation</title>
+<style>
+{css}
+</style>
+</head>
+<body>
+<main id="root"></main>
+<script id="pprof-data" type="application/json">{data}</script>
+<script>
+{js}
+</script>
+</body>
+</html>
+"""
+        (OUT / f"{name}.html").write_text(html, encoding="utf-8")
+
+
 if __name__ == "__main__":
-    ladder(); live_report(); benchmark(); flags()
+    ladder(); live_report(); benchmark(); flags(); interactive()
     print("figures written to", OUT)

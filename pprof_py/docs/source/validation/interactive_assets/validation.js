@@ -1,0 +1,183 @@
+/* pprof_py documentation: interactive validation figures (precision ladder; per-provider explorer).
+   Plain JavaScript and inline SVG, no dependencies. Inlined into _static/validation/<name>.html by
+   validation/make_figures.py; the data is the JSON record in <script id="pprof-data"> ({kind, title, question,
+   caption, cdr, report}). Hover (and keyboard focus in the table) shows a tooltip; the table is always available. */
+(function () {
+  'use strict';
+  var D = JSON.parse(document.getElementById('pprof-data').textContent);
+  var root = document.getElementById('root');
+  var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  /* ---------- theme: ?theme= in the URL, else the embedding page (same origin), else the OS setting (CSS) ---------- */
+  function parentMode() {
+    try {
+      if (window.parent && window.parent !== window) {
+        var el = window.parent.document.documentElement;
+        var mode = el.getAttribute('data-color-mode') || el.getAttribute('data-theme');
+        if (mode === 'dark' || mode === 'light') return mode;
+      }
+    } catch (e) { /* cross-origin frame: prefers-color-scheme decides */ }
+    return null;
+  }
+  function applyTheme() {
+    var q = /[?&]theme=(dark|light)\b/.exec(window.location.search);
+    var mode = q ? q[1] : parentMode();
+    if (mode) document.documentElement.setAttribute('data-theme', mode); else document.documentElement.removeAttribute('data-theme');
+  }
+  applyTheme();
+  try { if (window.parent && window.parent !== window && window.MutationObserver) new MutationObserver(applyTheme).observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ['data-color-mode', 'data-theme'] }); } catch (e) { /* cross-origin */ }
+
+  /* ---------- helpers ---------- */
+  function h(tag, attrs, children) {
+    var el = tag.indexOf('svg:') === 0 ? document.createElementNS(SVGNS, tag.slice(4)) : document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { if (attrs[k] === null || attrs[k] === undefined) return; if (k === 'text') el.textContent = attrs[k]; else if (k === 'html') el.innerHTML = attrs[k]; else el.setAttribute(k, attrs[k]); });
+    (children || []).forEach(function (c) { if (c) el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return el;
+  }
+  function sci(v) { if (v === null || v === undefined || isNaN(v)) return '–'; if (v === 0) return '0'; var e = Math.floor(Math.log10(Math.abs(v))); var m = v / Math.pow(10, e); return m.toFixed(2) + 'e' + (e < 0 ? '−' : '+') + Math.abs(e); }
+  function fix(v, d) { return (v === null || v === undefined || isNaN(v)) ? '–' : Number(v).toFixed(d).replace(/^-/, '−'); }
+  function fmtAuto(v) { var a = Math.abs(v); return (a !== 0 && (a < 1e-3 || a >= 1e5)) ? sci(v) : fix(v, a >= 100 ? 2 : 5); }
+  function fmtTick(v) { var a = Math.abs(v); if (a !== 0 && (a < 1e-3 || a >= 1e5)) return sci(v); return Number(v.toFixed(4)).toString().replace(/^-/, '−'); }
+  function niceTicks(lo, hi, n) { var span = hi - lo || 1, step = Math.pow(10, Math.floor(Math.log10(span / n))), err = span / n / step; step *= err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1; var t = [], v = Math.ceil(lo / step) * step; for (; v <= hi + 1e-12; v += step) t.push(+v.toFixed(10)); return t; }
+  function tooltip(wrap) { var tip = h('div', { class: 'tip', role: 'status', 'aria-live': 'polite' }); wrap.appendChild(tip); return { show: function (x, y, html) { tip.innerHTML = html; tip.style.left = (x + 14) + 'px'; tip.style.top = (y - 10) + 'px'; tip.classList.add('show'); }, at: function (evt, html) { var r = wrap.getBoundingClientRect(); this.show(evt.clientX - r.left, evt.clientY - r.top, html); }, hide: function () { tip.classList.remove('show'); } }; }
+  var BANDS = [{ to: -10, label: 'floating-point limit', cls: 'b0' }, { to: -5, label: 'library / order of operations', cls: 'b1' }, { to: -3, label: 'tolerance / rounding', cls: 'b2' }, { to: 2, label: 'investigate', cls: 'b3' }];
+
+  /* ---------- precision ladder ---------- */
+  function ladder(C, R) {
+    var items = [], groups = [];
+    function famOf(m) { var f = (m.family || '').toLowerCase(); return f.indexOf('cox') >= 0 ? 'r' : f.indexOf('three') >= 0 ? 'three' : 'py'; }
+    (C ? C.measures : []).forEach(function (m) {
+      if (m.status !== 'pass') return;
+      [['beta_maxdiff', 'β'], ['gamma_maxdiff', 'γ'], ['rate_maxdiff', 'rate'], ['z_maxdiff', 'z'], ['srr_maxdiff', 'SRR'], ['ratio_maxdiff', 'ratio']].forEach(function (k) { if (m[k[0]] !== undefined && m[k[0]] > 0) items.push({ group: m.measure, comp: k[1], v: m[k[0]], fam: famOf(m), src: 'real data (CDR, FY2027)' }); });
+    });
+    if (R) R.summary.forEach(function (s) { if (s.value && s.tolerance && s.tolerance !== '=1' && s.quantity.indexOf('degenerate') < 0) { var q = s.quantity.replace(/ \(.*\)/, '').replace('test ', '').replace(': p-value max|diff|', ' p').replace('poibin_exact', 'exact'); items.push({ group: 'Live report', comp: q, v: s.value, fam: 'py', src: 'live comparison, synthetic data' }); } });
+    items.forEach(function (it) { if (groups.indexOf(it.group) < 0) groups.push(it.group); });
+    var W = 820, rowH = 34, m = { t: 34, r: 24, b: 40, l: 118 }, H = m.t + groups.length * rowH + m.b, lo = -17, hi = 0;
+    function sx(v) { return m.l + (v - lo) / (hi - lo) * (W - m.l - m.r); }
+    var fig = h('figure', { class: 'fig' }), wrap = h('div', { class: 'fig-wrap' }), tip = tooltip(wrap);
+    var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Largest absolute difference between R and Python per measure and component, log scale' });
+    var prev = lo; BANDS.forEach(function (b) { var x0 = sx(prev), x1 = sx(Math.min(b.to, hi)); svg.appendChild(h('svg:rect', { class: 'band ' + b.cls, x: x0, y: m.t - 6, width: Math.max(0, x1 - x0), height: groups.length * rowH + 12 })); svg.appendChild(h('svg:text', { class: 'band-label', x: (x0 + x1) / 2, y: m.t - 12, 'text-anchor': 'middle', text: b.label })); prev = b.to; });
+    var axis = h('svg:g', { class: 'axis' });
+    for (var t = lo + 1; t <= hi; t += 2) { axis.appendChild(h('svg:line', { class: 'tick', x1: sx(t), x2: sx(t), y1: m.t - 6, y2: H - m.b + 4 })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 18, 'text-anchor': 'middle', text: '1e' + t })); }
+    svg.appendChild(axis);
+    svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle', text: 'max |R − Py| (log scale; smaller is better)' }));
+    groups.forEach(function (g, gi) {
+      var y = m.t + gi * rowH + rowH / 2;
+      svg.appendChild(h('svg:line', { class: 'row', x1: m.l, x2: W - m.r, y1: y, y2: y }));
+      svg.appendChild(h('svg:text', { class: 'rowlab', x: m.l - 10, y: y + 4, 'text-anchor': 'end', text: g }));
+      var rowItems = items.filter(function (it) { return it.group === g; }).sort(function (a, b) { return a.v - b.v; }), lastLabX = -1e9, flip = false;
+      rowItems.forEach(function (it, i) {
+        var x = sx(Math.max(lo, Math.log10(it.v)));
+        var c = h('svg:circle', { class: 'pt ' + it.fam + (reduced ? '' : ' enter'), cx: x, cy: y, style: 'animation-delay:' + (gi * 60 + i * 30) + 'ms' });
+        var close = x - lastLabX < 48, lab = null;
+        if (x - lastLabX > 24) { flip = close ? !flip : false; lab = h('svg:text', { class: 'ptlab', x: x, y: flip ? y + 17 : y - 9, 'text-anchor': 'middle', text: it.comp }); lastLabX = x; }
+        var hit = h('svg:circle', { class: 'hit', cx: x, cy: y });
+        hit.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + it.group + ' · ' + it.comp + '</b><div class="row"><span>max |R − Py|</span><span>' + sci(it.v) + '</span></div><div class="row"><span>source</span><span>' + it.src + '</span></div>'); });
+        hit.addEventListener('mouseleave', tip.hide);
+        svg.appendChild(c); if (lab) svg.appendChild(lab); svg.appendChild(hit);
+      });
+    });
+    fig.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Precision ladder · largest difference per measure and component' }), h('span', { class: 'legend' }, [h('span', { text: 'logistic family' }), h('span', { class: 'three', text: 'three-stage' }), h('span', { class: 'r', text: 'Cox family' })])]));
+    wrap.appendChild(svg); fig.appendChild(wrap); root.appendChild(fig);
+    // table view
+    var tbl = h('table', { class: 'data' }, [h('caption', { text: 'The same values as a table: measure, component, source and the largest absolute difference.' })]);
+    tbl.appendChild(h('thead', {}, [h('tr', {}, [h('th', { text: 'Measure' }), h('th', { text: 'Component' }), h('th', { text: 'Source' }), h('th', { class: 'num', text: 'max |R − Py|' })])]));
+    var tb = h('tbody'); items.forEach(function (it) { tb.appendChild(h('tr', {}, [h('td', { text: it.group }), h('td', { text: it.comp }), h('td', { text: it.src }), h('td', { class: 'num mono', text: sci(it.v) })])); });
+    tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
+  }
+
+  /* ---------- per-provider explorer ---------- */
+  var Q = [{ key: 'gamma', label: 'γ provider effect', tol: 1e-5 }, { key: 'indirect_ratio', label: 'Indirect standardized ratio', tol: 1e-5 }, { key: 'indirect_rate', label: 'Indirect standardized rate (%)', tol: 1e-4 }, { key: 'direct_ratio', label: 'Direct standardized ratio', tol: 1e-5 }, { key: 'direct_rate', label: 'Direct standardized rate (%)', tol: 1e-4 }, { key: 'wald_p', label: 'Wald test p-value', tol: 1e-3 }, { key: 'score_p', label: 'Score test p-value', tol: 1e-3 }, { key: 'poibin_exact_p', label: 'Exact (Poisson-binomial) test p-value', tol: 1e-3 }];
+  function diffOf(p, key) { return Math.abs(p[key + '_r'] - p[key + '_py']); }
+  function explorer(R) {
+    var P = R.providers, rV = R.provenance.pprof_r_version, pV = R.provenance.pprof_py_version;
+    var state = { q: 'gamma', deg: true, search: '', sort: 'diff', dir: 'desc', limit: 25 };
+    var controls = h('div', { class: 'controls' }), sel = h('select', { 'aria-label': 'Quantity' }); Q.forEach(function (q) { sel.appendChild(h('option', { value: q.key, text: q.label })); });
+    var chk = h('input', { type: 'checkbox', checked: 'checked' }), search = h('input', { type: 'search', placeholder: 'provider id…', 'aria-label': 'Find provider' }), nInfo = h('span', { class: 'n' });
+    controls.appendChild(h('label', {}, ['Quantity ', sel])); controls.appendChild(h('label', {}, [chk, ' include zero-event providers'])); controls.appendChild(h('label', {}, ['Find ', search])); controls.appendChild(nInfo);
+    var figS = h('figure', { class: 'fig' }), figD = h('figure', { class: 'fig' }), figB = h('figure', { class: 'fig' }), tableWrap = h('div', { class: 'table-scroll' });
+    var wrap = h('div', { class: 'fig-wrap' }, [controls, figS, figD, figB, tableWrap]); root.appendChild(wrap);
+    var tip = tooltip(wrap);
+    function rows() { return P.filter(function (p) { return (state.deg || !p.degenerate) && (!state.search || String(p.provider).indexOf(state.search) === 0); }); }
+    function qdef() { return Q.filter(function (q) { return q.key === state.q; })[0]; }
+    function tipHtml(p) { return '<b>Provider ' + p.provider + '</b>' + (p.degenerate ? ' · zero events' : '') + '<div class="row"><span>n / events</span><span>' + p.n + ' / ' + p.events + '</span></div><div class="row"><span>R</span><span>' + fmtAuto(p[state.q + '_r']) + '</span></div><div class="row"><span>Python</span><span>' + fmtAuto(p[state.q + '_py']) + '</span></div><div class="row"><span>|R − Py|</span><span>' + sci(diffOf(p, state.q)) + '</span></div>'; }
+    function highlight(id) { wrap.querySelectorAll('.pt').forEach(function (c) { c.classList.toggle('hl', c.dataset.id === id); c.classList.toggle('dim', !!id && c.dataset.id !== id); }); wrap.querySelectorAll('tbody tr').forEach(function (tr) { tr.classList.toggle('hl', tr.dataset.id === id); }); }
+    function bind(hit, p) { hit.addEventListener('mousemove', function (e) { tip.at(e, tipHtml(p)); highlight(String(p.provider)); }); hit.addEventListener('mouseleave', function () { tip.hide(); highlight(null); }); }
+    function chart(fig, head, legend, W, H, m, lo, hi, ylo, yhi, caption, draw) {
+      fig.innerHTML = '';
+      var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': head });
+      var grid = h('svg:g', { class: 'grid' }), axis = h('svg:g', { class: 'axis' });
+      function sx(v) { return m.l + (v - lo) / (hi - lo) * (W - m.l - m.r); } function sy(v) { return H - m.b - (v - ylo) / (yhi - ylo) * (H - m.t - m.b); }
+      niceTicks(lo, hi, 6).forEach(function (t) { grid.appendChild(h('svg:line', { x1: sx(t), x2: sx(t), y1: m.t, y2: H - m.b })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 16, 'text-anchor': 'middle', text: fmtTick(t) })); });
+      niceTicks(ylo, yhi, 5).forEach(function (t) { grid.appendChild(h('svg:line', { x1: m.l, x2: W - m.r, y1: sy(t), y2: sy(t) })); axis.appendChild(h('svg:text', { x: m.l - 8, y: sy(t) + 4, 'text-anchor': 'end', text: fmtTick(t) })); });
+      svg.appendChild(grid); svg.appendChild(axis);
+      draw(svg, sx, sy);
+      fig.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: head }), legend]));
+      fig.appendChild(svg); fig.appendChild(h('p', { class: 'caption', html: caption }));
+    }
+    function drawScatter() {
+      var q = qdef(), d = rows(); var xs = d.map(function (p) { return p[q.key + '_r']; }), ys = d.map(function (p) { return p[q.key + '_py']; });
+      var lo = Math.min.apply(null, xs.concat(ys)), hi = Math.max.apply(null, xs.concat(ys)); var pad = (hi - lo || 1) * .05; lo -= pad; hi += pad;
+      chart(figS, 'Figure 1 · Per provider: R result (x) versus Python result (y)', h('span', { class: 'legend' }, [h('span', { text: 'provider with events' }), h('span', { class: 'deg', text: 'zero-event provider' }), h('span', { class: 'line', text: 'identity line y = x' })]), 640, 400, { t: 14, r: 18, b: 44, l: 64 }, lo, hi, lo, hi,
+        '<strong>' + q.label + '</strong>. One dot per provider; a dot on the dashed line means both implementations give the same number. Zero-event providers have no finite γ in either implementation and leave the identity line.',
+        function (svg, sx, sy) {
+          svg.appendChild(h('svg:line', { class: 'identity', x1: sx(lo), y1: sy(lo), x2: sx(hi), y2: sy(hi) }));
+          svg.appendChild(h('svg:text', { class: 'label', x: (64 + 640 - 18) / 2, y: 394, 'text-anchor': 'middle', text: 'R · pprof ' + rV })); svg.appendChild(h('svg:text', { class: 'label', transform: 'translate(14 185) rotate(-90)', 'text-anchor': 'middle', text: 'Python · pprof_py ' + pV }));
+          d.forEach(function (p, i) { var c = h('svg:circle', { class: 'pt' + (p.degenerate ? ' deg' : '') + (reduced ? '' : ' enter'), cx: sx(p[q.key + '_r']), cy: sy(p[q.key + '_py']), 'data-id': String(p.provider), style: 'animation-delay:' + Math.min(600, i * 6) + 'ms' }); var hit = h('svg:circle', { class: 'hit', cx: sx(p[q.key + '_r']), cy: sy(p[q.key + '_py']) }); bind(hit, p); svg.appendChild(c); svg.appendChild(hit); });
+        });
+    }
+    function drawStrip() {
+      var q = qdef(), d = rows(), W = 640, H = 150, m = { t: 26, r: 18, b: 36, l: 64 };
+      var ds = d.map(function (p) { var dd = diffOf(p, q.key); return dd > 0 ? Math.log10(dd) : -16; });
+      var lo = Math.floor(Math.min.apply(null, ds.concat([Math.log10(q.tol) - 1]))), hi = Math.ceil(Math.max.apply(null, ds.concat([Math.log10(q.tol) + 1])));
+      figD.innerHTML = '';
+      function sx(v) { return m.l + (v - lo) / (hi - lo) * (W - m.l - m.r); }
+      var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Distribution of the differences against the tolerance' });
+      var grid = h('svg:g', { class: 'grid' }), axis = h('svg:g', { class: 'axis' });
+      for (var t = lo; t <= hi; t++) { grid.appendChild(h('svg:line', { x1: sx(t), x2: sx(t), y1: m.t, y2: H - m.b })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 16, 'text-anchor': 'middle', text: '1e' + t })); }
+      svg.appendChild(grid); svg.appendChild(axis);
+      var tx = sx(Math.log10(q.tol)); svg.appendChild(h('svg:line', { class: 'refline', x1: tx, x2: tx, y1: m.t - 6, y2: H - m.b })); svg.appendChild(h('svg:text', { class: 'refline-text', x: tx + 4, y: m.t - 8, text: 'tolerance ' + sci(q.tol) }));
+      svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle', text: '|R − Py| (log scale)' }));
+      d.forEach(function (p, i) { var y = m.t + 12 + ((i * 7) % 5) * 16 + ((i * 13) % 3) * 3; var c = h('svg:circle', { class: 'pt' + (p.degenerate ? ' deg' : '') + (reduced ? '' : ' enter'), cx: sx(ds[i]), cy: y, 'data-id': String(p.provider), style: 'animation-delay:' + Math.min(600, i * 6) + 'ms' }); var hit = h('svg:circle', { class: 'hit', cx: sx(ds[i]), cy: y }); bind(hit, p); svg.appendChild(c); svg.appendChild(hit); });
+      figD.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Figure 2 · Per-provider difference |R − Py| against the tolerance line' })])); figD.appendChild(svg);
+      figD.appendChild(h('p', { class: 'caption', text: 'Log scale: 1e−6 means the two differ by one part in a million. Dots left of the orange tolerance line count as agreement; exact zeros are drawn at the far left.' }));
+    }
+    function drawBA() {
+      var q = qdef(), d = rows().filter(function (p) { return !p.degenerate; });
+      var xs = d.map(function (p) { return p[q.key + '_r']; }), ds = d.map(function (p) { return p[q.key + '_py'] - p[q.key + '_r']; });
+      var lo = Math.min.apply(null, xs), hi = Math.max.apply(null, xs), pad = (hi - lo || 1) * .05; lo -= pad; hi += pad;
+      var dmax = Math.max(q.tol, Math.max.apply(null, ds.map(Math.abs))) * 1.15;
+      chart(figB, 'Figure 3 · Bland–Altman view: Python − R against the R value', h('span', { class: 'legend' }, [h('span', { text: 'provider with events' }), h('span', { class: 'line', text: 'tolerance ±' + sci(q.tol) })]), 640, 300, { t: 16, r: 18, b: 44, l: 70 }, lo, hi, -dmax, dmax,
+        '<strong>' + q.label + '</strong>, providers with events only. A difference that grows with the value would indicate a scale or definition mismatch; a flat band inside the tolerance lines indicates convergence noise only.',
+        function (svg, sx, sy) {
+          svg.appendChild(h('svg:line', { class: 'identity', x1: sx(lo), x2: sx(hi), y1: sy(0), y2: sy(0) }));
+          [q.tol, -q.tol].forEach(function (t) { svg.appendChild(h('svg:line', { class: 'refline', x1: sx(lo), x2: sx(hi), y1: sy(t), y2: sy(t) })); });
+          svg.appendChild(h('svg:text', { class: 'label', x: (70 + 640 - 18) / 2, y: 294, 'text-anchor': 'middle', text: 'R value' })); svg.appendChild(h('svg:text', { class: 'label', transform: 'translate(14 136) rotate(-90)', 'text-anchor': 'middle', text: 'Python − R' }));
+          d.forEach(function (p, i) { var c = h('svg:circle', { class: 'pt' + (reduced ? '' : ' enter'), cx: sx(xs[i]), cy: sy(ds[i]), 'data-id': String(p.provider), style: 'animation-delay:' + Math.min(600, i * 6) + 'ms' }); var hit = h('svg:circle', { class: 'hit', cx: sx(xs[i]), cy: sy(ds[i]) }); bind(hit, p); svg.appendChild(c); svg.appendChild(hit); });
+        });
+    }
+    function drawTable() {
+      var q = qdef(), d = rows().slice(), key = state.sort, dir = state.dir === 'asc' ? 1 : -1;
+      function val(p) { return key === 'diff' ? diffOf(p, q.key) : key === 'provider' ? +p.provider : key === 'r' ? p[q.key + '_r'] : key === 'py' ? p[q.key + '_py'] : p[key]; }
+      d.sort(function (a, b) { var va = val(a), vb = val(b); return (va > vb ? 1 : va < vb ? -1 : 0) * dir; });
+      var maxd = Math.max.apply(null, d.map(function (p) { return diffOf(p, q.key); })) || 1;
+      tableWrap.innerHTML = '';
+      var tbl = h('table', { class: 'data' }, [h('caption', { text: 'Providers shown in the charts: hover or focus a row to find it in the charts; sort by a column.' })]), trh = h('tr');
+      [['provider', 'Provider'], ['n', 'n'], ['events', 'Events'], ['r', 'R'], ['py', 'Python'], ['diff', '|R − Py|']].forEach(function (c) { var th = h('th', { scope: 'col', class: 'sortable ' + (c[0] === 'provider' ? '' : 'num ') + (state.sort === c[0] ? state.dir : ''), text: c[1], 'aria-sort': state.sort === c[0] ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none' }); th.addEventListener('click', function () { if (state.sort === c[0]) state.dir = state.dir === 'asc' ? 'desc' : 'asc'; else { state.sort = c[0]; state.dir = c[0] === 'provider' ? 'asc' : 'desc'; } drawTable(); }); trh.appendChild(th); });
+      tbl.appendChild(h('thead', {}, [trh])); var tb = h('tbody');
+      d.slice(0, state.limit).forEach(function (p) { var dd = diffOf(p, q.key); var tr = h('tr', { class: p.degenerate ? 'deg' : '', 'data-id': String(p.provider), tabindex: '0' }, [h('td', { text: p.provider }), h('td', { class: 'num', text: p.n }), h('td', { class: 'num', text: p.events }), h('td', { class: 'num mono', text: fmtAuto(p[q.key + '_r']) }), h('td', { class: 'num mono', text: fmtAuto(p[q.key + '_py']) }), h('td', { class: 'num mono' }, [h('span', { class: 'bar', style: 'width:' + Math.max(2, Math.round(60 * (dd > 0 ? (Math.log10(dd) + 16) / (Math.log10(maxd) + 16 || 1) : 0))) + 'px' }), sci(dd)])]); tr.addEventListener('mouseenter', function () { highlight(String(p.provider)); }); tr.addEventListener('mouseleave', function () { highlight(null); }); tr.addEventListener('focus', function () { highlight(String(p.provider)); var c = wrap.querySelector('.pt[data-id="' + p.provider + '"]'); if (c) { var r = c.getBoundingClientRect(), w = wrap.getBoundingClientRect(); tip.show(r.left - w.left + 6, r.top - w.top + 6, tipHtml(p)); } }); tr.addEventListener('blur', function () { highlight(null); tip.hide(); }); tb.appendChild(tr); });
+      tbl.appendChild(tb); tableWrap.appendChild(tbl);
+      if (d.length > state.limit) { var more = h('button', { type: 'button', class: 'more-btn', text: 'Show all ' + d.length + ' providers' }); more.addEventListener('click', function () { state.limit = Infinity; drawTable(); }); tableWrap.appendChild(more); }
+      else if (state.limit === Infinity && d.length > 25) { var less = h('button', { type: 'button', class: 'more-btn', text: 'Show the first 25 only' }); less.addEventListener('click', function () { state.limit = 25; drawTable(); }); tableWrap.appendChild(less); }
+      nInfo.textContent = Math.min(d.length, state.limit) + ' of ' + P.length + ' providers';
+    }
+    function redraw() { drawScatter(); drawStrip(); drawBA(); drawTable(); }
+    sel.addEventListener('change', function () { state.q = sel.value; redraw(); }); chk.addEventListener('change', function () { state.deg = chk.checked; redraw(); }); search.addEventListener('input', function () { state.search = search.value.trim(); redraw(); });
+    redraw();
+  }
+
+  root.appendChild(h('h1', { text: D.title })); if (D.question) root.appendChild(h('p', { class: 'question', text: D.question }));
+  if (D.kind === 'ladder') ladder(D.cdr, D.report); else if (D.kind === 'explorer') explorer(D.report);
+  if (D.caption) root.appendChild(h('p', { class: 'caption', html: D.caption }));
+})();

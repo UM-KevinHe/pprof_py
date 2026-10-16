@@ -1,0 +1,82 @@
+/* pprof_py documentation: interactive validation figures. Inlined into _static/validation/<name>.html by
+   validation/make_figures.py. Light is the default; dark follows the OS setting unless the page is stamped
+   data-theme="light", and data-theme="dark" wins either way (the embedding page's theme is read by the script). */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
+  --py: #2a78d6; --r: #eb6834; --deg: #eda100; --three: #1baf7a; --ok: #1b7f4b;
+  --b0: #e3f3e8; --b1: #edf5ee; --b2: #fff7df; --b3: #fde8e6;
+  --tip-bg: #0b0b0b; --tip-ink: #f0efec; --tip-accent: #ffd166; --focus: #2a78d6; --hl: rgba(237, 161, 0, 0.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --py: #3987e5; --r: #d95926; --deg: #c98500; --three: #199e70; --ok: #4fbf7f;
+    --b0: rgba(27, 127, 75, 0.22); --b1: rgba(27, 127, 75, 0.10); --b2: rgba(237, 161, 0, 0.14); --b3: rgba(227, 73, 72, 0.16);
+    --tip-bg: #f0efec; --tip-ink: #0b0b0b; --tip-accent: #8a5a00; --focus: #3987e5; --hl: rgba(237, 161, 0, 0.25);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+  --py: #3987e5; --r: #d95926; --deg: #c98500; --three: #199e70; --ok: #4fbf7f;
+  --b0: rgba(27, 127, 75, 0.22); --b1: rgba(27, 127, 75, 0.10); --b2: rgba(237, 161, 0, 0.14); --b3: rgba(227, 73, 72, 0.16);
+  --tip-bg: #f0efec; --tip-ink: #0b0b0b; --tip-accent: #8a5a00; --focus: #3987e5; --hl: rgba(237, 161, 0, 0.25);
+}
+* { box-sizing: border-box; }
+html { background: var(--page); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 900px; margin: 0 auto; padding: 12px 16px 24px; }
+h1 { font-size: 1.15rem; margin: 0 0 .2rem; font-weight: 600; }
+.question { margin: 0 0 .6rem; color: var(--ink-2); }
+.caption { font-size: .85rem; color: var(--ink-2); margin: .6rem 0 0; line-height: 1.5; }
+a { color: var(--py); }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; margin: .2rem 0 .6rem; font-size: .9rem; }
+.controls label { display: inline-flex; align-items: center; gap: .4rem; }
+.controls select, .controls input[type="search"] { font: inherit; padding: .2rem .4rem; border: 1px solid var(--axis); border-radius: 4px; background: var(--surface); color: var(--ink); }
+.controls .n { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.legend { display: inline-flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .85rem; color: var(--ink-2); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: .35rem; vertical-align: -1px; background: var(--py); }
+.legend span.deg::before { background: var(--deg); } .legend span.r::before { background: var(--r); } .legend span.three::before { background: var(--three); }
+.legend span.line::before { width: 14px; height: 2px; border-radius: 1px; background: var(--muted); vertical-align: 3px; }
+figure.fig { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px 8px; }
+.fig-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; margin-bottom: .4rem; }
+.fig-head .t { font-weight: 600; color: var(--ink); }
+.fig-wrap { position: relative; }
+.chart { display: block; width: 100%; height: auto; overflow: visible; font-family: inherit; }
+.chart text { fill: var(--ink-2); font-size: 11px; }
+.chart .grid line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+.chart .axis text, .chart .label { fill: var(--muted); font-size: 11px; }
+.chart .identity { stroke: var(--axis); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.chart .refline { stroke: var(--r); stroke-width: 1.5; stroke-dasharray: 3 3; } .chart .refline-text { fill: var(--r); font-size: 10.5px; font-weight: 600; }
+.chart .pt { fill: var(--py); stroke: var(--surface); stroke-width: 2; r: 4.5; transition: r .15s ease, opacity .2s ease; cursor: pointer; opacity: .92; }
+.chart .pt.deg { fill: var(--deg); } .chart .pt.r { fill: var(--r); } .chart .pt.three { fill: var(--three); }
+.chart .pt:hover, .chart .pt.hl { r: 7; opacity: 1; } .chart .pt.dim { opacity: .18; }
+.chart .hit { fill: transparent; r: 11; cursor: pointer; }
+.chart .band.b0 { fill: var(--b0); } .chart .band.b1 { fill: var(--b1); } .chart .band.b2 { fill: var(--b2); } .chart .band.b3 { fill: var(--b3); }
+.chart .band-label { fill: var(--muted); font-size: 10px; }
+.chart .tick { stroke: var(--grid); } .chart .row { stroke: var(--grid); }
+.chart .rowlab { fill: var(--ink); font-size: 12px; font-weight: 600; } .chart .ptlab { fill: var(--muted); font-size: 9.5px; }
+.chart .enter { animation: pop .5s cubic-bezier(.2,.7,.2,1) both; } @keyframes pop { from { opacity: 0; transform: scale(.4); transform-box: fill-box; transform-origin: center; } to { opacity: .92; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .chart .enter { animation: none; } }
+.tip { position: absolute; z-index: 50; pointer-events: none; background: var(--tip-bg); color: var(--tip-ink); font-size: .8rem; line-height: 1.45; padding: .45rem .6rem; border-radius: 5px; box-shadow: 0 6px 18px rgba(0,0,0,.25); opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; max-width: 280px; }
+.tip.show { opacity: 1; transform: translateY(0); } .tip b { color: var(--tip-accent); } .tip .row { display: flex; justify-content: space-between; gap: 1rem; font-variant-numeric: tabular-nums; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; background: var(--surface); font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: var(--ink-2); font-size: .85rem; padding: .3rem 0; }
+th, td { border: 1px solid var(--border); padding: .35rem .6rem; text-align: left; }
+th { background: var(--page); color: var(--ink-2); font-size: .8rem; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; } th.sortable::after { content: "\2195"; opacity: .35; margin-left: .3rem; font-size: .75em; }
+th.sortable.asc::after { content: "\2191"; opacity: 1; } th.sortable.desc::after { content: "\2193"; opacity: 1; }
+td.num, th.num { text-align: right; } td.mono { font-family: ui-monospace, Menlo, monospace; font-size: .8rem; }
+tbody tr:hover, tbody tr.hl, tbody tr:focus-within { background: var(--hl); }
+tbody tr[tabindex]:focus { outline: 2px solid var(--focus); outline-offset: -2px; }
+tbody tr.deg td:first-child::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--deg); margin-right: .4rem; vertical-align: 1px; }
+.bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--py); vertical-align: middle; margin-right: .4rem; }
+.more-btn { margin: .6rem 0 0; font: inherit; font-size: .84rem; font-weight: 600; color: var(--py); background: var(--surface); border: 1px solid var(--py); border-radius: 999px; padding: .3rem .9rem; cursor: pointer; }
+.more-btn:hover { background: var(--py); color: var(--surface); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

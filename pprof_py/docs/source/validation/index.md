@@ -25,6 +25,12 @@ the floating-point limit; 1e−10 to 1e−5 reflects library or operation-order 
 tolerance or rounding of the R output; above 1e−2 would call for investigation. Nothing sits in the last band.
 ```
 
+<details class="pprof-interactive">
+<summary>Interactive version: hover any dot for its value and source; the table view lists every value</summary>
+<iframe src="../_static/validation/ladder.html" title="Precision ladder, interactive" loading="lazy" width="100%" height="720" style="border:0"></iframe>
+<p><a href="../_static/validation/ladder.html" target="_blank" rel="noopener">Open in a new tab</a></p>
+</details>
+
 ## Real-data parity by measure
 
 Ten CMS ESRD measures were validated on FY2027 production data inside the CMS data environment (CDR, Databricks). The
