@@ -1,5 +1,5 @@
 (empirical-null-guide)=
-# Empirical Null Calibration
+# Empirical null calibration
 
 Every provider test in `pprof_py` is built in three steps: a z-statistic
 for each provider, a **null model** that says how those statistics are

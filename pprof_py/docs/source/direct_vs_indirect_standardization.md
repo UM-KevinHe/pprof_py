@@ -8,11 +8,6 @@ differences in their underlying populations or case-mix. This document
 explores two common approaches: indirect and direct standardization,
 detailing their application in linear, logistic, and survival models.
 
-```{contents} Table of Contents
-:local:
-:depth: 2
-```
-
 ## 1. Introduction to Standardization
 
 When comparing outcomes across different groups, raw (unadjusted)

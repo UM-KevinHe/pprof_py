@@ -1,5 +1,5 @@
 (data-preparation-guide)=
-# Survival Data Preparation
+# Survival data preparation
 
 Four functions reshape and validate survival data before it reaches a
 model's `fit()`. `tmerge` and `build_skeleton` already have a full

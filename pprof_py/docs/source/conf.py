@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath('_ext'))  # local extensions (the presentatio
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'pprof_py'
-copyright = '2025, Kevin He'
+copyright = '2025–2026, Kevin He, University of Michigan'
 author = 'Kevin He'
 
 release = '0.7.0'
@@ -55,18 +55,38 @@ bibtex_reference_style = 'author_year'
 
 autosummary_generate = False  # no page uses autosummary directives
 
-# templates_path = ['_templates']  # No custom templates yet
+templates_path = ['_templates']   # footer override: copyright line only
 exclude_patterns = ['presentation/_gallery_items.md', 'presentation/_figures/*']  # generated includes
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'shibuya'
+html_show_sphinx = False   # footer: copyright line only
 html_static_path = ['_static']
+html_css_files = ['custom.css']  # reading-experience adjustments on top of the theme
+html_js_files = ['fontsize.js']  # A- / A+ text-size control next to the colour-mode toggle
 html_theme_options = {
     'globaltoc_expand_depth': 1,
     'toctree_titles_only': True,
+    'color_mode': 'auto',          # follow the system, with the light/dark toggle in the header
     'nav_links': [
+        # One entry per documentation section, in the order of the sidebar.
+        {'title': 'Contents', 'children': [
+            # The documentation sections, named as in the sidebar.
+            {'title': 'Package overview', 'url': 'introduction'},
+            {'title': 'Core concepts', 'url': 'direct_vs_indirect_standardization'},
+            {'title': 'Linear models', 'url': 'linear/00_start_here'},
+            {'title': 'Logistic models', 'url': 'logistic/00_start_here'},
+            {'title': 'Survival analysis', 'url': 'survival/00_start_here'},
+            {'title': 'Presentation', 'url': 'presentation/index'},
+            # TODO: switch to 'validation/index' once the validation branch is
+            # merged (nav_links are not checked by the build).
+            {'title': 'Validation', 'url': 'survival/VALIDATION_REPORT'},
+            {'title': 'Reference', 'url': 'reference/linear_models'},
+            {'title': 'Tutorials', 'url': 'linear/linear_fe_tutorial'},
+            {'title': 'API reference', 'url': 'api'},
+        ]},
         {'title': 'GitHub', 'url': 'https://github.com/UM-KevinHe/pprof_py'},
     ],
 }

@@ -1,5 +1,5 @@
 (ll_ref_logistic)=
-# Reference: logistic fixed-effect, random-effect and mixed-effect models
+# Logistic fixed-effect, random-effect and mixed-effect models
 
 ```python
 import numpy as np
