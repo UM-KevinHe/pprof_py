@@ -16,7 +16,12 @@ fixed-effect family and the real-data runs, start from the {ref}`validation over
 This file answers a fixed checklist of R-compatibility questions (the numbering follows that checklist, so a few numbers group several questions). Each entry states the convention, why it matters, and how
 it was verified.
 
-## 1. Risk-set definition for `(start, stop]`
+## Phase 1–2: the Cox model core (items 1–17)
+
+Risk sets, ties, record ordering, weights, offsets, strata, baseline hazards, residuals, convergence and numerical
+precision: the conventions a `CoxPH` fit must share with `survival::coxph()` before anything is built on it.
+
+### 1. Risk-set definition for `(start, stop]`
 
 **Convention:** `R(t) = { i : start_i < t <= stop_i }` — left-open,
 right-closed. Concretely:
@@ -35,7 +40,7 @@ is subtly wrong, which shows up as a small, hard-to-localize bias in
 to relative error ~1e-9 or tighter. Implemented in
 `algorithms/survival/risk_sets.py::sweep_risk_sets`.
 
-## 2. Tied event times: Breslow and Efron
+### 2. Tied event times: Breslow and Efron
 
 **Breslow** treats all `d_j` simultaneous events at time `t_j` as sharing
 one risk-set denominator `S0(t_j)`, as if they were `d_j` independent
@@ -114,20 +119,20 @@ logic, not a variation on the first two.
 
 Exact ties are not implemented (see `algorithms/survival/ties.py::ExactTies`).
 
-## 3. Ordering of start/stop/event records
+### 3. Ordering of start/stop/event records
 
 No ordering is required or assumed on input — `sweep_risk_sets` sorts
 internally. (R has the same property; this was checked by fitting the
 same data shuffled into a different row order and confirming identical
 results, not just by reading R's docs.)
 
-## 4. Zero-width intervals
+### 4. Zero-width intervals
 
 Rejected outright (`start < stop` is required) — both packages treat
 this as a data error, not a numerical edge case. See
 `data/survival_validation.py`.
 
-## 5. Weight semantics
+### 5. Weight semantics
 
 R's `weights=` are, by default, ordinary case/frequency weights: they
 multiply every term of the log partial likelihood, score, and
@@ -171,7 +176,7 @@ weight-weighted sum — confirmed against R's reported `nevent` under
 non-trivial weights (`fit$nevent` does not change when weights are
 non-integer).
 
-## 6. Offset handling — the least obvious finding in this package
+### 6. Offset handling — the least obvious finding in this package
 
 A naive reading of `basehaz(fit, centered = FALSE)` suggests it reports
 the baseline hazard at `X = 0`. It does not fully do that when an
@@ -251,7 +256,7 @@ and `survival:::survfit.coxph` (the `offset.mean` computation feeding
 161: xcenter <- sum(object$means * beta) + offset.mean
 ```
 
-## 7. Stratified baseline hazards
+### 7. Stratified baseline hazards
 
 Computed independently per stratum (own risk sets, own event times, own
 `H0`/`S0`), coefficients shared across strata — matches
@@ -262,7 +267,7 @@ Computed independently per stratum (own risk sets, own event times, own
 comparison, rather than this package adopting R's string-labeling
 convention).
 
-## 8. Baseline hazard table shape
+### 8. Baseline hazard table shape
 
 `basehaz()` returns one row per **distinct observed time**, event or
 censoring — the hazard value at a censoring-only time is just carried
@@ -273,7 +278,7 @@ every Python-reported time and hazard value is present, verbatim, in
 R's larger table; R's table just also repeats the same value at
 additional non-jump timestamps). `predict_cumulative_hazard` / `predict_survival_function` return the step function **at the stratum's event times only** (they have no `times=` argument); to read it at other times, forward-fill the returned frame (recipe in the `CoxPH` reference page). Nothing is lost: the compact table and the step function carry the same information.
 
-## 9. Martingale residuals under left truncation
+### 9. Martingale residuals under left truncation
 
 `M_i = event_i - [H0(stop_i) - H0(start_i)] * exp(eta_i)` — the hazard
 contribution is integrated only over `(start_i, stop_i]`, the interval
@@ -283,7 +288,7 @@ accrued before they entered). Verified against R's
 `residuals(fit, type="martingale")` on the left-truncation and combined
 (truncation + strata + offset + weights) datasets; the test tolerance is 1e-4 absolute and the largest difference in a fresh run was below 5e-9 (see the validation report).
 
-## 9b. Martingale residuals under Efron ties need a THIRD separate formula
+### 9b. Martingale residuals under Efron ties need a THIRD separate formula
 
 The formula in question 9 is exactly right for Breslow, but is
 measurably wrong for Efron's tied deaths specifically — confirmed
@@ -320,7 +325,7 @@ against R rather than trusted on the strength of the derivation. It
 reduces to question 9's simple formula exactly when there are no ties
 (or `ties="breslow"`), and matches R on tied, weighted, and left-truncated Efron fits alike (test tolerance 1e-4 absolute; largest difference in a fresh run below 9e-9).
 
-## 10–13. Convergence, step-halving, singular matrices, missing values
+### 10–13. Convergence, step-halving, singular matrices, missing values
 
 - **Convergence criterion:** relative change in log-likelihood
   `< eps` (default `1e-9`), matching `coxph.control(eps=1e-9)`.
@@ -349,7 +354,7 @@ reduces to question 9's simple formula exactly when there are no ties
   listwise-deletion options, which are not implemented.
 - **Non-convergence:** reaching `max_iter` neither raises nor warns; `converged_` is `False` and `convergence_message_` says why. Check `converged_` in production code.
 
-## 14. Centering / scaling behavior
+### 14. Centering / scaling behavior
 
 R's C fitting routine mean-centers `X` internally before running
 Newton-Raphson, purely for numerical conditioning — this package does
@@ -375,7 +380,7 @@ convention (of the offset, not `X`) had to be matched explicitly rather
 than left as an implementation detail, precisely because the design goal is bit-compatibility with `basehaz(centered=FALSE)`
 specifically.
 
-## 15. Zero-weight observations
+### 15. Zero-weight observations
 
 Accepted (see Section 5) — a weight of exactly 0 removes an
 observation's influence on the fit (it contributes nothing to score,
@@ -383,7 +388,7 @@ information, or the log-likelihood's death/risk-set sums, since every
 term it could contribute to is itself multiplied by its weight) while
 leaving it present in `n_obs_`.
 
-## 16–17. Numerical precision, exact score/Hessian formulas
+### 16–17. Numerical precision, exact score/Hessian formulas
 
 The closed-form score and information matrix (in terms of the risk-set
 sums `S0`, `S1 = sum(w*r*X)`, `S2 = sum(w*r*outer(X,X))`) are derived
@@ -397,7 +402,7 @@ every downstream sum.
 
 ---
 
-## Phase 3: Penalized regression and variable selection
+## Phase 3: penalized regression and variable selection (items 18–19)
 
 ### 18. Penalized Cox regression vs. glmnet 4.1-8
 
@@ -524,7 +529,7 @@ fully R-validated `CoxPH.p_values_`.
 
 ---
 
-## Phase 4: Competing risks, robust variance, time-dependent covariates
+## Phase 4: competing risks, robust variance, time-dependent covariates (items 20–23)
 
 ### 20. Cause-specific hazards
 
