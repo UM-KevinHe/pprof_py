@@ -62,14 +62,37 @@ html[data-font-size="large"] {
   white-space: nowrap;
 }
 
-/* -- Measure and rhythm for long pages ------------------------------------ */
+/* -- Layout: text column and the "On this page" column --------------------- */
 
+/* Shibuya lays the page out as three flex columns: the sidebar (18rem), the
+   article (.sy-main, sized to what is left) and the "On this page" column
+   (.sy-rside, 16rem through a utility class in the template), with the row
+   capped at 90rem by .sy-container. The theme has no custom properties for
+   these widths, so the two rules below restate its own declarations with
+   other numbers. They use the theme's selectors; this file loads later and
+   is not in a cascade layer, so no !important is needed. */
 @media (min-width: 1280px) {
-  /* Cap the text column on wide screens; the theme otherwise lets it grow
-     to the container width, which gives lines of 100+ characters. */
-  .sy-main {
-    max-width: 50rem;
+  .sy-rside {
+    width: 14rem;                 /* theme: 16rem */
   }
+
+  .sy-main {
+    width: calc(100% - 32rem);    /* theme: calc(100% - 34rem) = sidebar + 16rem */
+  }
+}
+
+/* Long entries wrap inside the narrower column rather than overflow it. */
+.sy-rside ul.this-page-menu a {
+  overflow-wrap: anywhere;
+}
+
+/* Prose keeps a comfortable measure (about 95 characters per line) whatever
+   the column width; tables, figures, code blocks and display math may use
+   the full column. Image paragraphs, and anything inside a figure or table,
+   are left alone so the figures keep their full width. Set in em so the
+   measure follows the A- / A+ text-size steps. */
+.yue :is(p, ul, ol, blockquote, .admonition):not(figure *, .figure *, table *, .table-wrapper *, p:has(> img, > a > img)) {
+  max-width: 44em;
 }
 
 .yue h2 {
