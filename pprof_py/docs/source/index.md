@@ -49,7 +49,7 @@ Requires `numpy`, `pandas`, `scipy`, and `numba`
 - **Core Concepts** — the theory shared by every family: standardization, fixed versus random effects, empirical null calibration, reliability, and inference for covariates, provider effects and standardized measures.
 - **Statistical Models — Linear / Logistic** — one chapter per model class, each with the method, a running example and the R counterpart.
 - **Survival Analysis** — a chaptered guide from survival data to penalized and discrete-time Cox models.
-- **Presentation** — figures, tables and reports built from fitted results.
+- **Presentation** — figures, tables and reports built from fitted results, followed by one page on reading each display.
 - **Validation and R Compatibility** — what was checked against R, how, and what is known to differ.
 - **Reference** — argument and attribute lists, data preparation, diagnostics and the plotting guide.
 - **Tutorials** — end-to-end worked analyses for the linear and logistic profiling models.
@@ -123,10 +123,33 @@ survival/14_provider_discrete_survival
 ```
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 :caption: Presentation
 
-presentation/index
+Overview <presentation/index>
+presentation/decision_guide
+presentation/gallery
+presentation/tables
+presentation/theme_export_accessibility
+presentation/migration
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Presentation — the displays
+
+Reading the displays <presentation/displays/index>
+presentation/displays/funnel
+presentation/displays/caterpillar
+presentation/displays/observed_expected
+presentation/displays/forest
+presentation/displays/data_quality
+presentation/displays/null_calibration
+presentation/displays/reliability
+presentation/displays/provider_variation
+presentation/displays/shrinkage
+presentation/displays/flag_stability
+presentation/displays/several_measures
 ```
 
 ```{toctree}
