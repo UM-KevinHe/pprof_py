@@ -68,9 +68,14 @@ html[data-font-size="large"] {
    article (.sy-main, sized to what is left) and the "On this page" column
    (.sy-rside, 16rem through a utility class in the template), with the row
    capped at 90rem by .sy-container. The theme has no custom properties for
-   these widths, so the two rules below restate its own declarations with
+   these widths, so the rules below restate its own declarations with
    other numbers. They use the theme's selectors; this file loads later and
    is not in a cascade layer, so no !important is needed. */
+.sy-container {
+  max-width: 120rem;              /* theme: 90rem. 1920 px: a 1080p screen is used edge to edge, and on wider
+                                     screens the line length of the text column stays readable. */
+}
+
 @media (min-width: 1280px) {
   .sy-rside {
     width: 14rem;                 /* theme: 16rem */
