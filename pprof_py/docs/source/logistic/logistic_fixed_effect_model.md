@@ -23,6 +23,11 @@ This paper details the statistical methodology implemented in our software for f
 - Construction of corresponding confidence intervals for provider effects and standardized measures.
 - Visualization tools for interpreting results.
 
+```{seealso}
+How this model is validated against R's `pprof::logis_fe()` and against production output, with tolerances and
+per-provider results: {ref}`validation_logistic_fe`.
+```
+
 ## 2. Methods
 
 ### 2.1. The Logistic Fixed Effects Model

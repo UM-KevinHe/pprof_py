@@ -1,0 +1,102 @@
+[
+ {
+  "rows": 20000,
+  "providers": 200,
+  "events": 6905,
+  "r": {
+   "fit": 0.0446498394012451,
+   "test_wald": 0.0019228458404541,
+   "test_score": 0.0023059844970703,
+   "test_exact.poisbinom": 0.0585699081420898,
+   "wall_s": 1.651680083014071
+  },
+  "py": {
+   "fit": 0.02865612495224923,
+   "test_wald": 0.002077208016999066,
+   "test_score": 0.0015505830524489284,
+   "test_poibin_exact": 0.4315217500552535
+  },
+  "agreement": {
+   "beta_maxdiff": 1.841094832144563e-09,
+   "gamma_maxdiff": 7.424032473224429e-07,
+   "providers_compared": 200
+  }
+ },
+ {
+  "rows": 100000,
+  "providers": 1000,
+  "events": 34962,
+  "r": {
+   "fit": 0.322672128677368,
+   "test_wald": 0.003648042678833,
+   "test_score": 0.0153310298919678,
+   "test_exact.poisbinom": 0.311679124832153,
+   "wall_s": 2.798111040960066
+  },
+  "py": {
+   "fit": 0.12752099998760968,
+   "test_wald": 0.003287416067905724,
+   "test_score": 0.0041987079894170165,
+   "test_poibin_exact": 2.048131708987057
+  },
+  "agreement": {
+   "beta_maxdiff": 1.0919769560802095e-07,
+   "gamma_maxdiff": 0.004607501377024814,
+   "providers_compared": 1000
+  }
+ },
+ {
+  "rows": 500000,
+  "providers": 3500,
+  "events": 173614,
+  "r": {
+   "fit": 1.67074179649353,
+   "test_wald": 0.0122439861297607,
+   "test_score": 0.056567907333374,
+   "test_exact.poisbinom": 1.69013786315918,
+   "wall_s": 14.273742916062474
+  },
+  "py": {
+   "fit": 0.5501249589724466,
+   "test_wald": 0.007577709038741887,
+   "test_score": 0.012715458986349404,
+   "test_poibin_exact": 7.350295457988977
+  },
+  "agreement": {
+   "beta_maxdiff": 2.435453239080232e-08,
+   "gamma_maxdiff": 0.0005325745985405028,
+   "providers_compared": 3500
+  }
+ },
+ {
+  "rows": 1000000,
+  "providers": 7000,
+  "events": 348703,
+  "r": {
+   "fit": 2.58146405220032,
+   "test_wald": 0.0244870185852051,
+   "test_score": 0.0981850624084473,
+   "test_exact.poisbinom": 3.37616419792175,
+   "wall_s": 41.669671582989395
+  },
+  "py": {
+   "fit": 1.1101994590135291,
+   "test_wald": 0.014367249910719693,
+   "test_score": 0.02556033304426819,
+   "test_poibin_exact": 14.677628666046076
+  },
+  "agreement": {
+   "beta_maxdiff": 9.570816006387872e-08,
+   "gamma_maxdiff": 0.1140414280038815,
+   "providers_compared": 7000
+  },
+  "agreement_r_tol_1e-8": {
+   "r_tol": 1e-08,
+   "r_fit_s": 2.70618987083435,
+   "beta_maxdiff": 4.440892098500626e-16,
+   "gamma_maxdiff": 5.329070518200751e-15,
+   "providers_compared": 7000,
+   "note": "R rerun 2026-10-19 on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
+  }
+ }
+]
