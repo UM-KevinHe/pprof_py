@@ -76,6 +76,11 @@ html[data-font-size="large"] {
                                      screens the line length of the text column stays readable. */
 }
 
+.sy-main > div > .max-w-6xl {
+  max-width: none;                /* theme: 72rem on the article wrapper. The article fills the whole column
+                                     up to the "On this page" list instead of stopping short of it. */
+}
+
 @media (min-width: 1280px) {
   .sy-rside {
     width: 14rem;                 /* theme: 16rem */
