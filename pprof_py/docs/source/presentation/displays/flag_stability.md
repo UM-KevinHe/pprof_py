@@ -1,6 +1,6 @@
 # Flag stability
 
-```{include} ../_figures/flag_stability_interactive.md
+```{include} ../_figures/flag_stability.md
 ```
 
 **Answers:** How fragile are the flags?

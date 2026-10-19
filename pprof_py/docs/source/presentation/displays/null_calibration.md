@@ -1,6 +1,6 @@
 # Null calibration
 
-```{include} ../_figures/null_calibration_interactive.md
+```{include} ../_figures/null_calibration.md
 ```
 
 **Answers:** Is the theoretical null credible, and how much does calibration change the flags?

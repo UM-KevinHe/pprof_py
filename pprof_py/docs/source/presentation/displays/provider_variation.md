@@ -1,6 +1,6 @@
 # Between-provider variation
 
-```{include} ../_figures/provider_variation_interactive.md
+```{include} ../_figures/provider_variation.md
 ```
 
 **Answers:** How much real variation exists across providers?

@@ -1,6 +1,6 @@
 # Observed versus expected
 
-```{include} ../_figures/observed_expected_interactive.md
+```{include} ../_figures/observed_expected.md
 ```
 
 **Answers:** Where do observed counts depart from expected, and at what volume?

@@ -1,6 +1,6 @@
 # Coefficient forest
 
-```{include} ../_figures/forest_interactive.md
+```{include} ../_figures/forest.md
 ```
 
 **Answers:** How large are the covariate effects, with their intervals?

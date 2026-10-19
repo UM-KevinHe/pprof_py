@@ -9,10 +9,11 @@ renderer draws: provider or term ids, estimates, intervals or limits, statuses, 
 bins and curves, the reference values, the axis labels, the legend and the table columns. Each record is embedded in a
 self-contained HTML file, ``_static/interactive/<name>.html``, with the CSS and JavaScript from
 ``_ext/pprof_interactive_assets/`` inlined (plain JavaScript and inline SVG; no dependencies, nothing from the
-network). It also writes ``presentation/_figures/<name>_interactive.md``, the snippet the display pages include
-directly under their heading: the interactive view first, a lazily loaded ``<iframe>`` of that file with a link to
-open it in a new tab, then the gallery's static figure (its ``_figures/<name>.md`` snippet, read back and wrapped)
-in a collapsed ``<details>`` with the summary "Static figure (SVG, as used in print)". The snippet starts with the
+network). It then rewrites ``presentation/_figures/<name>.md``, the snippet each display page includes directly
+under its heading (the gallery writes the static image line there first; this extension replaces it): the
+interactive view first, a lazily loaded ``<iframe>`` of that file with a link to open it in a new tab, then the
+gallery's static figure (the same image line, rebuilt from the gallery's alt text) in a collapsed ``<details>`` with
+the summary "Static figure (SVG, as used in print)". The display pages are unchanged. The snippet starts with the
 MyST label ``(interactive-<name>)=``, which the gallery links to (``{ref}`` resolves it to ``#interactive-<name>``;
 the same id is set on the block's ``<div>``, because MyST attaches the label to the raw HTML block, which carries no
 id in the output). The interactive view is the primary one on the page;
@@ -892,20 +893,17 @@ def _page(rec: Dict[str, Any], css: str, js: str) -> bytes:
                            data=data).encode("utf-8")
 
 
-def _static_snippet(name: str, per_figure: Path) -> str:
-    """The gallery's ``_figures/<name>.md`` (the static image with its alt text), as written in this build."""
-    path = per_figure / f"{name}.md"
-    if path.exists():
-        return path.read_text(encoding="utf-8").strip()
-    fig = pprof_gallery.RESULTS[name]                       # the gallery did not run first: the same line it writes
+def _static_snippet(name: str) -> str:
+    """The static image with its alt text: the same line the gallery writes to ``_figures/<name>.md``."""
+    fig = pprof_gallery.RESULTS[name]
     return f"![{pprof_gallery._alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
 
 
-def _snippet(name: str, rec: Dict[str, Any], per_figure: Path) -> bytes:
+def _snippet(name: str, rec: Dict[str, Any]) -> bytes:
     src = f"{STATIC_PREFIX}_static/interactive/{name}.html"
     return SNIPPET.format(src=src, title=html.escape(rec["title"]), lower=html.escape(rec["title"].lower()),
                           label=f"interactive-{name.replace('_', '-')}", hover=html.escape(HOVER.get(name, DEFAULT_HOVER)),
-                          height=IFRAME_HEIGHT[name], static=_static_snippet(name, per_figure)).encode("utf-8")
+                          height=IFRAME_HEIGHT[name], static=_static_snippet(name)).encode("utf-8")
 
 
 def build(app) -> None:
@@ -925,7 +923,7 @@ def build(app) -> None:
         logging.disable(logging.NOTSET)
     for name in DISPLAYS:
         pprof_gallery._write(out / f"{name}.html", _page(recs[name], css, js))
-        pprof_gallery._write(per_figure / f"{name}_interactive.md", _snippet(name, recs[name], per_figure))
+        pprof_gallery._write(per_figure / f"{name}.md", _snippet(name, recs[name]))   # replaces the gallery's static line
 
 
 def setup(app):

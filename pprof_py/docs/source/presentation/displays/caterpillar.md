@@ -1,6 +1,6 @@
 # Interval plot with volume panel
 
-```{include} ../_figures/caterpillar_interactive.md
+```{include} ../_figures/caterpillar.md
 ```
 
 **Answers:** How large and how uncertain are the provider estimates, relative to the reference?

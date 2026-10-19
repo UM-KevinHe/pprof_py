@@ -1,6 +1,6 @@
 # Data quality
 
-```{include} ../_figures/data_quality_interactive.md
+```{include} ../_figures/data_quality.md
 ```
 
 **Answers:** Who is missing or unreliable, and why?

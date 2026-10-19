@@ -1,9 +1,9 @@
 # Several measures
 
-```{include} ../_figures/multi_measure_interactive.md
+```{include} ../_figures/multi_measure.md
 ```
 
-```{include} ../_figures/measure_agreement_interactive.md
+```{include} ../_figures/measure_agreement.md
 ```
 
 **Answers:** How do providers compare across measures, and do the measures agree?
