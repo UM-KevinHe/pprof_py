@@ -31,7 +31,7 @@
 html { background: var(--page); }
 body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased; }
-main { max-width: 860px; margin: 0 auto; padding: 12px 16px 24px; }
+main { max-width: 1400px; margin: 0 auto; padding: 12px 16px 24px; }   /* fills the content column up to 1400px */
 h1 { font-size: 1.15rem; margin: 0 0 .2rem; font-weight: 600; }
 .question { margin: 0 0 .6rem; color: var(--ink-2); }
 .note { border-left: 3px solid var(--axis); padding: .3rem .8rem; color: var(--ink-2); }
