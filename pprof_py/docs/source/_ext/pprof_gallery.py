@@ -3,17 +3,21 @@ script during the build, never saved by hand).
 
 On ``builder-inited`` it fits models to the package's synthetic data (``pprof_py.presentation._synthetic``), renders
 every figure type with the deterministic renderers into ``_static/gallery/``, and writes
-``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call) and one
+``presentation/_gallery_items.md`` (titles, questions, generated alt text, the call, and a link to the display
+page's interactive block, the label ``interactive-<name>`` that ``pprof_interactive`` writes) and one
 ``presentation/_figures/<name>.md`` per figure (the image with its alt text, included by the display pages). Files are
 rewritten only when
 their bytes change, so repeated builds do not trigger rebuilds.
+
+``fitted()`` holds the fitted models and profiles for the whole build and ``RESULTS`` the rendered figures, so a
+later extension (``pprof_interactive``) reuses them instead of fitting again.
 """
 from __future__ import annotations
 
 import logging
 import warnings
 from pathlib import Path
-from typing import Iterator, Tuple
+from typing import Dict, Iterator, Tuple
 
 PAGES = {"funnel": "funnel", "caterpillar": "caterpillar", "observed_expected": "observed_expected", "forest": "forest",
          "data_quality": "data_quality", "null_calibration": "null_calibration", "reliability": "reliability",
@@ -42,12 +46,19 @@ ITEMS = {
 }
 
 
-def figures() -> Iterator[Tuple[str, object]]:
-    """``(name, FigureResult)`` for every gallery item, from 200 synthetic providers."""
+RESULTS: Dict[str, object] = {}          # name -> FigureResult, filled by figures() during the build
+_FITTED: Dict[str, object] = {}
+
+
+def fitted() -> Dict[str, object]:
+    """The models and profiles behind the gallery, fitted once per build from 200 synthetic providers:
+    ``fe`` (logistic fixed effects on ``y``), ``re`` (random effects), ``fe2`` (fixed effects on ``y2``), ``exact``
+    (the fixed-effect profile with the exact test and funnel limits), ``iur`` and ``measures``."""
+    if _FITTED:
+        return _FITTED
     import numpy as np
 
     from pprof_py import LogisticFixedEffectModel, LogisticRandomEffectModel
-    from pprof_py.inference import EmpiricalNull
     from pprof_py.measures.iur import BootstrapIUR
     from pprof_py import presentation as P
     from pprof_py.presentation._synthetic import provider_data
@@ -61,6 +72,17 @@ def figures() -> Iterator[Tuple[str, object]]:
     iur = BootstrapIUR(n_boot=50).fit(d["y"].to_numpy(float), np.full(len(d), d["y"].mean()), d["provider_id"].to_numpy())
     measures = P.ProfileCollection({"Measure A": P.ProviderProfile.from_model(fe, test_method="wald"),
                                     "Measure B": P.ProviderProfile.from_model(fe2, test_method="wald")})
+    _FITTED.update(fe=fe, re=re, fe2=fe2, exact=exact, iur=iur, measures=measures)
+    return _FITTED
+
+
+def figures() -> Iterator[Tuple[str, object]]:
+    """``(name, FigureResult)`` for every gallery item, from the fitted models; results are kept in ``RESULTS``."""
+    from pprof_py.inference import EmpiricalNull
+    from pprof_py import presentation as P
+
+    m = fitted()
+    fe, re, exact, iur, measures = m["fe"], m["re"], m["exact"], m["iur"], m["measures"]
     makers = {
         "funnel": lambda: P.funnel(fe), "caterpillar": lambda: P.caterpillar(exact),
         "observed_expected": lambda: P.observed_expected(exact), "forest": lambda: P.forest(fe),
@@ -72,7 +94,8 @@ def figures() -> Iterator[Tuple[str, object]]:
         "multi_measure": lambda: P.multi_measure(measures), "measure_agreement": lambda: P.measure_agreement(measures),
     }
     for name in ITEMS:
-        yield name, makers[name]()
+        RESULTS[name] = makers[name]()
+        yield name, RESULTS[name]
 
 
 def _write(path: Path, data: bytes) -> None:
@@ -100,9 +123,10 @@ def build(app) -> None:
                 title, question, call = ITEMS[name]
                 image = f"![{_alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
                 _write(per_figure / f"{name}.md", (image + "\n").encode("utf-8"))
+                anchor = f"interactive-{name.replace('_', '-')}"           # the label pprof_interactive's snippet sets
                 lines += [f"(gallery-{name.replace('_', '-')})=", f"## {title}", "", f"*Answers:* {question} "
-                          f"{{doc}}`How to read it <displays/{PAGES[name]}>`", "", image, "", "```{code-block} python",
-                          call, "```", ""]
+                          f"{{doc}}`How to read it <displays/{PAGES[name]}>` \u00b7 {{ref}}`Interactive version <{anchor}>`",
+                          "", image, "", "```{code-block} python", call, "```", ""]
     finally:
         logging.disable(logging.NOTSET)
     _write(src / "presentation" / "_gallery_items.md", "\n".join(lines).encode("utf-8"))

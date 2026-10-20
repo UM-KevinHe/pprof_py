@@ -1,0 +1,149 @@
+/* pprof_py documentation: interactive figures (every gallery display). Inlined into _static/interactive/<name>.html by
+   _ext/pprof_interactive.py. Colour tokens are defined once per theme; light is the default, dark follows the
+   OS setting unless the page is stamped data-theme="light", and data-theme="dark" wins either way. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
+  --above: #eb6834; --below: #2a78d6; --nd: #898781; --nt: #52514e; --nfe: #0b0b0b;
+  --band: rgba(11, 11, 11, 0.045); --wash: rgba(42, 120, 214, 0.10); --bar: #b9b8b0; --volume: #b9b8b0;
+  --tip-bg: #0b0b0b; --tip-ink: #f0efec; --focus: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --above: #d95926; --below: #3987e5; --nd: #898781; --nt: #c3c2b7; --nfe: #f0efec;
+    --band: rgba(255, 255, 255, 0.06); --wash: rgba(57, 135, 229, 0.18); --bar: #5a5a56; --volume: #5a5a56;
+    --tip-bg: #f0efec; --tip-ink: #0b0b0b; --focus: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+  --above: #d95926; --below: #3987e5; --nd: #898781; --nt: #c3c2b7; --nfe: #f0efec;
+  --band: rgba(255, 255, 255, 0.06); --wash: rgba(57, 135, 229, 0.18); --bar: #5a5a56; --volume: #5a5a56;
+  --tip-bg: #f0efec; --tip-ink: #0b0b0b; --focus: #3987e5;
+}
+* { box-sizing: border-box; }
+html { background: var(--page); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased; }
+main { max-width: 1400px; margin: 0 auto; padding: 12px 16px 24px; }   /* fills the content column up to 1400px */
+h1 { font-size: 1.15rem; margin: 0 0 .2rem; font-weight: 600; }
+.question { margin: 0 0 .6rem; color: var(--ink-2); }
+.note { border-left: 3px solid var(--axis); padding: .3rem .8rem; color: var(--ink-2); }
+.caption { font-size: .85rem; color: var(--ink-2); margin: .6rem 0 0; }
+a { color: var(--below); }
+
+/* controls, legend */
+.controls { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; margin: .2rem 0 .6rem; font-size: .9rem; }
+.controls label { display: inline-flex; align-items: center; gap: .4rem; }
+.controls input[type="search"] { font: inherit; padding: .2rem .4rem; border: 1px solid var(--axis); border-radius: 4px;
+  background: var(--surface); color: var(--ink); width: 9rem; }
+.controls button, .table-scroll th button { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--axis);
+  border-radius: 4px; padding: .2rem .6rem; cursor: pointer; }
+.controls button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.controls .n { color: var(--muted); margin-left: auto; }
+.legend { list-style: none; margin: 0 0 .4rem; padding: 0; display: flex; flex-wrap: wrap; gap: .25rem 1.1rem; font-size: .85rem; color: var(--ink-2); }
+.legend li { display: inline-flex; align-items: center; gap: .4rem; }
+.legend svg { width: 26px; height: 14px; overflow: visible; flex: none; }
+
+/* the figure */
+.fig { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 8px 4px; }
+.fig-wrap { position: relative; }
+.chart { display: block; width: 100%; height: auto; font-family: inherit; }
+.chart text { fill: var(--ink-2); font-size: 13px; }
+.chart .axis-label { fill: var(--ink); font-size: 13.5px; }
+.chart .grid line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+.chart .axis line { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+/* lines and areas, in the chart and in the legend swatches */
+.band { fill: var(--band); }
+.curve { fill: none; stroke-width: 1.2; }
+.curve.own { stroke: var(--ink-2); }
+.curve.other { stroke: var(--muted); stroke-dasharray: 5 3; }
+.reference { stroke: var(--ink); stroke-width: 1; }
+.reference, .guide, .limit, .bracket, .interval { fill: none; }   /* polylines: no default fill */
+.guide { stroke: var(--axis); stroke-width: 1.2; }
+.limit { stroke: var(--ink-2); stroke-width: 1.2; }
+.chart .curve-label { font-size: 12px; fill: var(--ink-2); }
+.chart .row-label { font-size: 11px; }
+.interval { stroke: var(--bar); stroke-width: 2; stroke-linecap: round; }
+.interval.st-above { stroke: var(--above); }
+.interval.st-below { stroke: var(--below); }
+.interval.st-not_tested { stroke: var(--nt); }
+.volume { fill: var(--volume); }
+.st-above { --c: var(--above); }
+.st-below { --c: var(--below); }
+.st-not_different { --c: var(--nd); }
+.st-not_tested { --c: var(--nt); }
+.st-zero_events, .st-no_finite_estimate { --c: var(--nfe); }
+.st-excluded, .muted-dot { --c: var(--muted); }
+.dot, .sdot, .jt-same, .jt-opposite, .jt-one, .jt-untested { --c: var(--ink); }
+.jt-neither { --c: var(--nd); }
+.interval.ink { stroke: var(--ink); stroke-width: 1.6; }
+.curve.fitted { stroke: var(--ink-2); stroke-width: 1.4; }
+.curve.dashed { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.reference.dashed { stroke-dasharray: 5 3; }
+.guide.dashed { stroke: var(--bar); stroke-dasharray: 5 3; }
+.guide.dotted { stroke: var(--bar); stroke-dasharray: 1.5 2.5; }
+.limit.thin { stroke: var(--bar); stroke-width: 0.8; }
+.bracket { stroke: var(--ink); stroke-width: 1.4; }
+.bin { fill: var(--bar); }
+.abar { fill: var(--c, var(--bar)); }
+.abar.ink { --c: var(--ink); }
+.abar.excl { --c: var(--muted); }
+.abar.attr { --c: var(--bar); }
+.chart .separator { stroke: var(--bar); stroke-width: 1; }
+.chart .annot { font-size: 12px; fill: var(--ink); }
+.chart .annot.muted { fill: var(--muted); }
+.chart .panel-title, .chart .col-head { font-size: 12.5px; fill: var(--ink); font-weight: 600; }
+.chart .col-head { font-weight: 500; }
+.chart .row-label.big { font-size: 13px; fill: var(--ink); }
+.mark.filled { fill: var(--c); stroke: var(--surface); stroke-width: 1.5; }   /* halo: marks stay separate */
+.mark.open { fill: none; stroke: var(--c); stroke-width: 1.2; }
+.chart .mark { transition: opacity .15s ease; }
+.chart .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.chart .hit { fill: transparent; stroke: none; cursor: pointer; }
+.has-hl .chart .mark:not(.hl) { opacity: .3; }
+.has-hl .chart .interval:not(.hl), .has-hl .chart .volume:not(.hl), .has-hl .chart .limit[data-id]:not(.hl) { opacity: .35; }
+.has-hl .chart .bin:not(.hl) { opacity: .45; }
+.chart .bin.hl { fill: var(--ink-2); }
+.chart .mark.hl { opacity: 1; }
+.table-only .fig, .table-only .legend { display: none; }
+
+/* tooltip */
+.tip { position: absolute; z-index: 5; pointer-events: none; background: var(--tip-bg); color: var(--tip-ink);
+  font-size: .8rem; line-height: 1.4; padding: .4rem .6rem; border-radius: 5px; box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+  opacity: 0; transition: opacity .12s ease; max-width: 300px; }
+.tip.show { opacity: 1; }
+.tip b { display: block; margin-bottom: .15rem; }
+.tip .row { display: flex; justify-content: space-between; gap: 1rem; font-variant-numeric: tabular-nums; }
+
+/* the linked table */
+.table-scroll { max-height: 380px; margin-bottom: .6rem; overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+caption { text-align: left; padding: .4rem .6rem; color: var(--ink-2); caption-side: top; }
+th, td { padding: .25rem .55rem; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--surface); text-align: left; font-weight: 600; z-index: 1; }
+th button { border: none !important; background: none !important; padding: 0 !important; font-weight: 600; }
+th button::after { content: " \2195"; color: var(--muted); font-size: .8em; }
+th[aria-sort="ascending"] button::after { content: " \2191"; color: var(--ink); }
+th[aria-sort="descending"] button::after { content: " \2193"; color: var(--ink); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.status { white-space: nowrap; }
+td.text.wrap { white-space: normal; min-width: 11rem; }
+.table-scroll.series { max-height: 300px; }
+td.status .sym { display: inline-block; width: 1.1em; }
+tbody tr { cursor: default; }
+tbody tr:hover, tbody tr.hl { background: var(--wash); }
+tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+tbody tr.flagged td:first-child { font-weight: 600; }
+.more { margin: .4rem 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+@media print { .controls, .tip { display: none !important; } .table-scroll { max-height: none; overflow: visible; } }

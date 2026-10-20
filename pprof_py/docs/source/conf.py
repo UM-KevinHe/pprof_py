@@ -1,7 +1,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../..'))  # Repository root (one level above pprof_py/)
-sys.path.insert(0, os.path.abspath('_ext'))  # local extensions (the presentation gallery)
+sys.path.insert(0, os.path.abspath('_ext'))  # local extensions (the presentation gallery, interactive figures)
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -33,6 +33,7 @@ extensions = [
     'myst_parser',
     'matplotlib.sphinxext.plot_directive',
     'pprof_gallery',
+    'pprof_interactive',  # after pprof_gallery: reuses its fits
 ]
 
 # -- MyST (Markdown) configuration -------------------------------------------
