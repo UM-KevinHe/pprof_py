@@ -15,6 +15,7 @@ later extension (``pprof_interactive``) reuses them instead of fitting again.
 from __future__ import annotations
 
 import logging
+import re
 import warnings
 from pathlib import Path
 from typing import Dict, Iterator, Tuple
@@ -107,6 +108,30 @@ def _alt(text: str) -> str:
     return text.replace("[", "(").replace("]", ")")
 
 
+_PT = re.compile(rb'<svg[^>]*\swidth="([0-9.]+)pt"')
+WIDTH_PT: Dict[str, float] = {}      # intrinsic width of each rendered SVG, filled by build()
+
+
+def _width_pt(svg: bytes) -> float:
+    m = _PT.search(svg[:2000])
+    return float(m.group(1)) if m else 0.0
+
+
+def image_markup(name: str) -> str:
+    """The image block the display pages and the gallery include: one scale for every figure.
+
+    The displays are drawn at their own default widths (single-column, 85 mm, or double-column, 175 mm, the interval
+    plot's). Stretched to a common width they would be magnified by different factors and their type would differ in
+    size, so each image is given a display width proportional to its intrinsic width, the widest spanning the column:
+    the type in every figure then renders at the same size, and each figure keeps the width its display chose.
+    """
+    fig = RESULTS[name]
+    widest = max(WIDTH_PT.values()) if WIDTH_PT else 0.0
+    pct = 100.0 * WIDTH_PT.get(name, widest) / widest if widest else 100.0
+    return (f"```{{image}} /_static/gallery/{name}.svg\n:alt: {_alt(fig.alt_text)}\n:width: {pct:.1f}%\n"
+            f":align: center\n```")
+
+
 def build(app) -> None:
     src = Path(app.srcdir)
     images = src / "_static" / "gallery"
@@ -119,9 +144,12 @@ def build(app) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             for name, fig in figures():
-                _write(images / f"{name}.svg", fig.to_bytes("svg"))
+                svg = fig.to_bytes("svg")
+                _write(images / f"{name}.svg", svg)
+                WIDTH_PT[name] = _width_pt(svg)
+            for name in ITEMS:
                 title, question, call = ITEMS[name]
-                image = f"![{_alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
+                image = image_markup(name)
                 _write(per_figure / f"{name}.md", (image + "\n").encode("utf-8"))
                 anchor = f"interactive-{name.replace('_', '-')}"           # the label pprof_interactive's snippet sets
                 lines += [f"(gallery-{name.replace('_', '-')})=", f"## {title}", "", f"*Answers:* {question} "

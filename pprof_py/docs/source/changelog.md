@@ -32,6 +32,9 @@ feature attributions as a best reconstruction. There is no released
 - Static figures kept collapsed under an interactive view now print, the interactive frame does not, and each
   interactive view says it exists in the documentation only. `validation/make_figures.py` now writes the same SVGs
   on every run.
+- The gallery shows each figure at a width proportional to its intrinsic width (the widest spans the text column).
+  The stylesheet had stretched every image to the column, so the eight single-column figures (85 mm) were enlarged
+  about twice as much as the double-column ones (175 mm) and their type looked about twice as large.
 
 ## 0.7.0 (2026-10-02)
 
