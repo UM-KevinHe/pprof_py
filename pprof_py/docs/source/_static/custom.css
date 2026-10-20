@@ -192,7 +192,11 @@ html[data-font-size="large"] {
    left to themselves they would render at very different scales and the text
    inside the small ones would be hard to read. Every content image therefore
    spans the full width of the text column, centred, with its aspect ratio
-   kept; max-width stops it overflowing at narrow widths.
+   kept; max-width stops it overflowing at narrow widths. The gallery figures
+   are the exception: the gallery extension gives each an explicit width
+   proportional to its intrinsic width (the widest spans the column), so the
+   type in every figure renders at the same size; an inline width wins over
+   the rule below.
 
    Each image sits on a light card with padding and a hairline border so that
    in dark mode it reads as a framed figure rather than a bare white
@@ -200,6 +204,7 @@ html[data-font-size="large"] {
    alike) to reduce glare. */
 .yue p > img:only-child,
 .yue p > a > img:only-child,
+.yue img.align-center,
 .yue figure img,
 .yue .figure img {
   display: block;
@@ -216,6 +221,7 @@ html[data-font-size="large"] {
 
 html.dark .yue p > img:only-child,
 html.dark .yue p > a > img:only-child,
+html.dark .yue img.align-center,
 html.dark .yue figure img,
 html.dark .yue .figure img {
   border-color: var(--gray-a7);

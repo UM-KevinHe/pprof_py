@@ -895,9 +895,8 @@ def _page(rec: Dict[str, Any], css: str, js: str) -> bytes:
 
 
 def _static_snippet(name: str) -> str:
-    """The static image with its alt text: the same line the gallery writes to ``_figures/<name>.md``."""
-    fig = pprof_gallery.RESULTS[name]
-    return f"![{pprof_gallery._alt(fig.alt_text)}](/_static/gallery/{name}.svg)"
+    """The static image block: the same one the gallery writes, so both share one scale across figures."""
+    return pprof_gallery.image_markup(name)
 
 
 def _snippet(name: str, rec: Dict[str, Any]) -> bytes:
