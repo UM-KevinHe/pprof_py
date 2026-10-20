@@ -32,9 +32,6 @@ feature attributions as a best reconstruction. There is no released
 - Static figures kept collapsed under an interactive view now print, the interactive frame does not, and each
   interactive view says it exists in the documentation only. `validation/make_figures.py` now writes the same SVGs
   on every run.
-- The gallery draws every figure at double-column width (175 mm), the interval plot's width. The documentation
-  stylesheet stretches each image to the text column, so the eight single-column figures (85 mm) were enlarged about
-  twice as much as the others and their type looked about twice as large.
 
 ## 0.7.0 (2026-10-02)
 

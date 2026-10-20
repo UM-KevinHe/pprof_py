@@ -24,28 +24,25 @@ PAGES = {"funnel": "funnel", "caterpillar": "caterpillar", "observed_expected": 
          "provider_variation": "provider_variation", "shrinkage": "shrinkage", "flag_stability": "flag_stability",
          "multi_measure": "several_measures", "measure_agreement": "several_measures"}
 
-SIZE = "double"     # the interval plot's default width (175 mm); every gallery figure is drawn at it
-
 ITEMS = {
     "funnel": ("Funnel plot", "Which providers depart from the reference by more than volume-driven noise explains?",
-               "funnel(model, size=\"double\")"),
+               "funnel(model)"),
     "caterpillar": ("Interval plot with volume panel", "How large and how uncertain are the provider estimates?",
                     "caterpillar(profile)"),
     "observed_expected": ("Observed versus expected", "Where do observed counts depart from expected, and at what "
-                          "volume?", "observed_expected(profile, size=\"double\")"),
-    "forest": ("Coefficient forest", "How large are the covariate effects?", "forest(model, size=\"double\")"),
+                          "volume?", "observed_expected(profile)"),
+    "forest": ("Coefficient forest", "How large are the covariate effects?", "forest(model)"),
     "data_quality": ("Data quality", "Who is missing or unreliable, and why?", "data_quality(profile)"),
     "null_calibration": ("Null calibration", "Is the theoretical null credible, and how much does calibration change "
                          "the flags?", "null_calibration(model, test_method=\"score\", null_model=EmpiricalNull.fitter())"),
-    "reliability": ("Reliability", "How reliably does the measure separate providers of each size?",
-                    "reliability(iur, size=\"double\")"),
+    "reliability": ("Reliability", "How reliably does the measure separate providers of each size?", "reliability(iur)"),
     "provider_variation": ("Between-provider variation", "How much real variation exists across providers?",
-                           "provider_variation(random_effect_model, size=\"double\")"),
-    "shrinkage": ("Shrinkage", "How far does pooling move each provider?", "shrinkage(model, random_effect_model, size=\"double\")"),
-    "flag_stability": ("Flag stability", "How fragile are the flags?", "flag_stability(model, test_method=\"score\", size=\"double\")"),
+                           "provider_variation(random_effect_model)"),
+    "shrinkage": ("Shrinkage", "How far does pooling move each provider?", "shrinkage(model, random_effect_model)"),
+    "flag_stability": ("Flag stability", "How fragile are the flags?", "flag_stability(model, test_method=\"score\")"),
     "multi_measure": ("Several measures", "How do providers compare across measures?", "multi_measure(measures)"),
     "measure_agreement": ("Agreement of two measures", "Do the measures agree, provider by provider?",
-                          "measure_agreement(measures, size=\"double\")"),
+                          "measure_agreement(measures)"),
 }
 
 
@@ -86,19 +83,15 @@ def figures() -> Iterator[Tuple[str, object]]:
 
     m = fitted()
     fe, re, exact, iur, measures = m["fe"], m["re"], m["exact"], m["iur"], m["measures"]
-    # The page stretches every image to the width of the text column, so every figure is drawn at one width, the
-    # interval plot's (SIZE): then all share one scale and the same type size. Heights follow each display's content.
-    s = {"size": SIZE}
     makers = {
-        "funnel": lambda: P.funnel(fe, **s), "caterpillar": lambda: P.caterpillar(exact, **s),
-        "observed_expected": lambda: P.observed_expected(exact, **s), "forest": lambda: P.forest(fe, **s),
-        "data_quality": lambda: P.data_quality(exact, **s),
+        "funnel": lambda: P.funnel(fe), "caterpillar": lambda: P.caterpillar(exact),
+        "observed_expected": lambda: P.observed_expected(exact), "forest": lambda: P.forest(fe),
+        "data_quality": lambda: P.data_quality(exact),
         "null_calibration": lambda: P.null_calibration(fe, test_method="score", null_model=EmpiricalNull.fitter(
-            size=fe.provider_sizes_, n_groups=3), **s),
-        "reliability": lambda: P.reliability(iur, **s), "provider_variation": lambda: P.provider_variation(re, **s),
-        "shrinkage": lambda: P.shrinkage(fe, re, **s),
-        "flag_stability": lambda: P.flag_stability(fe, test_method="score", **s),
-        "multi_measure": lambda: P.multi_measure(measures, **s), "measure_agreement": lambda: P.measure_agreement(measures, **s),
+            size=fe.provider_sizes_, n_groups=3)),
+        "reliability": lambda: P.reliability(iur), "provider_variation": lambda: P.provider_variation(re),
+        "shrinkage": lambda: P.shrinkage(fe, re), "flag_stability": lambda: P.flag_stability(fe, test_method="score"),
+        "multi_measure": lambda: P.multi_measure(measures), "measure_agreement": lambda: P.measure_agreement(measures),
     }
     for name in ITEMS:
         RESULTS[name] = makers[name]()
