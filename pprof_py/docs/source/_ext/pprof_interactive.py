@@ -114,6 +114,7 @@ SNIPPET = """({label})=
 <iframe src="{src}" title="{title} (interactive)" loading="lazy" width="100%" height="{height}"
 style="display: block; width: 100%; height: {height}px; border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 4px; background: transparent;"></iframe>
 <p class="pprof-interactive-note">{hover}
+This interactive view exists in the documentation only; <code>pprof_py</code> draws the static figure below.
 <a href="{src}" target="_blank" rel="noopener">Open the interactive {lower} in a new tab</a>.</p>
 </div>
 <script>

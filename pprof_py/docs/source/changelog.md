@@ -11,6 +11,12 @@ feature attributions as a best reconstruction. There is no released
 
 ## Unreleased
 
+### Changed
+- `pprof_py.presentation` is no longer provisional. From 0.8 its public names follow the package's deprecation policy:
+  renaming or removing one, or changing its signature or return type, takes one minor release of
+  `DeprecationWarning`. Figure styling may still be refined, and `_`-prefixed modules are private.
+- `LICENSE.md` names the copyright holder as Kevin He, University of Michigan, as the documentation footer does.
+
 ### Fixed
 - `GroupLassoLinear` and `GroupLassoLogistic` store the null point exactly at `lambda >= lambda_max_`, as
   `GroupLassoCoxPH` and the provider classes already do (C23). Iterating from it left rounding noise in its zeros on
@@ -19,6 +25,13 @@ feature attributions as a best reconstruction. There is no released
   coefficients become exactly 0, the fitted unpenalized coefficients and intercept move by at most 2e-14 and 5e-13,
   and `n_iter_path_` is 0 there. Every later path point, and `GroupLassoLogisticCV`'s selected `lambda_` and `coef_`,
   are unchanged.
+- Documentation after the 2026-10-20 merges: the validation overview gave `variance="robust"` as the default (the
+  default is `"model"`; the robust form dates from 0.5.0); the random-effect tutorial showed z and p digits from
+  another platform; the Cox reference dated `funnel_limits()` to 0.7.0 (it came in 0.6.0); and the Validation header
+  link still pointed at the survival report.
+- Static figures kept collapsed under an interactive view now print, the interactive frame does not, and each
+  interactive view says it exists in the documentation only. `validation/make_figures.py` now writes the same SVGs
+  on every run.
 
 ## 0.7.0 (2026-10-02)
 

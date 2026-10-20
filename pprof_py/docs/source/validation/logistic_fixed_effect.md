@@ -66,7 +66,7 @@ percentages, so their tolerance is 1e−4; p-values 1e−3; flags must be identi
 })();
 </script>
 
-<details>
+<details class="pprof-static-figure">
 <summary>Static figure (SVG, as used in print)</summary>
 
 ```{figure} ../_static/validation/logistic_fe_live.svg
@@ -108,7 +108,7 @@ Silicon, 64 GB RAM); R single-threaded.
 <p class="pprof-interactive-links"><a href="../_static/validation/benchmark.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a point or a bar for the exact timing; the table below lists every number.</p>
 </div>
 
-<details>
+<details class="pprof-static-figure">
 <summary>Static figure (SVG, as used in print)</summary>
 
 ```{figure} ../_static/validation/benchmark.svg

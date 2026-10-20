@@ -12,7 +12,7 @@ This page is a *reference*. For a guided introduction see the
 
 ```{note}
 Everything on this page was checked by running the code at version 0.5.0; the methods listed are
-unchanged in 0.7.0, which adds `funnel_limits()` (see {doc}`funnel_limits`).
+unchanged through 0.7.0, and 0.6.0 added `funnel_limits()` (see {doc}`funnel_limits`).
 Where the behaviour is surprising, or differs from R, it is called out explicitly.
 ```
 

@@ -20,7 +20,7 @@ This paper details the statistical methodology implemented in our software for f
 - Visualization tools for interpreting results.
 
 ```{seealso}
-How this model is validated against R's `pprof::logis_fe()` and against production output, with tolerances and
+How this model is validated against R's `pprof::logis_fe()`, with tolerances and
 per-provider results: {ref}`validation_logistic_fe`.
 ```
 

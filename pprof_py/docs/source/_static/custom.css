@@ -250,3 +250,10 @@ html.dark .yue .figure img {
   font-weight: 600;
   margin-right: 0.25em;
 }
+
+/* Print: the static figure kept in a collapsed block under an interactive view prints in its place
+   (print_figures.js opens the block before printing); the interactive frame does not print. */
+@media print {
+  .pprof-interactive { display: none !important; }
+  details.pprof-static-figure > summary { display: none; }
+}

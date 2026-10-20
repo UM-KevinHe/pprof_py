@@ -1,11 +1,14 @@
 """Presentation layer: figures, tables and reports built from validated ``pprof_py`` results.
 
 Nothing here computes statistics. Displays consume ``test()``, ``funnel_limits()`` and related results, show their
-uncertainty, denominators and provenance, and export deterministically. The namespace grows round by round and is
-provisional until the presentation layer is complete: so far it holds the design tokens (:class:`Theme`), the
-shared :mod:`~pprof_py.presentation.formatting` functions, presentation data (:class:`ProviderProfile`), and the
-funnel plot (:func:`funnel`) and the interval plot (:func:`caterpillar`), returning :class:`FigureResult` objects,
-and the provider table (:func:`provider_table`, returning a :class:`TableResult`).
+uncertainty, denominators and provenance, and export deterministically. The namespace holds the design tokens
+(:class:`Theme`), the shared :mod:`~pprof_py.presentation.formatting` functions, presentation data
+(:class:`ProviderProfile` and its relatives), figures returning :class:`FigureResult` objects, tables returning
+:class:`TableResult` objects, and reports (:class:`Report`).
+
+Stability: from 0.8 the public names here follow the package's deprecation policy. Renaming or removing one, or
+changing its signature or return type, takes one minor release of ``DeprecationWarning``. Figure styling may still
+be refined, and ``_``-prefixed modules are private.
 """
 from . import formatting
 from .data import (PROFILE_COLUMNS, STATUSES, CapabilityError, CoefficientProfile, ProfileCollection,

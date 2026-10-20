@@ -13,6 +13,10 @@ settings; the funnel plot, the interval plot and the provider table read it and 
 * Figures are built without pyplot and export byte-identical SVG, PDF and PNG; every figure carries alt text and a
   provenance footnote.
 
+From 0.8 the public names in `pprof_py.presentation` follow the package's deprecation policy: renaming or
+removing one, or changing its signature or return type, takes one minor release of `DeprecationWarning`. Figure
+styling may still be refined, and `_`-prefixed modules are private.
+
 ## Example
 
 ```python

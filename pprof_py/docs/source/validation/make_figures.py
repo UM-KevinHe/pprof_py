@@ -27,6 +27,14 @@ plt.rcParams.update({
     "axes.titlesize": 10.5, "axes.labelcolor": MUTED, "xtick.color": MUTED, "ytick.color": MUTED, "axes.spines.top": False,
     "axes.spines.right": False, "grid.color": GRID, "grid.linewidth": .7, "legend.frameon": False, "svg.fonttype": "none",
 })
+plt.rcParams["svg.hashsalt"] = "pprof_py-validation"   # fixed ids, with no date: reruns reproduce the committed SVGs
+
+
+def _save(fig, name):
+    """Write an SVG that reruns reproduce byte for byte: no date, fixed ids, no trailing spaces in the path data."""
+    path = OUT / name
+    fig.savefig(path, metadata={"Date": None})
+    path.write_text("\n".join(line.rstrip() for line in path.read_text().splitlines()) + "\n")
 
 
 def ladder():
@@ -85,7 +93,7 @@ def ladder():
     ax.legend(loc="lower left", ncol=2, fontsize=7.5, bbox_to_anchor=(0, -.32))
     ax.grid(False)
     fig.tight_layout()
-    fig.savefig(OUT / "precision_ladder.svg")
+    _save(fig, "precision_ladder.svg")
     plt.close(fig)
 
 
@@ -118,7 +126,7 @@ def live_report():
     b.set_title("Differences against the tolerance")
     b.grid(True, axis="x")
     fig.tight_layout()
-    fig.savefig(OUT / "logistic_fe_live.svg")
+    _save(fig, "logistic_fe_live.svg")
     plt.close(fig)
 
 
@@ -139,7 +147,7 @@ def benchmark():
     for r in B:
         ax.annotate(f"{r['providers']:,} prov.", (r["rows"], r["py"]["fit"]), textcoords="offset points", xytext=(0, -14), ha="center", fontsize=7.5, color=MUTED)
     fig.tight_layout()
-    fig.savefig(OUT / "benchmark.svg")
+    _save(fig, "benchmark.svg")
     plt.close(fig)
 
 

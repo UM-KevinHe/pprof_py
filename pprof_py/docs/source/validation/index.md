@@ -36,7 +36,7 @@ bound on a degenerate provider or a different definition of a standard error, as
 })();
 </script>
 
-<details>
+<details class="pprof-static-figure">
 <summary>Static figure (SVG, as used in print)</summary>
 
 ```{figure} ../_static/validation/precision_ladder.svg
@@ -56,10 +56,10 @@ limited by R's stopping rule, not by the arithmetic. The {ref}`report <validatio
 
 ```{note}
 **Matching R's variance definition.** Two robust standard errors are available for the provider tests.
-`variance="robust"` (the default since 0.7.0) is the full sandwich of the joint (γ, β) fit at the average case mix;
+`variance="robust"` (since 0.5.0; the default is `variance="model"`) is the full sandwich of the joint (γ, β) fit at the average case mix;
 `variance="robust_fixed_beta"` treats β as known, which is the form the R implementation computes. A comparison with R
 output must therefore request `robust_fixed_beta`, together with the null model, transform and critical value the R
-run used; with the default the standardized ratios still agree but the z statistics, and so the flags of borderline
+run used; with `variance="robust"` the standardized ratios still agree but the z statistics, and so the flags of borderline
 providers, do not. The reasoning behind the new default is in {ref}`the changelog <changelog>` (0.7.0).
 ```
 
