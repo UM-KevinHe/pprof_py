@@ -1,5 +1,5 @@
 (r_compatibility)=
-# R compatibility notes
+# R compatibility notes: survival family
 
 This package targets `survival::coxph()` (R's `survival` package, version
 3.5-8, R 4.3.3) as the source of truth. Every claim below was checked
@@ -8,10 +8,22 @@ against actual R output during development (`pprof_py/r_reference/run_all.R` +
 several of R's own docs are silent or misleading on exactly these points,
 which is precisely why they needed checking.
 
+```{note}
+These notes cover the survival family only. For how the whole package is validated against R, including the logistic
+fixed-effect family, start from the {ref}`validation overview <validation_overview>`.
+```
+
 This file answers a fixed checklist of R-compatibility questions (the numbering follows that checklist, so a few numbers group several questions). Each entry states the convention, why it matters, and how
 it was verified.
 
-## 1. Risk-set definition for `(start, stop]`
+## Phase 1: model definition and fitting conventions (items 1–8)
+
+Risk sets, ties, record ordering, weights, offsets, strata and the baseline hazard: the conventions that define what
+a `CoxPH` fit is, which must match `survival::coxph()` before anything is built on it. Phases 1 and 2 are checked
+together by `tests/survival/test_r_comparison.py` (the {ref}`validation report <survival_validation_report>` reports
+them as "Phase 1–2").
+
+### 1. Risk-set definition for `(start, stop]`
 
 **Convention:** `R(t) = { i : start_i < t <= stop_i }` — left-open,
 right-closed. Concretely:
@@ -30,7 +42,7 @@ is subtly wrong, which shows up as a small, hard-to-localize bias in
 to relative error ~1e-9 or tighter. Implemented in
 `algorithms/survival/risk_sets.py::sweep_risk_sets`.
 
-## 2. Tied event times: Breslow and Efron
+### 2. Tied event times: Breslow and Efron
 
 **Breslow** treats all `d_j` simultaneous events at time `t_j` as sharing
 one risk-set denominator `S0(t_j)`, as if they were `d_j` independent
@@ -109,20 +121,20 @@ logic, not a variation on the first two.
 
 Exact ties are not implemented (see `algorithms/survival/ties.py::ExactTies`).
 
-## 3. Ordering of start/stop/event records
+### 3. Ordering of start/stop/event records
 
 No ordering is required or assumed on input — `sweep_risk_sets` sorts
 internally. (R has the same property; this was checked by fitting the
 same data shuffled into a different row order and confirming identical
 results, not just by reading R's docs.)
 
-## 4. Zero-width intervals
+### 4. Zero-width intervals
 
 Rejected outright (`start < stop` is required) — both packages treat
 this as a data error, not a numerical edge case. See
 `data/survival_validation.py`.
 
-## 5. Weight semantics
+### 5. Weight semantics
 
 R's `weights=` are, by default, ordinary case/frequency weights: they
 multiply every term of the log partial likelihood, score, and
@@ -166,7 +178,7 @@ weight-weighted sum — confirmed against R's reported `nevent` under
 non-trivial weights (`fit$nevent` does not change when weights are
 non-integer).
 
-## 6. Offset handling — the least obvious finding in this package
+### 6. Offset handling — the least obvious finding in this package
 
 A naive reading of `basehaz(fit, centered = FALSE)` suggests it reports
 the baseline hazard at `X = 0`. It does not fully do that when an
@@ -246,7 +258,7 @@ and `survival:::survfit.coxph` (the `offset.mean` computation feeding
 161: xcenter <- sum(object$means * beta) + offset.mean
 ```
 
-## 7. Stratified baseline hazards
+### 7. Stratified baseline hazards
 
 Computed independently per stratum (own risk sets, own event times, own
 `H0`/`S0`), coefficients shared across strata — matches
@@ -257,7 +269,7 @@ Computed independently per stratum (own risk sets, own event times, own
 comparison, rather than this package adopting R's string-labeling
 convention).
 
-## 8. Baseline hazard table shape
+### 8. Baseline hazard table shape
 
 `basehaz()` returns one row per **distinct observed time**, event or
 censoring — the hazard value at a censoring-only time is just carried
@@ -268,7 +280,12 @@ every Python-reported time and hazard value is present, verbatim, in
 R's larger table; R's table just also repeats the same value at
 additional non-jump timestamps). `predict_cumulative_hazard` / `predict_survival_function` return the step function **at the stratum's event times only** (they have no `times=` argument); to read it at other times, forward-fill the returned frame (recipe in the `CoxPH` reference page). Nothing is lost: the compact table and the step function carry the same information.
 
-## 9. Martingale residuals under left truncation
+## Phase 2: residuals, convergence and numerical behaviour (items 9–17)
+
+Martingale residuals, the stopping rules and step-halving of the Newton iteration, singular matrices, missing values,
+centering, zero-weight observations and floating-point precision: what a fitted model reports and how it gets there.
+
+### 9. Martingale residuals under left truncation
 
 `M_i = event_i - [H0(stop_i) - H0(start_i)] * exp(eta_i)` — the hazard
 contribution is integrated only over `(start_i, stop_i]`, the interval
@@ -278,7 +295,7 @@ accrued before they entered). Verified against R's
 `residuals(fit, type="martingale")` on the left-truncation and combined
 (truncation + strata + offset + weights) datasets; the test tolerance is 1e-4 absolute and the largest difference in a fresh run was below 5e-9 (see the validation report).
 
-## 9b. Martingale residuals under Efron ties need a THIRD separate formula
+### 9b. Martingale residuals under Efron ties need a THIRD separate formula
 
 The formula in question 9 is exactly right for Breslow, but is
 measurably wrong for Efron's tied deaths specifically — confirmed
@@ -315,7 +332,7 @@ against R rather than trusted on the strength of the derivation. It
 reduces to question 9's simple formula exactly when there are no ties
 (or `ties="breslow"`), and matches R on tied, weighted, and left-truncated Efron fits alike (test tolerance 1e-4 absolute; largest difference in a fresh run below 9e-9).
 
-## 10–13. Convergence, step-halving, singular matrices, missing values
+### 10–13. Convergence, step-halving, singular matrices, missing values
 
 - **Convergence criterion:** relative change in log-likelihood
   `< eps` (default `1e-9`), matching `coxph.control(eps=1e-9)`.
@@ -344,7 +361,7 @@ reduces to question 9's simple formula exactly when there are no ties
   listwise-deletion options, which are not implemented.
 - **Non-convergence:** reaching `max_iter` neither raises nor warns; `converged_` is `False` and `convergence_message_` says why. Check `converged_` in production code.
 
-## 14. Centering / scaling behavior
+### 14. Centering / scaling behavior
 
 R's C fitting routine mean-centers `X` internally before running
 Newton-Raphson, purely for numerical conditioning — this package does
@@ -370,7 +387,7 @@ convention (of the offset, not `X`) had to be matched explicitly rather
 than left as an implementation detail, precisely because the design goal is bit-compatibility with `basehaz(centered=FALSE)`
 specifically.
 
-## 15. Zero-weight observations
+### 15. Zero-weight observations
 
 Accepted (see Section 5) — a weight of exactly 0 removes an
 observation's influence on the fit (it contributes nothing to score,
@@ -378,7 +395,7 @@ information, or the log-likelihood's death/risk-set sums, since every
 term it could contribute to is itself multiplied by its weight) while
 leaving it present in `n_obs_`.
 
-## 16–17. Numerical precision, exact score/Hessian formulas
+### 16–17. Numerical precision, exact score/Hessian formulas
 
 The closed-form score and information matrix (in terms of the risk-set
 sums `S0`, `S1 = sum(w*r*X)`, `S2 = sum(w*r*outer(X,X))`) are derived
@@ -392,9 +409,9 @@ every downstream sum.
 
 ---
 
-# Phase 3: Penalized regression and variable selection
+## Phase 3: penalized regression and variable selection (items 18–19)
 
-## 18. Penalized Cox regression vs. glmnet 4.1-8
+### 18. Penalized Cox regression vs. glmnet 4.1-8
 
 The `PenalizedCoxPH` / `PenalizedCoxPHCV` estimators target R's
 `glmnet(family="cox")` / `cv.glmnet(family="cox")` (glmnet 4.1-8) as the
@@ -402,14 +419,14 @@ source of truth. Every convention below was verified against glmnet's
 actual R source (not the paper or vignette alone), with file/line
 references where the answer was non-obvious.
 
-### 18a. Naming conventions
+#### 18a. Naming conventions
 
 `alpha` is glmnet's elastic-net mixing parameter (0 = ridge, 1 = LASSO),
 NOT scikit-learn's `ElasticNet.alpha` (overall regularization strength).
 This package validates against R's `survival`/`glmnet`, so its penalized-
 regression vocabulary follows glmnet, not sklearn.
 
-### 18b. Standardization convention
+#### 18b. Standardization convention
 
 glmnet's Cox family scales each column by its weighted population standard
 deviation (denominator = `sum(weight)`, not `sum(weight) - 1`) and does
@@ -418,7 +435,7 @@ Cox path unconditionally sets `xm <- rep(0.0, nvars)` in `coxpath.R`.
 This is specific to the Cox model's lack of an intercept. Matched in
 `algorithms/survival/penalty.py::weighted_column_scale`.
 
-### 18c. The `c` scaling factor
+#### 18c. The `c` scaling factor
 
 glmnet normalizes the smooth (log-likelihood) part of the objective by
 `c = 1/sum(weight)`. Getting this wrong by a factor of 2 (an earlier
@@ -429,14 +446,14 @@ sum to 1 via `w <- w/sum(w)`, which is the convention `coxnet.deviance`
 is calibrated against. Matched in
 `algorithms/survival/coordinate_descent.py`.
 
-### 18d. Penalty factor rescaling
+#### 18d. Penalty factor rescaling
 
 Penalty factors are internally rescaled to sum to `p` (the number of
 predictors), matching glmnet's documented convention. Source: glmnet
 documentation + empirical verification. Matched in
 `algorithms/survival/penalty.py::rescale_penalty_factors`.
 
-### 18e. Lambda sequence generation
+#### 18e. Lambda sequence generation
 
 `lambda_max` (the smallest lambda at which all penalized coefficients are
 exactly zero) is derived from the gradient of the unpenalized objective
@@ -451,7 +468,7 @@ default behavior.
 — the auto-generated grid's first N points match glmnet's own
 un-forced path to ~1e-6.
 
-### 18f. Ridge at extreme lambda
+#### 18f. Ridge at extreme lambda
 
 One documented, investigated exception: at `alpha = 0` (pure ridge),
 the single largest lambda in the path produces coefficients ~1e-3 in
@@ -461,7 +478,7 @@ glmnet's extreme-edge value appears to be the outlier, not this
 package's. Every other point on the same ridge path (99/100) matches to
 ~1e-7. This is documented, not silently tolerated.
 
-### 18g. Cross-validation deviance
+#### 18g. Cross-validation deviance
 
 `PenalizedCoxPHCV` computes the Verweij & Van Houwelingen (1993) grouped
 deviance residual per fold, matching `cv.glmnet(family="cox",
@@ -475,7 +492,7 @@ time weight sums) is copied from glmnet's own `coxnet.deviance2`/
 — `cvm`, `lambda.min`, `lambda.1se`, and coefficients at `lambda.min`
 all match cv.glmnet with explicit shared fold assignments.
 
-### 18h. Efron ties under penalization
+#### 18h. Efron ties under penalization
 
 glmnet's Cox family only implements Breslow ties (confirmed by reading
 `R/coxnet.deviance.R` directly). Efron-tie penalized fits in this
@@ -484,7 +501,7 @@ with `lambda → 0` must converge to this package's own (R-validated)
 `CoxPH(ties="efron")` solution. See
 `pprof_py/tests/survival/test_penalized_self_consistency.py`.
 
-### 18i. Capability preservation under penalization
+#### 18i. Capability preservation under penalization
 
 Every Phase 1-2 feature (strata, offset, weights, left truncation,
 heavy ties) is tested under penalization on the exact same datasets
@@ -496,7 +513,7 @@ not regress any existing capability:
 `test_combined_strata_offset_weights_left_truncation`,
 `test_basic_heavy_ties`.
 
-## 19. Variable selection vs. R's step()/extractAIC()
+### 19. Variable selection vs. R's step()/extractAIC()
 
 `CoxPHSelector` matches R's `step()` on a `coxph` object for AIC and
 BIC criteria. The specific R convention this required verifying:
@@ -519,9 +536,9 @@ fully R-validated `CoxPH.p_values_`.
 
 ---
 
-# Phase 4: Competing risks, robust variance, time-dependent covariates
+## Phase 4: competing risks, robust variance, time-dependent covariates (items 20–23)
 
-## 20. Cause-specific hazards
+### 20. Cause-specific hazards
 
 `CauseSpecificCoxPH` fits one ordinary `CoxPH` per cause, recoding every
 other cause's events as censoring. No new statistics — each per-cause
@@ -531,7 +548,7 @@ fit is a standard `CoxPH` already validated in Phases 1-2.
 coefficients and SEs for both causes, on simple and left-truncated
 competing-risks data, against R's `coxph(Surv(..., event == k) ~ ...)`. R's `coxph` defaults to Efron ties and this package to Breslow, so the comparison must set `ties` the same on both sides.
 
-## 21. Fine-Gray subdistribution hazard
+### 21. Fine-Gray subdistribution hazard
 
 The Fine-Gray data transformation (`finegray_transform` in
 `algorithms/survival/finegray.py`) follows R's `survival::finegray()`
@@ -560,9 +577,9 @@ fresh, larger synthetic data (400 subjects) row-for-row against R's
 actual `finegray()` output, plus the fitted Fine-Gray coefficients and
 SEs.
 
-**Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. The committed Phase-4 comparison tests also compare this package's default Breslow ties with R's default Efron, and `FineGrayPH`'s robust SE with R's model-based `se(coef)` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
+**Current status (fresh run, 2026-09-20, R 4.3.3 / `survival` 3.5.8, same tie method on both sides).** On right-censored data the expanded rows, the IPCW weights (largest difference 7e-16), the coefficients (8 digits) and the robust standard errors (6 digits) agree with R's `finegray()` + `coxph()`. On **left-truncated** data the expanded `fgstart`/`fgstop` rows agree but the IPCW weights do not: 842 of 3,469 rows differ, by up to 0.445, and the fitted coefficients differ by 3.4e-3 (0.3670 in R, 0.3701 here). `test_finegray_transform.py::test_r_test3_left_truncation` fails for the same reason. `test_phase4_r_comparison.py` fits with `ties="efron"` on both sides and compares `FineGrayPH`'s standard errors with R's `robust se` (see the validation report). Treat `FineGrayPH` results with delayed entry as unvalidated.
 
-## 22. Robust/sandwich (cluster-robust) variance
+### 22. Robust/sandwich (cluster-robust) variance
 
 The sandwich estimator follows `survival::coxph`:
 
@@ -589,7 +606,7 @@ confirm during development — it returned NaN), against R's
 validate against statsmodels.PHReg and lifelines on simpler
 configurations.
 
-## 23. Time-dependent covariates: tmerge()
+### 23. Time-dependent covariates: tmerge()
 
 `data/timedep.py` provides `tmerge()` and `build_skeleton()` for
 building (start, stop] counting-process datasets from a follow-up
@@ -630,5 +647,5 @@ plus fitted coefficients and SEs on the merged dataset).
 - **Fine–Gray with left truncation** does not reproduce R's IPCW weights (Section 21, status note).
 - **`fit_intercept=True`** fits, but every `predict_*` method then raises `ValueError`.
 - **No convergence warning:** check `converged_` (Sections 10–13).
-- **Group lasso, provider-penalized and discrete-time estimators** have no R reference implementation in the test suite; they are covered by internal tests only.
+- **Provider-penalized Cox and the discrete-time estimators** have no R reference implementation in the test suite: `ProviderPenalizedCoxPH` is checked against `GroupLassoCoxPH` with the provider dummies as unpenalized columns, and the discrete-time estimators by internal tests only. `GroupLassoCoxPH` itself is checked against `grplasso::Strat.cox` (`pprof_py/tests/survival/test_cox_group_paths.py`, reference data in `pprof_py/tests/data/cox_group_lasso/`).
 - **Default ties differ from R** for every estimator (Breslow here, Efron in R); set them explicitly when comparing.

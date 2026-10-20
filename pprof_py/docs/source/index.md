@@ -151,8 +151,10 @@ presentation/migration
 :maxdepth: 2
 :caption: Validation and R Compatibility
 
-survival/R_COMPATIBILITY
+validation/index
+validation/logistic_fixed_effect
 survival/VALIDATION_REPORT
+survival/R_COMPATIBILITY
 survival/ARCHITECTURE
 ```
 
