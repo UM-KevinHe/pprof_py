@@ -1,10 +1,6 @@
 (linear_fixed_effect_tutorial)=
-# Tutorial: Linear Fixed Effect Model
+# Linear fixed-effect model
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## 1. What this tutorial covers
 

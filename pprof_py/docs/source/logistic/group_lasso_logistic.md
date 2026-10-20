@@ -1,18 +1,18 @@
 (group_lasso_logistic)=
-# Group Lasso Logistic Regression: Penalizing Covariates in Blocks
+# Group lasso logistic regression: penalizing covariates in blocks
 
 In R, this is closest to `grplasso::grp.lasso()` (pure group lasso) or
 `gglasso`/`grpreg` (sparse group lasso) for a binomial outcome.
 `GroupLassoLogistic` is R's `grplasso` for binomial family and
 `GroupLassoLogisticCV` cross-validates it. This chapter assumes you've
-read [Penalized Logistic Regression](penalized_logistic.md) — the lambda
+read [Penalized logistic regression](penalized_logistic.md) — the lambda
 path, standardization, and cross-validation machinery are all shared,
 so this chapter only covers what's different when the penalty acts on
 *groups* of coefficients instead of one coefficient at a time.
 
 ## 1. The problem elastic net doesn't quite solve
 
-[Penalized Logistic Regression's Section 1](penalized_logistic.md) makes
+[Penalized logistic regression's Section 1](penalized_logistic.md) makes
 the case for shrinking coefficients when you have more candidate risk
 adjusters than you're confident belong in the model. Elastic net
 shrinks and selects one *coefficient* at a time — but a lot of real

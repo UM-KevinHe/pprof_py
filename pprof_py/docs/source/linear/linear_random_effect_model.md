@@ -1,11 +1,7 @@
 (linear_random_effect_model_stats)=
 
-# Linear Random Effect Modeling
+# Linear random-effect modeling
 
-```{contents}
-:local:
-:depth: 2
-```
 
 ## 1. Introduction
 

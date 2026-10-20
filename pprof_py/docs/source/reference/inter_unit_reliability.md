@@ -1,5 +1,5 @@
 (inter-unit-reliability-guide)=
-# Inter-Unit Reliability (IUR)
+# Inter-unit reliability (IUR)
 
 ```{note}
 The IUR estimators are not exported at the package root; import them
@@ -31,7 +31,7 @@ estimators, their sampling properties and what each one targets.
 ## The running example
 
 The examples use the 60-facility mortality cohort of
-[Penalized Logistic Regression](../logistic/penalized_logistic)
+[Penalized logistic regression](../logistic/penalized_logistic)
 (`cohort`, `X`, `candidates`): each patient's observed death and the
 probability expected from a covariate-only risk model, with no facility
 term.

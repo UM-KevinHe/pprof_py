@@ -1,5 +1,5 @@
 (survival_ref_penalized)=
-# Reference: penalized Cox estimators
+# Penalized Cox estimators
 
 Five estimators fit Cox models over a path of penalty strengths λ. All reuse `CoxPH`'s likelihood engine, so strata,
 offsets, weights, left truncation and both tie methods carry over unchanged.

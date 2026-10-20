@@ -1,5 +1,5 @@
 (plotting-guide)=
-# Plotting: Caterpillar and Funnel Plots
+# Plotting: caterpillar and funnel plots
 
 ```{note}
 Both functions draw through the presentation layer (the funnel and interval plots of

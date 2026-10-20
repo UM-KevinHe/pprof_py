@@ -1,5 +1,5 @@
 (ll_ref_penalized)=
-# Reference: penalized, group-lasso and provider-penalized linear and logistic models
+# Penalized, group-lasso and provider-penalized linear and logistic models
 
 Elastic-net (glmnet-style), group-lasso and provider-penalized estimators, fitted along a path of penalty strengths λ by proximal-Newton
 with coordinate descent. All share pprof_py's `ProviderModel` interface (`get_params`, `set_params`).

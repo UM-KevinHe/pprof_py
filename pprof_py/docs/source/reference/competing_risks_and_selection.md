@@ -1,5 +1,5 @@
 (survival_ref_competing)=
-# Reference: competing risks and variable selection
+# Competing risks and variable selection
 
 Chapters 7 and 9 of the tutorial explain the ideas. This page lists what the classes accept, expose and guarantee.
 

@@ -1,5 +1,5 @@
 (provider_penalized_logistic)=
-# Provider-Penalized Logistic Regression: Selection and Profiling Together
+# Provider-penalized logistic regression: selection and profiling together
 
 There's no single R function this chapter maps onto — `pprof_py`'s
 own module docstring calls this "R `grplasso::pp.lasso()` for binomial
@@ -9,7 +9,7 @@ already know. This is the model this whole documentation task keeps
 gesturing toward: the one that doesn't make you choose between
 *estimating provider quality* and *selecting which covariates belong
 in the risk adjustment*. It assumes you've read
-[Penalized Logistic Regression](penalized_logistic.md) (the lambda path,
+[Penalized logistic regression](penalized_logistic.md) (the lambda path,
 `alpha`, cross-validation) and the
 [logistic fixed-effect reference](logistic_fixed_effect_model.md) (what a
 provider effect $\gamma_k$ is, and why fixed effects — not random —
@@ -54,7 +54,7 @@ J(\gamma, \beta) = -\ell(\gamma, \beta) + \lambda \cdot \text{penalty}(\beta), \
 $$
 
 $\ell$ is the ordinary binomial log-likelihood
-([Penalized Logistic Regression's Section 2](penalized_logistic.md)) —
+([Penalized logistic regression's Section 2](penalized_logistic.md)) —
 the same one `LogisticFixedEffectModel` maximizes — with the linear
 predictor split into a provider term $\gamma_{k(ij)}$ (patient $j$'s
 provider $k$'s effect — unpenalized, one free parameter per provider,

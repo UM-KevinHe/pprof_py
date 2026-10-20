@@ -1,5 +1,5 @@
 (deviance-statistics-guide)=
-# Deviance Statistics
+# Deviance statistics
 
 Four functions compute the "lower is better, 0 is a perfect fit"
 rescaling of the Cox partial log-likelihood that every penalized

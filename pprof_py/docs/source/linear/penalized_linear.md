@@ -1,5 +1,5 @@
 (penalized_linear)=
-# Penalized Linear Regression: Elastic Net for Continuous Outcomes
+# Penalized linear regression: elastic net for continuous outcomes
 
 In R, `PenalizedLinear` is `glmnet(family="gaussian")`, and
 `PenalizedLinearCV` is `cv.glmnet(family="gaussian")`. This chapter

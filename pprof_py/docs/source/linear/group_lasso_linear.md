@@ -1,9 +1,9 @@
 (group_lasso_linear)=
-# Group Lasso Linear Regression: Penalizing Covariates in Blocks
+# Group lasso linear regression: penalizing covariates in blocks
 
 `GroupLassoLinear` is the continuous-outcome sibling of
 `GroupLassoLogistic` — this chapter assumes you've read
-[Group Lasso Logistic Regression](group_lasso_logistic) for the "why
+[Group lasso logistic regression](group_lasso_logistic) for the "why
 groups" motivation, the penalty formula, and `alpha`'s group-lasso
 meaning (the group/element-wise mix, not elastic net's ridge/lasso
 mix), none of which is repeated here. Two things are genuinely
