@@ -546,10 +546,7 @@ roughly a 3.2-fold difference driven entirely by the five covariates
 thresholded 0/1 call, default cutoff 0.5) both default to `lambda_`
 (the CV-selected value) when `lambda_value=` is omitted, and both
 correctly interpolate coefficient *and* intercept at whatever lambda
-is requested — `PenalizedLogistic.intercept_at()` exists and is used
-here, unlike its linear-model counterpart (the
-[next chapter](../linear/penalized_linear)'s Section 8 covers that
-distinction in detail).
+is requested, through `PenalizedLogistic.intercept_at()`.
 
 For a lambda-indexed view of a single fitted point rather than a
 prediction, `summary()` gives a small DataFrame plus metadata in
@@ -609,9 +606,7 @@ not as independently re-verified here.
 The next chapter, [Penalized Linear Regression](../linear/penalized_linear),
 covers the same elastic net machinery for continuous outcomes — cost,
 length of stay — where the Gaussian likelihood's constant curvature
-simplifies the outer loop, and where one of this chapter's helper
-methods (`intercept_at()`) turns out to be missing in a way that
-matters for prediction. After that, a group lasso chapter extends the
+simplifies the outer loop. After that, a group lasso chapter extends the
 penalty in this chapter to handle groups of related covariates —
 dummy-coded categorical variables, or a lab panel that should enter or
 leave the model together — as a single structured unit.

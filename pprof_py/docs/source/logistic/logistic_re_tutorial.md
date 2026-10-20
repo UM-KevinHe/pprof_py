@@ -104,18 +104,19 @@ print(summary.to_string())
 ```
 
 ```
-             Estimate  Std.Error    z value      Pr(>|z|)
-(Intercept) -4.744732   0.384863 -12.328360  6.373068e-35
-age          0.042402   0.005639   7.520124  5.472424e-14
-severity     0.248302   0.027888   8.903560  5.408338e-19
-urgent       0.504732   0.117978   4.278187  1.884215e-05
+             Estimate  Std.Error    z value      Pr(>|z|)  ci_lower  ci_upper
+(Intercept) -4.744732   0.384863 -12.328360  6.373052e-35 -5.499049 -3.990414
+age          0.042402   0.005639   7.520125  5.472402e-14  0.031351  0.053454
+severity     0.248302   0.027888   8.903560  5.408337e-19  0.193643  0.302962
+urgent       0.504732   0.117978   4.278190  1.884194e-05  0.273499  0.735964
 ```
 
-The columns mirror what `lme4::summary()` shows in R:
+The first four columns mirror what `lme4::summary()` shows in R:
 
 - **Estimate** — the $\hat{\beta}$ on the log-odds scale.
 - **Std.Error** — Wald standard error.
 - **z value** and **Pr(>|z|)** — Wald test and two-sided p-value.
+- **ci_lower** and **ci_upper** — the Wald interval at `level` (default 0.95).
 
 All three risk adjusters are highly significant. Comparing to the true
 data-generating values:

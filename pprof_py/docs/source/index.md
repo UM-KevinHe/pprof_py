@@ -11,13 +11,14 @@ implementations, `pprof_py` is designed for large-scale provider data
 and reproducible statistical analyses.
 
 ```{note}
-**Version 0.6.0** — The presentation layer (`pprof_py.presentation`): funnel plots
+**Version 0.7.0** — The presentation layer (`pprof_py.presentation`): funnel plots
 whose limits come from the same test as the flags, interval plots and ten more
 displays, tables in HTML, Markdown, LaTeX, text and Excel, and self-contained
-HTML reports, with a gallery and a page on reading each display. Statistical
-results are unchanged from 0.5.0. This release requires Python 3.10 or newer and
-changes how the plotting calls behave; see the [changelog](changelog.md) and the
-[migration guide](presentation/migration.md). Import all models from the package
+HTML reports, with a gallery and a page on reading each display. 0.7.0 gives the
+displays their visual identity (`theme="classic"` reproduces the 0.6.0 look) and
+removes the plotting calls deprecated in 0.6.0; every value, flag, limit and
+interval is unchanged. This release requires Python 3.10 or newer; see the
+[changelog](changelog.md) and the [migration guide](presentation/migration.md). Import all models from the package
 root: `from pprof_py import CoxPH, LogisticThreeStageModel, PenalizedLogistic, ...`
 ```
 
@@ -29,8 +30,8 @@ cd pprof_py
 pip install .
 ```
 
-Requires `numpy`, `pandas`, `scipy`, and `numba`
-(optional, for JIT-compiled survival kernels).
+Requires Python 3.10 or newer with `numpy`, `pandas`, `scipy`, `matplotlib`,
+`numba` (JIT-compiled survival kernels) and `fast_poibin`.
 
 ```{toctree}
 :maxdepth: 2

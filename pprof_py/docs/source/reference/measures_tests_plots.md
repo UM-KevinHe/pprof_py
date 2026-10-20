@@ -258,23 +258,25 @@ Every `test()` and `test_standardized()` returns a `DataFrame` indexed by `provi
 ## Plotting methods
 
 ```{note}
-The model plot methods now delegate to the presentation layer (the funnel and interval plots of
-`pprof_py.presentation`); some keywords described below no longer have an effect and warn until 0.7.0. See
-{ref}`presentation-guide` for the displays and the migration table.
+The model plot methods delegate to the presentation layer (the funnel and interval plots of
+`pprof_py.presentation`). The styling keywords, `target=`, `use_flags=False` and `stdz=` were removed in 0.7.0 and
+raise a `TypeError`; see {ref}`presentation-guide` for the displays and {doc}`../presentation/migration` for the
+table of earlier calls and their replacements.
 ```
 
-All plots use Matplotlib and return `None` (they draw on the current figure). Common arguments: `group_ids` (subset of providers), `level`,
-`use_flags` (colour by `flag`), `reference`, and `**plot_kwargs` (titles, sizes; see the docstrings). The plots pass their `reference` to `test()` as
-`reference`; a provider the test could not evaluate (`flag` is `NA`) is drawn as not flagged.
+All plots draw through `pprof_py.presentation` and return a `FigureResult` (which still unpacks as `fig, ax`; `result.save(path)` or
+`save_path=` writes a file). Common arguments: `group_ids` (subset of providers), `level`, `reference`, `theme=` and `title=`. The plots pass
+their `reference` to `test()`, so flags, intervals and funnel limits come from the same test; a provider the test could not evaluate (`flag` is
+`NA`) is drawn as "Not tested".
 
 | Estimator | Methods |
 |---|---|
-| `LinearFixedEffectModel`, `LinearRandomEffectModel` | `plot_funnel(stdz="indirect", reference="median", target=0.0, alpha=0.05, …)`, `plot_provider_effects(…, test_method=None)`, `plot_standardized_measures(…, measure="difference", …)`, `plot_coefficient_forest(orientation="vertical", refline_value=0.0, …)`, `plot_residuals(…)`, `plot_qq(…)` |
-| `LogisticFixedEffectModel` | `plot_funnel(test_method="score", target=1.0, …)`, `plot_provider_effects(test_method="wald", …)`, `plot_standardized_measures(measure="ratio", test_method="score", …)`, `plot_coefficient_forest(…)`; `plot_residuals` and `plot_qq` raise `NotImplementedError` |
-| `LogisticRandomEffectModel` | as above with `test_method="wald"` defaults; no residual plots |
+| `LinearFixedEffectModel` | `plot_funnel(reference="median", alpha=0.05, …)`, `plot_provider_effects(…)`, `plot_coefficient_forest(orientation="vertical", refline_value=0.0, …)`, `plot_residuals(…)`, `plot_qq(…)` |
+| `LinearRandomEffectModel` | `plot_provider_effects(…)`, `plot_coefficient_forest(…)`, `plot_residuals(…)`, `plot_qq(…)`; `plot_funnel` and `plot_standardized_measures` were removed in 0.7.0 (use `caterpillar(model)`) |
+| `LogisticFixedEffectModel` | `plot_funnel(test_method="score", …)`, `plot_provider_effects(test_method="wald", …)`, `plot_standardized_measures(measure="ratio", test_method="score", …)`, `plot_coefficient_forest(…)`; `plot_residuals` and `plot_qq` raise `NotImplementedError` |
+| `LogisticRandomEffectModel` | `plot_funnel(test_method="poibin_exact", …)`, `plot_provider_effects(…)`, `plot_coefficient_forest(…)`; no `plot_standardized_measures` or residual plots |
 | `LogisticFERandomClusterModel` | no plotting methods |
 
-`plot_standardized_measures` on the linear models draws the intervals of K2. Two standalone functions are exported: `pprof_py.plot_caterpillar(df, estimate_col="estimate",
-ci_lower_col="lower", ci_upper_col="upper", group_col=None, flag_col=None, …)` and `pprof_py.plotting.plot_funnel(df, limits_df, *, estimate_col, precision_col,
-flag_col, target, alpha_levels, …)`. Shared styling constants live in `pprof_py.plotting.style`. (The module docstring of `pprof_py.plotting.coefficients`
-mentions coefficient paths, but the module only defines `plot_caterpillar`.)
+Two standalone functions are exported: `pprof_py.plot_caterpillar(df, estimate_col="estimate",
+ci_lower_col="ci_lower", ci_upper_col="ci_upper", group_col=None, flag_col=None, *, refline_value=0.0, …)` and `pprof_py.plotting.plot_funnel(df, limits_df, *, estimate_col, precision_col,
+flag_col, target, alpha_levels, …)`; both return a `FigureResult` (see {ref}`plotting-guide`). Shared styling constants live in `pprof_py.plotting.style`.

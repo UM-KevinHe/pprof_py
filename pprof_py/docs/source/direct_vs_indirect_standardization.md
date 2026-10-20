@@ -288,9 +288,11 @@ The two-step process is:
 
 1. **Fit a Cox model** on the full national population, including
    patient-level risk adjusters (age, comorbidities, etc.) — but
-   **not** including the facility as a covariate. This yields
-   $\hat{\boldsymbol\beta}$ and the baseline cumulative hazard
-   $\hat{\Lambda}_0(t)$.
+   **not** including the facility as a covariate. In the two-stage
+   method of survival Chapter 4, $\hat{\boldsymbol\beta}$ comes from a
+   facility-stratified fit and the national baseline cumulative hazard
+   $\hat{\Lambda}_0(t)$ is then estimated with the fitted linear
+   predictor $X_i \hat{\boldsymbol\beta}$ as an offset.
 
 2. **Compute expected events per facility** by accumulating each
    patient's individual predicted hazard up to their observed follow-up

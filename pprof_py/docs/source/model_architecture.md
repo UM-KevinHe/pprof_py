@@ -46,9 +46,9 @@ explicit inheritance is needed (though it is allowed).
 
 | Family | Module | Classes |
 |--------|--------|---------|
-| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
+| Logistic | `pprof_py.models.logistic` | `LogisticFixedEffectModel`, `LogisticRandomEffectModel`, `LogisticFERandomClusterModel`, `LogisticThreeStageModel`, `PenalizedLogistic`, `PenalizedLogisticCV`, `GroupLassoLogistic`, `GroupLassoLogisticCV`, `ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV` |
 | Linear | `pprof_py.models.linear` | `LinearFixedEffectModel`, `LinearRandomEffectModel`, `PenalizedLinear`, `PenalizedLinearCV`, `GroupLassoLinear` |
-| Survival | `pprof_py.models.survival` | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`, `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`, `CauseSpecificCoxPH`, `FineGrayPH` |
+| Survival | `pprof_py.models.survival` | `CoxPH`, `PenalizedCoxPH`, `PenalizedCoxPHCV`, `GroupLassoCoxPH`, `GroupLassoCoxPHCV`, `ProviderPenalizedCoxPH`, `DiscreteSurvival`, `DiscreteSurvivalCV`, `ProviderPenalizedDiscreteSurvival`, `ProviderPenalizedDiscreteSurvivalCV`, `FrailtyCoxPH`, `TimeVaryingCoxPH`, `CauseSpecificCoxPH`, `FineGrayPH` |
 | Selection | `pprof_py.selection` | `CoxPHSelector` |
 
 All models are importable from the package root:
@@ -57,7 +57,7 @@ All models are importable from the package root:
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticFERandomClusterModel,
+    LogisticFERandomClusterModel, LogisticThreeStageModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -69,6 +69,7 @@ from pprof_py import (
     GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH,
     DiscreteSurvival, DiscreteSurvivalCV,
     ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV,
+    FrailtyCoxPH, TimeVaryingCoxPH,
     CauseSpecificCoxPH, FineGrayPH,
     # Selection
     CoxPHSelector,

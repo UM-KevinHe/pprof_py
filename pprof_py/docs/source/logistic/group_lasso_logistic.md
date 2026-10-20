@@ -8,9 +8,7 @@ In R, this is closest to `grplasso::grp.lasso()` (pure group lasso) or
 read [Penalized Logistic Regression](penalized_logistic.md) — the lambda
 path, standardization, and cross-validation machinery are all shared,
 so this chapter only covers what's different when the penalty acts on
-*groups* of coefficients instead of one coefficient at a time. One of
-those differences is a real bug (Section 5), so read that section even
-if you skim the rest.
+*groups* of coefficients instead of one coefficient at a time.
 
 ## 1. The problem elastic net doesn't quite solve
 
@@ -70,8 +68,7 @@ Same shape of mortality cohort as the
 three genuine groups instead of ten individual covariates: a
 categorical admission source (one-hot into three dummy columns), a
 three-item comorbidity panel, and a two-item noise lab panel — plus an
-age term left deliberately **unpenalized**, which is where this
-chapter's main finding shows up.
+age term left deliberately **unpenalized**.
 
 ```python
 import numpy as np

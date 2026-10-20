@@ -55,7 +55,8 @@ families:
    readmission). Available as fixed effects
    (`LogisticFixedEffectModel`), random effects
    (`LogisticRandomEffectModel`), mixed effects
-   (`LogisticFERandomClusterModel`), penalized (`PenalizedLogistic`,
+   (`LogisticFERandomClusterModel`), three-stage
+   (`LogisticThreeStageModel`), penalized (`PenalizedLogistic`,
    `PenalizedLogisticCV`), group lasso (`GroupLassoLogistic`,
    `GroupLassoLogisticCV`), and provider-penalized
    (`ProviderPenalizedLogistic`, `ProviderPenalizedLogisticCV`).
@@ -77,6 +78,8 @@ families:
    - `ProviderPenalizedDiscreteSurvival` /
      `ProviderPenalizedDiscreteSurvivalCV` — Provider-penalized
      discrete survival.
+   - `FrailtyCoxPH` / `TimeVaryingCoxPH` — Shared Gamma frailty and
+     time-varying coefficient Cox models.
    - `CauseSpecificCoxPH` / `FineGrayPH` — Competing risks analysis.
    - `CoxPHSelector` — Automated stepwise variable selection (forward,
      backward, bidirectional) using AIC, BIC, or p-value criteria.
@@ -94,7 +97,7 @@ All models are importable from the package root:
 from pprof_py import (
     # Logistic
     LogisticFixedEffectModel, LogisticRandomEffectModel,
-    LogisticFERandomClusterModel,
+    LogisticFERandomClusterModel, LogisticThreeStageModel,
     PenalizedLogistic, PenalizedLogisticCV,
     GroupLassoLogistic, GroupLassoLogisticCV,
     ProviderPenalizedLogistic, ProviderPenalizedLogisticCV,
@@ -106,6 +109,7 @@ from pprof_py import (
     GroupLassoCoxPH, GroupLassoCoxPHCV, ProviderPenalizedCoxPH,
     DiscreteSurvival, DiscreteSurvivalCV,
     ProviderPenalizedDiscreteSurvival, ProviderPenalizedDiscreteSurvivalCV,
+    FrailtyCoxPH, TimeVaryingCoxPH,
     CauseSpecificCoxPH, FineGrayPH,
     # Selection
     CoxPHSelector,

@@ -282,9 +282,9 @@ model.plot_funnel(
 )
 ```
 
-The funnel shape comes from the control limits
-$\pm z_{\alpha/2} \times \hat{\sigma} / \sqrt{n_i}$ — larger hospitals
-need a smaller deviation to be flagged.
+The funnel shape comes from the control limits, which invert the same
+t-test as `test()`: $\pm t_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\gamma}_i)$
+— larger hospitals need a smaller deviation to be flagged.
 
 ### Caterpillar plot — provider effects
 

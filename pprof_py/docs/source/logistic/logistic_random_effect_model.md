@@ -152,7 +152,7 @@ Under the null hypothesis $H_0: u_i = u_0$, the statistic $Z_i$ is assumed to fo
 ### 2.5. Confidence Intervals
 
 - **For Fixed Effects** $\boldsymbol\beta$:
-  The `summary` method provides confidence intervals for fixed effects, typically based on Z-scores and standard errors from the `lme4` output.
+  The `summary` method provides Wald confidence intervals for fixed effects, from the fixed-effect variance-covariance matrix `variances_['beta']`.
 
 $$
 \hat{\beta}_k \pm z_{1-\alpha/2} \times \widehat{\text{se}}(\hat{\beta}_k)
@@ -345,7 +345,7 @@ Logistic random effect models, as implemented in `pprof_py` using lme4-style PIR
 - **Software Dependencies:** Requires `scipy` and `numpy` (standard Python scientific stack). No R, `lme4`, or `pymer4` is required.
 - **GLMM Assumptions:** Relies on standard GLMM assumptions, including linearity on the logit scale, correct specification of the random effects distribution (typically normal), and independence of random effects from covariates.
 - **Computational Complexity:** Fitting GLMMs can be computationally intensive, especially with large datasets or complex random effects structures.
-- **Interpretation of Standardized Measures:** Standardized ratios/rates derived from logistic models can be complex to interpret, and their confidence intervals are challenging to compute accurately without advanced statistical methods (e.g., bootstrapping). The current implementation provides point estimates for these measures.
+- **Interpretation of Standardized Measures:** Standardized ratios/rates derived from logistic models can be complex to interpret, and their confidence intervals (`calculate_confidence_intervals(option='SM')`, Section 2.5) are Delta-method approximations on the log scale rather than exact or bootstrap intervals.
 
 ## 5. Conclusion
 

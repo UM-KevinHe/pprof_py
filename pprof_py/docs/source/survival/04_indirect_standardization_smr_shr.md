@@ -531,7 +531,11 @@ $\beta=0, \alpha=0$; alternate a Breslow-style baseline/$\beta$ update
 with the constrained fixed-point $\alpha$ update; iterate to
 convergence) is entirely implementable on top of `CoxPH`'s existing
 score and baseline-hazard machinery, but it is not something this
-package hands you out of the box today.
+package hands you out of the box today. The closest ready-made estimator
+is [Chapter 12](12_provider_penalized_cox)'s `ProviderPenalizedCoxPH`,
+which estimates provider effects and (penalized) covariate effects
+jointly in this one-stage form, identified by a median clamp rather
+than the sum constraint above.
 
 ## 4.11 What's next
 

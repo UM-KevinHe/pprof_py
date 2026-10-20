@@ -195,9 +195,9 @@ The `LinearRandomEffectModel` class provides several plotting methods:
 
 - **Caterpillar Plot for Provider Effects** (`plot_provider_effects`): Displays BLUPs $\hat{u}_i$ with their confidence intervals.
 - `plot_standardized_measures` and `plot_funnel` were removed for this model in 0.7.0: their measure-scale intervals did not come from the test that flags the providers, and no funnel can agree with the Wald test of shrunken estimates (ADR-004). `pprof_py.presentation.caterpillar(model)` draws the provider effects with their own test.
-- **Coefficient Forest Plot** (`plot_coefficient_forest`):\*\* Displays estimates and confidence intervals for fixed effect coefficients $\hat{\boldsymbol{\beta}}$.
+- **Coefficient Forest Plot** (`plot_coefficient_forest`): Displays estimates and confidence intervals for fixed effect coefficients $\hat{\boldsymbol{\beta}}$.
 - **Residual Plots** (`plot_residuals`): Standard residuals vs. fitted values plot.
-- **Q-Q Plot** (`plot_qq`):\*\* Q-Q plot of residuals against a normal distribution to check normality assumption.
+- **Q-Q Plot** (`plot_qq`): Q-Q plot of residuals against a normal distribution to check normality assumption.
 
 ## 3. Implementation and Usage
 
@@ -323,7 +323,7 @@ print(f"\nFirst 5 predictions (with BLUPs): {predictions_with_re[:5]}")
 # Calculate Indirect Standardized Difference vs median random effect
 sm_results_lre = lre_model.calculate_standardized_measures(
     stdz='indirect', # Can be 'direct' or ['indirect', 'direct']
-    reference='median'    # accepted, but the indirect difference is the BLUP itself (from 0)
+    reference='median'    # u_0 = median BLUP; reference=0 reproduces R pprof
 )
 print("\n--- Linear RE Indirect Measures (vs Median Random Effect) ---")
 if 'indirect' in sm_results_lre:
@@ -424,7 +424,7 @@ Linear random effect models provide a powerful framework for analyzing clustered
 
 ## 5. Conclusion
 
-The `LinearRandomEffectModel`` class offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization. The pure-Python lme4-style solver supports both REML and ML, optional observation weights and offsets, and multiple crossed random-intercept terms. This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
+The `LinearRandomEffectModel` class offers a comprehensive tool for provider profiling using linear mixed-effects models. It provides estimation of fixed effects and variance components, prediction of provider-specific random effects (BLUPs), and various methods for inference, standardization, and visualization. The pure-Python lme4-style solver supports both REML and ML, optional observation weights and offsets, and multiple crossed random-intercept terms. This approach is valuable when it is reasonable to assume providers are a sample from a population and when interest lies in both overall effects and provider-specific deviations.
 
 ## 6. References
 
