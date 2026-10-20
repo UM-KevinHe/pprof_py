@@ -18,6 +18,17 @@ def test_gallery_figures():
 
     assert all(isinstance(f, FigureResult) and f.alt_text for f in figs.values())
     assert figs["measure_agreement"].counts["not_placed"] > 0          # zero-event providers are not placed
+    # The page stretches every image to the column width, so all figures share the interval plot's width and its
+    # type sizes: one scale, one type size (heights follow each display's content).
+    from matplotlib.text import Text
+
+    def type_sizes(fig):
+        return {round(t.get_fontsize(), 2) for t in fig.figure.findobj(Text) if t.get_text().strip() and t.get_visible()}
+
+    ref = figs["caterpillar"]
+    for name, fig in figs.items():
+        assert fig.figure.get_size_inches()[0] == pytest.approx(ref.figure.get_size_inches()[0], abs=1e-9), name
+        assert type_sizes(fig) <= type_sizes(ref), name
 
 
 SHEET = ("Question", "Quantity and source", "Uncertainty", "Denominator", "Reference", "Misreadings and mitigations",
