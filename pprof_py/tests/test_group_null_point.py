@@ -56,7 +56,7 @@ def test_penalty_factor_is_inert_under_the_pure_group_lasso(name):
     a, b = fits
     assert a.lambda_max_ == b.lambda_max_
     assert np.array_equal(a.coef_path_, b.coef_path_)
-    assert abs(b.coef_path_[0][1]) < 1e-12               # the pf = 0 column is not fitted at the null point (exact 0.0 is BLAS-dependent)
+    assert b.coef_path_[0][1] == 0.0                      # the pf = 0 column is not fitted at the null point
 
 
 def test_lambda_max_with_a_zero_multiplier_group():
@@ -68,7 +68,7 @@ def test_lambda_max_with_a_zero_multiplier_group():
     X, y, _yl, _t, _e, _prov = _data()
     m = GroupLassoLogistic(groups=np.array([1, 1, 1, 2, 2, 3, 3, 3]), alpha=0.4, group_multiplier=np.array([1.0, 0.0, 1.0]),
                            n_lambda=6, lambda_min_ratio=0.1).fit(X, y)
-    assert np.all(np.abs(m.coef_path_[0]) < 1e-12)
+    assert np.all(m.coef_path_[0] == 0.0)                 # C23: the null point is stored exactly
     assert np.any(np.abs(m.coef_path_[1]) > 0)
 
 
@@ -98,3 +98,26 @@ def test_group_lasso_cox_null_point_is_exact(alpha):
     assert np.all(m.coef_path_[0][1:] == 0.0)
     assert m.coef_path_[0][0] != 0.0              # the unpenalized column is fitted at the null point
     assert m.converged_path_[0] and m.kkt_violation_path_[0] <= 1e-12
+
+
+@pytest.mark.parametrize("model", ["linear", "logistic"])
+def test_group_lasso_null_point_is_exact(model):
+    """C23 for GroupLassoLinear and GroupLassoLogistic: at lambda >= lambda_max the null point is stored exactly.
+
+    Iterating from it left rounding noise in its zeros on some platforms (#5, Apple Silicon). Perturbing X by about
+    one ulp reproduces that noise on any platform: before the fix, 4 of these 40 linear fits and 10 of the 40
+    logistic ones had nonzero penalized coefficients at the first path point.
+    """
+    X, y, yl, _t, _e, _prov = _data()
+    cls, target = (GroupLassoLinear, yl) if model == "linear" else (GroupLassoLogistic, y)
+    penalized = GROUPS != 0
+    rng = np.random.default_rng(0)
+    for _ in range(40):
+        Xp = X * (1 + 2.2e-16 * rng.standard_normal(X.shape))
+        m = cls(groups=GROUPS, penalty_factor=PF_ZERO_IN_GROUP, n_lambda=2, lambda_min_ratio=0.05).fit(Xp, target)
+        assert np.all(m.coef_path_[0][penalized] == 0.0)
+        assert m.coef_path_[0][5] != 0.0              # the unpenalized column is fitted at the null point
+        assert m.converged_path_[0] and m.n_iter_path_[0] == 0 and m.kkt_violation_path_[0] <= 1e-12
+    above = cls(groups=GROUPS, penalty_factor=PF_ZERO_IN_GROUP, lambda_path=[10 * m.lambda_max_, m.lambda_max_]).fit(Xp, target)
+    assert np.array_equal(above.coef_path_[0], above.coef_path_[1])
+    assert above.intercept_path_[0] == above.intercept_path_[1]

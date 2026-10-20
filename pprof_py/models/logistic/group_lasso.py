@@ -16,8 +16,8 @@ from ...base import ProviderModel
 
 from ...algorithms.penalty import (within_group_orthogonalize, unorthogonalize_coefs, weighted_column_center_scale, rescale_penalty_factors, validate_groups, rescale_group_multipliers, fit_group_multipliers, unpenalized_columns,
                                      interpolate_path)
-from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path
-from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update)
+from ...algorithms.coordinate_descent import compute_group_lambda_max, fit_group_regularization_path, _compute_group_kkt_violation
+from ...algorithms.logistic.likelihood import (logistic_unpenalized_null_fit, logistic_deviance, logistic_null_deviance, logistic_intercept_update, logistic_loglik, logistic_information)
 from ...exceptions import NotFittedError
 from .penalized import DegenerateFeatureWarning, _resolve_lambda_path, _stratified_fold_assignment
 
@@ -274,6 +274,23 @@ class GroupLassoLogistic(ProviderModel):
             return ll, sc, info
 
         # Fit path lambda by lambda for intercept tracking.
+        # At or above lambda_max the null point solves the problem, so it is
+        # stored exactly, as GroupLassoCoxPH and the provider classes do (C23):
+        # iterating from it only adds rounding noise to its zeros.  The solver
+        # still runs there, and its iterate and running intercept still
+        # warm-start the next point, so later points are unchanged.  (A
+        # generated path starts at exp(log(lambda_max)), which can fall an ulp
+        # below it.)
+        lam_null = lam_max * (1.0 - 1e-12)
+        intercept_at_null = intercept
+        if lam_max > 0:
+            eta_null = X_fit @ beta_null + intercept_at_null
+            if offset is not None:
+                eta_null = eta_null + offset
+            ll_null = logistic_loglik(y, eta_null, weight)
+            info_null = (0.25 * (X_fit.T * weight) @ X_fit if majorize
+                         else logistic_information(X_fit, eta_null, weight))
+
         beta = beta_null.copy()
         results = []
         for lam_val in lambda_sequence:
@@ -288,9 +305,26 @@ class GroupLassoLogistic(ProviderModel):
                 inner_tol=self.inner_tol,
                 use_active_set=self.use_active_set,
             )[0]
-            results.append(result)
             beta = result.beta
-            intercepts.append(intercept)
+            if lam_max > 0 and float(lam_val) >= lam_null:
+                result = result._replace(
+                    beta=beta_null.copy(), log_likelihood=ll_null,
+                    objective_value=-c * ll_null, n_outer_iter=0,
+                    n_inner_iter_total=0, converged=True,
+                    message="null point (lambda >= lambda_max)",
+                    information=info_null,
+                    active_groups=np.zeros(n_groups_fit, dtype=bool),
+                    group_norms=np.zeros(n_groups_fit),
+                    df=float(np.sum(beta_null != 0.0)),
+                    kkt_violation=_compute_group_kkt_violation(
+                        c * score_null, beta_null, float(lam_val), self.alpha,
+                        groups_fit, gw_fit, pf_fit, n_groups_fit,
+                    ),
+                )
+                intercepts.append(intercept_at_null)
+            else:
+                intercepts.append(intercept)
+            results.append(result)
 
         # Store results.
         n_lam = len(results)

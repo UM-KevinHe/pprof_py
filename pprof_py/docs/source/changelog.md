@@ -9,6 +9,17 @@ feature attributions as a best reconstruction. There is no released
 `0.3.0`: `pyproject.toml` goes from `0.2.0` directly to `0.4.0`.
 ```
 
+## Unreleased
+
+### Fixed
+- `GroupLassoLinear` and `GroupLassoLogistic` store the null point exactly at `lambda >= lambda_max_`, as
+  `GroupLassoCoxPH` and the provider classes already do (C23). Iterating from it left rounding noise in its zeros on
+  some platforms (up to 4e-16; reported on Apple Silicon in #5), and the exact `== 0.0` check in
+  `test_group_null_point.py` is restored. Only the points at or above `lambda_max_` change: their penalized
+  coefficients become exactly 0, the fitted unpenalized coefficients and intercept move by at most 2e-14 and 5e-13,
+  and `n_iter_path_` is 0 there. Every later path point, and `GroupLassoLogisticCV`'s selected `lambda_` and `coef_`,
+  are unchanged.
+
 ## 0.7.0 (2026-10-02)
 
 The presentation layer takes its visual identity (design approved 2026-10-02): IBM Plex Sans, a copper and petrol
