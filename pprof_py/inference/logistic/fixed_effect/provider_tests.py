@@ -24,6 +24,23 @@ from ....inference.zstat import z_statistic
 
 logger = logging.getLogger(__name__)
 
+PATIENT_CLUSTERED = ("robust_wald", "robust_score")
+
+
+def _patient_clusters(provider_indices: np.ndarray, obs_ids: np.ndarray):
+    """(provider, patient) clusters: a patient treated at two providers forms two clusters.
+
+    Returns the cluster of each row, the provider of each cluster and the number of rows in each cluster.
+    """
+    codes, labels = pd.factorize(np.asarray(obs_ids, dtype=object).ravel())
+    if (codes < 0).any():
+        raise ValueError("Patient IDs (obs_id_var) must not be missing for the patient-clustered tests.")
+    k = max(len(labels), 1)
+    key = np.asarray(provider_indices, dtype=np.int64).ravel() * k + codes
+    keys, cluster = np.unique(key, return_inverse=True)
+    cluster = cluster.ravel()
+    return cluster, keys // k, np.bincount(cluster)
+
 
 class _ProviderTestMethods:
     """Mixin fragment: provider-effect hypothesis tests."""
@@ -48,7 +65,7 @@ class _ProviderTestMethods:
         ----------
         providers : array-like, optional
             Report only these providers; gamma_0 and any empirical null use all.
-        test_method : {"poibin_exact", "score", "wald", "bootstrap_exact"}
+        test_method : {"poibin_exact", "score", "wald", "bootstrap_exact", "robust_wald", "robust_score"}
             ``"poibin_exact"``: exact Poisson-binomial test of the provider's
             event count at gamma_0 (two-sided mid-p). ``"score"``:
             ``(O - E) / sqrt(Var_0(O))`` at gamma_0. ``"wald"``:
@@ -59,6 +76,19 @@ class _ProviderTestMethods:
             providers without a finite estimate (see
             :func:`~pprof_py.inference.at_bound`). ``"bootstrap_exact"``: the
             exact test by simulation. Binomial models are weighted by trials.
+
+            ``"robust_wald"`` and ``"robust_score"`` are R pprofR's patient-clustered
+            tests, with beta treated as known; they need the model fitted with
+            ``obs_id_var``. A cluster is a (provider, patient) pair, so a patient
+            treated at two providers forms two clusters. With row residuals
+            ``r = Y - N p`` summed within each patient, ``V_j`` is the sum over
+            provider j's patients of the squared sums. ``"robust_wald"`` is
+            ``(gamma_j - gamma_0) / SE`` with ``SE = sqrt(V_j) / I_j`` at the
+            fitted ``p`` (``I_j`` the provider's information): the
+            ``variance="robust_fixed_beta"`` SE of :meth:`test_standardized`.
+            ``"robust_score"`` is ``(O - E) / sqrt(V_j)``, with ``p`` and the
+            residuals at gamma_0 as in ``"score"``. A statistic that is not finite
+            is reported as not tested.
         reference : "median", "mean", or float
             The reference effect gamma_0: the median of the estimated effects,
             their size-weighted mean, or a value on the effect scale.
@@ -68,8 +98,9 @@ class _ProviderTestMethods:
             that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
         alternative, level, critical, interval
             As in :func:`~pprof_py.inference.provider_test`.
-            Intervals are available for the Wald test and, by inverting the
-            exact test, for ``"poibin_exact"``.
+            Intervals are available for the Wald tests (``"wald"`` and
+            ``"robust_wald"``) and, by inverting the exact test, for
+            ``"poibin_exact"``.
         n_resample, seed : int, optional
             Monte Carlo draws and seed for ``"bootstrap_exact"``.
 
@@ -78,7 +109,10 @@ class _ProviderTestMethods:
         pandas.DataFrame
             Indexed by provider with columns
             :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
-            above gamma_0, -1 below, 0 not significant, NA not tested.
+            above gamma_0, -1 below, 0 not significant, NA not tested. For the
+            patient-clustered tests, ``attrs`` also record the variance
+            (``"patient-clustered, beta fixed"``), the number of clusters and the
+            largest cluster's number of rows.
         """
         if self.coefficients_ is None or self.variances_ is None:
             raise ValueError("The model must be fitted before testing.")
@@ -92,8 +126,16 @@ class _ProviderTestMethods:
         trials = None if self.N_ is None else np.asarray(self.N_, dtype=np.float64).ravel()
         se = None
         limits = None
-        if test_method == "wald":
-            se = np.sqrt(np.asarray(self.variances_["gamma_case_mix"], dtype=np.float64).ravel())   # C34
+        clusters = None
+        if test_method in PATIENT_CLUSTERED:
+            if self.obs_ids_ is None or getattr(self, "robust_variances_", None) is None:
+                raise ValueError(f"test_method='{test_method}' needs patient IDs: fit the model with obs_id_var.")
+            clusters = _patient_clusters(idx, self.obs_ids_)
+        if test_method in ("wald", "robust_wald"):
+            if test_method == "wald":
+                se = np.sqrt(np.asarray(self.variances_["gamma_case_mix"], dtype=np.float64).ravel())   # C34
+            else:   # beta fixed, as R pprofR's robust_wald; the same SE as test_standardized(variance="robust_fixed_beta")
+                se = np.sqrt(np.asarray(self.robust_variances_["gamma_fixed_beta"], dtype=np.float64).ravel())
             z = (gamma - g0) / se
             events = np.bincount(idx, weights=y, minlength=m)
             size = np.bincount(idx, weights=np.ones_like(y) if trials is None else trials, minlength=m)
@@ -113,6 +155,15 @@ class _ProviderTestMethods:
             with np.errstate(divide="ignore", invalid="ignore"):
                 z = np.where(var0 >= 1e-14, (observed - expected) / np.sqrt(var0), 0.0)
             record("score", observed=observed, expected=expected, var0=var0)
+        elif test_method == "robust_score":
+            cluster, cluster_provider, _ = clusters
+            w = np.ones(xb.size) if trials is None else trials
+            p0 = np.clip(sigmoid(g0 + xb), 1e-10, 1 - 1e-10)           # as in "score"
+            residual = y - w * p0
+            u = np.bincount(idx, weights=residual, minlength=m)          # O - E
+            v = np.bincount(cluster_provider, weights=np.bincount(cluster, weights=residual) ** 2, minlength=m)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                z = np.where(v > 0, u / np.sqrt(v), np.nan)
         elif test_method in ("poibin_exact", "bootstrap_exact"):
             rows_of = rows_by_provider(idx, m)
             obs = np.array([y[rows].sum() for rows in rows_of])
@@ -128,12 +179,16 @@ class _ProviderTestMethods:
             wanted = None if providers is None else np.isin(self.provider_ids_, np.atleast_1d(providers))
             z, limits = count_test(obs, nulls, g0, alternative=alt, start=gamma, wanted=wanted)
         else:
-            raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', or 'bootstrap_exact'.")
+            raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', 'bootstrap_exact', 'robust_wald' "
+                             "or 'robust_score'.")
         result = effect_test(self.provider_ids_, gamma, z, g0, se=se, null_model=null_model, alternative=alt,
                              level=level, critical=critical, interval=interval, providers=providers,
                              test_method=test_method, limits=limits)
         sizes = dict(zip(self.provider_ids_, self.provider_sizes_))
         result.attrs["provider_size"] = {g: sizes[g] for g in result.index}
+        if clusters is not None:
+            result.attrs.update({"variance": "patient-clustered, beta fixed", "clusters": int(clusters[2].size),
+                                 "largest_cluster_rows": int(clusters[2].max())})
         return result
 
     def funnel_limits(self, providers=None, *, test_method: str = "score", reference="median", null_model=None,
@@ -149,7 +204,8 @@ class _ProviderTestMethods:
             The test whose flags the limits reproduce. ``"score"`` (the funnel default) gives smooth limit curves
             in the precision ``E^2/V0``; ``"poibin_exact"`` (the default of :meth:`test`) gives exact limits per
             provider at half-integer counts; ``"wald"`` gives limits for the effect in ``1/SE^2``.
-            ``"bootstrap_exact"`` is a Monte Carlo test and has no funnel limits.
+            ``"bootstrap_exact"`` is a Monte Carlo test and has no funnel limits; the patient-clustered tests
+            have none yet, since each provider's variance depends on its own patients.
         levels : sequence of float, optional
             Levels of the limit curves (default: ``level`` only). Flags exist only at ``level``.
 
@@ -161,6 +217,9 @@ class _ProviderTestMethods:
         if test_method == "bootstrap_exact":
             raise ValueError("test_method='bootstrap_exact' is a Monte Carlo test and has no funnel limits; use "
                              "'score', 'poibin_exact' or 'wald'.")
+        if test_method in PATIENT_CLUSTERED:
+            raise ValueError(f"test_method='{test_method}' has no funnel limits yet: each provider's patient-clustered "
+                             "variance depends on its own patients. Use 'score', 'poibin_exact' or 'wald'.")
         from ....inference.funnel import build_funnel_limits
         return build_funnel_limits(
             self, lambda: self.test(providers, test_method=test_method, reference=reference, null_model=null_model,

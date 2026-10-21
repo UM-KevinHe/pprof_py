@@ -44,7 +44,13 @@ def models():
     _quiet(rec.fit, df, y_var="y", x_vars=["x1", "x2"], provider_var="provider", cluster_vars=["cluster"], verbose=False)
     ppl = ProviderPenalizedLogistic(n_lambda=6)
     _quiet(ppl.fit, X, y, prov)
-    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec, "ppl": ppl}
+    # patients for the patient-clustered tests, from their own stream; labels restart at every provider
+    pr = np.random.default_rng(13)
+    patient = np.concatenate([np.sort(pr.integers(0, max(1, n // 2), n)) for n in sizes])
+    fec = LogisticFixedEffectModel()
+    _quiet(fec.fit, df.assign(patient=patient), y_var="y", x_vars=["x1", "x2"], provider_var="provider",
+           obs_id_var="patient")
+    return {"fe": fe, "re": re, "me": me, "lfe": lfe, "lre": lre, "rec": rec, "ppl": ppl, "fec": fec}
 
 
 ROUTES = {
@@ -52,6 +58,8 @@ ROUTES = {
     "logistic_fe/score": ("fe", dict(test_method="score")),
     "logistic_fe/wald": ("fe", dict(test_method="wald")),
     "logistic_fe/bootstrap_exact": ("fe", dict(test_method="bootstrap_exact", n_resample=1500, seed=3)),
+    "logistic_fe/robust_wald": ("fec", dict(test_method="robust_wald")),
+    "logistic_fe/robust_score": ("fec", dict(test_method="robust_score")),
     "logistic_re/wald": ("re", dict(test_method="wald")),
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
@@ -65,7 +73,7 @@ ROUTES = {
     "linear_fe/wald": ("lfe", {}),
     "linear_re/wald": ("lre", {}),
 }
-WALD = [k for k in ROUTES if k.endswith("/wald")]
+WALD = [k for k in ROUTES if k.endswith(("/wald", "/robust_wald"))]
 
 
 def _run(models, route, **extra):
