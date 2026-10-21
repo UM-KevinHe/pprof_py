@@ -1,0 +1,25 @@
+key,value
+generator,r_reference/run_pprofr_clustered.R
+generator_md5,8825930059e01dae146c01465560dc3d
+generated_utc,2026-10-21T14:38:43Z
+R,R version 4.3.3 (2024-02-29)
+platform,x86_64-pc-linux-gnu
+os,Ubuntu 24.04.4 LTS
+blas,/usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0
+lapack,/usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0
+rng,Mersenne-Twister Inversion Rejection
+collate,C
+pprofR_source,github.com/UM-KevinHe/pprof branch Yubo
+pprofR_commit,f23c2889b59108f9506da3f91327c3f239945a63
+pprofR_version,0.2.0
+Rcpp,1.0.12
+RcppArmadillo,0.12.8.1.0
+poibin,1.6
+poibin_date_publication,2024-08-23 15:10:01 UTC
+fit_tol,1e-12
+fit_backtrack,FALSE
+check_tol,1e-10
+md5:data/pprofr_clustered_inputs.csv,dd10d10a86d7e5ebaf12541ea0d843df
+md5:results/pprofr_clustered_providers.csv,9534d0d67458d6abc6fbd7830e5829c7
+md5:results/pprofr_clustered_rhat.csv,77aaf99bc147b6365045dcc37eda56d2
+md5:results/pprofr_clustered_cohorts.csv,a0fce4f681aa8bad5372b7bdf914045e
