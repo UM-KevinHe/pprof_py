@@ -24,7 +24,9 @@ from ....inference.zstat import z_statistic
 
 logger = logging.getLogger(__name__)
 
-PATIENT_CLUSTERED = ("robust_wald", "robust_score")
+STABILIZED = ("stabilized_wald", "stabilized_score")
+PATIENT_CLUSTERED = ("robust_wald", "robust_score") + STABILIZED
+STABILIZED_MAX_ROWS = 5000   # as R pprofR: the pooled matrix has one row and column per row of the largest patient
 
 
 def _patient_clusters(provider_indices: np.ndarray, obs_ids: np.ndarray):
@@ -40,6 +42,42 @@ def _patient_clusters(provider_indices: np.ndarray, obs_ids: np.ndarray):
     keys, cluster = np.unique(key, return_inverse=True)
     cluster = cluster.ravel()
     return cluster, keys // k, np.bincount(cluster)
+
+
+def _stabilized_meat(residual: np.ndarray, variance: np.ndarray, clusters, order_key: np.ndarray, m: int,
+                     rhat: Optional[np.ndarray] = None):
+    """R pprofR's stabilized variance of each provider's score, and the pooled matrix R-hat.
+
+    A cluster's rows are taken in ``order_key`` order. With ``e = r / sqrt(v)`` and ``a = sqrt(v)`` (both 0 where
+    ``v = 0``), ``R[s, t]`` averages ``e_s e_t`` over the clusters with at least ``max(s, t)`` rows, pooled over
+    every provider and not centred; a provider's variance is the sum over its clusters of ``a' R a``. ``rhat``
+    replaces R-hat (for checks).
+    """
+    cluster, cluster_provider, n_rows = clusters
+    dim = int(n_rows.max())
+    if dim > STABILIZED_MAX_ROWS:
+        raise ValueError(f"The stabilized tests pool a matrix over the rows of a patient; the largest patient has "
+                         f"{dim} rows (at most {STABILIZED_MAX_ROWS}, as in R pprofR).")
+    order = np.lexsort((np.asarray(order_key).ravel(), cluster))     # by cluster, then by the order key
+    positive = variance > 0
+    a = np.where(positive, np.sqrt(np.where(positive, variance, 1.0)), 0.0)
+    e = np.where(positive, residual / np.where(positive, a, 1.0), 0.0)
+    a, e, owner = a[order], e[order], cluster[order]
+    size = n_rows[owner]
+    S, count, blocks = np.zeros((dim, dim)), np.zeros(dim), []
+    for s in np.unique(n_rows):            # the clusters with s rows, one matrix each
+        rows = size == s
+        E = e[rows].reshape(-1, s)
+        S[:s, :s] += E.T @ E
+        count[:s] += E.shape[0]
+        blocks.append((s, a[rows].reshape(-1, s), owner[rows][::s]))
+    if rhat is None:
+        q = np.arange(dim)
+        rhat = S / count[np.maximum.outer(q, q)]
+    W = np.zeros(n_rows.size)
+    for s, A, which in blocks:
+        W[which] = np.einsum("ij,jk,ik->i", A, rhat[:s, :s], A)
+    return np.bincount(cluster_provider, weights=W, minlength=m), rhat
 
 
 class _ProviderTestMethods:
@@ -65,7 +103,7 @@ class _ProviderTestMethods:
         ----------
         providers : array-like, optional
             Report only these providers; gamma_0 and any empirical null use all.
-        test_method : {"poibin_exact", "score", "wald", "bootstrap_exact", "robust_wald", "robust_score"}
+        test_method : {"poibin_exact", "score", "wald", "bootstrap_exact", "robust_wald", "robust_score", "stabilized_wald", "stabilized_score"}
             ``"poibin_exact"``: exact Poisson-binomial test of the provider's
             event count at gamma_0 (two-sided mid-p). ``"score"``:
             ``(O - E) / sqrt(Var_0(O))`` at gamma_0. ``"wald"``:
@@ -87,8 +125,16 @@ class _ProviderTestMethods:
             fitted ``p`` (``I_j`` the provider's information): the
             ``variance="robust_fixed_beta"`` SE of :meth:`test_standardized`.
             ``"robust_score"`` is ``(O - E) / sqrt(V_j)``, with ``p`` and the
-            residuals at gamma_0 as in ``"score"``. A statistic that is not finite
-            is reported as not tested.
+            residuals at gamma_0 as in ``"score"``. ``"stabilized_wald"`` and
+            ``"stabilized_score"`` replace ``V_j`` by the sum over provider j's
+            patients of ``a' R a``, where ``a`` holds ``sqrt(N p (1 - p))`` for the
+            patient's rows and ``R`` is one matrix pooled over the patients of every
+            provider: entry ``(s, t)`` averages ``e_s e_t`` (``e = r / sqrt(N p (1 - p))``)
+            over the patients with at least ``max(s, t)`` rows. A patient's rows are
+            taken in the order recorded at fit (``order_var``, else input order with a
+            warning); the score form builds ``R`` from the residuals at gamma_0, as R
+            does. A patient may have at most 5,000 rows. A statistic that is not
+            finite is reported as not tested.
         reference : "median", "mean", or float
             The reference effect gamma_0: the median of the estimated effects,
             their size-weighted mean, or a value on the effect scale.
@@ -98,8 +144,8 @@ class _ProviderTestMethods:
             that receives the z-statistics, such as ``EmpiricalNull.fitter(...)``.
         alternative, level, critical, interval
             As in :func:`~pprof_py.inference.provider_test`.
-            Intervals are available for the Wald tests (``"wald"`` and
-            ``"robust_wald"``) and, by inverting the exact test, for
+            Intervals are available for the Wald tests (``"wald"``,
+            ``"robust_wald"`` and ``"stabilized_wald"``) and, by inverting the exact test, for
             ``"poibin_exact"``.
         n_resample, seed : int, optional
             Monte Carlo draws and seed for ``"bootstrap_exact"``.
@@ -111,8 +157,10 @@ class _ProviderTestMethods:
             :data:`~pprof_py.inference.PROVIDER_TEST_COLUMNS`: ``flag`` is +1
             above gamma_0, -1 below, 0 not significant, NA not tested. For the
             patient-clustered tests, ``attrs`` also record the variance
-            (``"patient-clustered, beta fixed"``), the number of clusters and the
-            largest cluster's number of rows.
+            (``"patient-clustered, beta fixed"``, or ``"patient-clustered,
+            stabilized, beta fixed"``), the number of clusters and the largest
+            cluster's number of rows; the stabilized tests also record where the
+            row order came from (``"row_order"``).
         """
         if self.coefficients_ is None or self.variances_ is None:
             raise ValueError("The model must be fitted before testing.")
@@ -131,11 +179,24 @@ class _ProviderTestMethods:
             if self.obs_ids_ is None or getattr(self, "robust_variances_", None) is None:
                 raise ValueError(f"test_method='{test_method}' needs patient IDs: fit the model with obs_id_var.")
             clusters = _patient_clusters(idx, self.obs_ids_)
-        if test_method in ("wald", "robust_wald"):
+            if test_method in STABILIZED:
+                order_key = getattr(self, "order_key_", None)
+                if order_key is None:
+                    raise ValueError(f"test_method='{test_method}' needs the row order recorded at fit; refit the model.")
+                if self.order_source_ == "input position":
+                    warnings.warn("The stabilized tests take each patient's rows in input order; pass order_var to fit() "
+                                  "to order them by time (for example a discharge date).", UserWarning, stacklevel=2)
+        if test_method in ("wald", "robust_wald", "stabilized_wald"):
             if test_method == "wald":
                 se = np.sqrt(np.asarray(self.variances_["gamma_case_mix"], dtype=np.float64).ravel())   # C34
-            else:   # beta fixed, as R pprofR's robust_wald; the same SE as test_standardized(variance="robust_fixed_beta")
+            elif test_method == "robust_wald":   # beta fixed, as R pprofR; the SE of test_standardized(variance="robust_fixed_beta")
                 se = np.sqrt(np.asarray(self.robust_variances_["gamma_fixed_beta"], dtype=np.float64).ravel())
+            else:   # beta fixed, at the fitted p (clipped as in the robust variances); R-hat from the fitted residuals
+                w = np.ones(xb.size) if trials is None else trials
+                p = np.clip(np.asarray(self.fitted_, dtype=np.float64).ravel(), 1e-10, 1 - 1e-10)
+                meat, _ = _stabilized_meat(y - w * p, w * p * (1 - p), clusters, order_key, m)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    se = np.sqrt(meat) / np.bincount(idx, weights=w * p * (1 - p), minlength=m)
             z = (gamma - g0) / se
             events = np.bincount(idx, weights=y, minlength=m)
             size = np.bincount(idx, weights=np.ones_like(y) if trials is None else trials, minlength=m)
@@ -155,13 +216,16 @@ class _ProviderTestMethods:
             with np.errstate(divide="ignore", invalid="ignore"):
                 z = np.where(var0 >= 1e-14, (observed - expected) / np.sqrt(var0), 0.0)
             record("score", observed=observed, expected=expected, var0=var0)
-        elif test_method == "robust_score":
+        elif test_method in ("robust_score", "stabilized_score"):
             cluster, cluster_provider, _ = clusters
             w = np.ones(xb.size) if trials is None else trials
             p0 = np.clip(sigmoid(g0 + xb), 1e-10, 1 - 1e-10)           # as in "score"
             residual = y - w * p0
             u = np.bincount(idx, weights=residual, minlength=m)          # O - E
-            v = np.bincount(cluster_provider, weights=np.bincount(cluster, weights=residual) ** 2, minlength=m)
+            if test_method == "robust_score":
+                v = np.bincount(cluster_provider, weights=np.bincount(cluster, weights=residual) ** 2, minlength=m)
+            else:   # R-hat from the residuals at gamma_0, as R pprofR (D5)
+                v, _ = _stabilized_meat(residual, w * p0 * (1 - p0), clusters, order_key, m)
             with np.errstate(divide="ignore", invalid="ignore"):
                 z = np.where(v > 0, u / np.sqrt(v), np.nan)
         elif test_method in ("poibin_exact", "bootstrap_exact"):
@@ -179,16 +243,20 @@ class _ProviderTestMethods:
             wanted = None if providers is None else np.isin(self.provider_ids_, np.atleast_1d(providers))
             z, limits = count_test(obs, nulls, g0, alternative=alt, start=gamma, wanted=wanted)
         else:
-            raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', 'bootstrap_exact', 'robust_wald' "
-                             "or 'robust_score'.")
+            raise ValueError("test_method must be 'poibin_exact', 'score', 'wald', 'bootstrap_exact', 'robust_wald', "
+                             "'robust_score', 'stabilized_wald' or 'stabilized_score'.")
         result = effect_test(self.provider_ids_, gamma, z, g0, se=se, null_model=null_model, alternative=alt,
                              level=level, critical=critical, interval=interval, providers=providers,
                              test_method=test_method, limits=limits)
         sizes = dict(zip(self.provider_ids_, self.provider_sizes_))
         result.attrs["provider_size"] = {g: sizes[g] for g in result.index}
         if clusters is not None:
-            result.attrs.update({"variance": "patient-clustered, beta fixed", "clusters": int(clusters[2].size),
-                                 "largest_cluster_rows": int(clusters[2].max())})
+            stabilized = test_method in STABILIZED
+            result.attrs.update({"variance": "patient-clustered, stabilized, beta fixed" if stabilized
+                                 else "patient-clustered, beta fixed",
+                                 "clusters": int(clusters[2].size), "largest_cluster_rows": int(clusters[2].max())})
+            if stabilized:
+                result.attrs["row_order"] = self.order_source_
         return result
 
     def funnel_limits(self, providers=None, *, test_method: str = "score", reference="median", null_model=None,

@@ -136,6 +136,8 @@ class LogisticFixedEffectModel(
         self.xbeta_ = None
         self.outcome_ = None
         self.obs_ids_ = None
+        self.order_key_ = None      # each row's rank in the order the stabilized tests use (D4)
+        self.order_source_ = None   # where that order came from: "order_var '<name>'" or "input position"
         self.N_ = None  # Binomial trials per observation (None = Bernoulli)
         self.covariate_names_ = None  # Store covariate names if provided
 
@@ -166,7 +168,8 @@ class LogisticFixedEffectModel(
         max_iter: int = 10000,
         tol: float = 1e-8,
         bound: float = 10.0,
-        backtrack: bool = True
+        backtrack: bool = True,
+        order_var: Optional[str] = None,
     ) -> "LogisticFixedEffectModel":
         """Fit the logistic fixed effect model with enhanced data preparation and variance estimation.
 
@@ -193,7 +196,12 @@ class LogisticFixedEffectModel(
             Column name for observation-level identifiers (e.g., patient ID,
             member ID). Required for cluster-robust variance estimation. If
             provided, enables variance='robust' (and the R-parity 'robust_fixed_beta') in test_standardized() and
-            standardized_measure().
+            standardized_measure(), and the patient-clustered tests of test().
+        order_var : Optional[str], default=None
+            Column that orders each patient's rows, such as a discharge date, for the stabilized tests of test()
+            (``"stabilized_wald"``, ``"stabilized_score"``); ties keep the input order. The order is recorded
+            before any data preparation sorts the rows. Without it those tests take each patient's rows in input
+            order, with a warning.
         use_dataprep : Optional[bool], default=None
             Override default data preparation setting.
         screen_providers : Optional[bool], default=None
@@ -247,10 +255,14 @@ class LogisticFixedEffectModel(
             obs_id_var=obs_id_var,
             use_dataprep=use_dataprep,
             dataprep_options=options,
+            order_var=order_var,
+            record_order=True,
         )
         X, y, provider_id = validated.X, validated.y, validated.provider_id
         self.covariate_names_ = validated.covariate_names
         self.obs_ids_ = validated.obs_ids
+        self.order_key_ = validated.order_key
+        self.order_source_ = "input position" if order_var is None else f"order_var '{order_var}'"
         self.N_ = validated.N
         self.excluded_providers_ = validated.excluded_providers
 

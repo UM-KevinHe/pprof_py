@@ -237,6 +237,32 @@ class ValidatedInputs:
     obs_ids: Optional[np.ndarray] = None
     N: Optional[np.ndarray] = None
     excluded_providers: Optional[pd.DataFrame] = None
+    order_key: Optional[np.ndarray] = None
+
+
+# Carries each row's order key through DataPrep, whose sort by provider is not stable.
+_ORDER_KEY = "__pprof_py_order_key__"
+
+
+def _order_rank(data: pd.DataFrame, order_var: Optional[str]) -> np.ndarray:
+    """Each row's rank when the rows are ordered by ``order_var``, ties (or no ``order_var``) in input order."""
+    n = len(data)
+    if order_var is None:
+        return np.arange(n, dtype=np.int64)
+    if order_var not in data.columns:
+        raise ValueError(f"order_var '{order_var}' is not a column of the data.")
+    values = data[order_var]
+    if values.isna().any():
+        raise ValueError(f"order_var '{order_var}' has missing values.")
+    keys = values.cat.codes.to_numpy() if isinstance(values.dtype, pd.CategoricalDtype) else values.to_numpy()
+    try:
+        order = np.argsort(keys, kind="stable")
+    except TypeError as err:
+        raise ValueError(f"order_var '{order_var}' must hold values that can be sorted, such as numbers, dates or "
+                         "strings.") from err
+    rank = np.empty(n, dtype=np.int64)
+    rank[order] = np.arange(n, dtype=np.int64)
+    return rank
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +281,8 @@ def validate_and_convert_inputs(
     obs_id_var: Optional[str] = None,
     use_dataprep: bool = False,
     dataprep_options=None,
+    order_var: Optional[str] = None,
+    record_order: bool = False,
 ) -> ValidatedInputs:
     """Validate and convert input data to NumPy arrays for modeling.
 
@@ -283,6 +311,12 @@ def validate_and_convert_inputs(
         is ``None``, default ``DataPrepOptions()`` is used.  Replaces the
         former flat keyword arguments (``cutoff``, ``screen_providers``,
         ``log_event_providers``, ``threshold_cor``, ``threshold_vif``).
+    order_var : str, optional
+        Column that orders the rows (a DataFrame column such as a date); ties
+        keep the input order. Only used when *record_order* is True.
+    record_order : bool, default False
+        Return ``order_key``: each returned row's rank by ``order_var`` or, without it,
+        its input position, recorded before DataPrep sorts the rows.
 
     Returns
     -------
@@ -290,6 +324,9 @@ def validate_and_convert_inputs(
     """
     obs_ids = None
     N_ = None
+    order_key = None
+    if order_var is not None and not isinstance(X, pd.DataFrame):
+        raise ValueError("order_var needs a DataFrame input.")
 
     # -- Handle DataFrame inputs -----------------------------------------
     if isinstance(X, pd.DataFrame):
@@ -336,6 +373,13 @@ def validate_and_convert_inputs(
             "y must have the same number of samples as X if provided."
         )
 
+    if record_order:
+        if _ORDER_KEY in data_for_prep.columns:
+            raise ValueError(f"The data must not have a column named '{_ORDER_KEY}'.")
+        order_key = _order_rank(data_for_prep, order_var)
+        if use_dataprep:
+            data_for_prep[_ORDER_KEY] = order_key
+
     # -- DataPrep (structural checks + provider screening) ---------------
     excluded_providers = None
     if use_dataprep:
@@ -376,6 +420,8 @@ def validate_and_convert_inputs(
             N_ = prepared_data[n_char].to_numpy().astype(float)
         if obs_id_var is not None and obs_id_var in prepared_data.columns:
             obs_ids = prepared_data[obs_id_var].to_numpy()
+        if record_order:            # the keys follow the prepared (sorted, screened) rows
+            order_key = prepared_data[_ORDER_KEY].to_numpy(dtype=np.int64)
 
     return ValidatedInputs(
         X=X_array,
@@ -385,4 +431,5 @@ def validate_and_convert_inputs(
         obs_ids=obs_ids,
         N=N_,
         excluded_providers=excluded_providers,
+        order_key=order_key,
     )

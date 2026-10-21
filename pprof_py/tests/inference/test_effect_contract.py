@@ -60,6 +60,8 @@ ROUTES = {
     "logistic_fe/bootstrap_exact": ("fe", dict(test_method="bootstrap_exact", n_resample=1500, seed=3)),
     "logistic_fe/robust_wald": ("fec", dict(test_method="robust_wald")),
     "logistic_fe/robust_score": ("fec", dict(test_method="robust_score")),
+    "logistic_fe/stabilized_wald": ("fec", dict(test_method="stabilized_wald")),
+    "logistic_fe/stabilized_score": ("fec", dict(test_method="stabilized_score")),
     "logistic_re/wald": ("re", dict(test_method="wald")),
     "logistic_re/poibin_exact": ("re", dict(test_method="poibin_exact")),
     "logistic_re/resampling": ("re", dict(test_method="resampling", n_resample=1500, seed=3)),
@@ -73,7 +75,7 @@ ROUTES = {
     "linear_fe/wald": ("lfe", {}),
     "linear_re/wald": ("lre", {}),
 }
-WALD = [k for k in ROUTES if k.endswith(("/wald", "/robust_wald"))]
+WALD = [k for k in ROUTES if k.endswith(("/wald", "/robust_wald", "/stabilized_wald"))]
 
 
 def _run(models, route, **extra):
