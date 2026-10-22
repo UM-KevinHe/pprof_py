@@ -199,6 +199,13 @@ $$
     2. Calculate the simulated sum $O_i^{(b)} = \sum_{j=1}^{n_i} Y_{ij}^{(b)}$.
   - The p-value is estimated as the proportion of simulated sums $O_i^{(b)}$ that are as extreme or more extreme than the actually observed sum $O_i$, according to the alternative hypothesis. For example, for $H_1: \gamma_i > \gamma_0$, the p-value is estimated by $(\sum_{b=1}^B \mathbb{I}(O_i^{(b)} \ge O_i)) / B$. Two-sided p-values use the same mid-$p$ convention as the exact test, and a simulated tail probability of zero is replaced by $1/(2B)$ (so a two-sided p-value is at least $1/B$).
 
+- **Patient-clustered tests:** when patients contribute several records (fit with `obs_id_var`), `"robust_wald"`,
+  `"robust_score"`, `"stabilized_wald"` and `"stabilized_score"` replace the binomial variance by one that allows a
+  patient's records to be correlated, as R pprofR's `test_fe()` does, with $\boldsymbol\beta$ treated as known. The
+  robust forms use each provider's own patients; the stabilized forms pool a within-patient correlation matrix over
+  all providers and depend on the order of each patient's records (`order_var`). See
+  [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 6.1.
+
 - **Binomial outcomes.** For a model fitted with `n_var`, observation $j$ contributes its $N_{ij}$ trials: the score test uses $\sum_j N_{ij} p_{ij}$ and $\sum_j N_{ij} p_{ij}(1 - p_{ij})$, and the exact and bootstrap tests treat each observation as $N_{ij}$ Bernoulli trials.
 
 ### 2.5. Confidence Intervals
@@ -365,6 +372,65 @@ The result is indexed by `provider_id` with the columns described in {ref}`ll_re
 (the test statistic), `p_value`, and `flag` (1: more events than expected, -1: fewer, 0: not
 significant, NA: not tested). `test_method='wald'` also reports `se` and a confidence interval, and
 `null_model=` calibrates the test against an empirical null ({ref}`empirical-null-guide`).
+
+#### Patient-clustered tests
+
+When patients contribute several rows, here admissions, fit with `obs_id_var` and, for the stabilized tests,
+`order_var`; the four patient-clustered tests of Section 2.4 then run like the others.
+
+```python
+import numpy as np
+import pandas as pd
+from pprof_py import LogisticFixedEffectModel
+
+# One row per admission; each patient has 1-5 admissions at one hospital
+rng = np.random.default_rng(7)
+n_patients = 1500
+admissions = rng.integers(1, 6, n_patients)
+patient = np.repeat(np.arange(n_patients), admissions)
+adm = pd.DataFrame({
+    'patient': patient,
+    'hospital': np.repeat(rng.integers(0, 25, n_patients), admissions),
+    'day': np.concatenate([np.sort(rng.choice(365, a, replace=False)) for a in admissions]),
+    'age': rng.normal(size=patient.size),
+})
+frailty = rng.normal(0, 1.0, n_patients)[patient]       # shared by a patient's admissions
+hospital_effect = rng.normal(0, 0.3, 25)[adm['hospital']]
+eta = -1 + 0.4 * adm['age'] + hospital_effect + frailty
+adm['readmit'] = (rng.random(len(adm)) < 1 / (1 + np.exp(-eta))).astype(int)
+adm = adm.sample(frac=1, random_state=1)                # rows in no particular order
+
+clustered = LogisticFixedEffectModel().fit(
+    adm, y_var='readmit', x_vars=['age'], provider_var='hospital',
+    obs_id_var='patient', order_var='day',
+)
+methods = ['score', 'robust_score', 'stabilized_score', 'wald', 'robust_wald', 'stabilized_wald']
+results = {m: clustered.test(test_method=m) for m in methods}
+print(pd.DataFrame({m: r['z_raw'] for m, r in results.items()}).round(2).head().to_string())
+print(pd.Series({m: int(r['flag'].isin([1, -1]).sum()) for m, r in results.items()}, name='flagged'))
+print(results['stabilized_score'].attrs['row_order'])
+```
+```text
+             score  robust_score  stabilized_score  wald  robust_wald  stabilized_wald
+provider_id
+0            -2.60         -2.26             -2.14 -2.57        -2.12            -2.15
+1            -5.11         -4.66             -4.25 -4.80        -4.36            -4.06
+2            -1.05         -0.87             -0.86 -1.04        -0.85            -0.87
+3             0.85          0.63              0.70  0.85         0.65             0.71
+4            -0.98         -0.81             -0.79 -0.98        -0.79            -0.80
+score               6
+robust_score        4
+stabilized_score    5
+wald                5
+robust_wald         5
+stabilized_wald     5
+Name: flagged, dtype: int64
+order_var 'day'
+```
+
+The patient-clustered score tests flag fewer hospitals than the plain score test here: a patient's admissions share
+the patient's frailty, which the binomial variance ignores. Without `order_var` the stabilized tests take each
+patient's rows in input order and warn; `attrs['row_order']` records which order was used.
 
 ### 3.6. Confidence Interval Calculation (`.calculate_confidence_intervals()`)
 

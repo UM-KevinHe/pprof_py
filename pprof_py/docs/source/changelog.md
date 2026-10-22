@@ -11,6 +11,17 @@ feature attributions as a best reconstruction. There is no released
 
 ## Unreleased
 
+### Added
+- R pprofR's four patient-clustered provider tests in `LogisticFixedEffectModel.test()`: `test_method="robust_wald"`,
+  `"robust_score"`, `"stabilized_wald"` and `"stabilized_score"`, with beta treated as known, as in R. They need
+  `fit(obs_id_var=...)`, and a cluster is a (provider, patient) pair. `"robust_wald"` gives the same numbers as
+  `test_standardized(measure="gamma", variance="robust_fixed_beta")`. The Wald forms have intervals; none of the four has
+  funnel limits yet. All four match pprofR 0.2.0's `test_fe()` to 1e-10 on reference data sets in `r_reference/`
+  (generator `run_pprofr_clustered.R`, with pprofR's own reference function mirrored in the tests).
+- `LogisticFixedEffectModel.fit(order_var=...)` orders each patient's rows for the stabilized tests (ties keep the input
+  order). The order is recorded before data preparation sorts the rows, as `order_key_` and `order_source_`; without
+  `order_var` the stabilized tests take each patient's rows in input order and warn.
+
 ### Changed
 - `pprof_py.presentation` is no longer provisional. From 0.8 its public names follow the package's deprecation policy:
   renaming or removing one, or changing its signature or return type, takes one minor release of
@@ -18,6 +29,11 @@ feature attributions as a best reconstruction. There is no released
 - `LICENSE.md` names the copyright holder as Kevin He, University of Michigan, as the documentation footer does.
 
 ### Fixed
+- The bibliography entry for Wu et al. (2022) named the wrong authors, title, issue and pages. It now cites Wu, Yang,
+  Kang and He (2022), *Statistics in Medicine* 41(15): 2840–2853.
+- The confidence-limit example on the provider-inference theory page chose among providers of equal size with an
+  unstable sort, so NumPy 1.x showed a different provider than NumPy 2.x; it now sorts stably and shows the same
+  output on both.
 - `GroupLassoLinear` and `GroupLassoLogistic` store the null point exactly at `lambda >= lambda_max_`, as
   `GroupLassoCoxPH` and the provider classes already do (C23). Iterating from it left rounding noise in its zeros on
   some platforms (up to 4e-16; reported on Apple Silicon in #5), and the exact `== 0.0` check in

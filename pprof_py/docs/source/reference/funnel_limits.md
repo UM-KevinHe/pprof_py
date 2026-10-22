@@ -165,14 +165,16 @@ When the calibration differs between providers of one group, no curve can repres
 A funnel needs a test of the plotted measure (ADR-004 in the design notes). Random-effect models flag providers with
 a Wald test of their shrunken estimates by default; a funnel of observed over expected events cannot agree with
 those flags. Logistic random-effect models therefore offer funnels for their count tests only, and linear
-random-effect models offer none. Monte Carlo tests have no funnel limits either.
+random-effect models offer none. Monte Carlo tests have no funnel limits either, and the patient-clustered tests have
+none yet.
 
 ```python
 from pprof_py import LinearRandomEffectModel, LogisticRandomEffectModel
 
 for call in (lambda: funnel_limits(LinearRandomEffectModel()),
              lambda: LogisticRandomEffectModel().funnel_limits(test_method="wald"),
-             lambda: model.funnel_limits(test_method="bootstrap_exact")):
+             lambda: model.funnel_limits(test_method="bootstrap_exact"),
+             lambda: model.funnel_limits(test_method="robust_score")):
     try:
         call()
     except (TypeError, ValueError) as err:
@@ -182,6 +184,7 @@ for call in (lambda: funnel_limits(LinearRandomEffectModel()),
 TypeError: LinearRandomEffectModel flags providers with a Wald test of their shrunken estimates (BLUPs); funnel limits could not agree with those flags (ADR-004). Use an interval plot, or fit a LinearFixedEffectModel for a funnel.
 ValueError: test_method='wald' tests the shrunken estimates (BLUPs), so no funnel of observed versus expected events can agree with its flags (ADR-004). Use test_method='poibin_exact' or 'exact', or an interval plot.
 ValueError: test_method='bootstrap_exact' is a Monte Carlo test and has no funnel limits; use 'score', 'poibin_exact' or 'wald'.
+ValueError: test_method='robust_score' has no funnel limits yet: each provider's patient-clustered variance depends on its own patients. Use 'score', 'poibin_exact' or 'wald'.
 ```
 
 ## Zero-event providers and exclusions

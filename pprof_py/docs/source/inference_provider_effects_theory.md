@@ -19,7 +19,8 @@ are estimated jointly and shared by all providers; and providers are often small
 large-sample approximations for a single provider can fail even when the risk model is estimated precisely.
 Section 2 sets out what is tested; Section 3 the Wald test and its variance; Section 4 the tests that hold $\beta$
 at $\hat\beta$ and use the provider's own event count; Section 5 confidence limits; Section 6 the cluster-robust
-variances; Section 7 the random-effect and three-stage models; Section 8 the approximations relied on.
+variances and the patient-clustered tests; Section 7 the random-effect and three-stage models; Section 8 the
+approximations relied on.
 
 ## 2. What is tested
 
@@ -180,7 +181,7 @@ excludes = (ex.ci_lower > g0) | (ex.ci_upper < g0)
 print("exact limits exclude gamma_0 exactly when flagged:", bool((excludes == (ex.flag != 0)).all()))
 show = pd.DataFrame({"estimate": ex.estimate, "exact lower": ex.ci_lower, "exact upper": ex.ci_upper,
                      "Wald lower": wa.ci_lower, "Wald upper": wa.ci_upper, "size": f.provider_sizes_}).round(3)
-print(show.iloc[np.argsort(f.provider_sizes_)[[0, 1, -2, -1]]].to_string())
+print(show.iloc[np.argsort(f.provider_sizes_, kind="stable")[[0, 1, -2, -1]]].to_string())
 ```
 
 ```
@@ -205,6 +206,50 @@ covariates' origin (the robust counterpart of Section 3.2). `variance="robust_fi
 sandwich with $\beta$ known, $(1/D_k)^2 M_{kk}$, which understates the variance of providers whose case mix differs
 from the rest. The sandwich estimates are consistent as the number of patients grows; no small-sample correction is
 applied.
+
+### 6.1. Patient-clustered tests
+
+`test(test_method=...)` offers R pprofR's four patient-clustered tests: `"robust_wald"`, `"robust_score"`,
+`"stabilized_wald"` and `"stabilized_score"`. They need patient identifiers (`fit(obs_id_var=...)`) and treat
+$\beta$ as known, as R does. A cluster $c$ is a (provider, patient) pair, so a patient seen at two providers forms
+two clusters. With record residuals $r_{kj} = Y_{kj} - N_{kj}p_{kj}$ and variances $v_{kj} = N_{kj}p_{kj}(1 - p_{kj})$,
+and $\mathcal C_k$ the clusters of provider $k$,
+
+$$
+U_k = \sum_j r_{kj}, \qquad D_k = \sum_j v_{kj}, \qquad
+M_k = \sum_{c \in \mathcal C_k} \Big(\sum_{j \in c} r_{kj}\Big)^2 .
+$$
+
+The robust Wald test uses the fitted probabilities: $z_k = (\hat\gamma_k - \gamma_0)/(\sqrt{M_k}/D_k)$, the
+statistic of `test_standardized(measure="gamma", variance="robust_fixed_beta")`. The robust score test uses the null
+probabilities $p^0_{kj}$ of Section 4: $z_k = U_k/\sqrt{M_k}$, the score test with the patient-clustered variance of
+the event count in place of its binomial variance.
+
+The stabilized tests replace $M_k$ by
+
+$$
+\tilde M_k = \sum_{c \in \mathcal C_k} a_c^\top \hat R_{[n_c]}\, a_c, \qquad
+\hat R_{st} = \frac{1}{m_{\max(s,t)}} \sum_{c:\ n_c \ge \max(s,t)} e_{cs}\, e_{ct},
+$$
+
+where $n_c$ is the number of records of cluster $c$, $a_c$ holds $\sqrt{v}$ for its records in order,
+$e = r/\sqrt{v}$ (both 0 where $v = 0$), $m_q$ counts the clusters with at least $q$ records, and $\hat R_{[n]}$ is
+the leading $n \times n$ block. $\hat R$ is one matrix pooled over the clusters of every provider and is not centred:
+entry $(s, t)$ estimates the correlation between the standardized residuals of a patient's $s$-th and $t$-th records,
+taken to be common to all patients. With $\hat R$ the identity, $\tilde M_k = D_k$ and the stabilized tests become
+the $\beta$-fixed model-based tests. The Wald form builds $\hat R$ from the fitted residuals and the score form, as
+in R, from the residuals at $\gamma_0$.
+
+Unlike $M_k$, $\tilde M_k$ depends on the order of each patient's records. The order is fixed when the model is
+fitted: by `fit(order_var=...)`, for example a discharge date (ties keep the input order), or otherwise by the input
+order, with a warning when a stabilized test is run. Data preparation's sort does not change it. A patient may have
+at most 5,000 records, and an entry of $\hat R$ at positions that few patients reach averages over those few
+patients.
+
+The four tests match R pprofR 0.2.0's `test_fe()` to $10^{-10}$ on reference data sets that include patients seen at
+several providers and patients with up to 50 records. The Wald forms have intervals, $\hat\gamma_k$ plus or minus
+the critical value times their standard error; the score forms have none, and none of the four has funnel limits
+yet.
 
 ## 7. Random-effect and three-stage models
 
@@ -259,6 +304,8 @@ interval of $\sigma$ (the [three-stage chapter](logistic/logistic_three_stage_mo
 | exact, bootstrap | exact (or simulated) given $\hat\beta$ and $\gamma_0$ | error in $\hat\beta$ and $\gamma_0$, shared by all providers; the bootstrap's floor |
 | exact limits | inversion given $\hat\beta$ | as the exact test |
 | robust variances | many patients per provider | few clusters |
+| patient-clustered tests | many patients per provider; $\beta$ treated as known | few patients per provider; case mix unlike the rest (Wald forms) |
+| stabilized tests | a within-patient correlation by record position, common to all providers | correlation that differs between providers; positions few patients reach |
 | random-effect tests | normal random effects independent of the case mix; $\hat\sigma$ plugged in | confounding of provider effects and case mix |
 | three-stage tests | $\beta$ and $\sigma$ from Stages 1–2 plugged in | error in $\sigma$ (`sigma_sensitivity`) |
 | flags | the null model (theoretical or empirical) | overdispersion ([empirical-null page](empirical_null_theory.md)) |
@@ -271,6 +318,7 @@ interval of $\sigma$ (the [three-stage chapter](logistic/logistic_three_stage_mo
 | Wald, score, exact, bootstrap tests | `LogisticFixedEffectModel.test(test_method=...)` with `"wald"`, `"score"`, `"poibin_exact"`, `"bootstrap_exact"` |
 | exact limits | `test(test_method="poibin_exact")` columns `ci_lower`, `ci_upper`; `calculate_confidence_intervals(option="gamma", test_method="exact")` |
 | robust variances | `test_standardized(measure="gamma", variance=...)`: `"robust"`, `"robust_fixed_beta"` |
+| patient-clustered tests | `test(test_method=...)` with `"robust_wald"`, `"robust_score"`, `"stabilized_wald"`, `"stabilized_score"`; `fit(obs_id_var=..., order_var=...)` |
 | random-effect tests | `LogisticRandomEffectModel.test(test_method=...)` with `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` |
 | three-stage tests | `LogisticFERandomClusterModel.test(test_method=...)` with `"exact"`, `"poibin_exact"`, `"resampling"`; `LogisticThreeStageModel.sigma_sensitivity` |
 | calibration | `null_model=` ([empirical-null page](empirical_null_theory.md)) |

@@ -202,7 +202,7 @@ LinearRandomEffectModel.test(
 
 | Estimator | `test_method` (default first) | Default `reference` | Intervals |
 |---|---|---|---|
-| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"` | `"median"` | Wald; inverted test (`"poibin_exact"`) |
+| `LogisticFixedEffectModel.test` | `"poibin_exact"`, `"score"`, `"wald"`, `"bootstrap_exact"`, `"robust_wald"`, `"robust_score"`, `"stabilized_wald"`, `"stabilized_score"` | `"median"` | Wald (`"wald"`, `"robust_wald"`, `"stabilized_wald"`); inverted test (`"poibin_exact"`) |
 | `LogisticRandomEffectModel.test` | `"wald"`, `"exact"`, `"poibin_exact"`, `"resampling"` | `0` | Wald; inverted test (`"exact"`, `"poibin_exact"`) |
 | `ProviderPenalizedLogistic.test` | `"poibin_exact"` | `"median"` | inverted test |
 | `LogisticFERandomClusterModel.test` | `"exact"`, `"poibin_exact"`, `"resampling"` | `"median"` | inverted test (`"exact"`, `"poibin_exact"`) |
@@ -218,6 +218,10 @@ LinearRandomEffectModel.test(
   the exact tails of the same null, with a warning; `"bootstrap_exact"` keeps the floor. The exact tests' intervals invert the test,
   so a limit excludes γ₀ exactly when the provider is flagged. All count tests run through one component,
   `pprof_py.inference.count_tests`.
+- **Patient-clustered tests** (`"robust_wald"`, `"robust_score"`, `"stabilized_wald"`, `"stabilized_score"`) are R pprofR's, with
+  beta treated as known; they need `fit(obs_id_var=...)`. The stabilized tests take each patient's records in the order recorded at
+  fit (`order_var`, else input order with a warning). See
+  [Inference for Provider Effects](../inference_provider_effects_theory.md), Section 6.1.
 - **Binomial outcomes** (a logistic fixed-effect model fitted with `n_var`) are weighted by their trials in the score, exact and bootstrap
   tests; the exact test expands trials up to 20,000 per provider.
 - **The logistic Wald test** uses the normal reference, as R pprof does. It is unreliable for providers at the numerical bound of γ
