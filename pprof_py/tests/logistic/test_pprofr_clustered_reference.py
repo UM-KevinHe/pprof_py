@@ -30,6 +30,7 @@ INPUTS = "data/pprofr_clustered_inputs.csv"
 PROVIDERS = "results/pprofr_clustered_providers.csv"
 RHAT = "results/pprofr_clustered_rhat.csv"
 COHORTS = "results/pprofr_clustered_cohorts.csv"
+COVARIATES = "results/pprofr_clustered_covariates.csv"
 PROVENANCE = "results/pprofr_clustered_provenance.csv"
 PPROFR_COMMIT = "f23c2889b59108f9506da3f91327c3f239945a63"
 COHORT_NAMES = ["t31_binary", "t31_binomial", "t13", "t14", "t16", "s1_spanning", "s2_long"]
@@ -122,7 +123,7 @@ def test_provenance_and_checksums():
     assert prov["collate"] == "C"
     assert float(prov["fit_tol"]) == 1e-12 and prov["fit_backtrack"] == "FALSE" and float(prov["check_tol"]) == 1e-10
     listed = {key[len("md5:"):]: value for key, value in prov.items() if key.startswith("md5:")}
-    assert sorted(listed) == sorted([INPUTS, PROVIDERS, RHAT, COHORTS])
+    assert sorted(listed) == sorted([INPUTS, PROVIDERS, RHAT, COHORTS, COVARIATES])
     for name, md5 in listed.items():
         assert _file_md5(_path(name)) == md5, name
     assert _file_md5(_path(GENERATOR)) == prov["generator_md5"], "the generator changed after the files were written"

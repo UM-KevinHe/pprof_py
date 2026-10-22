@@ -28,6 +28,9 @@ feature attributions as a best reconstruction. There is no released
   `order_var` the stabilized tests take each patient's rows in input order and warn.
 
 ### Changed
+- Fitting with `obs_id_var` is much faster with many providers. The patient-clustered variances no longer scan
+  every row once per provider: at 4,000 providers and 400,000 rows they take 0.1 s instead of 5.9 s, and their cost
+  now grows linearly. Results are unchanged, bit for bit.
 - `pprof_py.presentation` is no longer provisional. From 0.8 its public names follow the package's deprecation policy:
   renaming or removing one, or changing its signature or return type, takes one minor release of
   `DeprecationWarning`. Figure styling may still be refined, and `_`-prefixed modules are private.

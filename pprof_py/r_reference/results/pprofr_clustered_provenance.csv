@@ -1,7 +1,7 @@
 key,value
 generator,r_reference/run_pprofr_clustered.R
-generator_md5,8825930059e01dae146c01465560dc3d
-generated_utc,2026-10-21T14:38:43Z
+generator_md5,9e759955cfc0d833d4fd02a41b0414ec
+generated_utc,2026-10-22T17:38:22Z
 R,R version 4.3.3 (2024-02-29)
 platform,x86_64-pc-linux-gnu
 os,Ubuntu 24.04.4 LTS
@@ -23,3 +23,4 @@ md5:data/pprofr_clustered_inputs.csv,dd10d10a86d7e5ebaf12541ea0d843df
 md5:results/pprofr_clustered_providers.csv,9534d0d67458d6abc6fbd7830e5829c7
 md5:results/pprofr_clustered_rhat.csv,77aaf99bc147b6365045dcc37eda56d2
 md5:results/pprofr_clustered_cohorts.csv,a0fce4f681aa8bad5372b7bdf914045e
+md5:results/pprofr_clustered_covariates.csv,fba5b9437a967ac2f7d2bb383aea2a46

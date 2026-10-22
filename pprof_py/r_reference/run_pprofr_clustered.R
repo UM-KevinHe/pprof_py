@@ -29,6 +29,7 @@
 #   results/pprofr_clustered_providers.csv  per provider: gamma, U/V/Vstab/I, test outputs, intervals
 #   results/pprofr_clustered_rhat.csv       the pooled matrix R-hat (s <= t) at the null and the fit
 #   results/pprofr_clustered_cohorts.csv    per cohort: sizes, beta, gamma0, fit, self-check maxima
+#   results/pprofr_clustered_covariates.csv per covariate: summary_fe_covar()'s Wald and robust Wald tests
 #   results/pprofr_clustered_provenance.csv R, platform and package versions; MD5 of every file
 
 PPROFR_COMMIT <- "f23c2889b59108f9506da3f91327c3f239945a63"
@@ -287,6 +288,11 @@ run_cohort <- function(cfg) {
                m = as.integer(pool[[basis]]$m[pmax(st[, 1], st[, 2])]))
   }))
   beta <- as.numeric(fit$beta)
+  covariates <- do.call(rbind, lapply(c("wald", "robust_wald"), function(tst) {
+    s <- summary_fe_covar(fit, test = tst)
+    data.frame(cohort = cfg$cohort, test = tst, covariate = rownames(s), beta = s$beta, se = s$se.beta, stat = s$Z,
+               p = s$p)
+  }))
   cohort <- data.frame(
     cohort = cfg$cohort, source = cfg$source, seed = cfg$seed, binomial = cfg$binomial,
     n_rows = n, n_providers = length(provs), n_patients = length(unique(pat_in)),
@@ -300,15 +306,15 @@ run_cohort <- function(cfg) {
   cat(sprintf("%-13s %5d rows %3d providers %4d clusters (max %2d rows) %3d spanning, %3d interleaved; worst check %.2g\n",
               cfg$cohort, n, length(provs), length(unique(key)), max(table(key)), sum(spanning), sum(interleaved),
               max(unlist(checks))))
-  list(inputs = inputs, providers = providers, rhat = rhat, cohort = cohort)
+  list(inputs = inputs, providers = providers, rhat = rhat, cohort = cohort, covariates = covariates)
 }
 
 # ---- run and write --------------------------------------------------------------------------------
 results <- lapply(COHORTS, run_cohort)
 stack <- function(part) do.call(rbind, lapply(results, `[[`, part))
 files <- c(inputs = "data/pprofr_clustered_inputs.csv", providers = "results/pprofr_clustered_providers.csv", rhat = "results/pprofr_clustered_rhat.csv",
-           cohorts = "results/pprofr_clustered_cohorts.csv")
-parts <- c(inputs = "inputs", providers = "providers", rhat = "rhat", cohorts = "cohort")
+           cohorts = "results/pprofr_clustered_cohorts.csv", covariates = "results/pprofr_clustered_covariates.csv")
+parts <- c(inputs = "inputs", providers = "providers", rhat = "rhat", cohorts = "cohort", covariates = "covariates")
 for (f in names(files)) write_table(stack(parts[[f]]), file.path(base, files[[f]]))
 
 si <- utils::sessionInfo()

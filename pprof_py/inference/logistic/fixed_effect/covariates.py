@@ -191,8 +191,13 @@ class _CovariateInferenceMethods:
         A1_t = np.zeros((n_groups, n_covariates))  # cross-term: (m, p)
         A2 = np.zeros((n_covariates, n_covariates))  # beta meat: (p, p)
 
+        # Each provider's rows in their original order. A stable sort by provider selects exactly what the mask
+        # (provider_indices_ == j) did, in the same order, so every per-provider sum below is unchanged; the mask
+        # made this loop O(providers x rows).
+        order = np.argsort(self.provider_indices_, kind="stable")
+        bounds = np.searchsorted(self.provider_indices_[order], np.arange(n_groups + 1))
         for j in range(n_groups):
-            mask_j = (self.provider_indices_ == j)
+            mask_j = order[bounds[j]:bounds[j + 1]]
 
             # Bread: 1 / I_j where I_j = sum(q) within group j
             info_gamma_j = np.sum(q[mask_j])
