@@ -11,6 +11,11 @@ feature attributions as a best reconstruction. There is no released
 
 ## Unreleased
 
+### Removed
+- `setup_logger()` and `proc_freq()` (and the module `pprof_py.utils.misc` that held them): the package never used
+  them. Configure logging with Python's `logging` module, and tabulate with `pandas` (`value_counts()`,
+  `crosstab()`). `setup_logger`'s docstring also gave the documentation build its one docutils error.
+
 ### Added
 - R pprofR's four patient-clustered provider tests in `LogisticFixedEffectModel.test()`: `test_method="robust_wald"`,
   `"robust_score"`, `"stabilized_wald"` and `"stabilized_score"`, with beta treated as known, as in R. They need
@@ -29,6 +34,16 @@ feature attributions as a best reconstruction. There is no released
 - `LICENSE.md` names the copyright holder as Kevin He, University of Michigan, as the documentation footer does.
 
 ### Fixed
+- `fit()` raises a `ValueError` when `obs_id_var` or `n_var` names a column that does not exist, when patient IDs are
+  missing, or when either is given with array input. Before, a misspelled column was ignored without a word (a
+  misspelled `n_var` fitted binomial counts as binary outcomes), and missing string IDs failed with an unclear
+  `TypeError`.
+- The inter-unit reliability is NaN, with a warning, when the measures do not vary between groups (C37). It was 0,
+  or a value such as -2e29 when the measures differed only by rounding.
+- `LogisticThreeStageModel.sigma_sensitivity()` no longer divides by zero when sigma's profile interval starts at 0.
+  That end is evaluated at sigma = 1e-6, where Stage 3 is at its limit as sigma goes to 0 to within about 1e-11.
+- Presentation text names the patient-clustered tests (for example "patient-clustered stabilized score test")
+  instead of printing their method names.
 - The bibliography entry for Wu et al. (2022) named the wrong authors, title, issue and pages. It now cites Wu, Yang,
   Kang and He (2022), *Statistics in Medicine* 41(15): 2840–2853.
 - The confidence-limit example on the provider-inference theory page chose among providers of equal size with an

@@ -156,13 +156,24 @@ def test_patient_ids_are_required(cohorts, method):
         model.test(test_method=method)
 
 
-@pytest.mark.parametrize("method", CLUSTERED)
-def test_missing_patient_ids_are_an_error(cohorts, method):
-    rows = cohorts["t13"][3].assign(pid=lambda d: d["patient"].str[1:].astype(float))
-    rows.loc[[0, 5], "pid"] = np.nan
-    model = _fit(rows, obs_id_var="pid")
-    with pytest.raises(ValueError, match="must not be missing"):
-        model.test(test_method=method)
+@pytest.mark.parametrize("kind", ["numeric", "string"])
+def test_missing_patient_ids_are_an_error_at_fit(cohorts, kind):
+    rows = cohorts["t13"][3].copy()
+    rows["pid"] = rows["patient"].str[1:].astype(float) if kind == "numeric" else rows["patient"].astype(object)
+    rows.loc[[0, 5], "pid"] = np.nan if kind == "numeric" else None
+    with pytest.raises(ValueError, match="obs_id_var 'pid' has missing values"):
+        _fit(rows, obs_id_var="pid")
+
+
+def test_misnamed_columns_and_array_inputs_are_errors(cohorts):
+    rows = cohorts["t13"][3]
+    for kwargs in (dict(obs_id_var="patients"), dict(n_var="trials")):
+        with pytest.raises(ValueError, match="is not a column of the data"):
+            LogisticFixedEffectModel().fit(rows, y_var="Y", x_vars=X_VARS, provider_var="provider", **kwargs)
+    arrays = (rows[X_VARS].to_numpy(), rows["Y"].to_numpy(), rows["provider"].to_numpy())
+    for kwargs in (dict(obs_id_var="patient"), dict(n_var="N")):
+        with pytest.raises(ValueError, match="needs a DataFrame input"):
+            LogisticFixedEffectModel().fit(*arrays, **kwargs)
 
 
 @pytest.mark.parametrize("name", ["s1_spanning", "s2_long"])

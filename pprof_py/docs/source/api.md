@@ -383,14 +383,6 @@ Provider testing: z-statistics, null models and decisions (see {ref}`empirical-n
 ## Utilities
 
 ```{eval-rst}
-.. autofunction:: pprof_py.setup_logger
-```
-
-```{eval-rst}
-.. autofunction:: pprof_py.proc_freq
-```
-
-```{eval-rst}
 .. autofunction:: pprof_py.sigmoid
 ```
 

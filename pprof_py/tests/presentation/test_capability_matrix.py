@@ -82,16 +82,26 @@ def test_shrinkage_pairs_and_logistic_re_funnel_tests(fits):
         P.funnel(lre, test_method="wald")
 
 
-def test_flag_stability_reports_a_failing_sigma_sensitivity(fits):
-    """On these data the three-stage sigma_sensitivity() raises (sigma estimated at 0; audit §9); the display omits
-    only the sigma scenarios, warns, and says so in its footnote and table note."""
+def test_flag_stability_includes_the_sigma_scenarios_when_the_interval_starts_at_0(fits):
+    """On these data sigma's profile interval starts at 0, where sigma_sensitivity() used to divide by zero (audit
+    §9); that end is now evaluated at its limit, and the display includes the sigma scenarios."""
     models, _ = fits
     ts = models["3stage"][0]
-    try:
-        ts.sigma_sensitivity()
-        pytest.skip("sigma_sensitivity() succeeds on these data")
-    except Exception:
-        pass
+    out = ts.sigma_sensitivity()
+    assert out["sigma"]["lower"] == 0.0 and out["flags"].notna().all().all()
+    assert "\u03c3 at lower bound" in P.flag_stability(ts).provenance["scenarios"]
+
+
+def test_flag_stability_reports_a_failing_sigma_sensitivity(fits, monkeypatch):
+    """If sigma_sensitivity() raises, the display omits only the sigma scenarios, warns, and says so in its footnote
+    and table note."""
+    models, _ = fits
+    ts = models["3stage"][0]
+
+    def fail(self, *args, **kwargs):
+        raise ZeroDivisionError("float division by zero")
+
+    monkeypatch.setattr(type(ts), "sigma_sensitivity", fail)
     with pytest.warns(UserWarning, match="sigma_sensitivity\\(\\) failed"):
         r = P.flag_stability(ts)
     assert "\u03c3 at lower bound" not in r.provenance["scenarios"] and "are omitted" in r.long_description

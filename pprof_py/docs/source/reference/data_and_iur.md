@@ -32,10 +32,11 @@ v.X.shape, v.y.shape, v.provider_id.shape, v.covariate_names
 
 ```text
 validate_and_convert_inputs(X, y=None, provider_id=None, x_vars=None, y_var=None, provider_var=None, *,
-                            n_var=None, obs_id_var=None, use_dataprep=False, dataprep_options=None) -> ValidatedInputs
+                            n_var=None, obs_id_var=None, use_dataprep=False, dataprep_options=None,
+                            order_var=None, record_order=False) -> ValidatedInputs
 ```
 
-The returned `ValidatedInputs` has `X`, `y`, `provider_id`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — and `covariate_names`. The structural checks in `pprof_py.data`
+The returned `ValidatedInputs` has `X`, `y`, `provider_id`, `N` (trials per row) and `obs_ids` — both `None` unless `n_var` / `obs_id_var` are given — `covariate_names`, and `order_key`: each row's rank by `order_var` (ties in input order) or by its input position, recorded before DataPrep sorts the rows, and `None` unless `record_order=True`. `n_var`, `obs_id_var` and `order_var` must name columns of a DataFrame input, and missing patient IDs are an error. The structural checks in `pprof_py.data`
 take a `DataFrame` and column names:
 
 | Function | Behaviour |
@@ -128,15 +129,12 @@ direct.decile_table()
 ## Utilities
 
 ```python
-from pprof_py import proc_freq, setup_logger, sigmoid
+from pprof_py import sigmoid
 
-proc_freq(df, ["provider"])                        # logs frequency, percent and cumulative percent; returns None
 sigmoid(np.array([-2.0, 0.0, 2.0]))
 ```
 
 ```text
-setup_logger(name: str, level=20, log_to_file: bool = False, log_dir: str = None, time_zone: str = 'America/New_York') -> logging.Logger
-proc_freq(df: pandas.DataFrame, columns: list)
 sigmoid(x: 'np.ndarray') -> 'np.ndarray'
 ```
 

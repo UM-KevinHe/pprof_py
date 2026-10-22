@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -98,6 +99,14 @@ def test_generate_r_script_two_stage():
     assert "offset(.xbeta)" in script
 
 
+def _r_with_survival():
+    """Whether Rscript is on PATH and R's survival package loads, so run_validation can fit the R side."""
+    if shutil.which("Rscript") is None:
+        return False
+    check = "quit(status = !requireNamespace('survival', quietly = TRUE))"
+    return subprocess.run(["Rscript", "-e", check], capture_output=True, timeout=120).returncode == 0
+
+
 def test_run_validation_end_to_end_single_stage(tmp_path):
     spec = {
         "data": os.path.join(DATA, "combined.csv"),
@@ -116,7 +125,7 @@ def test_run_validation_end_to_end_single_stage(tmp_path):
     assert "Python stage 1 fit: converged=True" in report
     assert os.path.exists(tmp_path / "out" / "run_all_check.R")
 
-    if shutil.which("Rscript") is not None:
+    if _r_with_survival():
         assert "[OK]" in report
         assert "CHECK" not in report or "[CHECK]" not in report
 

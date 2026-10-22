@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import NamedTuple, Union
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -114,12 +116,20 @@ def _iur_decomposition(
     s2_b = s2_t - s2_w_raw
 
     # ── Overall IUR ──
-    iur = s2_b / s2_t if s2_t > 0 else 0.0
-
-    # ── Per-group IUR at each group's size: s2_b / (s2_b + n' s2_w_raw / n_i) ──
-    denom = s2_b + s2_w_raw * n_prime / sizes
-    with np.errstate(divide="ignore", invalid="ignore"):
-        iur_groups = np.where(denom != 0, s2_b / denom, 0.0)
+    # C37: when the measures do not vary between groups, s2_t is 0 or rounding noise (about (eps * |measure|)^2)
+    # and the ratio is undefined; dividing by the noise gave values such as -2e29. Report NaN instead.
+    scale = float(np.max(np.abs(measure_values))) if measure_values.size else 0.0
+    if not s2_t > (64.0 * np.finfo(np.float64).eps * scale) ** 2:
+        warnings.warn("The measures do not vary between groups, so the inter-unit reliability is undefined (NaN).",
+                      UserWarning, stacklevel=3)
+        iur = np.nan
+        iur_groups = np.full(sizes.shape, np.nan)
+    else:
+        iur = s2_b / s2_t
+        # ── Per-group IUR at each group's size: s2_b / (s2_b + n' s2_w_raw / n_i) ──
+        denom = s2_b + s2_w_raw * n_prime / sizes
+        with np.errstate(divide="ignore", invalid="ignore"):
+            iur_groups = np.where(denom != 0, s2_b / denom, 0.0)
 
     return IURDecomposition(
         iur=float(iur),

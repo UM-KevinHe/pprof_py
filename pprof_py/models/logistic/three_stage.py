@@ -29,6 +29,10 @@ from .random_effect import LogisticRandomEffectModel
 OFFSET = "stage1_offset"
 
 
+
+#: sigma_sensitivity() evaluates an interval end at sigma = 0 here: Stage 3 there is within ~1e-11 of its limit.
+_SIGMA_FLOOR = 1e-6
+
 class LogisticThreeStageModel(ProviderModel):
     """Three-stage logistic model: fixed provider effects, random cluster effects.
 
@@ -162,8 +166,11 @@ class LogisticThreeStageModel(ProviderModel):
                                                      bound=self.bound, bound_mode=self.bound_mode,
                                                      convergence_criterion=self.convergence_criterion,
                                                      estimator=self.estimator)
+                # An end at sigma = 0 puts every cluster effect at 0, where the cluster prior has no finite precision
+                # (it divided by zero). Stage 3 converges as O(sigma^2) when sigma -> 0, so that end is evaluated at
+                # _SIGMA_FLOOR, which reaches the limit to rounding.
                 model.fit(self.data_, "y_adj", a["x_vars"], a["provider_var"], a["cluster_var"], beta=beta,
-                          sigma=float(sigma), gamma_init=start, obs_var=a["y_var"], verbose=False)
+                          sigma=max(float(sigma), _SIGMA_FLOOR), gamma_init=start, obs_var=a["y_var"], verbose=False)
             tests[key] = model.test(**test_kwargs)
         flags = pd.DataFrame({key: t["flag"] for key, t in tests.items()})
         flags["stable"] = flags.nunique(axis=1) == 1

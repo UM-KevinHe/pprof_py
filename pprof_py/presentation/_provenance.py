@@ -9,7 +9,10 @@ from .formatting import fmt_count, fmt_number
 __all__ = ["counts_text", "interval_method", "null_text", "pct", "reference_text", "test_text"]
 
 _METHODS = {"poibin_exact": "exact Poisson-binomial", "exact": "exact", "score": "score", "wald": "Wald",
-            "midp": "mid-p Poisson", "bootstrap_exact": "bootstrap", "resampling": "resampling"}
+            "midp": "mid-p Poisson", "bootstrap_exact": "bootstrap", "resampling": "resampling",
+            "robust_wald": "patient-clustered robust Wald", "robust_score": "patient-clustered robust score",
+            "stabilized_wald": "patient-clustered stabilized Wald",
+            "stabilized_score": "patient-clustered stabilized score"}
 _ALTERNATIVES = {"two_sided": "two-sided", "greater": "one-sided (above)", "less": "one-sided (below)"}
 
 

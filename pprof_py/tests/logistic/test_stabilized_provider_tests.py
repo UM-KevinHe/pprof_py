@@ -252,3 +252,11 @@ def test_negative_controls(cohorts, name):
     over_all = rhat * longer[np.maximum.outer(np.arange(rhat.shape[0]), np.arange(rhat.shape[0]))] / n_rows.size
     meat, _ = _stabilized_meat(r, v, clusters, model.order_key_, m, rhat=over_all)
     assert excess((u / np.sqrt(meat))[order], R["stabilized_score_stat"]) > 1e3
+
+
+@pytest.mark.parametrize("method", ["robust_wald", "robust_score", "stabilized_wald", "stabilized_score"])
+def test_presentation_names_the_clustered_tests(cohorts, method):
+    from pprof_py.presentation._provenance import test_text
+    res = _test(cohorts["t13"][0]["order_var"], method)
+    kind = method.split("_")
+    assert test_text(dict(res.attrs)).startswith(f"patient-clustered {kind[0]} {'Wald' if kind[1] == 'wald' else 'score'} test")

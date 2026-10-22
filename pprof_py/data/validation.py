@@ -325,8 +325,10 @@ def validate_and_convert_inputs(
     obs_ids = None
     N_ = None
     order_key = None
-    if order_var is not None and not isinstance(X, pd.DataFrame):
-        raise ValueError("order_var needs a DataFrame input.")
+    if not isinstance(X, pd.DataFrame):
+        for name, value in (("order_var", order_var), ("obs_id_var", obs_id_var), ("n_var", n_var)):
+            if value is not None:
+                raise ValueError(f"{name} needs a DataFrame input.")
 
     # -- Handle DataFrame inputs -----------------------------------------
     if isinstance(X, pd.DataFrame):
@@ -342,9 +344,14 @@ def validate_and_convert_inputs(
             data_for_prep[y_var].to_numpy() if y_var else np.zeros(X.shape[0])
         )
         groups_array = data_for_prep[provider_var].to_numpy()
-        if obs_id_var is not None and obs_id_var in data_for_prep.columns:
+        for name, value in (("obs_id_var", obs_id_var), ("n_var", n_var)):
+            if value is not None and value not in data_for_prep.columns:
+                raise ValueError(f"{name} '{value}' is not a column of the data.")
+        if obs_id_var is not None:
+            if data_for_prep[obs_id_var].isna().any():
+                raise ValueError(f"obs_id_var '{obs_id_var}' has missing values.")
             obs_ids = data_for_prep[obs_id_var].to_numpy()
-        if n_var is not None and n_var in data_for_prep.columns:
+        if n_var is not None:
             N_ = data_for_prep[n_var].to_numpy().astype(float)
 
     # -- Handle array-like inputs ----------------------------------------

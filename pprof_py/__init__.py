@@ -58,7 +58,7 @@ from .models.survival import (
 )
 from .selection import CoxPHSelector
 from .exceptions import NotFittedError
-from .utils import setup_logger, proc_freq, sigmoid
+from .utils import sigmoid
 from .plotting import plot_caterpillar
 
 __version__ = "0.7.0"
@@ -100,8 +100,6 @@ __all__ = [
     "CoxPHSelector",
     # Utilities
     "NotFittedError",
-    "setup_logger",
-    "proc_freq",
     "sigmoid",
     "plot_caterpillar",
     "__version__",
