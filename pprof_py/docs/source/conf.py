@@ -101,6 +101,7 @@ napoleon_use_rtype = True
 autodoc_member_order = 'bysource'
 autodoc_default_options = {
     'exclude-members': '__weakref__, get_params, set_params',
+    'inherited-members': True,   # the models' test(), summary() and the other mixin methods
 }
 
 intersphinx_mapping = {

@@ -300,6 +300,7 @@ All primary model classes are importable directly from `pprof_py`.
 
 ```{eval-rst}
 .. autoclass:: pprof_py.measures.iur._core.IURDecomposition
+   :no-inherited-members:
 ```
 
 ```{eval-rst}
@@ -342,6 +343,7 @@ Provider testing: z-statistics, null models and decisions (see {ref}`empirical-n
    :members:
 
 .. autoclass:: pprof_py.inference.EmpiricalNullWarning
+   :no-inherited-members:
 
 .. autofunction:: pprof_py.inference.robust_location_scale
 
@@ -392,14 +394,17 @@ Provider testing: z-statistics, null models and decisions (see {ref}`empirical-n
 .. autoclass:: pprof_py.NotFittedError
    :members:
    :show-inheritance:
+   :no-inherited-members:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.data.survival_validation.SurvivalDataError
    :show-inheritance:
+   :no-inherited-members:
 ```
 
 ```{eval-rst}
 .. autoclass:: pprof_py.models.survival.penalized_coxph.DegenerateFeatureWarning
    :show-inheritance:
+   :no-inherited-members:
 ```

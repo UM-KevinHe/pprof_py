@@ -30,7 +30,7 @@ Rows: 4,000
 Missing / non-finite values: none found in mapped columns.
 
 Events: 259
-Distinct event times: 241 (global; avg tie size 1.1x); largest tied group in the data overall (no strata given): 2 events at t=0.984
+Distinct event times: 241 (global; avg tie size 1.1x); largest tied group in the data overall (no strata given): 2 events at t=0.023
 
 Covariate summary:
                     min      mean   max        std

@@ -90,7 +90,8 @@ class LogisticFixedEffectMeasuresMixin:
 
         Notes
         -----
-        When self.N_ is not all ones (binomial model):
+        When ``self.N_`` is not all ones (binomial model):
+
         - Direct rate: sum(N_i * sigmoid(gamma_k + xbeta_i)) / Ntot
         - Indirect expected: sum(N_i * sigmoid(gamma_null + xbeta_i)) per group
         - This matches R's AOH_piehat / SR_output for binomial models.

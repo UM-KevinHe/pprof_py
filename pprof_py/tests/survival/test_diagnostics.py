@@ -147,3 +147,13 @@ def test_run_validation_stops_before_fitting_on_fatal_data(tmp_path):
     report = run_validation(str(spec_path))
     assert "Stopping before fitting" in report
     assert "Python stage 1 fit" not in report
+
+
+def test_preflight_names_the_earliest_of_equally_large_ties():
+    """Two event times tie with two events each; the report names the earlier one whatever the row order (it used to
+    depend on the pandas version's ordering of equal counts)."""
+    df = pd.DataFrame({"duration": [5.0, 5.0, 1.0, 1.0, 3.0, 7.0], "event": [1, 1, 1, 1, 1, 0],
+                       "x": [0.1, -0.4, 1.2, 0.3, -0.8, 0.5]})
+    for rows in (df, df.iloc[::-1]):
+        result = preflight_report(rows, covariates=["x"], event="event", duration="duration")
+        assert result.max_tie_size == 2 and result.tie_time_of_max == 1.0

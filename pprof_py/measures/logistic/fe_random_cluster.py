@@ -29,12 +29,14 @@ class LogisticFERandomClusterMeasuresMixin:
         Matches the API of ``LogisticFixedEffectModel`` and
         ``LogisticRandomEffectModel.calculate_standardized_measures()``.
 
-        For indirect standardization (SRR):
+        For indirect standardization (SRR)::
+
             expected_k = sum(expit(gamma_null + alpha_mean_i + xbeta_i))
             indirect_ratio = observed_k / expected_k
             indirect_rate  = indirect_ratio * population_rate
 
-        For direct standardization:
+        For direct standardization::
+
             predicted_k = sum(expit(gamma_k + alpha_mean_i + xbeta_i))
                           across ALL observations
             direct_ratio = predicted_k / total_observed
@@ -49,6 +51,7 @@ class LogisticFERandomClusterMeasuresMixin:
         reference : {'median', 'mean'} or float, default="median"
             Null value for gamma in expected computation (indirect)
             and population norm (direct).
+
             - 'median': uses median(gamma)
             - 'mean': uses mean(gamma)
             - float: uses this value directly
@@ -57,6 +60,7 @@ class LogisticFERandomClusterMeasuresMixin:
         -------
         dict
             Keys for each requested standardization:
+
             - 'indirect' -> DataFrame [provider_id, indirect_ratio,
               indirect_rate, observed, expected]
             - 'direct' -> DataFrame [provider_id, direct_ratio,

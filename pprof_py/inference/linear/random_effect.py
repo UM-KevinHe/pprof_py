@@ -37,27 +37,22 @@ class LinearRandomEffectInferenceMixin:
     ) -> pd.DataFrame:
         """Provide summary statistics for the fixed effects in the model.
 
-        Parameters:
+        Parameters
         ----------
-        - covariates: Optional[Union[list, np.ndarray]]
+        covariates : list or np.ndarray, optional
             Subset of covariates for which summary statistics are provided. Defaults to all.
-        - level: float, default=0.95
+        level : float, default=0.95
             Confidence level for the intervals.
-        - null: float, default=0
+        null : float, default=0
             Null hypothesis value for the parameter estimates.
-        - alternative: str, default="two_sided"
+        alternative : str, default="two_sided"
             The alternative hypothesis ("two_sided", "greater", or "less").
 
-        Returns:
+        Returns
         -------
-        - summary_df: pd.DataFrame
-            A DataFrame with columns:
-              - estimate
-              - std_error
-              - stat
-              - p_value
-              - ci_lower
-              - ci_upper
+        pd.DataFrame
+            One row per covariate, with columns ``estimate``, ``std_error``, ``stat``, ``p_value``, ``ci_lower`` and
+            ``ci_upper``.
         """
         self._check_is_fitted()
 

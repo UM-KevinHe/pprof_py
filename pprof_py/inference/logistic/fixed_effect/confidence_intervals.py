@@ -481,26 +481,17 @@ class _ConfidenceIntervalMethods:
         Returns
         -------
         dict
-            If option="gamma": 
-                { "gamma_ci": DataFrame with columns [provider_id, gamma, gamma_lower, gamma_upper] }
-            If option="SM": 
-                Possibly includes keys:
-                - "indirect_ratio"
-                - "indirect_rate"
-                - "direct_ratio"
-                - "direct_rate"
-            depending on stdz and measure selected.
+            With ``option="gamma"``: ``{"gamma_ci": DataFrame}`` with columns ``provider_id``, ``gamma``,
+            ``gamma_lower`` and ``gamma_upper``. With ``option="SM"``: some of the keys ``"indirect_ratio"``,
+            ``"indirect_rate"``, ``"direct_ratio"`` and ``"direct_rate"``, depending on ``stdz`` and ``measure``.
 
         Notes
         -----
-        - By default, if option="gamma", the method enforces alternative="two_sided".
-        - For option="SM", standardization intervals are derived from summing logistic(γ_lower + Xβ)
-        or logistic(γ_upper + Xβ), dividing by "expected," and (for rates) multiplying by the 
-        population event rate. 
-        - DataFrame .attrs usage:
-        Storing metadata (e.g., "confidence_level", "description") in DataFrame.attrs is a
-        convenient way to keep additional information attached without adding columns. This
-        is optional. Some developers prefer returning a separate dictionary for metadata.
+        - With ``option="gamma"`` the method enforces ``alternative="two_sided"``.
+        - With ``option="SM"``, the intervals sum ``logistic(gamma_lower + X beta)`` or ``logistic(gamma_upper + X beta)``,
+          divide by the expected count and, for rates, multiply by the population event rate.
+        - Metadata such as ``"confidence_level"`` and ``"description"`` is kept in each DataFrame's ``attrs``,
+          without adding columns.
         """
 
         if self.coefficients_ is None or self.variances_ is None:

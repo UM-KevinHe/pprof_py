@@ -28,6 +28,8 @@ feature attributions as a best reconstruction. There is no released
   `order_var` the stabilized tests take each patient's rows in input order and warn.
 
 ### Changed
+- The API reference lists the methods models inherit, such as `test()`, `test_standardized()`, `funnel_limits()`,
+  `summary()` and `calculate_standardized_measures()`. Five of their docstrings were reformatted so they render.
 - Fitting with `obs_id_var` is much faster with many providers. The patient-clustered variances no longer scan
   every row once per provider: at 4,000 providers and 400,000 rows they take 0.1 s instead of 5.9 s, and their cost
   now grows linearly. Results are unchanged, bit for bit.
@@ -37,6 +39,11 @@ feature attributions as a best reconstruction. There is no released
 - `LICENSE.md` names the copyright holder as Kevin He, University of Michigan, as the documentation footer does.
 
 ### Fixed
+- The survival preflight diagnostics report the earliest of equally large tied event-time groups. Which group they
+  named had depended on the pandas version.
+- Documentation outputs no longer depend on the NumPy or pandas version: the empirical-null and covariate theory
+  pages, the diagnostics guide and the survival case study print the same output on every supported stack. The
+  presentation reference shows the 0.7.0 provenance line.
 - `fit()` raises a `ValueError` when `obs_id_var` or `n_var` names a column that does not exist, when patient IDs are
   missing, or when either is given with array input. Before, a misspelled column was ignored without a word (a
   misspelled `n_var` fitted binomial counts as binary outcomes), and missing string IDs failed with an unclear

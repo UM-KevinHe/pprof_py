@@ -567,12 +567,12 @@ theta = rng.normal(0, np.sqrt(tau**2 + s**2))                  # estimates aroun
 zf = z_statistic(MeasureFrame.from_arrays(theta, s), null_value=0.0, transform="identity")
 out = provider_test(zf, EmpiricalNull.fit(zf, size=n_k, n_groups=4, estimator=HUBER_RLM))
 excludes = (out["ci_lower"] > 0) | (out["ci_upper"] < 0)
-print(out["flag"].value_counts().sort_index().to_dict(),
+print({int(k): int(v) for k, v in out["flag"].value_counts().sort_index().items()},
       "| limits exclude 0 exactly when flagged:", bool((excludes == (out["flag"] != 0)).all()))
 ```
 
 ```
-{np.int8(-1): 5, np.int8(0): 187, np.int8(1): 8} | limits exclude 0 exactly when flagged: True
+{-1: 5, 0: 187, 1: 8} | limits exclude 0 exactly when flagged: True
 ```
 
 ### 7.3. Exact count tests

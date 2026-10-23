@@ -47,6 +47,7 @@ class LogisticRandomEffectMeasuresMixin:
             Standardization method(s): "indirect" and/or "direct".
         reference : {'median', 'mean'} or float, default="median"
             Baseline for expected counts (indirect) and population norm (direct).
+
             - 'median': uses median of BLUPs
             - 'mean': uses the provider-size-weighted mean of BLUPs
             - float: uses this value as the null random effect
@@ -55,6 +56,7 @@ class LogisticRandomEffectMeasuresMixin:
         -------
         dict
             Keys for each requested standardization:
+
             - 'indirect' -> DataFrame [provider_id, indirect_ratio, indirect_rate,
               observed, expected]
             - 'direct' -> DataFrame [provider_id, direct_ratio, direct_rate,

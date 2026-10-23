@@ -241,7 +241,9 @@ def preflight_report(
             counts = event_times.value_counts()
             result.n_distinct_event_times = len(counts)
             result.max_tie_size = int(counts.max())
-            result.tie_time_of_max = float(counts.idxmax())
+            # The earliest of the most-tied times: value_counts() orders equal counts differently across pandas
+            # versions, so idxmax() named a different time on different stacks.
+            result.tie_time_of_max = float(counts.index[counts.to_numpy() == counts.max()].min())
 
         # What actually drives Efron's per-stratum cost is the largest
         # tie WITHIN a single stratum, not the largest tie in the data

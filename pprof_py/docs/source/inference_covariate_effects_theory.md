@@ -88,13 +88,13 @@ fit = LogisticFixedEffectModel(use_dataprep=False).fit(d, y_var="y", x_vars=["x1
 p = fit.fitted_; q = p * (1 - p); m = len(fit.provider_ids_)
 D = np.c_[np.eye(m)[fit.provider_indices_], d[["x1", "x2"]].to_numpy()]    # design of (gamma, beta)
 inv = np.linalg.inv(D.T @ (q[:, None] * D))                                  # dense inverse information
-print("Var(beta): block formula vs dense inverse, max |diff|", f"{np.max(np.abs(fit.variances_['beta'] - inv[m:, m:])):.1e}")
-print("Var(gamma_k): block formula vs dense inverse, max |diff|", f"{np.max(np.abs(fit.variances_['gamma'] - np.diag(inv)[:m])):.1e}")
+print("Var(beta): block formula and dense inverse agree to 1e-15:", bool(np.max(np.abs(fit.variances_['beta'] - inv[m:, m:])) < 1e-15))
+print("Var(gamma_k): block formula and dense inverse agree to 1e-15:", bool(np.max(np.abs(fit.variances_['gamma'] - np.diag(inv)[:m])) < 1e-15))
 ```
 
 ```
-Var(beta): block formula vs dense inverse, max |diff| 1.3e-18
-Var(gamma_k): block formula vs dense inverse, max |diff| 1.1e-16
+Var(beta): block formula and dense inverse agree to 1e-15: True
+Var(gamma_k): block formula and dense inverse agree to 1e-15: True
 ```
 
 ### 2.4. Estimation

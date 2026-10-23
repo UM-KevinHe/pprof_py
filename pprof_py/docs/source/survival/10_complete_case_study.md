@@ -133,12 +133,12 @@ partial_hazard = stage2.predict_partial_hazard(pd.DataFrame(index=records.index)
 expected = partial_hazard * (cumhaz_at_stop - cumhaz_at_start)
 
 print("total observed:", records["death"].sum())
-print("total expected:", expected.sum())
+print("total expected:", round(float(expected.sum()), 6))
 ```
 
 ```
 total observed: 259.0
-total expected: 259.01268907718054
+total expected: 259.012689
 ```
 
 The near-exact match is the same sanity check Chapter 4 introduced,
