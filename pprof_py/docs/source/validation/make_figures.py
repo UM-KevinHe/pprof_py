@@ -165,8 +165,8 @@ def interactive():
         "explorer": {"kind": "explorer", "title": "Per-provider explorer · logistic fixed-effect live comparison", "question": "Choose a quantity: R against Python per provider, the size of each difference against the tolerance, and a Bland–Altman view; the table is linked to the charts.",
                      "caption": f"pprof_py {rep['provenance']['pprof_py_version']} (commit {rep['provenance']['pprof_py_commit']}) against pprof {rep['provenance']['pprof_r_version']} on {rep['data']['rows']:,} rows and {rep['data']['providers']} providers; run of {rep['provenance']['generated_at'][:10]}.",
                      "report": {"providers": rep["providers"], "provenance": rep["provenance"], "data": rep["data"]}},
-        "benchmark": {"kind": "benchmark", "title": "Scaling benchmark · runtime of R and Python", "question": "How do fit and provider-test times grow from 20,000 to 1,000,000 rows, and where is Python faster or slower?",
-                      "caption": "Four synthetic datasets, single machine (Apple Silicon, 64 GB RAM), R single-threaded at its default tolerance.",
+        "benchmark": {"kind": "benchmark", "title": "Scaling benchmark · runtime of R and Python", "question": "How do fit and provider-test times grow from 20,000 to 5,000,000 rows, and where is Python faster or slower?",
+                      "caption": "Five synthetic datasets, 20,000 to 5,000,000 rows, single machine (Apple Silicon, 64 GB RAM), R single-threaded at its default tolerance.",
                       "benchmark": bench},
     }
     for name, payload in pages.items():

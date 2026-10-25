@@ -6,7 +6,7 @@ kinds of evidence, kept separate because they answer different questions.
 
 | Evidence | Question it answers | Where |
 |---|---|---|
-| **Package test suite** (1,026 tests) | Does the code still match the frozen R outputs committed under `tests/data/`? | runs on every push (`.github/workflows/tests.yml`) |
+| **Package test suite** (1,268 tests) | Does the code still match the frozen R outputs committed under `tests/data/`? | runs on every push (`.github/workflows/tests.yml`) |
 | **Live comparisons** on synthetic data | Do the R package and `pprof_py`, run side by side on the same machine and the same input, compute the same numbers for every provider? | {doc}`logistic_fixed_effect`; the survival family in {doc}`../survival/VALIDATION_REPORT` |
 
 The frozen outputs pin the code to one R run; a live comparison traces every number to a version, a commit, a data hash
@@ -44,7 +44,7 @@ bound on a degenerate provider or a different definition of a standard error, as
 :width: 100%
 
 Largest absolute difference between the R and Python values, per comparison and component: the live comparison on
-`pprof::ExampleDataBinary` and the four synthetic benchmark sizes. Shaded bands: below 1e−10 is the floating-point
+`pprof::ExampleDataBinary` and the five synthetic benchmark sizes. Shaded bands: below 1e−10 is the floating-point
 limit; 1e−10 to 1e−5 reflects library or operation-order effects; 1e−5 to 1e−3 reflects convergence tolerance or
 rounding of the R output; above 1e−2 calls for an explanation. The one value in that band is γ at 7,000 providers under
 R's default tolerance `1e-5`; rerun with `tol = 1e-8` (orange), β and γ agree to 4e−16 and 5e−15, which is also why
@@ -67,7 +67,7 @@ providers, do not. The reasoning behind the new default is in {ref}`the changelo
 
 | Family | Live comparison | Package tests against frozen R output |
 |---|---|---|
-| Logistic fixed effect | yes ({doc}`logistic_fixed_effect`) | SerBIN (`tests/data/serbin_r`), summary (`logis_fe_summary_r`), AOH |
+| Logistic fixed effect | yes ({doc}`logistic_fixed_effect`) | SerBIN (`tests/data/serbin_r`), summary (`logis_fe_summary_r`), AOH; the four patient-clustered tests against pprofR 0.2.0 (`r_reference/pprofr_clustered_*`) |
 | Logistic random effect / three-stage | planned | `tests/data/three_stage`, `re_profile` |
 | Linear fixed / random effect | planned | linear tests (statsmodels, lme4 one-off checks) |
 | Penalized and group lasso | planned (λ path against `grplasso`) | `tests/data/cox_group_lasso`, `provider_group_lasso` |

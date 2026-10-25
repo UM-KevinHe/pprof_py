@@ -6,10 +6,10 @@ survival family's {doc}`../survival/VALIDATION_REPORT` and follows the same stru
 with which tolerances, with which result, and what is not covered.
 
 ```{note}
-Snapshot of the runs listed below (2026-10-13, `pprof_py` 0.7.0, commit `9320766`). Both comparisons use the CRAN
+Snapshot of the runs listed below (2026-10-13, extended on 2026-10-25; `pprof_py` 0.7.0, commit `9320766`). Both comparisons use the CRAN
 release of `pprof` (1.0.3, identical to the main branch of `UM-KevinHe/pprof`), compiled from source on macOS (Apple
 Silicon, arm64) with R 4.5.0 and Python 3.13 / NumPy 2.2.6. All data is synthetic: the example dataset bundled with
-the R package and four generated datasets of increasing size.
+the R package and five generated datasets of increasing size.
 ```
 
 ## Summary
@@ -18,7 +18,7 @@ the R package and four generated datasets of increasing size.
 |---|---|
 | Live comparison, `logis_fe()` vs `LogisticFixedEffectModel` on `pprof::ExampleDataBinary` (7,944 rows, 100 providers) | **β to 1.0e−6, γ to 7.5e−7, standardized ratios to 3.2e−7; Wald, score and exact flags identical for all 100 providers** |
 | Zero-event providers (3 of 100) | γ held at different bounds by the two packages (R −6.2 to −10.7, Python −10.2 to −10.9); recorded, not counted |
-| Scaling benchmark, 20,000 to 1,000,000 rows (200 to 7,000 providers) | fit: Python ≈ 2× faster than R's C++ (1.1 s vs 2.6 s at 1 M rows); exact test: Python 4–7× slower (14.7 s vs 3.4 s) |
+| Scaling benchmark, 20,000 to 5,000,000 rows (200 to 7,000 providers) | fit: Python 2–2.7× faster than R's C++ (4.6 s vs 12.5 s at 5 M rows); exact test: Python 4–7× slower up to 1 M rows (14.7 s vs 3.4 s), 1.7× faster at 5 M rows (31 s vs 53 s) |
 | Side finding: R's default `tol = 1e-5` | leaves γ of providers with 2–5 events off by up to 0.11; at `tol = 1e-8` all 7,000 γ agree with Python to 5.3e−15 (β to 4.4e−16) at no measurable cost in time |
 
 ## Live comparison against `pprof::logis_fe()`
@@ -92,9 +92,10 @@ and exact tests do not depend on that standard error and agree to 1e−6.
 
 ## Scaling benchmark
 
-Four synthetic datasets (5 covariates, provider effects ~ N(−0.7, 0.6), about 35% events) from 20,000 rows / 200
-providers to 1,000,000 rows / 7,000 providers, the scale of a national facility-level measure. Single machine (Apple
-Silicon, 64 GB RAM); R single-threaded.
+Five synthetic datasets (5 covariates, provider effects ~ N(−0.7, 0.6), about 35% events) from 20,000 rows / 200
+providers to 5,000,000 rows / 7,000 providers: 7,000 providers is the scale of a national facility-level measure, and
+the last two sizes bracket the rows per provider seen in practice (about 140 and about 700). Single machine (Apple
+Silicon, 64 GB RAM); R single-threaded, Python with NumPy's default threading.
 
 | Rows / providers | Fit R | Fit Python | Exact test R | Exact test Python | Wald + score |
 |---|---|---|---|---|---|
@@ -102,6 +103,7 @@ Silicon, 64 GB RAM); R single-threaded.
 | 100,000 / 1,000 | 0.32 s | 0.13 s | 0.31 s | 2.1 s | ≤ 0.02 s |
 | 500,000 / 3,500 | 1.67 s | 0.55 s | 1.69 s | 7.4 s | ≤ 0.06 s |
 | 1,000,000 / 7,000 | 2.58 s | 1.11 s | 3.38 s | 14.7 s | ≤ 0.10 s |
+| 5,000,000 / 7,000 | 12.5 s | 4.63 s | 53.4 s | 31.1 s | ≤ 0.53 s |
 
 <div class="pprof-interactive">
 <iframe src="../_static/validation/benchmark.html" title="Scaling benchmark, interactive" loading="lazy" width="100%" height="1050" style="display:block;width:100%;border:1px solid rgba(128,128,128,0.35);border-radius:4px;background:transparent"></iframe>
@@ -115,26 +117,42 @@ Silicon, 64 GB RAM); R single-threaded.
 :alt: Runtime of fit and exact test for R and Python against data size, both axes logarithmic
 :width: 85%
 
-Runtime against data size. The fit scales linearly on both sides with Python about twice as fast; the exact
-Poisson-binomial provider test is the one step where Python is slower, by a factor of 4–7.
+Runtime against data size. The fit scales linearly on both sides with Python 2–2.7× faster. The exact
+Poisson-binomial provider test is slower in Python by a factor of 4–7 up to 1,000,000 rows, but its cost grows with
+the number of providers, whereas R's grows with the rows per provider: at 5,000,000 rows (about 700 rows per
+provider) R takes 53 s and Python 31 s.
 ```
 
 </details>
 
 **Side finding: R's default tolerance and small providers.** In the benchmark β agrees to 1e−7 at every size, but the
-largest γ difference grows with the number of providers (0.005 at 1,000; 0.114 at 7,000), entirely in providers with
-very few events (2 events: 0.114; 4 events: 0.016; 50 or more events: 0). Rerunning R with `tol = 1e-8` instead of the
-default 1e−5 on the same generated data, all 7,000 γ agree with Python to 5.3e−15 and β to 4.4e−16, and the R fit takes
-2.7 s instead of 2.6 s. The cause is the stopping rule, not the algorithm: the Newton iteration converges slowly in
-directions with large |γ| and little information. When comparing against an R run, use
-the tolerance that run used rather than the package default; `pprof_py` stops at 1e−8 by default.
+largest γ difference at R's default `tol = 1e-5` grows with the number of providers with very few events (0.005 at
+1,000 providers; 0.114 at 7,000 providers and 1,000,000 rows, entirely in providers with 2 events: 0.114; 4 events:
+0.016; 50 or more events: 0). At 5,000,000 rows the same 7,000 providers have about 700 rows each, few have so few
+events, and the difference is 9.5e−4. Rerunning R with `tol = 1e-8` on the same generated data removes it at every
+size, at a cost of 0.1 to 0.3 s in the R fit:
+
+| Rows / providers | max \|R − Py\| in γ, R at `tol = 1e-5` | R at `tol = 1e-8` | R fit, 1e−5 → 1e−8 |
+|---|---|---|---|
+| 20,000 / 200 | 7.4e−7 | 7.4e−7 | 0.04 → 0.06 s |
+| 100,000 / 1,000 | 4.6e−3 | 9.5e−6 | 0.32 → 0.40 s |
+| 500,000 / 3,500 | 5.3e−4 | 1.2e−7 | 1.67 → 1.97 s |
+| 1,000,000 / 7,000 | 1.1e−1 | 5.3e−15 | 2.58 → 2.92 s |
+| 5,000,000 / 7,000 | 9.5e−4 | 3.9e−7 | 12.5 → 12.8 s |
+
+The cause is the stopping rule, not the algorithm: the Newton iteration converges slowly in directions with large |γ|
+and little information, and a tolerance on the change between iterations stops it too early there. When comparing
+against an R run, use the tolerance that run used rather than the package default; `pprof_py` stops at 1e−8 by
+default.
 
 ## What is and isn't covered
 
 - Live comparisons use the CRAN build of `pprof`, so they cover the published algorithm and its single-threaded
   implementation only.
 - One example dataset and one set of defaults for the live comparison; confidence intervals, the empirical null, the
-  robust variances and the Firth correction were not compared live.
+  robust variances and the Firth correction were not compared live. The four patient-clustered tests added since
+  (`robust_wald`, `robust_score`, `stabilized_wald`, `stabilized_score`) are checked against pprofR 0.2.0 in the package
+  tests, not yet live.
 - Neither side's `cutoff` screened out a provider on the live data, so the screening logic is not exercised here.
 - The provider tests were compared on the example dataset only; on the benchmark datasets the comparison covers β and γ.
 - Run records (JSON) are in `validation/data/`; each carries the versions, commits, data hash and calls of its run.
