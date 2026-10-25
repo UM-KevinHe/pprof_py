@@ -9,7 +9,7 @@ kinds of evidence, kept separate because they answer different questions.
 | **Package test suite** (1,026 tests) | Does the code still match the frozen R outputs committed under `tests/data/`? | runs on every push (`.github/workflows/tests.yml`) |
 | **Live comparisons** on synthetic data | Do the R package and `pprof_py`, run side by side on the same machine and the same input, compute the same numbers for every provider? | {doc}`logistic_fixed_effect`; the survival family in {doc}`../survival/VALIDATION_REPORT` |
 
-The frozen outputs pin the code to one R run; a live comparison traces every number to a version, a commit, a data hash
+The frozen outputs pin the code to one R run (and were themselves regenerated on a second machine, see the {ref}`survival report <survival_validation_refs_repro>`); a live comparison traces every number to a version, a commit, a data hash
 and a call, and is repeated at several data sizes, so it also shows where a difference comes from: a stopping rule, a
 bound on a degenerate provider or a different definition of a standard error, as the notes below illustrate.
 

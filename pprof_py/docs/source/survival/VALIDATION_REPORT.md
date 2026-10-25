@@ -103,6 +103,54 @@ The standing suite uses datasets of a few hundred to ~900 rows. The package has 
 
 Neither dataset is in the repository. They were not regenerated in the 2026-09-20 re-run; the tool that produced them is documented in {ref}`diagnostics-guide`. Production-scale checking is what surfaced the performance problem that led to the numba kernels — and showed that the first attempt had only accelerated the Breslow path, which correctness tests alone would not have caught.
 
+(survival_validation_refs_repro)=
+## Regenerating the references on a second machine
+
+The references above are R outputs committed to the repository; the tests show that `pprof_py` still matches them, not that they could be produced again. On 2026-10-25 all 117 reference files under `r_reference/results/` (this family's, the penalized and selection ones, and the pprofR clustered-test references) were regenerated from the committed input data with the committed R scripts on a different platform and newer packages, and compared file by file:
+
+| | Committed | Regenerated |
+|---|---|---|
+| Platform | Ubuntu 24.04, x86_64, reference BLAS | macOS, Apple Silicon, OpenBLAS |
+| R / survival / glmnet | 4.3.3 / 3.5.8 / 4.1.8 | 4.5.0 / 3.8.3 / 4.1.10 |
+| pprofR | 0.2.0 at f23c288 | the same commit, compiled here |
+
+<div class="pprof-interactive">
+<iframe src="../_static/validation/refs_repro.html" title="Reference reproduction, interactive" loading="lazy" width="100%" height="900" style="display:block;width:100%;border:1px solid rgba(128,128,128,0.35);border-radius:4px;background:transparent"></iframe>
+<p class="pprof-interactive-links"><a href="../_static/validation/refs_repro.html" target="_blank" rel="noopener">Open in a new tab</a> · hover a file for its largest difference and the column it is in; the table lists all 117 files.</p>
+</div>
+<script>
+(function () {
+  if (window.pprofInteractiveHeights) return;             /* one listener per page */
+  window.pprofInteractiveHeights = true;
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (e.origin !== window.location.origin || !d || d.pprof !== 'height') return;   /* same origin only */
+    var frames = document.querySelectorAll('.pprof-interactive iframe');
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow !== e.source) continue;                             /* only our own frame */
+      var px = Math.ceil(Number(d.height));
+      if (px >= 200 && px <= 20000) frames[i].style.height = px + 'px';
+    }
+  });
+})();
+</script>
+
+<details class="pprof-static-figure">
+<summary>Static figure (SVG, as used in print)</summary>
+
+```{figure} ../_static/validation/refs_repro.svg
+:alt: Largest absolute difference between the committed and the regenerated value of each reference file, grouped by test family, on a log axis
+:width: 100%
+
+Largest absolute difference per reference file between the committed and the regenerated values, on a log axis. 45 files are identical; 70 differ in the last digits; the two cross-validation files (orange) differ because glmnet 4.1.10 computes the Cox cross-validated deviance differently from 4.1.8.
+```
+
+</details>
+
+**Result.** 45 files are byte-identical and 70 more differ only in the last digits (relative differences below 1e−10, the platform's BLAS). Two differ materially, both from `run_penalized.R`: `penalized_wide_cv.csv` (the cross-validated deviance and its bands, up to 50 %) and `penalized_wide_cv_selected.csv` (`lambda_1se`, 0.0604 against 0.0876). The folds are fixed and the lambda grid, `lambda_min` and every coefficient agree to 1e−12, so the difference is in how glmnet computes the cross-validated deviance for Cox models: rerunning the same script with glmnet 4.1-8 installed reproduces the committed files to 2e−14. Against the regenerated set, 142 of the 143 tests in the six R-comparison files pass; the one failure is `test_cross_validation`'s `lambda_1se_`, so `PenalizedCoxPHCV.cv_mean_deviance_` follows glmnet 4.1-8's definition.
+
+Two things follow. The references are reproducible, which is what makes them evidence rather than a snapshot. And a reference that depends on a package version should record it: the pprofR files carry a provenance table (R, platform, BLAS, package commit); the survival and glmnet files do not yet. The run record is `validation/data/frozen_refs_repro.json`.
+
 ## Engine self-consistency: compiled vs. pure Python
 
 Every numba-compiled kernel (the risk-set sweep, both tie methods' likelihood/score/information accumulation, both tie methods' baseline-hazard increments, the martingale-residual algorithm, and the robust-variance score kernels) has a paired pure-Python implementation it is checked against directly, at random coefficient values, independent of R (`pprof_py/tests/survival/test_engine_self_consistency.py`). For this kind of numerical code, "still matches R" and "the performance problem is actually fixed" are two separate claims that both need checking.
