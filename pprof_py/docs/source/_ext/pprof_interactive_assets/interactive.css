@@ -147,3 +147,11 @@ tbody tr.flagged td:first-child { font-weight: 600; }
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
 @media print { .controls, .tip { display: none !important; } .table-scroll { max-height: none; overflow: visible; } }
+
+/* Phones: keep the chart at a legible size and let it scroll sideways instead of shrinking its type to nothing;
+   the controls and the legend wrap, the table already scrolls. */
+@media (max-width: 640px) {
+  .fig-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart { min-width: 560px; }
+  main { padding: 10px 10px 18px; }
+}

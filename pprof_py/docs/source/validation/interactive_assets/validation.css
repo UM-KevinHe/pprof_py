@@ -87,3 +87,11 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
 .chart rect.bar { fill: var(--py); opacity: .9; cursor: pointer; } .chart rect.bar.zero { fill: var(--ok); } .chart rect.bar.exact { fill: var(--r); }
 .chart .barlab { fill: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
 .legend span.sq::before { border-radius: 2px; }
+
+/* Phones: keep the chart at a legible size and let it scroll sideways instead of shrinking its type to nothing;
+   the controls and the legend wrap, the table already scrolls. */
+@media (max-width: 640px) {
+  .fig-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart { min-width: 560px; }
+  main { padding: 10px 10px 18px; }
+}
