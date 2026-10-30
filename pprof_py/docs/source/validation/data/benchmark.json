@@ -20,6 +20,15 @@
    "beta_maxdiff": 1.841094832144563e-09,
    "gamma_maxdiff": 7.424032473224429e-07,
    "providers_compared": 200
+  },
+  "agreement_r_tol_1e-8": {
+   "r_tol": 1e-08,
+   "r_fit_s": 0.0560760498046875,
+   "r_wall_s": 2.749973958998453,
+   "beta_maxdiff": 1.841094832144563e-09,
+   "gamma_maxdiff": 7.424032473224429e-07,
+   "providers_compared": 200,
+   "note": "R rerun on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
   }
  },
  {
@@ -43,6 +52,15 @@
    "beta_maxdiff": 1.0919769560802095e-07,
    "gamma_maxdiff": 0.004607501377024814,
    "providers_compared": 1000
+  },
+  "agreement_r_tol_1e-8": {
+   "r_tol": 1e-08,
+   "r_fit_s": 0.401607036590576,
+   "r_wall_s": 3.079755083017517,
+   "beta_maxdiff": 1.0847911458000681e-10,
+   "gamma_maxdiff": 9.49894394475237e-06,
+   "providers_compared": 1000,
+   "note": "R rerun on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
   }
  },
  {
@@ -66,6 +84,15 @@
    "beta_maxdiff": 2.435453239080232e-08,
    "gamma_maxdiff": 0.0005325745985405028,
    "providers_compared": 3500
+  },
+  "agreement_r_tol_1e-8": {
+   "r_tol": 1e-08,
+   "r_fit_s": 1.96762299537659,
+   "r_wall_s": 16.26064808398951,
+   "beta_maxdiff": 1.5774048733874224e-12,
+   "gamma_maxdiff": 1.2075902056096766e-07,
+   "providers_compared": 3500,
+   "note": "R rerun on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
   }
  },
  {
@@ -92,11 +119,44 @@
   },
   "agreement_r_tol_1e-8": {
    "r_tol": 1e-08,
-   "r_fit_s": 2.70618987083435,
+   "r_fit_s": 2.91931700706482,
+   "r_wall_s": 43.24124691600446,
    "beta_maxdiff": 4.440892098500626e-16,
    "gamma_maxdiff": 5.329070518200751e-15,
    "providers_compared": 7000,
-   "note": "R rerun 2026-10-19 on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
+   "note": "R rerun on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
+  }
+ },
+ {
+  "rows": 5000000,
+  "providers": 7000,
+  "events": 1750789,
+  "r": {
+   "fit": 12.53595495224,
+   "test_wald": 0.0947861671447754,
+   "test_score": 0.531247138977051,
+   "test_exact.poisbinom": 53.3535079956055,
+   "wall_s": 249.19849954202073
+  },
+  "py": {
+   "fit": 4.628121832967736,
+   "test_wald": 0.05178245803108439,
+   "test_score": 0.10826683399500325,
+   "test_poibin_exact": 31.069778124976438
+  },
+  "agreement": {
+   "beta_maxdiff": 1.0989135046379772e-08,
+   "gamma_maxdiff": 0.0009534558375530189,
+   "providers_compared": 7000
+  },
+  "agreement_r_tol_1e-8": {
+   "r_tol": 1e-08,
+   "r_fit_s": 12.7843270301819,
+   "r_wall_s": 249.8250151249813,
+   "beta_maxdiff": 1.6900925103868758e-12,
+   "gamma_maxdiff": 3.869920930377191e-07,
+   "providers_compared": 7000,
+   "note": "R rerun on the same generated data (seed 2026) with tol = 1e-8; Python unchanged (tol 1e-8)."
   }
  }
 ]

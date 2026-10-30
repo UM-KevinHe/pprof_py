@@ -316,7 +316,7 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
         pts.forEach(function (p, i) { var c = h('svg:circle', { class: 'pt ' + sr.side, cx: p[0], cy: p[1] }); var hit = h('svg:circle', { class: 'hit', cx: p[0], cy: p[1] }); hit.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + sr.label + '</b><div class="row"><span>rows / providers</span><span>' + fmtInt(B[i].rows) + ' / ' + fmtInt(B[i].providers) + '</span></div><div class="row"><span>time</span><span>' + fix(sr.get(B[i]), 2) + ' s</span></div>'); }); hit.addEventListener('mouseleave', tip.hide); svg.appendChild(c); svg.appendChild(hit); });
       });
       figT.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Runtime against data size (both axes logarithmic)' }), h('span', { class: 'legend' }, [h('span', { class: 'r', text: 'R (C++)' }), h('span', { text: 'Python (NumPy)' }), h('span', { class: 'line', text: 'solid = fit, dashed = exact test' })])]));
-      figT.appendChild(svg); figT.appendChild(h('p', { class: 'caption', text: 'Hover a point for the exact timing. The fit scales linearly on both sides with Python about twice as fast; the exact Poisson-binomial provider test is the one step where Python is slower, by a factor of 4–7.' }));
+      figT.appendChild(svg); figT.appendChild(h('p', { class: 'caption', text: 'Hover a point for the exact timing. The fit scales linearly on both sides with Python 2–2.7× faster. The exact Poisson-binomial provider test is 4–7× slower in Python up to 1,000,000 rows; its cost grows with the number of providers and the cost in R with the rows per provider, so at 5,000,000 rows Python is 1.7× faster.' }));
     })();
     // speed-up bars
     (function () {
