@@ -349,8 +349,53 @@ tbody tr.deg td:first-child::before { content: ""; display: inline-block; width:
     tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
   }
 
+  /* ---------- reference reproduction: one dot per regenerated reference file ---------- */
+  function repro(P) {
+    var groups = ['CoxPH (survival)', 'phase 4', 'selection', 'penalized (glmnet)', 'pprofR clustered tests'];
+    P.files.forEach(function (f) { if (groups.indexOf(f.group) < 0) groups.push(f.group); });
+    var FLOOR = -17, lo = FLOOR, hi = 1, W = 840, rowH = 44, m = { t: 34, r: 24, b: 40, l: 168 }, H = m.t + groups.length * rowH + m.b;
+    function xOf(f) { return f.identical || f.max_abs <= 0 ? FLOOR : Math.max(FLOOR, Math.log10(f.max_abs)); }
+    function sx(v) { return m.l + (v - lo) / (hi - lo) * (W - m.l - m.r); }
+    function cls(f) { return f.identical ? 'three' : f.max_rel > 1e-6 && f.max_abs > 1e-6 ? 'r' : 'py'; }
+    var ident = P.files.filter(function (f) { return f.identical; }).length, mat = P.files.filter(function (f) { return cls(f) === 'r'; }).length;
+    var fig = h('figure', { class: 'fig' }), wrap = h('div', { class: 'fig-wrap' }), tip = tooltip(wrap);
+    var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Largest absolute difference between committed and regenerated reference values, per file, log scale' });
+    var prev = lo; BANDS.forEach(function (b) { var x0 = sx(prev), x1 = sx(Math.min(b.to, hi)); svg.appendChild(h('svg:rect', { class: 'band ' + b.cls, x: x0, y: m.t - 6, width: Math.max(0, x1 - x0), height: groups.length * rowH + 12 })); svg.appendChild(h('svg:text', { class: 'band-label', x: (x0 + x1) / 2, y: m.t - 12, 'text-anchor': 'middle', text: b.label })); prev = b.to; });
+    var axis = h('svg:g', { class: 'axis' });
+    for (var t = -16; t <= 0; t += 2) { axis.appendChild(h('svg:line', { class: 'tick', x1: sx(t), x2: sx(t), y1: m.t - 6, y2: H - m.b + 4 })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 18, 'text-anchor': 'middle', text: '1e' + t })); }
+    axis.appendChild(h('svg:text', { x: sx(FLOOR), y: H - m.b + 18, 'text-anchor': 'middle', text: '0' }));
+    svg.appendChild(axis);
+    svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle', text: 'largest |committed − regenerated| in the file (log scale; 0 = identical)' }));
+    groups.forEach(function (g, gi) {
+      var y = m.t + gi * rowH + rowH / 2, fs = P.files.filter(function (f) { return f.group === g; });
+      svg.appendChild(h('svg:line', { class: 'row', x1: m.l, x2: W - m.r, y1: y, y2: y }));
+      svg.appendChild(h('svg:text', { class: 'rowlab', x: m.l - 10, y: y - 3, 'text-anchor': 'end', text: g }));
+      svg.appendChild(h('svg:text', { class: 'rowsub', x: m.l - 10, y: y + 11, 'text-anchor': 'end', text: fs.length + ' files · ' + fs.filter(function (f) { return f.identical; }).length + ' identical' }));
+      fs.forEach(function (f, i) {
+        var x = sx(xOf(f)), jit = ((i % 5) - 2) * 3;
+        var c = h('svg:circle', { class: 'pt ' + cls(f) + (reduced ? '' : ' enter'), cx: x, cy: y + jit, style: 'animation-delay:' + (gi * 60 + i * 8) + 'ms' });
+        var hit = h('svg:circle', { class: 'hit', cx: x, cy: y + jit });
+        hit.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + f.file + '</b><div class="row"><span>group</span><span>' + f.group + '</span></div><div class="row"><span>rows</span><span>' + fmtInt(f.rows) + '</span></div><div class="row"><span>max |diff|</span><span>' + (f.identical ? 'identical' : sci(f.max_abs)) + '</span></div><div class="row"><span>max relative</span><span>' + (f.identical ? '0' : sci(f.max_rel)) + '</span></div>' + (f.worst_column ? '<div class="row"><span>column</span><span>' + f.worst_column + '</span></div>' : '')); });
+        hit.addEventListener('mouseleave', tip.hide);
+        svg.appendChild(c); svg.appendChild(hit);
+      });
+    });
+    fig.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Committed against regenerated · ' + P.files.length + ' reference files' }), h('span', { class: 'legend' }, [h('span', { class: 'three', text: 'identical (' + ident + ')' }), h('span', { text: 'last digits only' }), h('span', { class: 'r', text: 'differs materially (' + mat + ')' })])]));
+    wrap.appendChild(svg); fig.appendChild(wrap); root.appendChild(fig);
+    var env = h('table', { class: 'data' }, [h('caption', { text: 'The two environments. Inputs: ' + P.inputs + '.' })]);
+    env.appendChild(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: '' }), h('th', { scope: 'col', text: 'Committed' }), h('th', { scope: 'col', text: 'Regenerated' })])]));
+    var eb = h('tbody'); [['R', 'R'], ['os', 'Platform'], ['blas', 'BLAS'], ['survival', 'survival'], ['glmnet', 'glmnet'], ['pprofR', 'pprofR']].forEach(function (k) { eb.appendChild(h('tr', {}, [h('td', { text: k[1] }), h('td', { text: P.committed[k[0]] || '' }), h('td', { text: P.regenerated[k[0]] || '' })])); });
+    env.appendChild(eb); root.appendChild(h('div', { class: 'table-scroll' }, [env]));
+    var T = P.tests_against_regenerated, G = P.glmnet_418_rerun;
+    root.appendChild(h('p', { class: 'caption', html: '<b>pprof_py against the regenerated references:</b> ' + T.passed + ' of ' + (T.passed + T.failed) + ' tests pass; the failure is ' + T.failing + '. <b>glmnet 4.1-8 rerun:</b> ' + G.conclusion + ' (cvm within ' + sci(G['penalized_wide_cv.csv'].cvm) + ', lambda_1se exact).' }));
+    var tbl = h('table', { class: 'data' }, [h('caption', { text: 'Every file, largest difference first.' })]);
+    tbl.appendChild(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'File' }), h('th', { scope: 'col', text: 'Group' }), h('th', { scope: 'col', class: 'num', text: 'Rows' }), h('th', { scope: 'col', class: 'num', text: 'max |diff|' }), h('th', { scope: 'col', class: 'num', text: 'max relative' }), h('th', { scope: 'col', text: 'Column' })])]));
+    var tb = h('tbody'); P.files.slice().sort(function (a, b) { return b.max_abs - a.max_abs; }).forEach(function (f) { tb.appendChild(h('tr', { class: cls(f) === 'r' ? 'deg' : '' }, [h('td', { class: 'mono', text: f.file }), h('td', { text: f.group }), h('td', { class: 'num', text: fmtInt(f.rows) }), h('td', { class: 'num mono', text: f.identical ? '0' : sci(f.max_abs) }), h('td', { class: 'num mono', text: f.identical ? '0' : sci(f.max_rel) }), h('td', { text: f.worst_column || '' })])); });
+    tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
+  }
+
   root.appendChild(h('h1', { text: D.title })); if (D.question) root.appendChild(h('p', { class: 'question', text: D.question }));
-  if (D.kind === 'ladder') ladder(D.report, D.benchmark); else if (D.kind === 'explorer') explorer(D.report); else if (D.kind === 'benchmark') benchmark(D.benchmark);
+  if (D.kind === 'ladder') ladder(D.report, D.benchmark); else if (D.kind === 'explorer') explorer(D.report); else if (D.kind === 'benchmark') benchmark(D.benchmark); else if (D.kind === 'repro') repro(D.repro);
   if (D.caption) root.appendChild(h('p', { class: 'caption', html: D.caption }));
 
   /* ---------- height handshake: tell the embedding page (same origin) how tall this document is ---------- */

@@ -1,0 +1,1104 @@
+{
+ "run_id": "frozen-refs-repro__macOS-AppleSilicon__2026-10-25",
+ "question": "Can the frozen R references committed under pprof_py/r_reference/results/ be regenerated on another machine, and does pprof_py still pass against the regenerated set?",
+ "inputs": "the committed data files (r_reference/data/, 17 files), unchanged",
+ "committed": {
+  "who": "package maintainer",
+  "R": "4.3.3",
+  "os": "Ubuntu 24.04 (x86_64)",
+  "blas": "reference BLAS 3.12",
+  "survival": "3.5.8",
+  "glmnet": "4.1.8",
+  "pprofR": "0.2.0 at f23c288"
+ },
+ "regenerated": {
+  "who": "Kevin Tan",
+  "R": "4.5.0",
+  "os": "macOS 27.2 (Apple Silicon)",
+  "blas": "OpenBLAS 0.3.29",
+  "survival": "3.8.3",
+  "glmnet": "4.1.10",
+  "pprofR": "0.2.0 at f23c288",
+  "date": "2026-10-25"
+ },
+ "files": [
+  {
+   "file": "backward_aic.csv",
+   "group": "selection",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "backward_bic.csv",
+   "group": "selection",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "basic_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 27,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 6.578420683627361e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "basic_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 6.772316729343951e-15,
+   "worst_column": "lower_95",
+   "identical": false
+  },
+  {
+   "file": "basic_efron_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 27,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 4.197526027449784e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "basic_efron_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 1.1102230246251565e-16,
+   "max_rel": 1.6788152346815751e-15,
+   "worst_column": "se_coef",
+   "identical": false
+  },
+  {
+   "file": "basic_efron_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "basic_efron_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 500,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 6.553237876377789e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "basic_efron_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "basic_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "basic_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 500,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 3.2689305988078244e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "basic_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "bic_k.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "both_aic.csv",
+   "group": "CoxPH (survival)",
+   "rows": 4,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "combined_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 151,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 6.5895784739312106e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "combined_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 1.0658141036401503e-14,
+   "max_rel": 1.804913751145675e-15,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "combined_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "combined_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 900,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 6.454560971764694e-13,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "combined_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_simple_cause1_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 1.0097419586828951e-27,
+   "max_rel": 1.0097419586828951e-15,
+   "worst_column": "p",
+   "identical": false
+  },
+  {
+   "file": "cr_simple_cause1_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_simple_cause2_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 9.71445146547012e-17,
+   "max_rel": 4.017687257613142e-15,
+   "worst_column": "se_coef",
+   "identical": false
+  },
+  {
+   "file": "cr_simple_cause2_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_simple_finegray_fit_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 3.019806626980426e-14,
+   "max_rel": 8.649541740122588e-15,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "cr_simple_finegray_fit_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_simple_finegray_transform.csv",
+   "group": "phase 4",
+   "rows": 4183,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 2.013673145905513e-15,
+   "worst_column": "fgwt",
+   "identical": false
+  },
+  {
+   "file": "cr_truncated_cause1_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 7.263513952098255e-15,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "cr_truncated_cause1_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_truncated_cause2_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_truncated_cause2_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_truncated_finegray_fit_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 2.042810365310288e-14,
+   "max_rel": 8.791428895362037e-14,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "cr_truncated_finegray_fit_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "cr_truncated_finegray_transform.csv",
+   "group": "phase 4",
+   "rows": 3469,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 2.727927856224406e-15,
+   "worst_column": "fgwt",
+   "identical": false
+  },
+  {
+   "file": "forward_aic.csv",
+   "group": "selection",
+   "rows": 4,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "forward_aic_final_coef.csv",
+   "group": "selection",
+   "rows": 3,
+   "max_abs": 9.926167350636332e-24,
+   "max_rel": 6.9014078283494764e-15,
+   "worst_column": "Pr(>|z|)",
+   "identical": false
+  },
+  {
+   "file": "forward_aic_forced.csv",
+   "group": "selection",
+   "rows": 4,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "forward_aic_strata_offset_weights.csv",
+   "group": "selection",
+   "rows": 4,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "left_truncation_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 31,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 9.224272051000399e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 9.71445146547012e-17,
+   "max_rel": 1.4138366650748198e-15,
+   "worst_column": "se_coef",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_efron_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 31,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 6.035881791165063e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_efron_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 1.0658141036401503e-14,
+   "max_rel": 8.963445299627416e-15,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_efron_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "left_truncation_efron_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 400,
+   "max_abs": 2.9976021664879227e-15,
+   "max_rel": 2.3959661510316856e-13,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_efron_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "left_truncation_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "left_truncation_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 400,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 8.055927352162078e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "left_truncation_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "offset_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 32,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "offset_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "offset_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "offset_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 400,
+   "max_abs": 1.0130785099704553e-15,
+   "max_rel": 1.8431173219765907e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "offset_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "penalized_basic_ties_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 8.149794590799837e-15,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_basic_ties_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 9.797014268661061e-15,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_combined_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 2.205842330334562e-14,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_combined_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 4.996003610813204e-16,
+   "max_rel": 5.84047157929388e-14,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_left_truncation_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 1.9984014443252818e-15,
+   "max_rel": 1.1932964443822794e-12,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_left_truncation_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 5.100087019371813e-15,
+   "max_rel": 4.862610138220249e-13,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_offset_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 41,
+   "max_abs": 1.0547118733938987e-15,
+   "max_rel": 9.727418059206436e-14,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_offset_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 41,
+   "max_abs": 3.0531133177191805e-16,
+   "max_rel": 1.2176176449828595e-14,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_strata_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 5.408425571380171e-15,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_strata_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 42,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 1.17542987012399e-14,
+   "worst_column": "lambda",
+   "identical": false
+  },
+  {
+   "file": "penalized_weights_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 39,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 1.0557084002140887e-14,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "penalized_weights_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 39,
+   "max_abs": 2.0816681711721685e-16,
+   "max_rel": 1.4390173487545072e-14,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_cv.csv",
+   "group": "penalized (glmnet)",
+   "rows": 53,
+   "max_abs": 2.11310925889924,
+   "max_rel": 0.5158222778668211,
+   "worst_column": "cvlo",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_cv_coef_min.csv",
+   "group": "penalized (glmnet)",
+   "rows": 20,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 4.507241822840249e-14,
+   "worst_column": "coef",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_cv_selected.csv",
+   "group": "penalized (glmnet)",
+   "rows": 1,
+   "max_abs": 0.027230808801209004,
+   "max_rel": 0.450828777993115,
+   "worst_column": "lambda_1se",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_enet_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 55,
+   "max_abs": 2.0261570199409107e-15,
+   "max_rel": 4.34480332078643e-12,
+   "worst_column": "x13",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_enet_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 55,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 9.068372206184549e-15,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 53,
+   "max_abs": 2.0001361678012586e-15,
+   "max_rel": 1.827562665629072e-12,
+   "worst_column": "x14",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_nostd_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 55,
+   "max_abs": 3.6012859361278515e-15,
+   "max_rel": 4.070290635079906e-12,
+   "worst_column": "x20",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_nostd_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 55,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 7.327713973865348e-15,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 53,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 5.617489292422016e-15,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_unpen_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 44,
+   "max_abs": 2.9976021664879227e-15,
+   "max_rel": 1.4001229862653308e-12,
+   "worst_column": "x15",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_lasso_unpen_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 44,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 4.546928278979117e-15,
+   "worst_column": "dev_ratio",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_ridge_coef_path.csv",
+   "group": "penalized (glmnet)",
+   "rows": 100,
+   "max_abs": 1.9984014443252818e-15,
+   "max_rel": 2.835308324166234e-12,
+   "worst_column": "x5",
+   "identical": false
+  },
+  {
+   "file": "penalized_wide_ridge_path_meta.csv",
+   "group": "penalized (glmnet)",
+   "rows": 100,
+   "max_abs": 1.0231815394945443e-12,
+   "max_rel": 7.036269751178537e-14,
+   "worst_column": "lambda",
+   "identical": false
+  },
+  {
+   "file": "pprofr_clustered_cohorts.csv",
+   "group": "pprofR clustered tests",
+   "rows": 7,
+   "max_abs": 9.064049292498294e-14,
+   "max_rel": 0.09064049292498294,
+   "worst_column": "chk_score_equations",
+   "identical": false
+  },
+  {
+   "file": "pprofr_clustered_covariates.csv",
+   "group": "pprofR clustered tests",
+   "rows": 42,
+   "max_abs": 2.4868995751603507e-14,
+   "max_rel": 1.3887500332917765e-14,
+   "worst_column": "stat",
+   "identical": false
+  },
+  {
+   "file": "pprofr_clustered_provenance.csv",
+   "group": "pprofR clustered tests",
+   "rows": 25,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": false
+  },
+  {
+   "file": "pprofr_clustered_providers.csv",
+   "group": "pprofR clustered tests",
+   "rows": 175,
+   "max_abs": 5.4569682106375694e-12,
+   "max_rel": 0.03763656053479281,
+   "worst_column": "V_null",
+   "identical": false
+  },
+  {
+   "file": "pprofr_clustered_rhat.csv",
+   "group": "pprofR clustered tests",
+   "rows": 2652,
+   "max_abs": 1.3322676295501878e-15,
+   "max_rel": 7.921964550570688e-13,
+   "worst_column": "R",
+   "identical": false
+  },
+  {
+   "file": "robust_strata_truncation_coefficients.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "robust_strata_truncation_naive_se.csv",
+   "group": "phase 4",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "smr_stage1_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 4.9763185651190145e-21,
+   "max_rel": 2.044333672019146e-14,
+   "worst_column": "p",
+   "identical": false
+  },
+  {
+   "file": "smr_stage1_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "smr_stage1_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 4.997494388800372e-19,
+   "max_rel": 3.637460485235855e-14,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "smr_stage2_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 28,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "smr_stage2_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 6.002596736383056e-15,
+   "worst_column": "upper_95",
+   "identical": false
+  },
+  {
+   "file": "smr_stage2_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "smr_stage2_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 700,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 9.999604659225298e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "smr_stage2_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "smr_xbeta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 700,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 1.072668924074735e-13,
+   "worst_column": "xbeta",
+   "identical": false
+  },
+  {
+   "file": "strata_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 89,
+   "max_abs": 9.992007221626409e-15,
+   "max_rel": 6.5914991600382e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "strata_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 1.0408340855860843e-16,
+   "max_rel": 3.2622190747955392e-15,
+   "worst_column": "p",
+   "identical": false
+  },
+  {
+   "file": "strata_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "strata_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 600,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 4.9152153039914994e-14,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "strata_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "timedep_coefficients.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "timedep_merged.csv",
+   "group": "phase 4",
+   "rows": 372,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "timedep_meta.csv",
+   "group": "phase 4",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "two_stage_1_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 1.0658141036401503e-14,
+   "max_rel": 1.804913751145675e-15,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "two_stage_1_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "two_stage_1_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 3,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "two_stage_2_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 37,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 6.810037688595681e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "two_stage_2_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "two_stage_xbeta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 900,
+   "max_abs": 1.021405182655144e-14,
+   "max_rel": 7.435663901967331e-14,
+   "worst_column": "xbeta",
+   "identical": false
+  },
+  {
+   "file": "weights_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 27,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "weights_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 9.992007221626409e-16,
+   "max_rel": 5.9416257231557594e-15,
+   "worst_column": "coef",
+   "identical": false
+  },
+  {
+   "file": "weights_efron_baseline.csv",
+   "group": "CoxPH (survival)",
+   "rows": 27,
+   "max_abs": 9.769962616701378e-15,
+   "max_rel": 2.277174521737574e-15,
+   "worst_column": "hazard",
+   "identical": false
+  },
+  {
+   "file": "weights_efron_coefficients.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 9.769962616701378e-15,
+   "max_rel": 4.833976144738643e-14,
+   "worst_column": "z",
+   "identical": false
+  },
+  {
+   "file": "weights_efron_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "weights_efron_naive_vs_robust.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 9.71445146547012e-17,
+   "max_rel": 1.4245210653526113e-15,
+   "worst_column": "se_robust",
+   "identical": false
+  },
+  {
+   "file": "weights_efron_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 5.014435047745458e-19,
+   "max_rel": 2.6251420309099335e-14,
+   "worst_column": "x1",
+   "identical": false
+  },
+  {
+   "file": "weights_meta.csv",
+   "group": "CoxPH (survival)",
+   "rows": 1,
+   "max_abs": 0.0,
+   "max_rel": 0.0,
+   "worst_column": null,
+   "identical": true
+  },
+  {
+   "file": "weights_residuals.csv",
+   "group": "CoxPH (survival)",
+   "rows": 400,
+   "max_abs": 1.0269562977782698e-15,
+   "max_rel": 9.078168001485331e-15,
+   "worst_column": "martingale",
+   "identical": false
+  },
+  {
+   "file": "weights_vcov.csv",
+   "group": "CoxPH (survival)",
+   "rows": 2,
+   "max_abs": 1.5043305143236374e-18,
+   "max_rel": 2.97485325168895e-14,
+   "worst_column": "x1",
+   "identical": false
+  }
+ ],
+ "tests_against_regenerated": {
+  "passed": 142,
+  "failed": 1,
+  "failing": "test_penalized_r_comparison.py::test_cross_validation (lambda_1se_)",
+  "test_files": [
+   "survival/test_r_comparison.py",
+   "survival/test_penalized_r_comparison.py",
+   "survival/test_phase4_r_comparison.py",
+   "survival/test_selector_r_comparison.py",
+   "logistic/test_pprofr_clustered_reference.py",
+   "logistic/test_pprofr_covariate_reference.py"
+  ]
+ },
+ "glmnet_418_rerun": {
+  "glmnet": "4.1.8",
+  "note": "run_penalized.R rerun with glmnet 4.1-8 in a private library, everything else unchanged",
+  "penalized_wide_cv.csv": {
+   "cvm": 2.04e-14,
+   "cvsd": 5e-15,
+   "cvup": 1.07e-14,
+   "cvlo": 2.04e-14
+  },
+  "lambda_1se_maxdiff": 0.0,
+  "conclusion": "the CV difference is entirely glmnet 4.1-8 vs 4.1-10; pprof_py's cv_mean_deviance_ follows 4.1-8"
+ }
+}

@@ -151,6 +151,38 @@ def benchmark():
     plt.close(fig)
 
 
+def refs_repro():
+    """One dot per regenerated reference file: the largest |committed - regenerated|, grouped by test family."""
+    P = json.loads((DATA / "frozen_refs_repro.json").read_text())
+    groups = ["CoxPH (survival)", "phase 4", "selection", "penalized (glmnet)", "pprofR clustered tests"]
+    fig, ax = plt.subplots(figsize=(8.2, 0.62 * len(groups) + 1.7))
+    bands = [(-17, -10, "#e3f3e8", "floating-point limit"), (-10, -5, "#edf5ee", "library / operation order"), (-5, -3, "#fff7df", "tol. / rounding"), (-3, 1, "#fde8e6", "explain")]
+    for lo, hi, col, lab in bands:
+        ax.axvspan(lo, hi, color=col, lw=0, zorder=0)
+        ax.text((lo + hi) / 2, len(groups) - .35, lab, ha="center", va="bottom", fontsize=7, color=MUTED)
+    for gi, g in enumerate(groups):
+        y = len(groups) - 1 - gi
+        ax.axhline(y, color="#e9ecef", lw=.7, zorder=1)
+        for i, f in enumerate(x for x in P["files"] if x["group"] == g):
+            x = -17 if f["identical"] or f["max_abs"] <= 0 else max(-17, np.log10(f["max_abs"]))
+            material = (not f["identical"]) and f["max_rel"] > 1e-6 and f["max_abs"] > 1e-6
+            ax.scatter([x], [y + ((i % 5) - 2) * .06], s=22, color=AQUA if f["identical"] else ORANGE if material else BLUE, edgecolor="white", lw=.8, zorder=3)
+            if material:
+                ax.text(x, y + .28, f["file"].replace("penalized_wide_", ""), ha="center", fontsize=6.5, color=ORANGE)
+    ax.set_yticks(range(len(groups)))
+    ax.set_yticklabels([f"{g}\n{sum(1 for f in P['files'] if f['group'] == g)} files" for g in groups[::-1]], fontsize=8.5, color=INK, linespacing=1.4)
+    ax.set_xlim(-17.3, 1); ax.set_ylim(-.7, len(groups) - .2)
+    ax.set_xticks([-17] + list(range(-16, 1, 2))); ax.set_xticklabels(["0"] + [f"1e{t}" for t in range(-16, 1, 2)])
+    ax.set_xlabel("largest |committed − regenerated| per file (log scale; 0 = identical)")
+    for c, lab in [(AQUA, "identical"), (BLUE, "last digits only"), (ORANGE, "differs materially (glmnet 4.1.8 vs 4.1.10 cross-validation)")]:
+        ax.scatter([], [], color=c, s=22, label=lab)
+    ax.legend(loc="lower left", ncol=3, fontsize=7.5, bbox_to_anchor=(0, -.32))
+    ax.grid(False)
+    fig.tight_layout()
+    _save(fig, "refs_repro.svg")
+    plt.close(fig)
+
+
 def interactive():
     """Self-contained interactive pages: the precision ladder and the per-provider explorer."""
     assets = HERE / "interactive_assets"
@@ -158,7 +190,11 @@ def interactive():
     js = (assets / "validation.js").read_text(encoding="utf-8")
     rep = json.loads((DATA / "logistic_fe_report.json").read_text())
     bench = json.loads((DATA / "benchmark.json").read_text())
+    repro = json.loads((DATA / "frozen_refs_repro.json").read_text())
     pages = {
+        "refs_repro": {"kind": "repro", "title": "Regenerating the frozen R references on a second machine", "question": "Do the 117 committed R reference files come back when their scripts are rerun on another platform with newer packages, and where do they differ?",
+                       "caption": "Committed: " + repro["committed"]["os"] + ", R " + repro["committed"]["R"] + ". Regenerated: " + repro["regenerated"]["os"] + ", R " + repro["regenerated"]["R"] + ", " + repro["regenerated"]["date"] + ". Shaded bands as in the precision ladder; a dot at 0 is a byte-identical file.",
+                       "repro": repro},
         "ladder": {"kind": "ladder", "title": "Precision ladder", "question": "How large is the largest R–Python difference for each comparison and component?",
                    "caption": "Hover a dot for its value and source. Shaded bands: below 1e−10 is the floating-point limit; 1e−10 to 1e−5 reflects library or operation-order effects; 1e−5 to 1e−3 reflects convergence tolerance or rounding of the R output; above 1e−2 calls for an explanation. The one value there is γ at 7,000 providers under R's default tolerance (1e−5); rerun at tol = 1e−8 (orange) β and γ agree to 4e−16 and 5e−15. The live comparison keeps R at its default tolerance, so its points stop at R's stopping rule rather than at the floating-point limit.",
                    "report": {"summary": rep["summary"], "data": rep["data"]}, "benchmark": bench},
@@ -194,5 +230,5 @@ def interactive():
 
 
 if __name__ == "__main__":
-    ladder(); live_report(); benchmark(); interactive()
+    ladder(); live_report(); benchmark(); refs_repro(); interactive()
     print("figures written to", OUT)
