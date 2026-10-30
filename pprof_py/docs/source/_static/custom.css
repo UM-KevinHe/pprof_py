@@ -263,3 +263,42 @@ html.dark .yue .figure img {
   .pprof-interactive { display: none !important; }
   details.pprof-static-figure > summary { display: none; }
 }
+
+/* -- Screens: phones, tablets and very wide displays ----------------------- */
+
+/* Below the tablet breakpoint the tables get a smaller type size and tighter
+   cells, so that a three-column reference table fits more of its text before
+   the theme's horizontal scroll on .table-wrapper takes over. */
+@media (max-width: 767px) {
+  .yue table {
+    font-size: 0.82em;
+    line-height: 1.5;
+  }
+
+  .yue thead th,
+  .yue tbody td {
+    padding: 0.4rem 0.5rem;
+  }
+
+  /* The interactive figures are read inside an <iframe>; a little less
+     vertical margin keeps them close to their captions on a short screen. */
+  .pprof-interactive {
+    margin-bottom: 0.75rem;
+  }
+}
+
+/* On very wide screens (2K and 4K at their usual scaling) the 120rem page cap
+   leaves the text small in a sea of margin. A slightly larger root size scales
+   the whole layout, including the cap, so the page uses more of the screen
+   without lengthening the lines. */
+@media (min-width: 2400px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 3200px) {
+  html {
+    font-size: 18px;
+  }
+}
