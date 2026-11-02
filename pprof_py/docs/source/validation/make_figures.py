@@ -2,8 +2,8 @@
 
     python pprof_py/docs/source/validation/make_figures.py
 
-Writes SVG files into ``_static/validation/``, plus three self-contained interactive pages (``ladder.html``,
-``explorer.html``, ``benchmark.html``: inline CSS/JS from ``interactive_assets/``, the JSON embedded) that the
+Writes SVG files into ``_static/validation/``, plus the self-contained interactive pages (``ladder.html``,
+``explorer.html``, ``benchmark.html``, ``refs_repro.html``, ``clustered_tests.html``: inline CSS/JS from ``interactive_assets/``, the JSON embedded) that the
 validation pages show above the static figures. The JSON files are the run records of the live comparison and the
 scaling benchmark, both on synthetic data; nothing here reads live data.
 """
@@ -183,6 +183,52 @@ def refs_repro():
     plt.close(fig)
 
 
+def clustered():
+    """Patient-clustered tests against pprofR: one dot per (cohort, quantity), the largest |R - Py| over providers."""
+    C = json.loads((DATA / "clustered_tests.json").read_text())
+    quantities = [("gamma", "γ"), ("robust_wald_stat", "robust Wald z"), ("robust_wald_se", "robust Wald SE"), ("robust_wald_ci_lower", "robust Wald CI"),
+                  ("stabilized_wald_stat", "stab. Wald z"), ("stabilized_wald_se", "stab. Wald SE"), ("robust_score_stat", "robust score z"),
+                  ("stabilized_score_stat", "stab. score z"), ("score_stat", "score z"), ("robust_wald_p", "robust Wald p"), ("stabilized_wald_p", "stab. Wald p"),
+                  ("robust_score_p", "robust score p"), ("stabilized_score_p", "stab. score p"), ("beta_robust_wald_beta", "β"), ("beta_robust_wald_se", "β robust SE"),
+                  ("beta_robust_wald_stat", "β robust z")]
+    rows, groups = [], []
+    for c in C["cohorts"]:
+        g = f"{c['rows']:,} rows\n{c['providers']:,} providers · {c['patients']:,} patients"
+        groups.append(g)
+        for run, col in (("tol_1e-5", AQUA), ("tol_1e-8", ORANGE), ("tol_1e-12_nobacktrack", BLUE)):
+            a = c["r"].get(run, {}).get("agreement")
+            if a:
+                rows += [(g, lab, a[k], col) for k, lab in quantities if a.get(k, 0) > 0]
+    fig, ax = plt.subplots(figsize=(8.2, 0.62 * len(groups) + 1.7))
+    bands = [(-17, -10, "#e3f3e8", "floating-point limit"), (-10, -5, "#edf5ee", "library / operation order"), (-5, -3, "#fff7df", "tol. / rounding"), (-3, 0, "#fde8e6", "explain")]
+    for lo, hi, col, lab in bands:
+        ax.axvspan(lo, hi, color=col, lw=0, zorder=0)
+        ax.text((lo + hi) / 2, len(groups) - .35, lab, ha="center", va="bottom", fontsize=7, color=MUTED)
+    for gi, g in enumerate(groups):
+        y = len(groups) - 1 - gi
+        ax.axhline(y, color="#e9ecef", lw=.7, zorder=1)
+        items = sorted((r for r in rows if r[0] == g), key=lambda r: r[2])
+        worst = {col: max((r for r in items if r[3] == col), key=lambda r: r[2]) for col in {r[3] for r in items}}
+        for _, lab, v, col in items:
+            x = max(-17, np.log10(v))
+            ax.scatter([x], [y], s=34, color=col, edgecolor="white", lw=1.2, zorder=3)
+        # one label per R run: its largest difference, which is what the row is about
+        for k, (_, lab, v, col) in enumerate(sorted(worst.values(), key=lambda r: r[2])):
+            ax.text(max(-17, np.log10(v)), y + (.22 if k % 2 == 0 else -.42), lab, ha="center", va="center", fontsize=7, color=col, zorder=4)
+    ax.set_yticks(range(len(groups)))
+    ax.set_yticklabels(groups[::-1], fontsize=8.5, color=INK, linespacing=1.4)
+    ax.set_xlim(-17, 0); ax.set_ylim(-.7, len(groups) - .2)
+    ax.set_xticks(range(-16, 1, 2)); ax.set_xticklabels([f"1e{t}" for t in range(-16, 1, 2)])
+    ax.set_xlabel("max |R − Py| over providers (log scale; smaller is better)")
+    for col, lab in [(AQUA, "pprofR at its default tol = 1e−5"), (ORANGE, "rerun at tol = 1e−8"), (BLUE, "rerun at tol = 1e−12, no step-halving")]:
+        ax.scatter([], [], color=col, s=34, label=lab)
+    ax.legend(loc="lower left", ncol=3, fontsize=7.5, bbox_to_anchor=(-.28, -.32))
+    ax.grid(False)
+    fig.tight_layout()
+    _save(fig, "clustered_tests.svg")
+    plt.close(fig)
+
+
 def interactive():
     """Self-contained interactive pages: the precision ladder and the per-provider explorer."""
     assets = HERE / "interactive_assets"
@@ -191,6 +237,7 @@ def interactive():
     rep = json.loads((DATA / "logistic_fe_report.json").read_text())
     bench = json.loads((DATA / "benchmark.json").read_text())
     repro = json.loads((DATA / "frozen_refs_repro.json").read_text())
+    clus = json.loads((DATA / "clustered_tests.json").read_text())
     pages = {
         "refs_repro": {"kind": "repro", "title": "Regenerating the frozen R references on a second machine", "question": "Do the 117 committed R reference files come back when their scripts are rerun on another platform with newer packages, and where do they differ?",
                        "caption": "Committed: " + repro["committed"]["os"] + ", R " + repro["committed"]["R"] + ". Regenerated: " + repro["regenerated"]["os"] + ", R " + repro["regenerated"]["R"] + ", " + repro["regenerated"]["date"] + ". Shaded bands as in the precision ladder; a dot at 0 is a byte-identical file.",
@@ -204,6 +251,9 @@ def interactive():
         "benchmark": {"kind": "benchmark", "title": "Scaling benchmark · runtime of R and Python", "question": "How do fit and provider-test times grow from 20,000 to 5,000,000 rows, and where is Python faster or slower?",
                       "caption": "Five synthetic datasets, 20,000 to 5,000,000 rows, single machine (Apple Silicon, 64 GB RAM), R single-threaded at its default tolerance.",
                       "benchmark": bench},
+        "clustered_tests": {"kind": "clustered", "title": "Patient-clustered provider tests · live comparison against pprofR", "question": "For the four patient-clustered tests (robust and stabilized Wald, robust and stabilized score), how far apart are pprofR and pprof_py on the same cohort, from 20,000 to 5,000,000 rows?",
+                            "caption": f"pprof_py {clus['provenance']['pprof_py_version']} (commit {clus['provenance']['pprof_py_commit']}) against pprofR {clus['provenance']['pprofR_version']} (commit {clus['provenance']['pprofR_commit'][:7]}) on five synthetic patient-clustered cohorts; run of {clus['provenance']['generated_at'][:10]}. Shaded bands as in the precision ladder. Hover a dot for its value; the tables below hold the flags, the times and every value.",
+                            "clustered": clus},
     }
     for name, payload in pages.items():
         data = json.dumps(payload, separators=(",", ":"), sort_keys=True).replace("</", "<\\/")
@@ -230,5 +280,5 @@ def interactive():
 
 
 if __name__ == "__main__":
-    ladder(); live_report(); benchmark(); refs_repro(); interactive()
+    ladder(); live_report(); benchmark(); refs_repro(); clustered(); interactive()
     print("figures written to", OUT)

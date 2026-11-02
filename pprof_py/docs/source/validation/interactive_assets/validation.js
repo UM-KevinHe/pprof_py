@@ -1,4 +1,4 @@
-/* pprof_py documentation: interactive validation figures (precision ladder; per-provider explorer).
+/* pprof_py documentation: interactive validation figures (precision ladder; per-provider explorer; benchmark; reference regeneration; patient-clustered tests).
    Plain JavaScript and inline SVG, no dependencies. Inlined into _static/validation/<name>.html by
    validation/make_figures.py; the data is the JSON record in <script id="pprof-data"> ({kind, title, question,
    caption, report, benchmark}). Hover (and keyboard focus in the table) shows a tooltip; the table is always available. */
@@ -283,8 +283,71 @@
     tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
   }
 
+  /* ---------- patient-clustered tests: live comparison against pprofR ---------- */
+  var CQ = [['gamma', 'γ'], ['robust_wald_stat', 'robust Wald z'], ['robust_wald_se', 'robust Wald SE'], ['robust_wald_ci_lower', 'robust Wald CI'], ['stabilized_wald_stat', 'stabilized Wald z'], ['stabilized_wald_se', 'stabilized Wald SE'], ['robust_score_stat', 'robust score z'], ['stabilized_score_stat', 'stabilized score z'], ['score_stat', 'score z'], ['robust_wald_p', 'robust Wald p'], ['stabilized_wald_p', 'stabilized Wald p'], ['robust_score_p', 'robust score p'], ['stabilized_score_p', 'stabilized score p'], ['beta_robust_wald_beta', 'β'], ['beta_robust_wald_se', 'β robust SE'], ['beta_robust_wald_stat', 'β robust Wald z']];
+  var CT = ['robust_wald', 'stabilized_wald', 'robust_score', 'stabilized_score', 'score'];
+  function clustered(C) {
+    var items = [], groups = [];
+    C.cohorts.forEach(function (c) {
+      var g = fmtInt(c.rows) + ' rows|' + fmtInt(c.providers) + ' providers · ' + fmtInt(c.patients) + ' patients';
+      groups.push(g);
+      [['tol_1e-5', 'three', 'R at its default tol = 1e−5', ''], ['tol_1e-8', 'r', 'R rerun at tol = 1e−8', ' (R tol 1e−8)'], ['tol_1e-12_nobacktrack', 'py', 'R rerun at tol = 1e−12 without step-halving', ' (R tol 1e−12)']].forEach(function (run) {
+        var a = c.r[run[0]] && c.r[run[0]].agreement; if (!a) return;
+        CQ.forEach(function (q) { if (a[q[0]] > 0) items.push({ group: g, comp: q[1] + run[3], v: a[q[0]], fam: run[1], src: run[2] }); });
+      });
+    });
+    var W = 840, rowH = 52, m = { t: 34, r: 24, b: 40, l: 168 }, H = m.t + groups.length * rowH + m.b, lo = -17, hi = 0;
+    function sx(v) { return m.l + (v - lo) / (hi - lo) * (W - m.l - m.r); }
+    var fig = h('figure', { class: 'fig' }), wrap = h('div', { class: 'fig-wrap' }), tip = tooltip(wrap);
+    var svg = h('svg:svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Largest absolute difference between pprofR and pprof_py per cohort and quantity, log scale' });
+    var prev = lo; BANDS.forEach(function (b) { var x0 = sx(prev), x1 = sx(Math.min(b.to, hi)); svg.appendChild(h('svg:rect', { class: 'band ' + b.cls, x: x0, y: m.t - 6, width: Math.max(0, x1 - x0), height: groups.length * rowH + 12 })); svg.appendChild(h('svg:text', { class: 'band-label', x: (x0 + x1) / 2, y: m.t - 12, 'text-anchor': 'middle', text: b.label })); prev = b.to; });
+    var axis = h('svg:g', { class: 'axis' });
+    for (var t = lo + 1; t <= hi; t += 2) { axis.appendChild(h('svg:line', { class: 'tick', x1: sx(t), x2: sx(t), y1: m.t - 6, y2: H - m.b + 4 })); axis.appendChild(h('svg:text', { x: sx(t), y: H - m.b + 18, 'text-anchor': 'middle', text: '1e' + t })); }
+    svg.appendChild(axis);
+    svg.appendChild(h('svg:text', { class: 'label', x: (m.l + W - m.r) / 2, y: H - 6, 'text-anchor': 'middle', text: 'max |R − Py| over providers (log scale; smaller is better)' }));
+    groups.forEach(function (g, gi) {
+      var y = m.t + gi * rowH + rowH / 2, gl = g.split('|');
+      svg.appendChild(h('svg:line', { class: 'row', x1: m.l, x2: W - m.r, y1: y, y2: y }));
+      svg.appendChild(h('svg:text', { class: 'rowlab', x: m.l - 10, y: y - 3, 'text-anchor': 'end', text: gl[0] }));
+      svg.appendChild(h('svg:text', { class: 'rowsub', x: m.l - 10, y: y + 11, 'text-anchor': 'end', text: gl[1] }));
+      var rowItems = items.filter(function (it) { return it.group === g; }).sort(function (a, b) { return a.v - b.v; }), worst = {};
+      rowItems.forEach(function (it) { if (!worst[it.fam] || it.v > worst[it.fam].v) worst[it.fam] = it; });   /* one label per R run: its largest difference */
+      var labelled = Object.keys(worst).map(function (k) { return worst[k]; }).sort(function (a, b) { return a.v - b.v; });
+      rowItems.forEach(function (it, i) {
+        var x = sx(Math.max(lo, Math.log10(it.v)));
+        var c = h('svg:circle', { class: 'pt ' + it.fam + (reduced ? '' : ' enter'), cx: x, cy: y, style: 'animation-delay:' + (gi * 60 + i * 20) + 'ms' });
+        var lab = null, li = labelled.indexOf(it);
+        if (li >= 0) lab = h('svg:text', { class: 'ptlab', x: x, y: li % 2 ? y + 17 : y - 9, 'text-anchor': 'middle', text: it.comp.replace(/ \(R tol 1e−(8|12)\)/, '') });
+        var hit = h('svg:circle', { class: 'hit', cx: x, cy: y });
+        hit.addEventListener('mousemove', function (e) { tip.at(e, '<b>' + g.replace('|', ', ') + ' · ' + it.comp + '</b><div class="row"><span>max |R − Py|</span><span>' + sci(it.v) + '</span></div><div class="row"><span>source</span><span>' + it.src + '</span></div>'); });
+        hit.addEventListener('mouseleave', tip.hide);
+        svg.appendChild(c); if (lab) svg.appendChild(lab); svg.appendChild(hit);
+      });
+    });
+    fig.appendChild(h('div', { class: 'fig-head' }, [h('span', { class: 't', text: 'Patient-clustered tests · largest difference per cohort and quantity' }), h('span', { class: 'legend' }, [h('span', { class: 'three', text: 'R at its default tol = 1e−5' }), h('span', { class: 'r', text: 'R rerun at tol = 1e−8' }), h('span', { text: 'R rerun at tol = 1e−12 without step-halving' })])]));
+    wrap.appendChild(svg); fig.appendChild(wrap); root.appendChild(fig);
+    // flags and timings per cohort
+    var ft = h('table', { class: 'data' }, [h('caption', { text: 'Per cohort: providers compared, flags identical (of the providers compared, every test, all three R runs), and the time of each side. R: pprofR single-threaded, fit time without its data preparation; Python: pprof_py, fit time including data preparation, with the ids as strings (as in the csv) and recoded to integers. Four tests: the two robust and the two stabilized tests together.' })]);
+    ft.appendChild(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Cohort' }), h('th', { scope: 'col', class: 'num', text: 'Providers' }), h('th', { scope: 'col', class: 'num', text: 'Clusters' }), h('th', { scope: 'col', text: 'Flags identical' }), h('th', { scope: 'col', class: 'num', text: 'Fit · R (tol 1e−5 / 1e−8 / 1e−12)' }), h('th', { scope: 'col', class: 'num', text: 'Fit · Py (string ids / integer ids)' }), h('th', { scope: 'col', class: 'num', text: 'Four tests · R' }), h('th', { scope: 'col', class: 'num', text: 'Four tests · Py' })])]));
+    var fb = h('tbody');
+    C.cohorts.forEach(function (c) {
+      var a5 = c.r['tol_1e-5'], a8 = c.r['tol_1e-8'], a12 = c.r['tol_1e-12_nobacktrack'], n = a5 ? a5.agreement.providers_compared : 0;
+      var allSame = [a5, a8, a12].every(function (r) { return r && CT.every(function (t) { return r.agreement[t + '_flags_identical'] === n; }); });
+      function sum4(tm) { return CT.slice(0, 4).reduce(function (s, t) { return s + (tm['test_' + t] || 0); }, 0); }
+      fb.appendChild(h('tr', {}, [h('td', { text: fmtInt(c.rows) + ' rows' }), h('td', { class: 'num', text: fmtInt(n) }), h('td', { class: 'num', text: fmtInt(c.py.clusters) }),
+        h('td', { text: allSame ? 'all ' + fmtInt(n) + ' × 5 tests' : 'differ' }),
+        h('td', { class: 'num mono', text: (a5 ? fix(a5.timing.fit, 2) : '–') + ' / ' + (a8 ? fix(a8.timing.fit, 2) : '–') + ' / ' + (a12 ? fix(a12.timing.fit, 2) : '–') + ' s' }), h('td', { class: 'num mono', text: fix(c.py.timing.fit, 2) + ' / ' + fix(c.py.timing.fit_integer_ids, 2) + ' s' }),
+        h('td', { class: 'num mono', text: a5 ? fix(sum4(a5.timing), 3) + ' s' : '–' }), h('td', { class: 'num mono', text: fix(sum4(c.py.timing), 3) + ' s' })]));
+    });
+    ft.appendChild(fb); root.appendChild(h('div', { class: 'table-scroll' }, [ft]));
+    var tbl = h('table', { class: 'data' }, [h('caption', { text: 'The same values as a table: cohort, quantity, R run and the largest absolute difference over providers.' })]);
+    tbl.appendChild(h('thead', {}, [h('tr', {}, [h('th', { scope: 'col', text: 'Cohort' }), h('th', { scope: 'col', text: 'Quantity' }), h('th', { scope: 'col', text: 'R run' }), h('th', { scope: 'col', class: 'num', text: 'max |R − Py|' })])]));
+    var tb = h('tbody'); items.forEach(function (it) { tb.appendChild(h('tr', {}, [h('td', { text: it.group.replace('|', ', ') }), h('td', { text: it.comp.replace(/ \(R tol 1e−(8|12)\)/, '') }), h('td', { text: it.src }), h('td', { class: 'num mono', text: sci(it.v) })])); });
+    tbl.appendChild(tb); root.appendChild(h('div', { class: 'table-scroll' }, [tbl]));
+  }
+
   root.appendChild(h('h1', { text: D.title })); if (D.question) root.appendChild(h('p', { class: 'question', text: D.question }));
-  if (D.kind === 'ladder') ladder(D.report, D.benchmark); else if (D.kind === 'explorer') explorer(D.report); else if (D.kind === 'benchmark') benchmark(D.benchmark); else if (D.kind === 'repro') repro(D.repro);
+  if (D.kind === 'ladder') ladder(D.report, D.benchmark); else if (D.kind === 'explorer') explorer(D.report); else if (D.kind === 'benchmark') benchmark(D.benchmark); else if (D.kind === 'repro') repro(D.repro); else if (D.kind === 'clustered') clustered(D.clustered);
   if (D.caption) root.appendChild(h('p', { class: 'caption', html: D.caption }));
 
   /* ---------- height handshake: tell the embedding page (same origin) how tall this document is ---------- */
